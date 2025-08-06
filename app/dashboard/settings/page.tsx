@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Settings, Database, Bot, Zap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Settings, Database, Bot, Zap, Brain } from 'lucide-react'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -17,6 +18,25 @@ export default function SettingsPage() {
     enableNotifications: true
   })
   const [saving, setSaving] = useState(false)
+  const [aiProvider, setAiProvider] = useState<string | null>(null)
+  const [aiModel, setAiModel] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Detect AI provider and model from environment variables
+    const openaiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY
+    const openrouterKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY
+    
+    if (openaiKey && openaiKey.startsWith('sk-')) {
+      setAiProvider('OpenAI')
+      setAiModel('gpt-4')
+    } else if (openrouterKey) {
+      setAiProvider('OpenRouter')
+      setAiModel('gpt-4')
+    } else {
+      setAiProvider('Not Configured')
+      setAiModel('N/A')
+    }
+  }, [])
 
   const handleSave = async () => {
     setSaving(true)
@@ -36,6 +56,49 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600">Configure your chatbot parameters and preferences</p>
       </div>
+
+      {/* AI Provider Information */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-purple-600" />
+            AI Provider Configuration
+          </CardTitle>
+          <CardDescription>
+            Current AI provider and model being used for analytics
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Provider</label>
+              <div className="mt-1">
+                <Badge 
+                  variant={aiProvider === 'Not Configured' ? 'destructive' : 'default'}
+                  className="text-sm"
+                >
+                  {aiProvider || 'Loading...'}
+                </Badge>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Model</label>
+              <div className="mt-1">
+                <Badge variant="secondary" className="text-sm">
+                  {aiModel || 'Loading...'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          {aiProvider === 'Not Configured' && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Add your OpenAI or OpenRouter API key to <code>.env.local</code> to enable AI analytics.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

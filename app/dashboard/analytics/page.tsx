@@ -6,7 +6,7 @@ import AIAnalytics from '@/components/ai-analytics'
 import DataChatbot from '@/components/data-chatbot'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Brain, ArrowLeft, Settings } from 'lucide-react'
+import { Brain, ArrowLeft, Settings, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface ChatLog {
@@ -24,6 +24,8 @@ export default function AnalyticsPage() {
   const [chatLogs, setChatLogs] = useState<ChatLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [persistentReport, setPersistentReport] = useState<any>(null)
+  const [reportTimestamp, setReportTimestamp] = useState<Date | null>(null)
 
   useEffect(() => {
     fetchChatLogs()
@@ -134,6 +136,11 @@ export default function AnalyticsPage() {
               </h1>
               <p className="text-gray-300 text-lg">
                 Intelligent insights from {chatLogs.length} conversations
+                {reportTimestamp && (
+                  <span className="block text-sm text-gray-500 mt-1">
+                    Report generated: {reportTimestamp.toLocaleString()}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -163,11 +170,13 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-      {/* AI Analytics Component */}
+      {/* AI Analytics Report */}
       <AIAnalytics 
-        chatLogs={chatLogs}
-        onAnalysisComplete={(report) => {
-          console.log('Analysis completed:', report)
+        chatLogs={chatLogs} 
+        persistentReport={persistentReport}
+        onReportGenerated={(report, timestamp) => {
+          setPersistentReport(report)
+          setReportTimestamp(timestamp)
         }}
       />
 
@@ -179,6 +188,34 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h1 className="text-3xl font-bold text-white">AI Analytics</h1>
+                    <p className="text-gray-400 mt-2">
+                      AI-powered insights from your chatbot interactions
+                      {reportTimestamp && (
+                        <span className="block text-sm text-gray-500 mt-1">
+                          Report generated: {reportTimestamp.toLocaleString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {persistentReport && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setPersistentReport(null)
+                          setReportTimestamp(null)
+                        }}
+                        variant="outline"
+                        className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Report
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 <div className="flex justify-between">
                   <span className="text-base text-gray-300">Total Conversations:</span>
                   <span className="font-medium text-white text-lg">{chatLogs.length}</span>

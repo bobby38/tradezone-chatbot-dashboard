@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -161,21 +161,20 @@ Keep responses concise (2-3 paragraphs max) and actionable.`
   }
 
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+    <Card className="border-gray-700" style={{ backgroundColor: '#1a1a1a' }}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-purple-800">
-          <Bot className="h-5 w-5" />
-          Ask Your Data Anything
-          <Badge className="bg-purple-100 text-purple-800 text-xs">
-            <Sparkles className="h-3 w-3 mr-1" />
-            AI-Powered
-          </Badge>
+        <CardTitle className="flex items-center gap-2 text-gray-200">
+          <Bot className="h-5 w-5 text-blue-400" />
+          Ask About Your Data
         </CardTitle>
+        <CardDescription className="text-gray-300">
+          Ask questions about your chatbot analytics and get AI-powered insights
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Suggested Questions */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-purple-700">Try asking:</p>
+          <p className="text-sm font-medium text-gray-300">Try asking:</p>
           <div className="flex flex-wrap gap-2">
             {suggestedQuestions.map((question, index) => (
               <Button
@@ -183,7 +182,7 @@ Keep responses concise (2-3 paragraphs max) and actionable.`
                 variant="outline"
                 size="sm"
                 onClick={() => handleSuggestedQuestion(question)}
-                className="text-xs bg-white hover:bg-purple-50 border-purple-200 text-purple-700"
+                className="text-xs bg-gray-700 hover:bg-gray-600 border-gray-600 text-gray-200"
               >
                 {question}
               </Button>
@@ -192,7 +191,7 @@ Keep responses concise (2-3 paragraphs max) and actionable.`
         </div>
 
         {/* Chat Messages */}
-        <div className="space-y-3 max-h-96 overflow-y-auto bg-white rounded-lg p-4 border border-purple-100">
+        <div className="space-y-3 max-h-96 overflow-y-auto bg-gray-800 rounded-lg p-4 border border-gray-600">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -209,7 +208,7 @@ Keep responses concise (2-3 paragraphs max) and actionable.`
                 <div className={`rounded-lg p-3 ${
                   message.type === 'user'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-800'
+                    : 'bg-gray-700 text-gray-200'
                 }`}>
                   <p className="text-sm leading-relaxed">{message.content}</p>
                   <p className="text-xs opacity-70 mt-1">
@@ -225,10 +224,10 @@ Keep responses concise (2-3 paragraphs max) and actionable.`
                 <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center">
                   <Bot className="h-4 w-4" />
                 </div>
-                <div className="bg-gray-100 rounded-lg p-3">
+                <div className="bg-gray-700 rounded-lg p-3">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <p className="text-sm text-gray-600">Analyzing your data...</p>
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                    <p className="text-sm text-gray-200">Analyzing your data...</p>
                   </div>
                 </div>
               </div>

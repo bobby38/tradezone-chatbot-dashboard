@@ -23,10 +23,12 @@ import DataChatbot from './data-chatbot'
 
 interface AIAnalyticsProps {
   chatLogs: any[]
+  persistentReport?: any
+  onReportGenerated?: (report: any, timestamp: Date) => void
   onAnalysisComplete?: (report: AnalyticsReport) => void
 }
 
-export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalyticsProps) {
+export default function AIAnalytics({ chatLogs, persistentReport, onReportGenerated, onAnalysisComplete }: AIAnalyticsProps) {
   const [report, setReport] = useState<AnalyticsReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +54,8 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
       
       const analysisReport = await aiService.analyzeChatLogs(chatLogs)
       setReport(analysisReport)
+      const timestamp = new Date()
+      onReportGenerated?.(analysisReport, timestamp)
       onAnalysisComplete?.(analysisReport)
     } catch (err) {
       console.error('AI analysis failed:', err)
@@ -152,18 +156,33 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
 
   if (error) {
     return (
-      <Card className="border-red-200">
+      <Card className="border-red-600" style={{ backgroundColor: '#333' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-600">
+          <CardTitle className="text-red-400 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Analysis Error
+            Analysis Failed
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={analyzeData} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <p className="text-red-300 mb-4">{error}</p>
+          <Button onClick={analyzeData} className="bg-red-600 hover:bg-red-700">
             Retry Analysis
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!report) {
+    return (
+      <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
+        <CardHeader>
+          <CardTitle className="text-gray-200">No Analytics Report Available</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-300 mb-4">Click the button below to generate an AI analytics report.</p>
+          <Button onClick={analyzeData} className="bg-blue-600 hover:bg-blue-700">
+            Generate Report
           </Button>
         </CardContent>
       </Card>
@@ -187,10 +206,10 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
       </div>
 
       {/* Overall Sentiment */}
-      <Card>
+      <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-gray-200 text-xl">
+            <MessageSquare className="h-6 w-6 text-blue-400" />
             Overall Sentiment Analysis
           </CardTitle>
         </CardHeader>
@@ -200,15 +219,15 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
               <Badge className={getSentimentColor(report.overall_sentiment.sentiment)}>
                 {report.overall_sentiment.sentiment.toUpperCase()}
               </Badge>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-base text-gray-300 mt-3 font-medium">
                 Confidence: {Math.round(report.overall_sentiment.confidence * 100)}%
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-medium">Detected Emotions:</p>
-              <div className="flex flex-wrap gap-1 mt-1">
+              <p className="text-base font-semibold text-gray-200 mb-2">Detected Emotions:</p>
+              <div className="flex flex-wrap gap-2 mt-2">
                 {report.overall_sentiment.emotions.map((emotion, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
+                  <Badge key={index} variant="secondary" className="text-sm bg-gray-600 text-gray-200">
                     {emotion}
                   </Badge>
                 ))}
@@ -220,44 +239,44 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
 
       {/* Performance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+        <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-gray-200 text-xl">
+              <BarChart3 className="h-6 w-6 text-green-400" />
               Performance Metrics
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div>
-              <div className="flex justify-between text-sm">
-                <span>Response Quality</span>
-                <span>{report.performance_feedback.response_quality}/10</span>
+              <div className="flex justify-between text-base">
+                <span className="text-gray-200 font-medium">Response Quality</span>
+                <span className="text-white font-bold text-lg">{report.performance_feedback.response_quality}/10</span>
               </div>
-              <Progress value={report.performance_feedback.response_quality * 10} className="mt-1" />
+              <Progress value={report.performance_feedback.response_quality * 10} className="mt-2 h-3" />
             </div>
             <div>
-              <div className="flex justify-between text-sm">
-                <span>User Satisfaction</span>
-                <span>{report.performance_feedback.user_satisfaction}/10</span>
+              <div className="flex justify-between text-base">
+                <span className="text-gray-200 font-medium">User Satisfaction</span>
+                <span className="text-white font-bold text-lg">{report.performance_feedback.user_satisfaction}/10</span>
               </div>
-              <Progress value={report.performance_feedback.user_satisfaction * 10} className="mt-1" />
+              <Progress value={report.performance_feedback.user_satisfaction * 10} className="mt-2 h-3" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-gray-200 text-xl">
+              <TrendingUp className="h-6 w-6 text-blue-400" />
               Trending Topics
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {report.trending_topics.map((topic, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm">{topic}</span>
+                <div key={index} className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                  <span className="text-base text-gray-200 font-medium">{topic}</span>
                 </div>
               ))}
             </div>
@@ -266,34 +285,34 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
       </div>
 
       {/* Recommendations */}
-      <Card>
+      <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-gray-200 text-xl">
+            <Lightbulb className="h-6 w-6 text-yellow-400" />
             AI Recommendations
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-gray-300 text-base">
             Actionable insights to improve your chatbot performance
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {report.recommendations.map((rec, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium">{rec.title}</h4>
+              <div key={index} className="border border-gray-600 rounded-lg p-5 bg-gray-700/50">
+                <div className="flex items-start justify-between mb-3">
+                  <h4 className="font-semibold text-white text-lg">{rec.title}</h4>
                   <Badge className={getPriorityColor(rec.priority)}>
                     {rec.priority}
                   </Badge>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{rec.description}</p>
+                <p className="text-base text-gray-300 mb-4 leading-relaxed">{rec.description}</p>
                 <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1">Action Items:</p>
-                  <ul className="text-xs text-gray-600 space-y-1">
+                  <p className="text-sm font-semibold text-gray-200 mb-2">Action Items:</p>
+                  <ul className="text-sm text-gray-300 space-y-2">
                     {rec.action_items.map((item, itemIndex) => (
-                      <li key={itemIndex} className="flex items-center gap-2">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        {item}
+                      <li key={itemIndex} className="flex items-start gap-3">
+                        <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                        <span className="leading-relaxed">{item}</span>
                       </li>
                     ))}
                   </ul>
