@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Tradezone Dark Theme - Black, White, Purple */
+    --background: 240 10% 6%; /* Slightly lighter dark background */
+    --foreground: 0 0% 98%; /* Pure white */
+    --card: 240 10% 3.9%; /* Deep black cards */
+    --card-foreground: 0 0% 98%; /* White text on cards */
+    --popover: 240 5% 6%; /* Slightly lighter black */
+    --popover-foreground: 0 0% 98%; /* White text */
+    --primary: 263 85% 65%; /* Tradezone purple */
+    --primary-foreground: 0 0% 98%; /* White on purple */
+    --secondary: 240 4% 16%; /* Dark gray */
+    --secondary-foreground: 0 0% 98%; /* White text */
+    --muted: 240 5% 6%; /* Muted dark */
+    --muted-foreground: 240 5% 65%; /* Muted gray text */
+    --accent: 263 85% 65%; /* Purple accent */
+    --accent-foreground: 0 0% 98%; /* White on accent */
+    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
+    --destructive-foreground: 0 0% 98%; /* White on red */
+    --border: 240 6% 10%; /* Dark borders */
+    --input: 240 6% 10%; /* Dark input backgrounds */
+    --ring: 263 85% 65%; /* Purple focus ring */
+    --radius: 0.75rem; /* Slightly more rounded */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
