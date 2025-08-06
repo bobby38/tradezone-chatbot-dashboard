@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BarChart3, MessageSquare, Users, TrendingUp, Clock, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
+import { BarChart3, MessageSquare, Users, TrendingUp, Clock, AlertCircle, CheckCircle, RefreshCw, Brain } from 'lucide-react'
 import Link from 'next/link'
 
 interface DashboardStats {
@@ -399,6 +399,23 @@ export default function DashboardPage() {
                     <div>
                       <div className="font-medium">Settings & Parameters</div>
                       <div className="text-sm text-gray-500">Configure chatbot parameters</div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/dashboard/analytics" className="block">
+                <div className="w-full text-left p-4 rounded-lg border hover:bg-gray-50 hover:border-primary/20 transition-all cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <Brain className="h-5 w-5 text-purple-500 group-hover:text-purple-600" />
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        AI Analytics
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          New
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-500">AI-powered insights and recommendations</div>
                     </div>
                   </div>
                 </div>

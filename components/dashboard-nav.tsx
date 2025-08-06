@@ -19,13 +19,15 @@ import {
   User, 
   LogOut,
   Menu,
-  X
+  X,
+  Brain
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Chat Logs', href: '/dashboard/logs', icon: MessageSquare },
+  { name: 'AI Analytics', href: '/dashboard/analytics', icon: Brain },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
