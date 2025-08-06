@@ -126,50 +126,50 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">
+                <label htmlFor="name" className="text-sm font-semibold text-gray-800">
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="pl-10"
+                    className="pl-10 bg-white text-gray-900 font-medium border-gray-300"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
+                <label htmlFor="email" className="text-sm font-semibold text-gray-800">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
                   <Input
                     id="email"
                     value={profile.email}
                     disabled
-                    className="pl-10 bg-gray-50"
+                    className="pl-10 bg-white text-gray-900 font-medium border-gray-300 cursor-not-allowed disabled:bg-white disabled:opacity-100"
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm text-gray-700 font-medium">
                   Email cannot be changed. Contact support if needed.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="role" className="text-sm font-medium">
+                <label htmlFor="role" className="text-sm font-semibold text-gray-800">
                   Role
                 </label>
                 <div className="relative">
-                  <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
                   <Input
                     id="role"
                     value={profile.role}
                     disabled
-                    className="pl-10 bg-gray-50"
+                    className="pl-10 bg-white text-gray-900 font-medium border-gray-300 cursor-not-allowed disabled:bg-white disabled:opacity-100"
                   />
                 </div>
               </div>

@@ -6,7 +6,7 @@ import AIAnalytics from '@/components/ai-analytics'
 import DataChatbot from '@/components/data-chatbot'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Brain, ArrowLeft, Settings, Trash2 } from 'lucide-react'
+import { Brain, ArrowLeft, Settings, Trash2, Download, Mail } from 'lucide-react'
 import Link from 'next/link'
 
 interface ChatLog {
@@ -26,6 +26,79 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
   const [persistentReport, setPersistentReport] = useState<any>(null)
   const [reportTimestamp, setReportTimestamp] = useState<Date | null>(null)
+  const [emailSchedule, setEmailSchedule] = useState<string>('none')
+
+  const exportAnalyticsReport = (format: 'json' | 'csv' | 'pdf') => {
+    if (!persistentReport) {
+      alert('No analytics report available to export')
+      return
+    }
+
+    const timestamp = new Date().toISOString().split('T')[0]
+    const filename = `analytics-report-${timestamp}`
+
+    if (format === 'json') {
+      const dataStr = JSON.stringify(persistentReport, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${filename}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } else if (format === 'csv') {
+      // Convert analytics data to CSV format
+      const csvData = convertReportToCSV(persistentReport)
+      const dataBlob = new Blob([csvData], { type: 'text/csv' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${filename}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  const convertReportToCSV = (report: any) => {
+    const lines = [
+      'Metric,Value',
+      `Overall Sentiment,${report.overall_sentiment?.sentiment || 'N/A'}`,
+      `Sentiment Confidence,${Math.round((report.overall_sentiment?.confidence || 0) * 100)}%`,
+      `Response Quality,${report.performance_feedback?.response_quality || 'N/A'}/10`,
+      `User Satisfaction,${report.performance_feedback?.user_satisfaction || 'N/A'}/10`,
+      '',
+      'Trending Topics',
+      ...(report.trending_topics || []).map((topic: string) => `"${topic}"`),
+      '',
+      'Recommendations',
+      ...(report.recommendations || []).map((rec: any) => `"${rec.title}","${rec.description}"`)
+    ]
+    return lines.join('\n')
+  }
+
+  const scheduleEmailReport = async (frequency: string) => {
+    try {
+      const response = await fetch('/api/schedule-email-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          frequency,
+          email: 'info@rezult.co',
+          reportData: persistentReport
+        })
+      })
+      
+      if (response.ok) {
+        setEmailSchedule(frequency)
+        alert(`Email reports scheduled ${frequency}ly to info@rezult.co`)
+      } else {
+        alert('Failed to schedule email reports. Please check SMTP configuration.')
+      }
+    } catch (error) {
+      console.error('Error scheduling email report:', error)
+      alert('Error scheduling email reports')
+    }
+  }
 
   useEffect(() => {
     fetchChatLogs()
@@ -146,6 +219,50 @@ export default function AnalyticsPage() {
           </div>
         
           <div className="flex gap-2">
+            {persistentReport && (
+              <>
+                <div className="flex gap-1">
+                  <Button 
+                    onClick={() => exportAnalyticsReport('json')}
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-blue-700 border-blue-600 text-blue-200 hover:bg-blue-600"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    JSON
+                  </Button>
+                  <Button 
+                    onClick={() => exportAnalyticsReport('csv')}
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-green-700 border-green-600 text-green-200 hover:bg-green-600"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    CSV
+                  </Button>
+                </div>
+                <div className="flex gap-1">
+                  <Button 
+                    onClick={() => scheduleEmailReport('week')}
+                    variant="outline" 
+                    size="sm" 
+                    className={`${emailSchedule === 'week' ? 'bg-purple-600 border-purple-500' : 'bg-purple-700 border-purple-600'} text-purple-200 hover:bg-purple-600`}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Weekly
+                  </Button>
+                  <Button 
+                    onClick={() => scheduleEmailReport('month')}
+                    variant="outline" 
+                    size="sm" 
+                    className={`${emailSchedule === 'month' ? 'bg-orange-600 border-orange-500' : 'bg-orange-700 border-orange-600'} text-orange-200 hover:bg-orange-600`}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Monthly
+                  </Button>
+                </div>
+              </>
+            )}
             <Button variant="outline" size="sm" className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600">
               <Settings className="h-4 w-4 mr-2" />
               Configure API

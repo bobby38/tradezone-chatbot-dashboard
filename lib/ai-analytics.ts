@@ -47,14 +47,29 @@ class AIAnalyticsService {
   private baseUrl: string
   private model: string
 
-  constructor(apiKey: string, provider: 'openai' | 'openrouter' = 'openai') {
-    this.apiKey = apiKey
+  constructor() {
+    this.apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || ''
+    
+    // Get saved provider and model from localStorage
+    const savedProvider = typeof window !== 'undefined' ? localStorage.getItem('ai-provider') : null
+    const savedModel = typeof window !== 'undefined' ? localStorage.getItem('ai-model') : null
+    
+    const provider = savedProvider || (process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'openai' : 'openrouter')
+    
     this.baseUrl = provider === 'openai' 
       ? 'https://api.openai.com/v1' 
       : 'https://openrouter.ai/api/v1'
-    this.model = provider === 'openai' 
-      ? 'gpt-4-turbo-preview' 
-      : 'openai/gpt-4-turbo-preview'
+    
+    // Use saved model or default
+    if (savedModel) {
+      this.model = provider === 'openrouter' && !savedModel.includes('/') 
+        ? `openai/${savedModel}` 
+        : savedModel
+    } else {
+      this.model = provider === 'openai' 
+        ? 'gpt-4o' 
+        : 'openai/gpt-4-turbo-preview'
+    }
   }
 
   async analyzeChatLogs(logs: ChatLog[]): Promise<AnalyticsReport> {
