@@ -19,6 +19,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { AIAnalyticsService, type AnalyticsReport } from '@/lib/ai-analytics'
+import DataChatbot from './data-chatbot'
 
 interface AIAnalyticsProps {
   chatLogs: any[]
@@ -42,7 +43,7 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
     try {
       // Check if API key is configured
       const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY
-      if (!apiKey) {
+      if (!apiKey || apiKey === 'your_openai_key_here' || apiKey === 'your_openrouter_key_here') {
         throw new Error('AI API key not configured. Please add NEXT_PUBLIC_OPENAI_API_KEY or NEXT_PUBLIC_OPENROUTER_API_KEY to your environment variables.')
       }
 
@@ -170,16 +171,16 @@ export default function AIAnalytics({ chatLogs, onAnalysisComplete }: AIAnalytic
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 min-h-screen p-6 rounded-xl" style={{ backgroundColor: '#333' }}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
             AI Analytics Report
           </h2>
-          <p className="text-gray-600">Intelligent insights from your chat data</p>
+          <p className="text-gray-200 text-lg font-medium">Intelligent insights from your chat data</p>
         </div>
-        <Button onClick={analyzeData} variant="outline" size="sm">
+        <Button onClick={analyzeData} variant="outline" size="sm" className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh Analysis
         </Button>
