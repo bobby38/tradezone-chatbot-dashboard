@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BarChart3, MessageSquare, Users, TrendingUp, Clock, AlertCircle, CheckCircle, RefreshCw, Brain } from 'lucide-react'
+import { BarChart3, MessageSquare, Users, TrendingUp, Clock, AlertCircle, CheckCircle, RefreshCw, Brain, Activity } from 'lucide-react'
 import Link from 'next/link'
+import { WooCommerceDashboard } from '@/components/woocommerce-dashboard'
 
 interface DashboardStats {
   totalChats: number
@@ -314,7 +315,7 @@ export default function DashboardPage() {
                     success: CheckCircle,
                     error: AlertCircle,
                     pending: Clock
-                  }[activity.status]
+                  }[activity.status] || AlertCircle // Fallback to AlertCircle if status is undefined
 
                   return (
                     <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
@@ -332,10 +333,10 @@ export default function DashboardPage() {
                         </p>
                         <div className="flex items-center justify-between mt-1">
                           <p className="text-xs text-gray-500">
-                            User: {activity.user_id.substring(0, 8)}...
+                            User: {activity.user_id ? activity.user_id.substring(0, 8) + '...' : 'Unknown'}
                           </p>
                           <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>{activity.processing_time.toFixed(2)}s</span>
+                            <span>{activity.processing_time ? activity.processing_time.toFixed(2) + 's' : 'N/A'}</span>
                             <span>{new Date(activity.timestamp).toLocaleTimeString()}</span>
                           </div>
                         </div>
@@ -435,6 +436,17 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* WooCommerce Dashboard Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Store Analytics</h2>
+            <p className="text-muted-foreground">Live WooCommerce sales and product data</p>
+          </div>
+        </div>
+        <WooCommerceDashboard />
       </div>
     </div>
   )
