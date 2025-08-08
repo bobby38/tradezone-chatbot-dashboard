@@ -54,6 +54,18 @@ export default function WooCommercePage() {
     { id: 9873, customer: "Nurul Rahman", items: 4, total: 210.0, status: "processing", time: "08:47" },
   ]), [])
 
+  // Derived metrics
+  const totals = useMemo(() => {
+    const orders = recentSales.length
+    const revenue = recentSales.reduce((s, r) => s + r.total, 0)
+    const aov = orders ? revenue / orders : 0
+    const completed = recentSales.filter(r => r.status === 'completed').length
+    const processing = recentSales.filter(r => r.status === 'processing').length
+    const pending = recentSales.filter(r => r.status === 'pending').length
+    const completionRate = orders ? (completed / orders) * 100 : 0
+    return { orders, revenue, aov, completed, processing, pending, completionRate }
+  }, [recentSales])
+
   const topProducts = useMemo(() => ([
     { id: 101, name: "Wireless Headphones", price: 199.0, total_sales: 128, stock_quantity: 42 },
     { id: 102, name: "Mechanical Keyboard", price: 129.0, total_sales: 96, stock_quantity: 18 },
@@ -132,6 +144,38 @@ export default function WooCommercePage() {
               <CardDescription>Key metrics and product performance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Summary Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">S${totals.revenue.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground">Last {period}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">Orders</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">{totals.orders}</div>
+                    <div className="text-xs text-muted-foreground">Last {period}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">Avg Order Value</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">S${totals.aov.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground">AOV</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">Completion Rate</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">{totals.completionRate.toFixed(1)}%</div>
+                    <div className="text-xs text-muted-foreground">Completed / All</div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={salesTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
@@ -148,6 +192,49 @@ export default function WooCommercePage() {
                     <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="url(#rev)" name="Revenue" />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+
+              {/* Orders by Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Orders by Status</CardTitle>
+                    <CardDescription>Distribution of recent orders</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={[
+                        { status: 'Completed', value: totals.completed },
+                        { status: 'Processing', value: totals.processing },
+                        { status: 'Pending', value: totals.pending },
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="status" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="value" stroke="#8B5CF6" fill="rgba(139,92,246,0.25)" name="Orders" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Inventory Snapshot</CardTitle>
+                    <CardDescription>Top products stock vs sales</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={topProducts.map(p => ({ name: p.name, sold: p.total_sales, stock: p.stock_quantity }))}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="name" hide />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="sold" stroke="#22C55E" fill="rgba(34,197,94,0.25)" name="Sold" />
+                        <Area type="monotone" dataKey="stock" stroke="#F59E0B" fill="rgba(245,158,11,0.25)" name="Stock" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
               </div>
               <WooCommerceDashboard />
             </CardContent>

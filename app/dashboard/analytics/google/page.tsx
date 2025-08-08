@@ -41,6 +41,8 @@ export default function GoogleAnalyticsPage() {
   const [trendData, setTrendData] = useState<{ date: string; current: number; previous: number }[]>([])
   const [pageViewsData, setPageViewsData] = useState<{ page: string; views: number }[]>([])
   const [deviceData, setDeviceData] = useState<{ name: string; value: number }[]>([])
+  const [countriesData, setCountriesData] = useState<{ country: string; sessions: number }[]>([])
+  const [channelsData, setChannelsData] = useState<{ channel: string; sessions: number }[]>([])
   const [scSummary, setScSummary] = useState<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
   const [gaSummary, setGaSummary] = useState<{ activeUsers: number; newUsers: number; averageEngagementTime: number; eventCount: number } | null>(null)
   // Live SC table state
@@ -74,6 +76,14 @@ export default function GoogleAnalyticsPage() {
         // Devices (GA, align days)
         const devicesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-devices?days=${daysParam}`)
         if (!cancelled) setDeviceData(devicesJson?.data || [])
+
+        // Countries (GA)
+        const countriesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-countries?days=${daysParam}`)
+        if (!cancelled) setCountriesData(countriesJson?.data || [])
+
+        // Channels (GA)
+        const channelsJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-channels?days=${daysParam}`)
+        if (!cancelled) setChannelsData(channelsJson?.data || [])
 
         // Search Console summary (align days)
         try {
@@ -372,6 +382,47 @@ export default function GoogleAnalyticsPage() {
                       <Pie data={deviceData} dataKey="value" nameKey="name" outerRadius={100} label>
                         {deviceData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={deviceColors[index % deviceColors.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Additional GA Insights: Countries and Channels */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Countries</CardTitle>
+                  <CardDescription>Sessions by country</CardDescription>
+                </CardHeader>
+                <CardContent style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={countriesData} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="country" type="category" width={180} />
+                      <Tooltip />
+                      <Bar dataKey="sessions" fill="#06B6D4" radius={[4, 4, 4, 4]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Channels</CardTitle>
+                  <CardDescription>Default channel grouping</CardDescription>
+                </CardHeader>
+                <CardContent style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={channelsData} dataKey="sessions" nameKey="channel" outerRadius={100} label>
+                        {channelsData.map((entry, index) => (
+                          <Cell key={`ch-${index}`} fill={deviceColors[index % deviceColors.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
