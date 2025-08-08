@@ -41,20 +41,26 @@ export async function GET(req: NextRequest) {
       const [response] = await client.runReport({
         property: `properties/${propertyId}`,
         metrics: [
+          // Use a safe subset of GA4 metrics to avoid INVALID_ARGUMENT
           { name: 'activeUsers' },
           { name: 'newUsers' },
-          { name: 'averageEngagementTime' },
+          { name: 'sessions' },
           { name: 'eventCount' },
         ],
+        dimensions: [ { name: 'date' } ],
         dateRanges: [{ startDate, endDate }],
+        // Request totals so we don't rely on per-day rows
+        metricAggregations: ['TOTAL'],
         limit: 1,
       })
 
-      const mv = response.rows?.[0]?.metricValues || []
+      // Prefer totals to avoid dependence on specific row structures
+      const totals = response.totals?.[0]?.metricValues || []
+      const mv = totals.length ? totals : (response.rows?.[0]?.metricValues || [])
       const data = {
         activeUsers: Number(mv[0]?.value || 0),
         newUsers: Number(mv[1]?.value || 0),
-        averageEngagementTime: Number(mv[2]?.value || 0),
+        sessions: Number(mv[2]?.value || 0),
         eventCount: Number(mv[3]?.value || 0),
         range: { startDate, endDate },
       }

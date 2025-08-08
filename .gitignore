@@ -67,3 +67,13 @@ credentials*.json
 google-credentials*.json
 *.p12
 *.pem
+
+# Editors
+*.swp
+*.swo
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+
+# Local backups
+.env.local.bak
