@@ -142,8 +142,8 @@ export class SettingsManager {
       const smtpSettings = localStorage.getItem('smtp-settings')
       if (smtpSettings) {
         const parsed = JSON.parse(smtpSettings)
-        // Ensure we don't have nested config objects
-        settings.smtp = { config: parsed }
+        // Store as flat object matching SettingsData.smtp shape
+        settings.smtp = parsed
       }
 
       // Load general settings

@@ -63,9 +63,15 @@ export default function SettingsPage() {
         }
         
         // Load SMTP settings
-        if (allSettings.smtp && allSettings.smtp.config) {
+        if (
+          allSettings.smtp &&
+          typeof allSettings.smtp === 'object' &&
+          'config' in (allSettings.smtp as any) &&
+          (allSettings.smtp as any).config &&
+          typeof (allSettings.smtp as any).config === 'object'
+        ) {
           // Handle config object format
-          const config = allSettings.smtp.config
+          const config = (allSettings.smtp as any).config as Record<string, any>
           setSmtpSettings(prev => ({
             ...prev,
             fromEmail: config.fromEmail || '',
@@ -81,9 +87,9 @@ export default function SettingsPage() {
             setReturnPath: config.setReturnPath !== undefined ? config.setReturnPath : true,
             testEmail: config.testEmail || 'test@example.com'
           }))
-        } else if (allSettings.smtp) {
+        } else if (allSettings.smtp && typeof allSettings.smtp === 'object') {
           // Handle individual field format (fallback)
-          setSmtpSettings(prev => ({ ...prev, ...allSettings.smtp }))
+          setSmtpSettings(prev => ({ ...prev, ...(allSettings.smtp as Record<string, any>) }))
         }
         
         // Load general settings

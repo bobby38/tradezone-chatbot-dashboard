@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { formatDate, exportToCSV } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Table, 
@@ -41,7 +42,7 @@ interface ChatLog {
   created_at: string
 }
 
-const ITEMS_PER_PAGE = 10
+const DEFAULT_PAGE_SIZE = 25
 
 export default function ChatLogsPage() {
   const [logs, setLogs] = useState<ChatLog[]>([])
@@ -51,10 +52,12 @@ export default function ChatLogsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [selectedLogs, setSelectedLogs] = useState<string[]>([])
   const [showResponse, setShowResponse] = useState(false)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'error'>('all')
 
   useEffect(() => {
     fetchLogs()
-  }, [currentPage, searchTerm])
+  }, [currentPage, searchTerm, pageSize, statusFilter])
 
   const fetchLogs = async () => {
     setLoading(true)
@@ -63,10 +66,14 @@ export default function ChatLogsPage() {
         .from('chat_logs')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1)
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
 
       if (searchTerm) {
         query = query.or(`prompt.ilike.%${searchTerm}%,response.ilike.%${searchTerm}%`)
+      }
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter)
       }
 
       const { data, error, count } = await query
@@ -137,7 +144,7 @@ export default function ChatLogsPage() {
     }
   }
 
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(totalCount / pageSize)
 
   return (
     <div className="space-y-6">
@@ -156,6 +163,29 @@ export default function ChatLogsPage() {
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
+              {/* Status filter */}
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as 'all'|'success'|'error'); setCurrentPage(1) }}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                </SelectContent>
+              </Select>
+              {/* Page size */}
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
@@ -302,7 +332,7 @@ export default function ChatLogsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-6">
                   <div className="text-sm text-gray-700">
-                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} results
+                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} results
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button
@@ -326,13 +356,25 @@ export default function ChatLogsPage() {
                       Next
                       <ChevronRight className="h-4 w-4" />
                     </Button>
+                    {/* Quick page size control */}
+                    <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue placeholder="Rows" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="200">200</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
+          </>
+        )}
+      </CardContent>
+    </Card>
+  </div>
+)
 }

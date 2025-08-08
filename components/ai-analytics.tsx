@@ -49,8 +49,7 @@ export default function AIAnalytics({ chatLogs, persistentReport, onReportGenera
         throw new Error('AI API key not configured. Please add NEXT_PUBLIC_OPENAI_API_KEY or NEXT_PUBLIC_OPENROUTER_API_KEY to your environment variables.')
       }
 
-      const provider = process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'openai' : 'openrouter'
-      const aiService = new AIAnalyticsService(apiKey, provider)
+      const aiService = new AIAnalyticsService()
       
       const analysisReport = await aiService.analyzeChatLogs(chatLogs)
       setReport(analysisReport)
@@ -62,7 +61,7 @@ export default function AIAnalytics({ chatLogs, persistentReport, onReportGenera
       setError(err instanceof Error ? err.message : 'Analysis failed')
       
       // Show fallback analysis
-      const aiService = new AIAnalyticsService('fallback')
+      const aiService = new AIAnalyticsService()
       const fallbackReport = (aiService as any).getFallbackAnalysis()
       setReport(fallbackReport)
     } finally {

@@ -82,8 +82,7 @@ export default function DataChatbot({ analyticsReport, chatLogs }: DataChatbotPr
       return "I need an API key to analyze your data. Please configure your OpenAI or OpenRouter API key in the environment variables."
     }
 
-    const provider = process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'openai' : 'openrouter'
-    const aiService = new AIAnalyticsService(apiKey, provider)
+    const aiService = new AIAnalyticsService()
 
     // Create context from analytics report and chat logs
     const context = {
@@ -99,8 +98,9 @@ export default function DataChatbot({ analyticsReport, chatLogs }: DataChatbotPr
       analyticsReport: analyticsReport
     }
 
-    const baseUrl = provider === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1'
-    const model = provider === 'openai' ? 'gpt-4-turbo-preview' : 'openai/gpt-4-turbo-preview'
+    const isOpenAI = Boolean(process.env.NEXT_PUBLIC_OPENAI_API_KEY)
+    const baseUrl = isOpenAI ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1'
+    const model = isOpenAI ? 'gpt-4-turbo-preview' : 'openai/gpt-4-turbo-preview'
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
