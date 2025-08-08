@@ -1,17 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
+import fs from 'fs'
+import { GoogleAuth } from 'google-auth-library'
+
+function parseServiceAccountFromEnv(): { creds: any | null, parseOk: boolean, rawStartsWith?: string } {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+  if (!raw) return { creds: null, parseOk: false }
+  let val = raw.trim()
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    val = val.slice(1, -1)
+  }
+  const rawStartsWith = val.slice(0, 1)
+  try {
+    if (val.startsWith('{')) {
+      const parsed = JSON.parse(val)
+      return { creds: parsed, parseOk: true, rawStartsWith }
+    }
+  } catch {}
+  try {
+    const decoded = Buffer.from(val, 'base64').toString('utf8')
+    const parsed = JSON.parse(decoded)
+    return { creds: parsed, parseOk: true, rawStartsWith }
+  } catch (e) {
+    console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
+    return { creds: null, parseOk: false, rawStartsWith }
+  }
+}
 
 function getGaClient() {
-  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  if (keyJson) {
+  const parsed = parseServiceAccountFromEnv()
+  if (parsed.creds) {
+    const auth = new GoogleAuth({
+      credentials: parsed.creds,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    })
+    return new BetaAnalyticsDataClient({ auth })
+  }
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  if (credPath && fs.existsSync(credPath)) {
     try {
-      const credentials = JSON.parse(keyJson)
-      return new BetaAnalyticsDataClient({ credentials })
+      const fileJson = JSON.parse(fs.readFileSync(credPath, 'utf8'))
+      const auth = new GoogleAuth({
+        credentials: fileJson,
+        scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+      })
+      return new BetaAnalyticsDataClient({ auth })
     } catch (e) {
-      console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
+      console.error('Failed to read GOOGLE_APPLICATION_CREDENTIALS file:', e)
     }
   }
-  return new BetaAnalyticsDataClient()
+  const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/analytics.readonly'] })
+  return new BetaAnalyticsDataClient({ auth })
 }
 
 function formatDate(d: Date) {
@@ -25,7 +64,7 @@ export async function GET(req: NextRequest) {
   try {
     const propertyId = process.env.GA_PROPERTY
     if (!propertyId) {
-      return NextResponse.json({ error: 'GA_PROPERTY env var is required' }, { status: 400 })
+      return NextResponse.json({ error: 'GA_PROPERTY env var is required' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
     }
 
     const client = getGaClient()
@@ -37,112 +76,131 @@ export async function GET(req: NextRequest) {
     const metricName = metric === 'sessions' ? 'sessions' : 'newUsers'
     const debug = (searchParams.get('debug') || '').toString() === '1'
 
-    // date windows
-    // Use yesterday as end to avoid partial "today" depending on timezone
+    // date windows: use yesterday as end for current window
     const today = new Date()
-    const endDate = new Date(today)
-    endDate.setDate(endDate.getDate() - 1)
-    const endCurrent = formatDate(endDate)
-    const startCurrentDate = new Date(endDate)
+    const endCurrentDate = new Date(today)
+    endCurrentDate.setDate(endCurrentDate.getDate() - 1)
+    const startCurrentDate = new Date(endCurrentDate)
     startCurrentDate.setDate(startCurrentDate.getDate() - (days - 1))
-    const startCurrent = formatDate(startCurrentDate)
 
+    const startCurrent = formatDate(startCurrentDate)
+    const endCurrent = formatDate(endCurrentDate)
+
+    // previous window immediately before current window
     const endPrevDate = new Date(startCurrentDate)
     endPrevDate.setDate(endPrevDate.getDate() - 1)
-    const endPrev = formatDate(endPrevDate)
     const startPrevDate = new Date(endPrevDate)
     startPrevDate.setDate(startPrevDate.getDate() - (days - 1))
-    const startPrev = formatDate(startPrevDate)
 
-    // Run two reports separately for clarity
-    let respCurrent
+    const startPrev = formatDate(startPrevDate)
+    const endPrev = formatDate(endPrevDate)
+
     try {
-      ;[respCurrent] = await client.runReport({
+      // Current window
+      const [respCurrent] = await client.runReport({
         property: `properties/${propertyId}`,
         dimensions: [{ name: 'date' }],
         metrics: [{ name: metricName }],
         dateRanges: [{ startDate: startCurrent, endDate: endCurrent }],
-        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: days,
       })
-    } catch (err: any) {
-      console.error('GA daily-traffic current window error:', err?.response?.data || err?.message || err)
-      if (debug) {
-        return NextResponse.json({
-          error: 'GA runReport current window failed',
-          property: propertyId,
-          metric: metricName,
-          dateRange: { start: startCurrent, end: endCurrent },
-          details: err?.response?.data || { message: err?.message || String(err) },
-        }, { status: err?.response?.status || 500 })
-      }
-      return NextResponse.json({ error: 'Failed to fetch GA daily traffic' }, { status: 500 })
-    }
 
-    let respPrev
-    try {
-      ;[respPrev] = await client.runReport({
+      // Previous window
+      const [respPrev] = await client.runReport({
         property: `properties/${propertyId}`,
         dimensions: [{ name: 'date' }],
         metrics: [{ name: metricName }],
         dateRanges: [{ startDate: startPrev, endDate: endPrev }],
-        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: days,
       })
-    } catch (err: any) {
-      console.error('GA daily-traffic previous window error:', err?.response?.data || err?.message || err)
-      if (debug) {
-        return NextResponse.json({
-          error: 'GA runReport previous window failed',
-          property: propertyId,
-          metric: metricName,
-          dateRange: { start: startPrev, end: endPrev },
-          details: err?.response?.data || { message: err?.message || String(err) },
-        }, { status: err?.response?.status || 500 })
+
+      const toMap = (rows: any[] | undefined) => {
+        const m: Record<string, number> = {}
+        for (const r of rows || []) {
+          const yyyymmdd = r.dimensionValues?.[0]?.value || ''
+          const val = Number(r.metricValues?.[0]?.value || 0)
+          // Convert YYYYMMDD -> MM-DD for the UI
+          const mm = yyyymmdd.slice(4, 6)
+          const dd = yyyymmdd.slice(6, 8)
+          const label = `${mm}-${dd}`
+          m[label] = val
+        }
+        return m
       }
-      return NextResponse.json({ error: 'Failed to fetch GA daily traffic' }, { status: 500 })
-    }
 
-    const currMap: Record<string, number> = {}
-    for (const row of respCurrent.rows || []) {
-      const dateStr = row.dimensionValues?.[0]?.value || '' // YYYYMMDD
-      const val = Number(row.metricValues?.[0]?.value || 0)
-      currMap[dateStr] = val
-    }
-    const prevMap: Record<string, number> = {}
-    for (const row of respPrev.rows || []) {
-      const dateStr = row.dimensionValues?.[0]?.value || '' // YYYYMMDD
-      const val = Number(row.metricValues?.[0]?.value || 0)
-      prevMap[dateStr] = val
-    }
+      const currMap = toMap(respCurrent.rows)
+      const prevMap = toMap(respPrev.rows)
 
-    // Build aligned series and backfill zeros
-    const series: { date: string; current: number; previous: number }[] = []
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(endDate)
-      d.setDate(d.getDate() - i)
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      const yyyymmdd = `${y}${m}${dd}`
-      const mmdd = `${m}-${dd}`
-      series.push({ date: mmdd, current: currMap[yyyymmdd] || 0, previous: 0 })
-    }
+      // Build aligned series across current window
+      const series: { date: string; current: number; previous: number }[] = []
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(endCurrentDate)
+        d.setDate(d.getDate() - i)
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        const label = `${mm}-${dd}`
+        series.push({
+          date: label,
+          current: currMap[label] || 0,
+          previous: prevMap[label] || 0, // aligned by month-day
+        })
+      }
 
-    // Previous window: shift by days
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(startCurrentDate)
-      d.setDate(d.getDate() - 1 - i) // goes backward into previous window
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      const yyyymmdd = `${y}${m}${dd}`
-      const mmdd = `${m}-${dd}`
-      const idx = series.findIndex(s => s.date === mmdd)
-      if (idx >= 0) series[idx].previous = prevMap[yyyymmdd] || 0
-    }
+      const headers = debug
+        ? { 'Cache-Control': 'no-store' }
+        : { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
 
-    return NextResponse.json({ data: series, metric: metricName, days, timestamp: new Date().toISOString() })
+      return NextResponse.json({ data: series, metric: metricName, days, range: { startDate: startCurrent, endDate: endCurrent }, timestamp: new Date().toISOString() }, { headers })
+    } catch (err: any) {
+      console.error('GA daily-traffic error:', err?.response?.data || err?.message || err)
+      if (debug) {
+        const hasServiceAccountEnv = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+        const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+        const credPathExists = !!(credPath && fs.existsSync(credPath))
+        const parsed = parseServiceAccountFromEnv()
+        return NextResponse.json({
+          error: 'GA runReport failed',
+          property: propertyId,
+          dateRange: { startDate: startCurrent, endDate: endCurrent },
+          authDiagnostics: {
+            hasServiceAccountEnv,
+            credPath,
+            credPathExists,
+            modeHint: hasServiceAccountEnv ? 'env_json' : (credPathExists ? 'file' : 'adc'),
+            parseOk: parsed.parseOk,
+            rawStartsWith: parsed.rawStartsWith,
+          },
+          details: err?.response?.data || { message: err?.message || String(err) },
+        }, { status: err?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
+      }
+      return NextResponse.json({ error: 'Failed to fetch GA daily traffic' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+    }
   } catch (error: any) {
-    console.error('GA daily-traffic error:', error?.message || error)
-    return NextResponse.json({ error: 'Failed to fetch GA daily traffic' }, { status: 500 })
+    console.error('GA daily-traffic error:', error?.response?.data || error?.message || error)
+    try {
+      const reqUrl = req?.url || ''
+      const { searchParams } = reqUrl ? new URL(reqUrl) : { searchParams: new URLSearchParams() }
+      const debug = (searchParams.get('debug') || '').toString() === '1'
+      if (debug) {
+        const hasServiceAccountEnv = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+        const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+        const credPathExists = !!(credPath && fs.existsSync(credPath))
+        const parsed = parseServiceAccountFromEnv()
+        return NextResponse.json({
+          error: 'GA daily-traffic failed',
+          property: process.env.GA_PROPERTY,
+          authDiagnostics: {
+            hasServiceAccountEnv,
+            credPath,
+            credPathExists,
+            modeHint: hasServiceAccountEnv ? 'env_json' : (credPathExists ? 'file' : 'adc'),
+            parseOk: parsed.parseOk,
+            rawStartsWith: parsed.rawStartsWith,
+          },
+          details: error?.response?.data || { message: error?.message || String(error) },
+        }, { status: error?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
+      }
+    } catch {}
+    return NextResponse.json({ error: 'Failed to fetch GA daily traffic' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
   }
 }

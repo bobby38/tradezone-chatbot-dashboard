@@ -1,42 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
 import fs from 'fs'
+import { GoogleAuth } from 'google-auth-library'
 
-function parseServiceAccountFromEnv(): any | null {
+function parseServiceAccountFromEnv(): { creds: any | null, parseOk: boolean, rawStartsWith?: string } {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  if (!raw) return null
+  if (!raw) return { creds: null, parseOk: false }
+  let val = raw.trim()
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    val = val.slice(1, -1)
+  }
+  const rawStartsWith = val.slice(0, 1)
   try {
-    // Try direct JSON
-    if (raw.trim().startsWith('{')) {
-      return JSON.parse(raw)
+    if (val.startsWith('{')) {
+      const parsed = JSON.parse(val)
+      return { creds: parsed, parseOk: true, rawStartsWith }
     }
-    // Try base64 encoded
-    const decoded = Buffer.from(raw, 'base64').toString('utf8')
-    return JSON.parse(decoded)
+  } catch {}
+  try {
+    const decoded = Buffer.from(val, 'base64').toString('utf8')
+    const parsed = JSON.parse(decoded)
+    return { creds: parsed, parseOk: true, rawStartsWith }
   } catch (e) {
     console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
-    return null
+    return { creds: null, parseOk: false, rawStartsWith }
   }
 }
 
 function getGaClient() {
-  // 1) Prefer JSON content from env (plain or base64)
-  const credentials = parseServiceAccountFromEnv()
-  if (credentials) {
-    return new BetaAnalyticsDataClient({ credentials })
+  const parsed = parseServiceAccountFromEnv()
+  if (parsed.creds) {
+    const auth = new GoogleAuth({
+      credentials: parsed.creds,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    })
+    return new BetaAnalyticsDataClient({ auth })
   }
-  // 2) If a file path is provided and exists inside the container, try to read it
   const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
   if (credPath && fs.existsSync(credPath)) {
     try {
       const fileJson = JSON.parse(fs.readFileSync(credPath, 'utf8'))
-      return new BetaAnalyticsDataClient({ credentials: fileJson })
+      const auth = new GoogleAuth({
+        credentials: fileJson,
+        scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+      })
+      return new BetaAnalyticsDataClient({ auth })
     } catch (e) {
       console.error('Failed to read GOOGLE_APPLICATION_CREDENTIALS file:', e)
     }
   }
-  // 3) Fallback to ADC
-  return new BetaAnalyticsDataClient()
+  // Fallback to ADC (with scope)
+  const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/analytics.readonly'] })
+  return new BetaAnalyticsDataClient({ auth })
 }
 
 export async function GET(req: NextRequest) {
@@ -66,7 +81,6 @@ export async function GET(req: NextRequest) {
       const [response] = await client.runReport({
         property: `properties/${propertyId}`,
         metrics: [
-          // Use a safe subset of GA4 metrics to avoid INVALID_ARGUMENT
           { name: 'activeUsers' },
           { name: 'newUsers' },
           { name: 'sessions' },
@@ -74,12 +88,10 @@ export async function GET(req: NextRequest) {
         ],
         dimensions: [ { name: 'date' } ],
         dateRanges: [{ startDate, endDate }],
-        // Request totals so we don't rely on per-day rows
         metricAggregations: ['TOTAL'],
         limit: 1,
       })
 
-      // Prefer totals to avoid dependence on specific row structures
       const totals = response.totals?.[0]?.metricValues || []
       const mv = totals.length ? totals : (response.rows?.[0]?.metricValues || [])
       const data = {
@@ -99,6 +111,7 @@ export async function GET(req: NextRequest) {
         const hasServiceAccountEnv = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
         const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
         const credPathExists = !!(credPath && fs.existsSync(credPath))
+        const parsed = parseServiceAccountFromEnv()
         return NextResponse.json({
           error: 'GA runReport failed',
           property: propertyId,
@@ -108,6 +121,8 @@ export async function GET(req: NextRequest) {
             credPath,
             credPathExists,
             modeHint: hasServiceAccountEnv ? 'env_json' : (credPathExists ? 'file' : 'adc'),
+            parseOk: parsed.parseOk,
+            rawStartsWith: parsed.rawStartsWith,
           },
           details: err?.response?.data || { message: err?.message || String(err) },
         }, { status: err?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
@@ -124,6 +139,7 @@ export async function GET(req: NextRequest) {
         const hasServiceAccountEnv = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
         const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
         const credPathExists = !!(credPath && fs.existsSync(credPath))
+        const parsed = parseServiceAccountFromEnv()
         return NextResponse.json({
           error: 'GA summary failed',
           property: process.env.GA_PROPERTY,
@@ -132,6 +148,8 @@ export async function GET(req: NextRequest) {
             credPath,
             credPathExists,
             modeHint: hasServiceAccountEnv ? 'env_json' : (credPathExists ? 'file' : 'adc'),
+            parseOk: parsed.parseOk,
+            rawStartsWith: parsed.rawStartsWith,
           },
           details: error?.response?.data || { message: error?.message || String(error) },
         }, { status: error?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })

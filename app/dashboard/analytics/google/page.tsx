@@ -65,8 +65,8 @@ export default function GoogleAnalyticsPage() {
         setLoading(true)
         setError(null)
 
-        // Traffic trend (GA)
-        const trendJson = await fetchWithCache<{ data: any[] }>(`/api/ga/daily-traffic?days=${daysParam}&metric=${gaMetric}`)
+        // Traffic trend (GA) — include version to bust cache after API shape change
+        const trendJson = await fetchWithCache<{ data: any[] }>(`/api/ga/daily-traffic?days=${daysParam}&metric=${gaMetric}&v=2`)
         if (!cancelled) setTrendData(trendJson?.data || [])
 
         // Top pages (GA, align days)

@@ -1,17 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
+import fs from 'fs'
+
+function parseServiceAccountFromEnv(): any | null {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+  if (!raw) return null
+  try {
+    if (raw.trim().startsWith('{')) return JSON.parse(raw)
+    const decoded = Buffer.from(raw, 'base64').toString('utf8')
+    return JSON.parse(decoded)
+  } catch (e) {
+    console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
+    return null
+  }
+}
 
 function getGaClient() {
-  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  if (keyJson) {
+  const credentials = parseServiceAccountFromEnv()
+  if (credentials) {
+    return new BetaAnalyticsDataClient({ credentials })
+  }
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  if (credPath && fs.existsSync(credPath)) {
     try {
-      const credentials = JSON.parse(keyJson)
-      return new BetaAnalyticsDataClient({ credentials })
+      const fileJson = JSON.parse(fs.readFileSync(credPath, 'utf8'))
+      return new BetaAnalyticsDataClient({ credentials: fileJson })
     } catch (e) {
-      console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
+      console.error('Failed to read GOOGLE_APPLICATION_CREDENTIALS file:', e)
     }
   }
-  // Fallback to ADC or key file via GOOGLE_APPLICATION_CREDENTIALS
   return new BetaAnalyticsDataClient()
 }
 
