@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchWithCache, invalidateCache } from '@/lib/client-cache'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,87 +29,112 @@ import {
 
 export default function GoogleAnalyticsPage() {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [deviceFilter, setDeviceFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
   const [gaRange, setGaRange] = useState('30d')
-  const [gaMetric, setGaMetric] = useState('sessions')
+  const [gaMetric, setGaMetric] = useState<'sessions' | 'newUsers'>('sessions')
 
-  // Comprehensive Search Console data with 24 keyword records
-  const searchConsoleData = [
-    { query: 'best wireless headphones 2024', page: '/products/wireless-headphones', impressions: 3420, clicks: 245, ctr: 7.16, position: 2.3, device: 'mobile', country: 'US' },
-    { query: 'gaming keyboard mechanical', page: '/products/gaming-keyboards', impressions: 2890, clicks: 189, ctr: 6.54, position: 3.1, device: 'desktop', country: 'CA' },
-    { query: 'bluetooth speaker portable', page: '/products/bluetooth-speakers', impressions: 2156, clicks: 167, ctr: 7.75, position: 1.8, device: 'mobile', country: 'UK' },
-    { query: 'laptop stand ergonomic', page: '/products/laptop-accessories', impressions: 1890, clicks: 134, ctr: 7.09, position: 2.7, device: 'desktop', country: 'AU' },
-    { query: 'wireless mouse gaming', page: '/products/gaming-mice', impressions: 1654, clicks: 98, ctr: 5.92, position: 4.2, device: 'desktop', country: 'US' },
-    { query: 'usb c hub multiport', page: '/products/usb-hubs', impressions: 1423, clicks: 87, ctr: 6.11, position: 3.8, device: 'mobile', country: 'DE' },
-    { query: 'phone case protective', page: '/products/phone-cases', impressions: 1298, clicks: 76, ctr: 5.85, position: 5.1, device: 'mobile', country: 'US' },
-    { query: 'webcam 4k streaming', page: '/products/webcams', impressions: 1156, clicks: 89, ctr: 7.70, position: 2.1, device: 'desktop', country: 'CA' },
-    { query: 'monitor arm dual', page: '/products/monitor-arms', impressions: 987, clicks: 67, ctr: 6.79, position: 3.4, device: 'desktop', country: 'UK' },
-    { query: 'charging cable fast', page: '/products/charging-cables', impressions: 876, clicks: 54, ctr: 6.16, position: 4.7, device: 'mobile', country: 'AU' },
-    { query: 'desk pad large', page: '/products/desk-accessories', impressions: 765, clicks: 43, ctr: 5.62, position: 6.2, device: 'desktop', country: 'US' },
-    { query: 'tablet stand adjustable', page: '/products/tablet-accessories', impressions: 654, clicks: 38, ctr: 5.81, position: 5.8, device: 'tablet', country: 'DE' },
-    { query: 'power bank 20000mah', page: '/products/power-banks', impressions: 543, clicks: 32, ctr: 5.89, position: 4.9, device: 'mobile', country: 'CA' },
-    { query: 'screen protector tempered glass', page: '/products/screen-protectors', impressions: 432, clicks: 26, ctr: 6.02, position: 5.3, device: 'mobile', country: 'UK' },
-    { query: 'car mount phone holder', page: '/products/car-accessories', impressions: 321, clicks: 19, ctr: 5.92, position: 6.7, device: 'mobile', country: 'AU' },
-    { query: 'hdmi cable 4k', page: '/products/cables', impressions: 298, clicks: 17, ctr: 5.70, position: 7.1, device: 'desktop', country: 'US' },
-    { query: 'wireless charger pad', page: '/products/wireless-chargers', impressions: 267, clicks: 15, ctr: 5.62, position: 6.9, device: 'mobile', country: 'DE' },
-    { query: 'bluetooth adapter usb', page: '/products/bluetooth-adapters', impressions: 234, clicks: 13, ctr: 5.55, position: 7.8, device: 'desktop', country: 'CA' },
-    { query: 'cable organizer desk', page: '/products/cable-management', impressions: 198, clicks: 11, ctr: 5.56, position: 8.2, device: 'desktop', country: 'UK' },
-    { query: 'phone grip ring', page: '/products/phone-grips', impressions: 176, clicks: 9, ctr: 5.11, position: 8.7, device: 'mobile', country: 'AU' },
-    { query: 'laptop cooling pad', page: '/products/laptop-cooling', impressions: 154, clicks: 8, ctr: 5.19, position: 9.1, device: 'desktop', country: 'US' },
-    { query: 'sd card reader usb', page: '/products/card-readers', impressions: 132, clicks: 6, ctr: 4.55, position: 9.8, device: 'desktop', country: 'DE' },
-    { query: 'phone tripod mini', page: '/products/phone-tripods', impressions: 109, clicks: 5, ctr: 4.59, position: 10.2, device: 'mobile', country: 'CA' },
-    { query: 'cable sleeve braided', page: '/products/cable-sleeves', impressions: 87, clicks: 3, ctr: 3.45, position: 11.5, device: 'desktop', country: 'UK' }
-  ]
+  // Live GA state
+  const [trendData, setTrendData] = useState<{ date: string; current: number; previous: number }[]>([])
+  const [pageViewsData, setPageViewsData] = useState<{ page: string; views: number }[]>([])
+  const [deviceData, setDeviceData] = useState<{ name: string; value: number }[]>([])
+  const [scSummary, setScSummary] = useState<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
+  const [gaSummary, setGaSummary] = useState<{ activeUsers: number; newUsers: number; averageEngagementTime: number; eventCount: number } | null>(null)
+  // Live SC table state
+  const [scRows, setScRows] = useState<Array<{ query: string; page: string; clicks: number; impressions: number; ctr: number; position: number; device: string; country: string }>>([])
+  const [scLoading, setScLoading] = useState(false)
+  const [scError, setScError] = useState<string | null>(null)
 
-  // Filter and pagination logic
-  const filteredSCData = searchConsoleData.filter(item => {
-    const matchesSearch = searchQuery === '' || 
-      item.query.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.page.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDevice = deviceFilter === 'all' || item.device === deviceFilter
-    return matchesSearch && matchesDevice
-  })
+  // Map UI range to API days (GA daily-traffic supports 7, 28, 90)
+  const daysParam = useMemo(() => {
+    if (gaRange === '7d') return 7
+    if (gaRange === '90d') return 90
+    return 28 // treat 30d as 28d for GA API compatibility
+  }, [gaRange])
 
-  const paginatedSCData = filteredSCData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  // Fetch GA data
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        setLoading(true)
+        setError(null)
 
-  const totalPages = Math.ceil(filteredSCData.length / itemsPerPage)
+        // Traffic trend (GA)
+        const trendJson = await fetchWithCache<{ data: any[] }>(`/api/ga/daily-traffic?days=${daysParam}&metric=${gaMetric}`)
+        if (!cancelled) setTrendData(trendJson?.data || [])
 
-  // Calculate summary metrics
-  const totalImpressions = searchConsoleData.reduce((sum, item) => sum + item.impressions, 0)
-  const totalClicks = searchConsoleData.reduce((sum, item) => sum + item.clicks, 0)
-  const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
-  const avgPosition = searchConsoleData.length > 0 ? searchConsoleData.reduce((sum, item) => sum + item.position, 0) / searchConsoleData.length : 0
+        // Top pages (GA, align days)
+        const pagesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-pages?days=${daysParam}`)
+        if (!cancelled) setPageViewsData(pagesJson?.data || [])
 
-  // Demo GA datasets for charts
-  const trendData = [
-    { date: 'Jul 01', sessions: 420, users: 360 },
-    { date: 'Jul 02', sessions: 510, users: 410 },
-    { date: 'Jul 03', sessions: 480, users: 395 },
-    { date: 'Jul 04', sessions: 560, users: 450 },
-    { date: 'Jul 05', sessions: 610, users: 500 },
-    { date: 'Jul 06', sessions: 580, users: 470 },
-    { date: 'Jul 07', sessions: 630, users: 520 },
-  ]
+        // Devices (GA, align days)
+        const devicesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-devices?days=${daysParam}`)
+        if (!cancelled) setDeviceData(devicesJson?.data || [])
 
-  const pageViewsData = [
-    { page: '/products/wireless-headphones', views: 980 },
-    { page: '/products/gaming-keyboards', views: 820 },
-    { page: '/products/bluetooth-speakers', views: 760 },
-    { page: '/products/usb-hubs', views: 640 },
-    { page: '/blog/best-headphones-2024', views: 610 },
-  ]
+        // Search Console summary (align days)
+        try {
+          const scJson = await fetchWithCache<{ data: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/summary?days=${daysParam}`)
+          if (!cancelled) setScSummary(scJson?.data || null)
+        } catch (e) {
+          // Keep UI resilient if SC is not yet configured
+          if (!cancelled) setScSummary(null)
+        }
 
-  const deviceData = [
-    { name: 'Mobile', value: 58 },
-    { name: 'Desktop', value: 34 },
-    { name: 'Tablet', value: 8 },
-  ]
+        // Google Analytics summary (align days)
+        try {
+          const gaSum = await fetchWithCache<{ data: { activeUsers: number; newUsers: number; averageEngagementTime: number; eventCount: number } }>(`/api/ga/summary?days=${daysParam}`)
+          if (!cancelled) setGaSummary(gaSum?.data || null)
+        } catch (e) {
+          if (!cancelled) setGaSummary(null)
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || String(e))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [daysParam, gaMetric])
+
+  // Fetch SC queries (live) whenever filters/pagination change
+  useEffect(() => {
+    let cancelled = false
+    async function loadSC() {
+      try {
+        setScLoading(true)
+        setScError(null)
+        const params = new URLSearchParams()
+        params.set('days', String(daysParam))
+        params.set('page', String(currentPage))
+        params.set('pageSize', String(itemsPerPage))
+        if (deviceFilter !== 'all') params.set('device', deviceFilter)
+        if (searchQuery) params.set('q', searchQuery)
+        const json = await fetchWithCache<{ data: any[] }>(`/api/sc/queries?${params.toString()}`)
+        if (!cancelled) setScRows(json?.data || [])
+      } catch (e: any) {
+        if (!cancelled) setScError(e?.message || String(e))
+      } finally {
+        if (!cancelled) setScLoading(false)
+      }
+    }
+    loadSC()
+    return () => { cancelled = true }
+  }, [daysParam, currentPage, itemsPerPage, deviceFilter, searchQuery])
+
+  // Derived totals for quick stats (live)
+  const totalSessions = useMemo(() => trendData.reduce((s, d) => s + (d.current || 0), 0), [trendData])
+  const totalPrevSessions = useMemo(() => trendData.reduce((s, d) => s + (d.previous || 0), 0), [trendData])
+  const sessionDeltaPct = useMemo(() => {
+    const base = totalPrevSessions || 1
+    return Math.round(((totalSessions - totalPrevSessions) / base) * 100)
+  }, [totalSessions, totalPrevSessions])
 
   const deviceColors = ['#8B5CF6', '#22C55E', '#F59E0B']
 
@@ -166,7 +192,7 @@ export default function GoogleAnalyticsPage() {
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards (SC summary live) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -174,8 +200,8 @@ export default function GoogleAnalyticsPage() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{totalImpressions.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">+12.5% from last period</p>
+              <div className="text-2xl font-bold text-purple-600">{scSummary ? scSummary.impressions.toLocaleString() : '—'}</div>
+              <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
             </CardContent>
           </Card>
           <Card>
@@ -184,8 +210,8 @@ export default function GoogleAnalyticsPage() {
               <MousePointer className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{totalClicks.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">+8.2% from last period</p>
+              <div className="text-2xl font-bold text-purple-600">{scSummary ? scSummary.clicks.toLocaleString() : '—'}</div>
+              <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
             </CardContent>
           </Card>
           <Card>
@@ -194,8 +220,8 @@ export default function GoogleAnalyticsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{avgCTR.toFixed(2)}%</div>
-              <p className="text-xs text-muted-foreground">+0.3% from last period</p>
+              <div className="text-2xl font-bold text-purple-600">{scSummary ? (scSummary.ctr * 100).toFixed(2) + '%' : '—'}</div>
+              <p className="text-xs text-muted-foreground">Average CTR</p>
             </CardContent>
           </Card>
           <Card>
@@ -204,8 +230,8 @@ export default function GoogleAnalyticsPage() {
               <Search className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{avgPosition.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">-0.2 from last period</p>
+              <div className="text-2xl font-bold text-purple-600">{scSummary ? scSummary.position.toFixed(1) : '—'}</div>
+              <p className="text-xs text-muted-foreground">Average rank</p>
             </CardContent>
           </Card>
         </div>
@@ -219,11 +245,59 @@ export default function GoogleAnalyticsPage() {
 
           {/* Google Analytics Charts */}
           <TabsContent value="ga" className="space-y-6">
+            {/* GA Summary Tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.activeUsers.toLocaleString() : '—'}</div>
+                  <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">New Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.newUsers.toLocaleString() : '—'}</div>
+                  <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Engagement Time</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {gaSummary ? `${Math.floor(gaSummary.averageEngagementTime / 60)}m ${Math.round(gaSummary.averageEngagementTime % 60)}s` : '—'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Per user/session (GA4)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Event Count</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.eventCount.toLocaleString() : '—'}</div>
+                  <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Traffic Overview</CardTitle>
-                  <CardDescription>Sessions and users trend</CardDescription>
+                  <CardDescription>
+                    {gaMetric === 'sessions' ? 'Sessions' : 'New Users'} — current vs previous period
+                  </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Select value={gaRange} onValueChange={setGaRange}>
@@ -236,18 +310,24 @@ export default function GoogleAnalyticsPage() {
                       <SelectItem value="90d">Last 90 days</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={gaMetric} onValueChange={setGaMetric}>
+                  <Select value={gaMetric} onValueChange={(v) => setGaMetric(v as 'sessions' | 'newUsers')}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="sessions">Sessions</SelectItem>
-                      <SelectItem value="users">Users</SelectItem>
+                      <SelectItem value="newUsers">New Users</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </CardHeader>
-              <CardContent style={{ height: 320 }}>
+              <CardContent style={{ height: 360 }}>
+                {error && (
+                  <div className="mb-2 text-sm text-red-600">{error}</div>
+                )}
+                {loading && (
+                  <div className="mb-2 text-sm text-muted-foreground">Loading Google Analytics…</div>
+                )}
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -255,8 +335,8 @@ export default function GoogleAnalyticsPage() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="sessions" stroke="#8B5CF6" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="users" stroke="#06B6D4" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="current" name="Current" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="previous" name="Previous" stroke="#06B6D4" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -313,7 +393,7 @@ export default function GoogleAnalyticsPage() {
                   <CardDescription>Keywords, impressions, clicks, and search performance</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{filteredSCData.length} Keywords</Badge>
+                  <Badge variant="secondary">{scRows.length} Keywords</Badge>
                   <Button variant="outline" size="sm">
                     <Filter className="h-4 w-4 mr-2" />
                     Advanced Filters
@@ -345,6 +425,12 @@ export default function GoogleAnalyticsPage() {
                     </Select>
                   </div>
 
+                  {scError && (
+                    <div className="text-sm text-red-600">{scError}</div>
+                  )}
+                  {scLoading && (
+                    <div className="text-sm text-muted-foreground">Loading Search Console…</div>
+                  )}
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -361,7 +447,7 @@ export default function GoogleAnalyticsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedSCData.map((item, index) => (
+                      {scRows.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell className="font-medium max-w-xs">
                             <div className="truncate" title={item.query}>
@@ -422,11 +508,11 @@ export default function GoogleAnalyticsPage() {
                     </TableBody>
                   </Table>
 
-                  {/* Pagination */}
+                  {/* Pagination (no total available from SC API) */}
                   <div className="flex items-center justify-between pt-4 border-t border-purple-200">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSCData.length)} of {filteredSCData.length} results
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {((currentPage - 1) * itemsPerPage) + scRows.length}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -452,14 +538,12 @@ export default function GoogleAnalyticsPage() {
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-sm px-2">
-                          Page {currentPage} of {totalPages}
-                        </span>
+                        <span className="text-sm px-2">Page {currentPage}</span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={scRows.length < itemsPerPage}
                           className="border-purple-200"
                         >
                           <ChevronRight className="h-4 w-4" />
