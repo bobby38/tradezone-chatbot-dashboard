@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Brain, ArrowLeft, Settings, Trash2, Download, Mail } from 'lucide-react'
 import Link from 'next/link'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface ChatLog {
   id: string
@@ -27,6 +28,33 @@ export default function AnalyticsPage() {
   const [persistentReport, setPersistentReport] = useState<any>(null)
   const [reportTimestamp, setReportTimestamp] = useState<Date | null>(null)
   const [emailSchedule, setEmailSchedule] = useState<string>('none')
+  const [insightsOpen, setInsightsOpen] = useState(false)
+  const [compiledInsights, setCompiledInsights] = useState<string>('')
+
+  const handleAskAI = async () => {
+    // Compile lightweight summaries for AI narrative (no UI mixing)
+    const chatSummary = `Chat conversations: ${chatLogs.length}, success rate: ${chatLogs.length > 0 ? Math.round((chatLogs.filter(l => l.status === 'success').length / chatLogs.length) * 100) : 0}%`;
+    // We will fetch Woo/GA summaries server-side later; for now, provide CTA and links
+    const wooSummary = 'WooCommerce: Open the Woo tab for revenue, orders, AOV and last sale details.'
+    const gaSummary = 'Google Analytics: Open the Google tab for sessions, users, channels and devices.'
+    const body = [
+      '— Chat (AI Analytics) —',
+      chatSummary,
+      '',
+      '— WooCommerce —',
+      wooSummary,
+      '',
+      '— Google Analytics —',
+      gaSummary,
+      '',
+      'Suggested next actions:',
+      '1) Identify peak hours (Woo) and schedule promos accordingly.',
+      '2) Prioritize top channels (GA) with targeted campaigns.',
+      '3) Improve chat flows for queries with high error rate.'
+    ].join('\n')
+    setCompiledInsights(body)
+    setInsightsOpen(true)
+  }
 
   const exportAnalyticsReport = (format: 'json' | 'csv' | 'pdf') => {
     if (!persistentReport) {
@@ -270,35 +298,50 @@ export default function AnalyticsPage() {
           </div>
       </div>
 
-        {/* AI Status Notice */}
-        <Card className="border-green-600 bg-gradient-to-r from-green-900/20 to-emerald-900/20" style={{ backgroundColor: '#333' }}>
-          <CardHeader>
-            <CardTitle className="text-green-400 flex items-center gap-2 text-lg">
-              <Brain className="h-5 w-5" />
-              AI Analytics Active
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-green-300">
-              <p className="text-base font-medium">
-                🎉 AI-powered analytics are now enabled! Get intelligent insights, sentiment analysis, and personalized recommendations from your chat data.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Tabs: Chat | WooCommerce | Google */}
+        <Tabs defaultValue="chat" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="chat">Chat</TabsTrigger>
+              <TabsTrigger value="woo">WooCommerce</TabsTrigger>
+              <TabsTrigger value="google">Google</TabsTrigger>
+            </TabsList>
+            <Button onClick={handleAskAI} variant="default" className="bg-purple-600 hover:bg-purple-700 text-white">
+              <Brain className="h-4 w-4 mr-2" />
+              Ask AI for Insights
+            </Button>
+          </div>
 
-      {/* AI Analytics Report */}
-      <AIAnalytics 
-        chatLogs={chatLogs} 
-        persistentReport={persistentReport}
-        onReportGenerated={(report, timestamp) => {
-          setPersistentReport(report)
-          setReportTimestamp(timestamp)
-        }}
-      />
+          <TabsContent value="chat" className="space-y-4">
+            {/* AI Status Notice */}
+            <Card className="border-green-600 bg-gradient-to-r from-green-900/20 to-emerald-900/20" style={{ backgroundColor: '#333' }}>
+              <CardHeader>
+                <CardTitle className="text-green-400 flex items-center gap-2 text-lg">
+                  <Brain className="h-5 w-5" />
+                  AI Analytics Active
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-green-300">
+                  <p className="text-base font-medium">
+                    🎉 AI-powered analytics are now enabled! Get intelligent insights, sentiment analysis, and personalized recommendations from your chat data.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Data Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* AI Analytics Report */}
+            <AIAnalytics 
+              chatLogs={chatLogs} 
+              persistentReport={persistentReport}
+              onReportGenerated={(report, timestamp) => {
+                setPersistentReport(report)
+                setReportTimestamp(timestamp)
+              }}
+            />
+
+            {/* Data Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
             <CardHeader>
               <CardTitle className="text-xl text-gray-200">Data Overview</CardTitle>
@@ -400,10 +443,57 @@ export default function AnalyticsPage() {
               </div>
             </CardContent>
           </Card>
-      </div>
+        </div>
 
-      {/* Interactive Data Chatbot */}
-      <DataChatbot chatLogs={chatLogs} />
+        {/* Interactive Data Chatbot */}
+        <DataChatbot chatLogs={chatLogs} />
+          </TabsContent>
+
+          <TabsContent value="woo" className="space-y-4">
+            <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
+              <CardHeader>
+                <CardTitle className="text-xl text-gray-200">WooCommerce Summary</CardTitle>
+                <CardDescription className="text-gray-400">Last 100 orders, last sale status, and top products. Open full page for details.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-gray-300">View detailed sales, shipping, and product performance.</div>
+                  <Link href="/dashboard/woocommerce"><Button className="bg-purple-600 hover:bg-purple-700 text-white">Open</Button></Link>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="google" className="space-y-4">
+            <Card className="border-gray-600" style={{ backgroundColor: '#333' }}>
+              <CardHeader>
+                <CardTitle className="text-xl text-gray-200">Google Analytics Summary</CardTitle>
+                <CardDescription className="text-gray-400">Sessions, users, channels, devices. Open full page for details and charts.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-gray-300">Explore traffic patterns and top content.</div>
+                  <Link href="/dashboard/google-analytics"><Button className="bg-purple-600 hover:bg-purple-700 text-white">Open</Button></Link>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Simple Insights Modal */}
+        {insightsOpen && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl rounded-lg border border-gray-700" style={{ backgroundColor: '#2A2A2A' }}>
+              <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                <div className="text-lg font-semibold text-white flex items-center gap-2"><Brain className="h-5 w-5 text-purple-400"/>AI Insights</div>
+                <Button variant="ghost" onClick={() => setInsightsOpen(false)} className="text-gray-300 hover:text-white">Close</Button>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-auto">
+                <pre className="whitespace-pre-wrap text-gray-200 text-sm">{compiledInsights}</pre>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
