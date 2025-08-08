@@ -263,7 +263,11 @@ export default function GoogleAnalyticsPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.activeUsers.toLocaleString() : '—'}</div>
+                  {loading ? (
+                    <div className="h-6 w-24 bg-muted rounded animate-pulse" />
+                  ) : (
+                    <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.activeUsers.toLocaleString() : '—'}</div>
+                  )}
                   <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
                 </CardContent>
               </Card>
@@ -273,7 +277,11 @@ export default function GoogleAnalyticsPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.newUsers.toLocaleString() : '—'}</div>
+                  {loading ? (
+                    <div className="h-6 w-24 bg-muted rounded animate-pulse" />
+                  ) : (
+                    <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.newUsers.toLocaleString() : '—'}</div>
+                  )}
                   <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
                 </CardContent>
               </Card>
@@ -283,9 +291,13 @@ export default function GoogleAnalyticsPage() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">
-                    {gaSummary ? `${Math.floor(gaSummary.averageEngagementTime / 60)}m ${Math.round(gaSummary.averageEngagementTime % 60)}s` : '—'}
-                  </div>
+                  {loading ? (
+                    <div className="h-6 w-36 bg-muted rounded animate-pulse" />
+                  ) : (
+                    <div className="text-2xl font-bold text-purple-600">
+                      {gaSummary ? `${Math.floor(gaSummary.averageEngagementTime / 60)}m ${Math.round(gaSummary.averageEngagementTime % 60)}s` : '—'}
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground">Per user/session (GA4)</p>
                 </CardContent>
               </Card>
@@ -295,7 +307,11 @@ export default function GoogleAnalyticsPage() {
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.eventCount.toLocaleString() : '—'}</div>
+                  {loading ? (
+                    <div className="h-6 w-24 bg-muted rounded animate-pulse" />
+                  ) : (
+                    <div className="text-2xl font-bold text-purple-600">{gaSummary ? gaSummary.eventCount.toLocaleString() : '—'}</div>
+                  )}
                   <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
                 </CardContent>
               </Card>
@@ -335,20 +351,26 @@ export default function GoogleAnalyticsPage() {
                 {error && (
                   <div className="mb-2 text-sm text-red-600">{error}</div>
                 )}
-                {loading && (
-                  <div className="mb-2 text-sm text-muted-foreground">Loading Google Analytics…</div>
+                {loading ? (
+                  <div className="h-full w-full">
+                    <div className="space-y-3">
+                      <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+                      <div className="h-48 w-full bg-muted rounded animate-pulse" />
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="current" name="Current" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="previous" name="Previous" stroke="#06B6D4" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 )}
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="current" name="Current" stroke="#8B5CF6" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="previous" name="Previous" stroke="#06B6D4" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
               </CardContent>
             </Card>
 
@@ -359,15 +381,19 @@ export default function GoogleAnalyticsPage() {
                   <CardDescription>Most visited pages</CardDescription>
                 </CardHeader>
                 <CardContent style={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={pageViewsData} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="page" type="category" width={220} />
-                      <Tooltip />
-                      <Bar dataKey="views" fill="#8B5CF6" radius={[4, 4, 4, 4]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {loading ? (
+                    <div className="h-full w-full bg-muted rounded animate-pulse" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={pageViewsData} layout="vertical" margin={{ left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" />
+                        <YAxis dataKey="page" type="category" width={220} />
+                        <Tooltip />
+                        <Bar dataKey="views" fill="#8B5CF6" radius={[4, 4, 4, 4]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
 
@@ -377,17 +403,21 @@ export default function GoogleAnalyticsPage() {
                   <CardDescription>Sessions share by device</CardDescription>
                 </CardHeader>
                 <CardContent style={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={deviceData} dataKey="value" nameKey="name" outerRadius={100} label>
-                        {deviceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={deviceColors[index % deviceColors.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {loading ? (
+                    <div className="h-full w-full bg-muted rounded animate-pulse" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={deviceData} dataKey="value" nameKey="name" outerRadius={100} label>
+                          {deviceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={deviceColors[index % deviceColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>

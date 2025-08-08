@@ -1,16 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
+import fs from 'fs'
+
+function parseServiceAccountFromEnv(): any | null {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+  if (!raw) return null
+  try {
+    // Try direct JSON
+    if (raw.trim().startsWith('{')) {
+      return JSON.parse(raw)
+    }
+    // Try base64 encoded
+    const decoded = Buffer.from(raw, 'base64').toString('utf8')
+    return JSON.parse(decoded)
+  } catch (e) {
+    console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
+    return null
+  }
+}
 
 function getGaClient() {
-  const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-  if (keyJson) {
+  // 1) Prefer JSON content from env (plain or base64)
+  const credentials = parseServiceAccountFromEnv()
+  if (credentials) {
+    return new BetaAnalyticsDataClient({ credentials })
+  }
+  // 2) If a file path is provided and exists inside the container, try to read it
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  if (credPath && fs.existsSync(credPath)) {
     try {
-      const credentials = JSON.parse(keyJson)
-      return new BetaAnalyticsDataClient({ credentials })
+      const fileJson = JSON.parse(fs.readFileSync(credPath, 'utf8'))
+      return new BetaAnalyticsDataClient({ credentials: fileJson })
     } catch (e) {
-      console.error('Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', e)
+      console.error('Failed to read GOOGLE_APPLICATION_CREDENTIALS file:', e)
     }
   }
+  // 3) Fallback to ADC
   return new BetaAnalyticsDataClient()
 }
 
@@ -18,7 +43,7 @@ export async function GET(req: NextRequest) {
   try {
     const propertyId = process.env.GA_PROPERTY
     if (!propertyId) {
-      return NextResponse.json({ error: 'GA_PROPERTY env var is required' }, { status: 400 })
+      return NextResponse.json({ error: 'GA_PROPERTY env var is required' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
     }
 
     const { searchParams } = new URL(req.url)
@@ -64,7 +89,10 @@ export async function GET(req: NextRequest) {
         eventCount: Number(mv[3]?.value || 0),
         range: { startDate, endDate },
       }
-      return NextResponse.json({ data, timestamp: new Date().toISOString() })
+      const headers = debug
+        ? { 'Cache-Control': 'no-store' }
+        : { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+      return NextResponse.json({ data, timestamp: new Date().toISOString() }, { headers })
     } catch (err: any) {
       console.error('GA summary runReport error:', err?.response?.data || err?.message || err)
       if (debug) {
@@ -73,9 +101,9 @@ export async function GET(req: NextRequest) {
           property: propertyId,
           dateRange: { startDate, endDate },
           details: err?.response?.data || { message: err?.message || String(err) },
-        }, { status: err?.response?.status || 500 })
+        }, { status: err?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
       }
-      return NextResponse.json({ error: 'Failed to fetch GA summary' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to fetch GA summary' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
     }
   } catch (error: any) {
     console.error('GA summary error:', error?.response?.data || error?.message || error)
@@ -88,9 +116,9 @@ export async function GET(req: NextRequest) {
           error: 'GA summary failed',
           property: process.env.GA_PROPERTY,
           details: error?.response?.data || { message: error?.message || String(error) },
-        }, { status: error?.response?.status || 500 })
+        }, { status: error?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
       }
     } catch {}
-    return NextResponse.json({ error: 'Failed to fetch GA summary' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch GA summary' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
   }
 }
