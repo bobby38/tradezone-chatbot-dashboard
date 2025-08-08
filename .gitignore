@@ -59,3 +59,11 @@ jspm_packages/
 
 # Project documents and assets
 document/
+
+# Security: ignore credentials and service accounts
+# Prevent accidental commits that block pushes
+service-account*.json
+credentials*.json
+google-credentials*.json
+*.p12
+*.pem

@@ -20,7 +20,8 @@ import {
   LogOut,
   Menu,
   X,
-  Brain
+  Brain,
+  ShoppingCart
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,8 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Chat Logs', href: '/dashboard/logs', icon: MessageSquare },
   { name: 'AI Analytics', href: '/dashboard/analytics', icon: Brain },
+  { name: 'WooCommerce', href: '/dashboard/woocommerce', icon: ShoppingCart },
+  { name: 'Google Analytics', href: '/dashboard/google-analytics', icon: BarChart3 },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]

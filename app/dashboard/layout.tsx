@@ -14,12 +14,18 @@ export default function DashboardLayout({
   const router = useRouter()
 
   useEffect(() => {
+    // Allow bypassing auth locally when NEXT_PUBLIC_BYPASS_AUTH === 'true'
+    const bypass = process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true'
+    if (bypass) return
+
     if (!loading && !user) {
       router.push('/login')
     }
   }, [user, loading, router])
 
-  if (loading) {
+  const bypass = process.env.NEXT_PUBLIC_BYPASS_AUTH === 'true'
+
+  if (!bypass && loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
@@ -27,7 +33,7 @@ export default function DashboardLayout({
     )
   }
 
-  if (!user) {
+  if (!bypass && !user) {
     return null
   }
 
