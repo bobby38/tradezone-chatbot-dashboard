@@ -96,10 +96,19 @@ export async function GET(req: NextRequest) {
     } catch (err: any) {
       console.error('GA summary runReport error:', err?.response?.data || err?.message || err)
       if (debug) {
+        const hasServiceAccountEnv = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+        const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+        const credPathExists = !!(credPath && fs.existsSync(credPath))
         return NextResponse.json({
           error: 'GA runReport failed',
           property: propertyId,
           dateRange: { startDate, endDate },
+          authDiagnostics: {
+            hasServiceAccountEnv,
+            credPath,
+            credPathExists,
+            modeHint: hasServiceAccountEnv ? 'env_json' : (credPathExists ? 'file' : 'adc'),
+          },
           details: err?.response?.data || { message: err?.message || String(err) },
         }, { status: err?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
       }
@@ -112,9 +121,18 @@ export async function GET(req: NextRequest) {
       const { searchParams } = reqUrl ? new URL(reqUrl) : { searchParams: new URLSearchParams() }
       const debug = (searchParams.get('debug') || '') === '1'
       if (debug) {
+        const hasServiceAccountEnv = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+        const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+        const credPathExists = !!(credPath && fs.existsSync(credPath))
         return NextResponse.json({
           error: 'GA summary failed',
           property: process.env.GA_PROPERTY,
+          authDiagnostics: {
+            hasServiceAccountEnv,
+            credPath,
+            credPathExists,
+            modeHint: hasServiceAccountEnv ? 'env_json' : (credPathExists ? 'file' : 'adc'),
+          },
           details: error?.response?.data || { message: error?.message || String(error) },
         }, { status: error?.response?.status || 500, headers: { 'Cache-Control': 'no-store' } })
       }
