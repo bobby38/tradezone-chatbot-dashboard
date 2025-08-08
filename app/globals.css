@@ -4,27 +4,27 @@
 
 @layer base {
   :root {
-    /* Tradezone Dark Theme - Black, White, Purple */
-    --background: 240 10% 6%; /* Slightly lighter dark background */
-    --foreground: 0 0% 98%; /* Pure white */
-    --card: 240 10% 3.9%; /* Deep black cards */
-    --card-foreground: 0 0% 98%; /* White text on cards */
-    --popover: 240 5% 6%; /* Slightly lighter black */
-    --popover-foreground: 0 0% 98%; /* White text */
-    --primary: 263 85% 65%; /* Tradezone purple */
-    --primary-foreground: 0 0% 98%; /* White on purple */
-    --secondary: 240 4% 16%; /* Dark gray */
-    --secondary-foreground: 0 0% 98%; /* White text */
-    --muted: 240 5% 6%; /* Muted dark */
-    --muted-foreground: 240 5% 65%; /* Muted gray text */
-    --accent: 263 85% 65%; /* Purple accent */
-    --accent-foreground: 0 0% 98%; /* White on accent */
-    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
-    --destructive-foreground: 0 0% 98%; /* White on red */
-    --border: 240 6% 10%; /* Dark borders */
-    --input: 240 6% 10%; /* Dark input backgrounds */
-    --ring: 263 85% 65%; /* Purple focus ring */
-    --radius: 0.75rem; /* Slightly more rounded */
+    /* Tradezone Dark Theme - higher contrast, keep purple brand */
+    --background: 240 8% 5%; /* Dark base */
+    --foreground: 0 0% 98%; /* Near-white text */
+    --card: 240 8% 10%; /* Slightly lighter than bg for separation */
+    --card-foreground: 0 0% 98%; /* Text on cards */
+    --popover: 240 8% 8%; /* Match elevated surfaces */
+    --popover-foreground: 0 0% 98%;
+    --primary: 263 85% 65%; /* Brand purple */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 6% 14%; /* Controls, chips */
+    --secondary-foreground: 0 0% 96%;
+    --muted: 240 6% 9%; /* Subtle surfaces */
+    --muted-foreground: 240 5% 75%; /* Brighter for readability */
+    --accent: 263 85% 65%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 22%; /* More visible borders */
+    --input: 240 6% 14%; /* Inputs a bit lighter for contrast */
+    --ring: 263 85% 65%;
+    --radius: 0.75rem;
   }
 }
 

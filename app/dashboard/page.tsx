@@ -294,7 +294,7 @@ export default function DashboardPage() {
             <CardTitle className="flex items-center justify-between">
               Recent Activity
               <Link href="/dashboard/logs">
-                <Button variant="ghost" size="sm">View All</Button>
+                <Button variant="outline" size="sm">View All</Button>
               </Link>
             </CardTitle>
             <CardDescription>
@@ -318,7 +318,7 @@ export default function DashboardPage() {
                   }[activity.status] || AlertCircle // Fallback to AlertCircle if status is undefined
 
                   return (
-                    <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
+                    <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border border-border bg-card/60 hover:bg-secondary/60 transition-colors">
                       <StatusIcon className={`h-4 w-4 mt-0.5 ${
                         activity.status === 'success' ? 'text-green-500' :
                         activity.status === 'error' ? 'text-red-500' :
@@ -332,10 +332,10 @@ export default function DashboardPage() {
                           }
                         </p>
                         <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             User: {activity.user_id ? activity.user_id.substring(0, 8) + '...' : 'Unknown'}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{activity.processing_time ? activity.processing_time.toFixed(2) + 's' : 'N/A'}</span>
                             <span>{new Date(activity.timestamp).toLocaleTimeString()}</span>
                           </div>
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                   )
                 })
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No recent activity</p>
                   <p className="text-xs">Conversations will appear here once users interact with your widget</p>
@@ -365,12 +365,12 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <Link href="/dashboard/logs" className="block">
-                <div className="w-full text-left p-4 rounded-lg border hover:bg-gray-50 hover:border-primary/20 transition-all cursor-pointer group">
+                <div className="w-full text-left p-4 rounded-lg border border-border hover:bg-secondary/60 hover:border-primary/30 transition-all cursor-pointer group">
                   <div className="flex items-center gap-3">
                     <MessageSquare className="h-5 w-5 text-primary group-hover:text-primary/80" />
                     <div>
                       <div className="font-medium">View Chat Logs</div>
-                      <div className="text-sm text-gray-500">Browse all conversations and interactions</div>
+                      <div className="text-sm text-muted-foreground">Browse all conversations and interactions</div>
                     </div>
                   </div>
                 </div>
@@ -387,7 +387,7 @@ export default function DashboardPage() {
                           Online
                         </span>
                       </div>
-                      <div className="text-sm text-gray-500">View your live chatbot widget</div>
+                      <div className="text-sm text-muted-foreground">View your live chatbot widget</div>
                     </div>
                   </div>
                 </div>
@@ -399,7 +399,7 @@ export default function DashboardPage() {
                     <BarChart3 className="h-5 w-5 text-purple-500 group-hover:text-purple-600" />
                     <div>
                       <div className="font-medium">Settings & Parameters</div>
-                      <div className="text-sm text-gray-500">Configure chatbot parameters</div>
+                      <div className="text-sm text-muted-foreground">Configure chatbot parameters</div>
                     </div>
                   </div>
                 </div>
@@ -416,7 +416,7 @@ export default function DashboardPage() {
                           New
                         </span>
                       </div>
-                      <div className="text-sm text-gray-500">AI-powered insights and recommendations</div>
+                      <div className="text-sm text-muted-foreground">AI-powered insights and recommendations</div>
                     </div>
                   </div>
                 </div>
@@ -428,7 +428,7 @@ export default function DashboardPage() {
                     <Users className="h-5 w-5 text-blue-500 group-hover:text-blue-600" />
                     <div>
                       <div className="font-medium">Profile & Account</div>
-                      <div className="text-sm text-gray-500">Manage your account settings</div>
+                      <div className="text-sm text-muted-foreground">Manage your account settings</div>
                     </div>
                   </div>
                 </div>
