@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,22 @@ import { ArrowLeft, Search, TrendingUp, Users, Eye, MousePointer, Filter, Downlo
 import Link from 'next/link'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts'
 
 export default function GoogleAnalyticsPage() {
   const [loading, setLoading] = useState(false)
@@ -17,6 +33,8 @@ export default function GoogleAnalyticsPage() {
   const [deviceFilter, setDeviceFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [gaRange, setGaRange] = useState('30d')
+  const [gaMetric, setGaMetric] = useState('sessions')
 
   // Comprehensive Search Console data with 24 keyword records
   const searchConsoleData = [
@@ -67,6 +85,33 @@ export default function GoogleAnalyticsPage() {
   const totalClicks = searchConsoleData.reduce((sum, item) => sum + item.clicks, 0)
   const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
   const avgPosition = searchConsoleData.length > 0 ? searchConsoleData.reduce((sum, item) => sum + item.position, 0) / searchConsoleData.length : 0
+
+  // Demo GA datasets for charts
+  const trendData = [
+    { date: 'Jul 01', sessions: 420, users: 360 },
+    { date: 'Jul 02', sessions: 510, users: 410 },
+    { date: 'Jul 03', sessions: 480, users: 395 },
+    { date: 'Jul 04', sessions: 560, users: 450 },
+    { date: 'Jul 05', sessions: 610, users: 500 },
+    { date: 'Jul 06', sessions: 580, users: 470 },
+    { date: 'Jul 07', sessions: 630, users: 520 },
+  ]
+
+  const pageViewsData = [
+    { page: '/products/wireless-headphones', views: 980 },
+    { page: '/products/gaming-keyboards', views: 820 },
+    { page: '/products/bluetooth-speakers', views: 760 },
+    { page: '/products/usb-hubs', views: 640 },
+    { page: '/blog/best-headphones-2024', views: 610 },
+  ]
+
+  const deviceData = [
+    { name: 'Mobile', value: 58 },
+    { name: 'Desktop', value: 34 },
+    { name: 'Tablet', value: 8 },
+  ]
+
+  const deviceColors = ['#8B5CF6', '#22C55E', '#F59E0B']
 
   const getDeviceBadgeColor = (device: string) => {
     switch (device) {
@@ -166,171 +211,268 @@ export default function GoogleAnalyticsPage() {
           </Card>
         </div>
 
-        {/* Search Console Data */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Search Console Data</CardTitle>
-              <CardDescription>Keywords, impressions, clicks, and search performance</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">{filteredSCData.length} Keywords</Badge>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Advanced Filters
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Filters */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Search keywords or pages..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="border-purple-200 focus:border-purple-400"
-                  />
-                </div>
-                <Select value={deviceFilter} onValueChange={setDeviceFilter}>
-                  <SelectTrigger className="w-48 border-purple-200">
-                    <SelectValue placeholder="Filter by device" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Devices</SelectItem>
-                    <SelectItem value="mobile">Mobile</SelectItem>
-                    <SelectItem value="desktop">Desktop</SelectItem>
-                    <SelectItem value="tablet">Tablet</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* Tabs for GA (charts) and Search Console (table) */}
+        <Tabs defaultValue="ga" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="ga">Google Analytics</TabsTrigger>
+            <TabsTrigger value="sc">Search Console</TabsTrigger>
+          </TabsList>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Query</TableHead>
-                    <TableHead>Page</TableHead>
-                    <TableHead>Clicks</TableHead>
-                    <TableHead>Impressions</TableHead>
-                    <TableHead>CTR</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Device</TableHead>
-                    <TableHead>Country</TableHead>
-                    <TableHead>Tags</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedSCData.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium max-w-xs">
-                        <div className="truncate" title={item.query}>
-                          {item.query}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate text-blue-600 hover:text-blue-800" title={item.page}>
-                          {item.page}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-green-600">{item.clicks}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-blue-600">{item.impressions.toLocaleString()}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-purple-600">{item.ctr.toFixed(2)}%</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-orange-600">{item.position.toFixed(1)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${getDeviceBadgeColor(item.device)} border-0`}>
-                          {item.device}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${getCountryBadgeColor(item.country)} border-0`}>
-                          {item.country}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {getTags(item).map((tag, tagIndex) => (
-                            <Badge key={tagIndex} className={`${tag.color} border-0 text-xs`}>
-                              {tag.text}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <TrendingUp className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              
-              {/* Pagination */}
-              <div className="flex items-center justify-between pt-4 border-t border-purple-200">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSCData.length)} of {filteredSCData.length} results
-                  </span>
+          {/* Google Analytics Charts */}
+          <TabsContent value="ga" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Traffic Overview</CardTitle>
+                  <CardDescription>Sessions and users trend</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                    <SelectTrigger className="w-20 border-purple-200">
+                  <Select value={gaRange} onValueChange={setGaRange}>
+                    <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="200">200</SelectItem>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="90d">Last 90 days</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="border-purple-200"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm px-2">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
-                      className="border-purple-200"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                  <Select value={gaMetric} onValueChange={setGaMetric}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sessions">Sessions</SelectItem>
+                      <SelectItem value="users">Users</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent style={{ height: 320 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="sessions" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="users" stroke="#06B6D4" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Pages by Views</CardTitle>
+                  <CardDescription>Most visited pages</CardDescription>
+                </CardHeader>
+                <CardContent style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={pageViewsData} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="page" type="category" width={220} />
+                      <Tooltip />
+                      <Bar dataKey="views" fill="#8B5CF6" radius={[4, 4, 4, 4]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Device Breakdown</CardTitle>
+                  <CardDescription>Sessions share by device</CardDescription>
+                </CardHeader>
+                <CardContent style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={deviceData} dataKey="value" nameKey="name" outerRadius={100} label>
+                        {deviceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={deviceColors[index % deviceColors.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Search Console Table (existing) */}
+          <TabsContent value="sc">
+            {/* Search Console Data */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Search Console Data</CardTitle>
+                  <CardDescription>Keywords, impressions, clicks, and search performance</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{filteredSCData.length} Keywords</Badge>
+                  <Button variant="outline" size="sm">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Advanced Filters
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Filters */}
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Search keywords or pages..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="border-purple-200 focus:border-purple-400"
+                      />
+                    </div>
+                    <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+                      <SelectTrigger className="w-48 border-purple-200">
+                        <SelectValue placeholder="Filter by device" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Devices</SelectItem>
+                        <SelectItem value="mobile">Mobile</SelectItem>
+                        <SelectItem value="desktop">Desktop</SelectItem>
+                        <SelectItem value="tablet">Tablet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Query</TableHead>
+                        <TableHead>Page</TableHead>
+                        <TableHead>Clicks</TableHead>
+                        <TableHead>Impressions</TableHead>
+                        <TableHead>CTR</TableHead>
+                        <TableHead>Position</TableHead>
+                        <TableHead>Device</TableHead>
+                        <TableHead>Country</TableHead>
+                        <TableHead>Tags</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedSCData.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium max-w-xs">
+                            <div className="truncate" title={item.query}>
+                              {item.query}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <div className="truncate text-blue-600 hover:text-blue-800" title={item.page}>
+                              {item.page}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600">{item.clicks}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-blue-600">{item.impressions.toLocaleString()}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-purple-600">{item.ctr.toFixed(2)}%</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-orange-600">{item.position.toFixed(1)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${getDeviceBadgeColor(item.device)} border-0`}>
+                              {item.device}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${getCountryBadgeColor(item.country)} border-0`}>
+                              {item.country}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {getTags(item).map((tag, tagIndex) => (
+                                <Badge key={tagIndex} className={`${tag.color} border-0 text-xs`}>
+                                  {tag.text}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <TrendingUp className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  <div className="flex items-center justify-between pt-4 border-t border-purple-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSCData.length)} of {filteredSCData.length} results
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                        <SelectTrigger className="w-20 border-purple-200">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                          <SelectItem value="200">200</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="border-purple-200"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm px-2">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                          className="border-purple-200"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
