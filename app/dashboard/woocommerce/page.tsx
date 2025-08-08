@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +28,10 @@ export default function WooCommercePage() {
   const [productPage, setProductPage] = useState<number>(1)
   const [salesPageSize, setSalesPageSize] = useState<number>(10)
   const [salesPage, setSalesPage] = useState<number>(1)
+  const [orders, setOrders] = useState<any[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [ordersError, setOrdersError] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
 
   // Demo data for best product and last sale panels (replace with API data when available)
   const bestProduct = useMemo(() => ({
@@ -53,6 +57,30 @@ export default function WooCommercePage() {
     { id: 9874, customer: "Michael Lee", items: 2, total: 88.5, status: "completed", time: "09:12" },
     { id: 9873, customer: "Nurul Rahman", items: 4, total: 210.0, status: "processing", time: "08:47" },
   ]), [])
+
+  // Load last 100 orders (live) with optional status filter
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        setOrdersLoading(true)
+        setOrdersError(null)
+        const qs = new URLSearchParams({ per_page: '100' })
+        if (statusFilter !== 'all') qs.set('status', statusFilter)
+        const res = await fetch(`/api/woocommerce/orders?${qs.toString()}`)
+        if (!res.ok) throw new Error(`Woo orders ${res.status}`)
+        const json = await res.json()
+        if (!cancelled) setOrders(json?.data || [])
+      } catch (e: any) {
+        if (!cancelled) setOrdersError(e?.message || String(e))
+        if (!cancelled) setOrders([])
+      } finally {
+        if (!cancelled) setOrdersLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [statusFilter])
 
   // Derived metrics
   const totals = useMemo(() => {
@@ -84,9 +112,10 @@ export default function WooCommercePage() {
   const paginatedProducts = filteredProducts.slice((productPage - 1) * productPageSize, productPage * productPageSize)
 
   const filteredSales = useMemo(() => {
-    if (statusFilter === "all") return recentSales
-    return recentSales.filter((s) => s.status === statusFilter)
-  }, [recentSales, statusFilter])
+    const base = orders.length ? orders : recentSales
+    if (statusFilter === "all") return base
+    return base.filter((s: any) => s.status === statusFilter)
+  }, [orders, recentSales, statusFilter])
 
   const salesTotalPages = Math.max(1, Math.ceil(filteredSales.length / salesPageSize))
   const paginatedSales = filteredSales.slice((salesPage - 1) * salesPageSize, salesPage * salesPageSize)
@@ -323,30 +352,49 @@ export default function WooCommercePage() {
         </TabsContent>
 
         <TabsContent value="sales">
-          {/* Last Sale & Sales Table with filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" />Last Sale</CardTitle>
-                <CardDescription>Most recent order and status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-lg font-semibold">Order #{lastSale.id}</div>
-                    <div className="text-sm text-muted-foreground">{lastSale.customer} • {lastSale.items} items • {lastSale.time}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold">S${lastSale.total.toFixed(2)}</div>
-                    <Badge variant={lastSale.status === 'completed' ? 'secondary' : 'default'} className={lastSale.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                      {lastSale.status}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Last Sale (compact) */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" />Last Sale</CardTitle>
+              <CardDescription>Most recent order and status</CardDescription>
+            </CardHeader>
+            <CardContent className="py-2">
+              {ordersLoading && <div className="text-sm text-muted-foreground">Loading last sale…</div>}
+              {(!ordersLoading) && (
+                (() => {
+                  const o = (orders && orders[0]) || null
+                  if (!o) {
+                    return (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-muted-foreground">No recent orders</div>
+                        </div>
+                      </div>
+                    )
+                  }
+                  const itemsCount = Array.isArray(o.line_items) ? o.line_items.reduce((n: number, li: any) => n + (li.quantity || 0), 0) : 0
+                  const customer = o.billing?.first_name ? `${o.billing.first_name} ${o.billing.last_name || ''}` : '—'
+                  return (
+                    <div className="flex items-center justify-between">
+                      <div className="truncate">
+                        <div className="text-lg font-semibold truncate">Order #{o.number || o.id}</div>
+                        <div className="text-sm text-muted-foreground truncate">{customer} • {itemsCount} items • {(o.date_created || '').toString().replace('T',' ').slice(0,16)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">S${Number(o.total || 0).toFixed(2)}</div>
+                        <Badge variant={o.status === 'completed' ? 'secondary' : 'default'} className={o.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                          {o.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  )
+                })()
+              )}
+            </CardContent>
+          </Card>
 
-            <Card>
+          {/* Recent Sales - full width with filters */}
+          <Card className="mt-6">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Recent Sales</CardTitle>
@@ -374,30 +422,54 @@ export default function WooCommercePage() {
                 </div>
               </CardHeader>
               <CardContent>
+                {ordersError && (
+                  <div className="mb-2 text-sm text-red-600">{ordersError}</div>
+                )}
+                {ordersLoading && (
+                  <div className="mb-2 text-sm text-muted-foreground">Loading orders…</div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Order</TableHead>
                       <TableHead>Customer</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Shipping</TableHead>
                       <TableHead className="text-right">Items</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                      <TableHead className="text-right">Tax</TableHead>
+                      <TableHead className="text-right">Shipping</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead className="text-right">Status</TableHead>
-                      <TableHead className="text-right">Time</TableHead>
+                      <TableHead className="text-right">Date</TableHead>
+                      <TableHead className="text-right">Link</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedSales.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell>#{s.id}</TableCell>
-                        <TableCell>{s.customer}</TableCell>
-                        <TableCell className="text-right">{s.items}</TableCell>
-                        <TableCell className="text-right">S${s.total.toFixed(2)}</TableCell>
+                    {paginatedSales.map((s: any) => (
+                      <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedOrder(s)}>
+                        <TableCell>#{s.number || s.id}</TableCell>
+                        <TableCell>{s.billing?.first_name ? `${s.billing.first_name} ${s.billing.last_name || ''}` : (s.customer || '—')}</TableCell>
+                        <TableCell>{s.payment_method_title || s.payment_method || '—'}</TableCell>
+                        <TableCell>{(s.shipping_lines && s.shipping_lines[0]?.method_title) ? s.shipping_lines[0].method_title : '—'}</TableCell>
+                        <TableCell className="text-right">{s.line_items ? s.line_items.reduce((n: number, li: any) => n + (li.quantity || 0), 0) : (s.items || 0)}</TableCell>
+                        <TableCell className="text-right">S${(s.subtotal ?? s.total)?.toFixed ? (s.subtotal ?? s.total).toFixed(2) : Number(s.subtotal ?? s.total).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">S${Number(s.total_tax || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">S${Number(s.shipping_total || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">S${Number(s.total || 0).toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <Badge variant={s.status === 'completed' ? 'secondary' : 'default'} className={s.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
                             {s.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">{s.time}</TableCell>
+                        <TableCell className="text-right">{(s.date_created || s.time || '').toString().replace('T', ' ').slice(0, 16)}</TableCell>
+                        <TableCell className="text-right">
+                          {s.link_admin ? (
+                            <a href={s.link_admin} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline" onClick={(e) => e.stopPropagation()}>Open</a>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -411,11 +483,98 @@ export default function WooCommercePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Order details modal */}
+            {selectedOrder && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedOrder(null)}>
+                <div className="w-full max-w-3xl bg-card text-card-foreground rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <div className="font-semibold">Order #{selectedOrder.number || selectedOrder.id}</div>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(null)}>Close</Button>
+                  </div>
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-auto">
+                    <div>
+                      <div className="text-sm font-medium mb-2">Customer</div>
+                      <div className="text-sm text-muted-foreground">
+                        {(selectedOrder.billing?.first_name || '') + ' ' + (selectedOrder.billing?.last_name || '')}<br/>
+                        {selectedOrder.billing?.email || '—'}<br/>
+                        {selectedOrder.billing?.phone || '—'}
+                      </div>
+                      <div className="text-sm font-medium mt-4 mb-2">Billing Address</div>
+                      <div className="text-sm text-muted-foreground">
+                        {[selectedOrder.billing?.address_1, selectedOrder.billing?.address_2, selectedOrder.billing?.city, selectedOrder.billing?.state, selectedOrder.billing?.postcode, selectedOrder.billing?.country].filter(Boolean).join(', ') || '—'}
+                      </div>
+                      <div className="text-sm font-medium mt-4 mb-2">Shipping Address</div>
+                      <div className="text-sm text-muted-foreground">
+                        {[selectedOrder.shipping?.address_1, selectedOrder.shipping?.address_2, selectedOrder.shipping?.city, selectedOrder.shipping?.state, selectedOrder.shipping?.postcode, selectedOrder.shipping?.country].filter(Boolean).join(', ') || '—'}
+                      </div>
+                      <div className="text-sm font-medium mt-4 mb-2">Payment</div>
+                      <div className="text-sm text-muted-foreground">{selectedOrder.payment_method_title || selectedOrder.payment_method || '—'}</div>
+                      <div className="text-sm font-medium mt-4 mb-2">Shipping</div>
+                      <div className="text-sm text-muted-foreground">{selectedOrder.shipping_lines?.[0]?.method_title || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium mb-2">Totals</div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex justify-between"><span>Subtotal</span><span>S${Number(selectedOrder.subtotal ?? selectedOrder.total).toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span>Tax</span><span>S${Number(selectedOrder.total_tax || 0).toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span>Shipping</span><span>S${Number(selectedOrder.shipping_total || 0).toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span>Discount</span><span>- S${Number(selectedOrder.discount_total || 0).toFixed(2)}</span></div>
+                        <div className="flex justify-between font-semibold"><span>Total</span><span>S${Number(selectedOrder.total || 0).toFixed(2)}</span></div>
+                      </div>
+                      <div className="text-sm font-medium mt-4 mb-2">Items</div>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        {(selectedOrder.line_items || []).map((li: any, idx: number) => (
+                          <div key={idx} className="flex justify-between">
+                            <span className="truncate mr-2">{li.name} × {li.quantity}</span>
+                            <span>S${Number(li.total || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {!!(selectedOrder.coupons || []).length && (
+                        <div className="text-sm font-medium mt-4 mb-2">Coupons</div>
+                      )}
+                      {(selectedOrder.coupons || []).map((c: any, i: number) => (
+                        <div key={i} className="text-sm text-muted-foreground flex justify-between">
+                          <span>{c.code}</span><span>- S${Number(c.discount || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {!!(selectedOrder.fees || []).length && (
+                        <div className="text-sm font-medium mt-4 mb-2">Fees</div>
+                      )}
+                      {(selectedOrder.fees || []).map((f: any, i: number) => (
+                        <div key={i} className="text-sm text-muted-foreground flex justify-between">
+                          <span>{f.name}</span><span>S${Number(f.total || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {!!(selectedOrder.refunds || []).length && (
+                        <div className="text-sm font-medium mt-4 mb-2">Refunds</div>
+                      )}
+                      {(selectedOrder.refunds || []).map((r: any, i: number) => (
+                        <div key={i} className="text-sm text-muted-foreground flex justify-between">
+                          <span>Refund #{r.id}</span><span>- S${Number(r.total || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-4 border-t flex items-center justify-between text-sm text-muted-foreground">
+                    <div>
+                      <span className="mr-3">Created: {(selectedOrder.date_created || '').toString().replace('T',' ').slice(0,16)}</span>
+                      {selectedOrder.date_paid && <span className="mr-3">Paid: {selectedOrder.date_paid.toString().replace('T',' ').slice(0,16)}</span>}
+                      {selectedOrder.date_completed && <span>Completed: {selectedOrder.date_completed.toString().replace('T',' ').slice(0,16)}</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {selectedOrder.link_admin && <a className="text-purple-600 hover:underline" href={selectedOrder.link_admin} target="_blank" rel="noreferrer">Open in WP Admin</a>}
+                      <Button size="sm" variant="default" onClick={() => setSelectedOrder(null)}>Done</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
 
       {/* (Legacy sections replaced by Tabs above) */}
     </div>
-  )
 }
