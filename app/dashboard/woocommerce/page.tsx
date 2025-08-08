@@ -80,7 +80,7 @@ export default function WooCommercePage() {
     }
     load()
     return () => { cancelled = true }
-  }, [statusFilter])
+  }, [statusFilter]);
 
   // Derived metrics
   const totals = useMemo(() => {
@@ -92,7 +92,7 @@ export default function WooCommercePage() {
     const pending = recentSales.filter(r => r.status === 'pending').length
     const completionRate = orders ? (completed / orders) * 100 : 0
     return { orders, revenue, aov, completed, processing, pending, completionRate }
-  }, [recentSales])
+  }, [recentSales]);
 
   const topProducts = useMemo(() => ([
     { id: 101, name: "Wireless Headphones", price: 199.0, total_sales: 128, stock_quantity: 42 },
@@ -127,7 +127,7 @@ export default function WooCommercePage() {
       revenue: Math.round(200 + Math.random() * 800),
       orders: Math.round(1 + Math.random() * 20),
     }))
-  }, [period])
+  }, [period]);
 
   return (
     <div className="space-y-6">
@@ -571,10 +571,10 @@ export default function WooCommercePage() {
                 </div>
               </div>
             )}
-          </div>
-        </TabsContent>
+          </TabsContent>
       </Tabs>
 
       {/* (Legacy sections replaced by Tabs above) */}
     </div>
+  );
 }
