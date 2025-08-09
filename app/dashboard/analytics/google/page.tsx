@@ -33,7 +33,7 @@ export default function GoogleAnalyticsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [deviceFilter, setDeviceFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [itemsPerPage, setItemsPerPage] = useState(100)
   const [gaRange, setGaRange] = useState('90d')
   const [gaMetric, setGaMetric] = useState<'sessions' | 'newUsers'>('sessions')
 
@@ -140,19 +140,20 @@ export default function GoogleAnalyticsPage() {
         if (searchQuery) params.set('q', searchQuery)
         // Use Supabase API route instead of legacy route
         params.set('v', '2')
-        const json = await fetchWithCache<{ topQueries: any[] }>(`/api/sc/supabase?${params.toString()}`)
+        const json = await fetchWithCache<{ performance?: any[]; topQueries?: any[] }>(`/api/sc/supabase?${params.toString()}`)
         if (!cancelled) {
-          // Map the Supabase response format to the expected format
-          const mappedData = json?.topQueries?.map(q => ({
-            query: q.query,
-            page: q.page || '',
-            clicks: q.clicks,
-            impressions: q.impressions,
-            ctr: q.ctr,
-            position: q.position,
-            device: q.device || 'all',
-            country: q.country || 'all'
-          })) || []
+          // Prefer combined performance rows (query + page). Fallback to topQueries.
+          const src = (json && Array.isArray(json.performance) ? json.performance : json?.topQueries) || []
+          const mappedData = src.map((r: any) => ({
+            query: r.query || '(not set)',
+            page: r.page || '',
+            clicks: r.clicks || 0,
+            impressions: r.impressions || 0,
+            ctr: r.ctr || 0,
+            position: r.position || 0,
+            device: r.device || 'all',
+            country: r.country || 'all'
+          }))
           setScRows(mappedData)
         }
       } catch (e: any) {

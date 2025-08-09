@@ -46,6 +46,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const days = searchParams.get('days') || '7'
     const { startDate, endDate } = getDateRange(days)
+    const pageParam = parseInt(searchParams.get('page') || '1', 10)
+    const pageSizeParam = parseInt(searchParams.get('pageSize') || '100', 10)
+    const searchQ = (searchParams.get('q') || '').trim()
+    const filterDevice = (searchParams.get('device') || '').trim()
     
     // Handle both formats of SC_SITE (https:// and sc-domain:) and accept query override
     const rawSite = searchParams.get('site') || process.env.SC_SITE || 'sc-domain:tradezone.sg'
@@ -126,21 +130,32 @@ export async function GET(req: NextRequest) {
     const avgPosition = totalPosition / count
     
     // Use direct queries instead of RPC functions
-    // Query for top queries
+    // Query for top queries (aggregated across the date range)
     let topQueries = [];
     let queriesError = null;
     
     try {
-      const { data, error } = await supabase
+      let queryBuilder = supabase
         .from('gsc_performance')
-        .select('query, clicks, impressions, ctr, position')
+        .select('query, page, clicks, impressions, ctr, position, device, country')
         .in('site', candidates)
         .gte('date', startDate)
         .lte('date', endDate)
         .not('query', 'is', null)
         .not('query', 'eq', '')
+
+      if (filterDevice && filterDevice !== 'all') {
+        queryBuilder = queryBuilder.eq('device', filterDevice)
+      }
+      if (searchQ) {
+        // Match either query or page text
+        queryBuilder = queryBuilder.or(`query.ilike.%${searchQ}%,page.ilike.%${searchQ}%`)
+      }
+
+      // Fetch a reasonably large window, then aggregate client-side and paginate
+      const { data, error } = await queryBuilder
         .order('clicks', { ascending: false })
-        .limit(10);
+        .limit(Math.max(pageSizeParam * 5, 500))
       
       if (error) {
         queriesError = error;
@@ -180,9 +195,15 @@ export async function GET(req: NextRequest) {
         
         // Sort by clicks
         topQueries.sort((a, b) => b.clicks - a.clicks);
-        
-        // Limit to 10
-        topQueries = topQueries.slice(0, 10);
+        // Paginate
+        const start = Math.max(0, (pageParam - 1) * pageSizeParam)
+        const end = start + pageSizeParam
+        const totalTopQueries = topQueries.length
+        topQueries = topQueries.slice(start, end)
+        // Attach total to diagnostics for possible client use later (not breaking schema)
+        if (debug) {
+          ;(diagnostics ||= {}).topQueriesTotal = totalTopQueries
+        }
       }
     } catch (error) {
       console.error('Error processing query data:', error);
@@ -194,16 +215,23 @@ export async function GET(req: NextRequest) {
     let pagesError = null;
     
     try {
-      const { data, error } = await supabase
+      let pageBuilder = supabase
         .from('gsc_performance')
-        .select('page, clicks, impressions, ctr, position')
+        .select('page, clicks, impressions, ctr, position, device, country')
         .in('site', candidates)
         .gte('date', startDate)
         .lte('date', endDate)
         .not('page', 'is', null)
         .not('page', 'eq', '')
+      if (filterDevice && filterDevice !== 'all') {
+        pageBuilder = pageBuilder.eq('device', filterDevice)
+      }
+      if (searchQ) {
+        pageBuilder = pageBuilder.or(`page.ilike.%${searchQ}%,query.ilike.%${searchQ}%`)
+      }
+      const { data, error } = await pageBuilder
         .order('clicks', { ascending: false })
-        .limit(10);
+        .limit(Math.max(pageSizeParam * 5, 500));
       
       if (error) {
         pagesError = error;
@@ -244,18 +272,20 @@ export async function GET(req: NextRequest) {
         // Sort by clicks
         topPages.sort((a, b) => b.clicks - a.clicks);
         
-        // Limit to 10
-        topPages = topPages.slice(0, 10);
+        // Paginate
+        const start = Math.max(0, (pageParam - 1) * pageSizeParam)
+        const end = start + pageSizeParam
+        const totalTopPages = topPages.length
+        topPages = topPages.slice(start, end)
+        if (debug) {
+          ;(diagnostics ||= {}).topPagesTotal = totalTopPages
+        }
       }
     } catch (error) {
       console.error('Error processing page data:', error);
       pagesError = error;
     }
-    
-    if (pagesError) {
-      console.error('Error fetching SC pages data from Supabase:', pagesError)
-    }
-    
+
     // Optional debug diagnostics
     let diagnostics: any = undefined
     if (debug) {
@@ -293,6 +323,7 @@ export async function GET(req: NextRequest) {
       dailyData: summaryData,
       topQueries: topQueries || [],
       topPages: topPages || [],
+      performance: performance || [],
       dataSource: 'supabase',
       ...(debug ? { debug: diagnostics } : {}),
     })
