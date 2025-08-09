@@ -3,7 +3,17 @@ import { createClient } from '@supabase/supabase-js'
 
 // Helper to get date range (similar to the original SC API)
 function getDateRange(daysParam?: string) {
-  const days = parseInt(daysParam || '7', 10)
+  // Support longer time ranges (up to 1 year/365 days)
+  // Default to 7 days if not specified
+  let days = parseInt(daysParam || '7', 10)
+  
+  // Special case for 'year' parameter
+  if (daysParam === 'year') {
+    days = 365
+  } else if (daysParam === '6m') {
+    days = 180
+  }
+  
   const end = new Date()
   end.setHours(0, 0, 0, 0)
   const start = new Date(end)
@@ -36,7 +46,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const days = searchParams.get('days') || '7'
     const { startDate, endDate } = getDateRange(days)
-    const site = process.env.SC_SITE || 'sc-domain:tradezone.sg'
+    
+    // Handle both formats of SC_SITE (https:// and sc-domain:)
+    let site = process.env.SC_SITE || 'sc-domain:tradezone.sg'
+    // If site starts with https://, convert it to sc-domain: format
+    if (site.startsWith('https://')) {
+      const domain = site.replace('https://', '')
+      site = `sc-domain:${domain}`
+    }
     
     const supabase = getSupabaseClient()
     

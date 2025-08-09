@@ -34,7 +34,7 @@ export default function GoogleAnalyticsPage() {
   const [deviceFilter, setDeviceFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
-  const [gaRange, setGaRange] = useState('30d')
+  const [gaRange, setGaRange] = useState('90d')
   const [gaMetric, setGaMetric] = useState<'sessions' | 'newUsers'>('sessions')
 
   // Live GA state
