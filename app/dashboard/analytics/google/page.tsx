@@ -87,7 +87,7 @@ export default function GoogleAnalyticsPage() {
 
         // Search Console summary (align days)
         try {
-          const scJson = await fetchWithCache<{ summary: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/supabase?days=${daysParam}`)
+          const scJson = await fetchWithCache<{ summary: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/supabase?days=${daysParam}&v=2`)
           if (!cancelled) setScSummary(scJson?.summary || null)
         } catch (e) {
           // Keep UI resilient if SC is not yet configured
@@ -127,6 +127,7 @@ export default function GoogleAnalyticsPage() {
         if (deviceFilter !== 'all') params.set('device', deviceFilter)
         if (searchQuery) params.set('q', searchQuery)
         // Use Supabase API route instead of legacy route
+        params.set('v', '2')
         const json = await fetchWithCache<{ topQueries: any[] }>(`/api/sc/supabase?${params.toString()}`)
         if (!cancelled) {
           // Map the Supabase response format to the expected format
