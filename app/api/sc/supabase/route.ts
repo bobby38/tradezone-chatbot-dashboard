@@ -286,6 +286,57 @@ export async function GET(req: NextRequest) {
       pagesError = error;
     }
 
+    // Build combined performance rows (query + page) for table usage
+    let performance: Array<{ query: string; page: string; clicks: number; impressions: number; ctr: number; position: number }> = []
+    try {
+      let perfBuilder = supabase
+        .from('gsc_performance')
+        .select('query, page, clicks, impressions, ctr, position, device, country')
+        .in('site', candidates)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .not('query', 'is', null)
+        .not('query', 'eq', '')
+        .not('page', 'is', null)
+        .not('page', 'eq', '')
+      if (filterDevice && filterDevice !== 'all') {
+        perfBuilder = perfBuilder.eq('device', filterDevice)
+      }
+      if (searchQ) {
+        perfBuilder = perfBuilder.or(`query.ilike.%${searchQ}%,page.ilike.%${searchQ}%`)
+      }
+      const { data: perfData } = await perfBuilder.limit(Math.max(pageSizeParam * 5, 500))
+      if (perfData && perfData.length) {
+        const map = new Map<string, { query: string; page: string; clicks: number; impressions: number; ctr: number; position: number; count: number }>()
+        for (const r of perfData) {
+          const key = `${r.query}|||${r.page}`
+          if (!map.has(key)) {
+            map.set(key, { query: r.query, page: r.page, clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 })
+          }
+          const it = map.get(key)!
+          it.clicks += r.clicks
+          it.impressions += r.impressions
+          it.ctr += r.ctr
+          it.position += r.position
+          it.count += 1
+        }
+        performance = Array.from(map.values()).map(it => ({
+          query: it.query,
+          page: it.page,
+          clicks: it.clicks,
+          impressions: it.impressions,
+          ctr: it.count ? it.ctr / it.count : 0,
+          position: it.count ? it.position / it.count : 0,
+        }))
+        performance.sort((a, b) => b.clicks - a.clicks)
+        const start = Math.max(0, (pageParam - 1) * pageSizeParam)
+        const end = start + pageSizeParam
+        performance = performance.slice(start, end)
+      }
+    } catch (e) {
+      console.error('Error aggregating performance:', e)
+    }
+
     // Optional debug diagnostics
     let diagnostics: any = undefined
     if (debug) {

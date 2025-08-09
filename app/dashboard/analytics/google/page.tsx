@@ -44,6 +44,7 @@ export default function GoogleAnalyticsPage() {
   const [countriesData, setCountriesData] = useState<{ country: string; sessions: number }[]>([])
   const [channelsData, setChannelsData] = useState<{ channel: string; sessions: number }[]>([])
   const [scSummary, setScSummary] = useState<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
+  const [scSummaryLoading, setScSummaryLoading] = useState(false)
   const [gaSummary, setGaSummary] = useState<{ activeUsers: number; newUsers: number; averageEngagementTime: number; eventCount: number } | null>(null)
   // Live SC table state
   const [scRows, setScRows] = useState<Array<{ query: string; page: string; clicks: number; impressions: number; ctr: number; position: number; device: string; country: string }>>([])
@@ -103,10 +104,13 @@ export default function GoogleAnalyticsPage() {
 
       // Search Console summary (align days) — independent of GA failures
       try {
+        setScSummaryLoading(true)
         const scJson = await fetchWithCache<{ summary: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/supabase?days=${daysParam}&v=2`)
         if (!cancelled) setScSummary(scJson?.summary || null)
       } catch {
         if (!cancelled) setScSummary(null)
+      } finally {
+        if (!cancelled) setScSummaryLoading(false)
       }
 
       // Google Analytics summary (align days)
@@ -251,7 +255,11 @@ export default function GoogleAnalyticsPage() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.impressions.toLocaleString() : '—'}</div>
+              {scSummaryLoading ? (
+                <div className="h-7 w-28 bg-muted rounded animate-pulse" />
+              ) : (
+                <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.impressions.toLocaleString() : '—'}</div>
+              )}
               <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
             </CardContent>
           </Card>
@@ -261,7 +269,11 @@ export default function GoogleAnalyticsPage() {
               <MousePointer className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.clicks.toLocaleString() : '—'}</div>
+              {scSummaryLoading ? (
+                <div className="h-7 w-24 bg-muted rounded animate-pulse" />
+              ) : (
+                <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.clicks.toLocaleString() : '—'}</div>
+              )}
               <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
             </CardContent>
           </Card>
@@ -271,7 +283,11 @@ export default function GoogleAnalyticsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? (scDisplaySummary.ctr * 100).toFixed(2) + '%' : '—'}</div>
+              {scSummaryLoading ? (
+                <div className="h-7 w-20 bg-muted rounded animate-pulse" />
+              ) : (
+                <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? (scDisplaySummary.ctr * 100).toFixed(2) + '%' : '—'}</div>
+              )}
               <p className="text-xs text-muted-foreground">Average CTR</p>
             </CardContent>
           </Card>
@@ -281,7 +297,11 @@ export default function GoogleAnalyticsPage() {
               <Search className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.position.toFixed(1) : '—'}</div>
+              {scSummaryLoading ? (
+                <div className="h-7 w-16 bg-muted rounded animate-pulse" />
+              ) : (
+                <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.position.toFixed(1) : '—'}</div>
+              )}
               <p className="text-xs text-muted-foreground">Average rank</p>
             </CardContent>
           </Card>
@@ -551,7 +571,21 @@ export default function GoogleAnalyticsPage() {
                     <div className="text-sm text-red-600">{scError}</div>
                   )}
                   {scLoading && (
-                    <div className="text-sm text-muted-foreground">Loading Search Console…</div>
+                    <div className="space-y-2">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-2 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-3 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                          <div className="col-span-1 h-4 bg-muted rounded animate-pulse" />
+                      </div>
+                      ))}
+                    </div>
                   )}
                   <Table>
                     <TableHeader>
