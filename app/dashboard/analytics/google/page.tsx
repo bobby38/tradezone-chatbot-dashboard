@@ -87,8 +87,8 @@ export default function GoogleAnalyticsPage() {
 
         // Search Console summary (align days)
         try {
-          const scJson = await fetchWithCache<{ data: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/summary?days=${daysParam}`)
-          if (!cancelled) setScSummary(scJson?.data || null)
+          const scJson = await fetchWithCache<{ summary: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/supabase?days=${daysParam}`)
+          if (!cancelled) setScSummary(scJson?.summary || null)
         } catch (e) {
           // Keep UI resilient if SC is not yet configured
           if (!cancelled) setScSummary(null)

@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
           fetchWithCache('/api/ga/summary'),
           fetchWithCache('/api/ga/top-pages?days=28'),
           fetchWithCache('/api/ga/top-devices?days=28'),
-          fetchWithCache('/api/sc/summary')
+          fetchWithCache('/api/sc/supabase')
         ])
         const get = (i: number) => (results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<any>).value : null)
         const gaSummary = get(0)
@@ -146,8 +146,8 @@ export default function AnalyticsPage() {
         const users = gaSummary?.users ?? gaSummary?.data?.users
         const topPage = gaPages?.rows?.[0]?.dimensionValues?.[0]?.value || gaPages?.data?.[0]?.page
         const topDevice = gaDevices?.rows?.[0]?.dimensionValues?.[0]?.value || gaDevices?.data?.[0]?.device
-        const scClicks = scSummary?.clicks ?? scSummary?.data?.clicks
-        const scImpr = scSummary?.impressions ?? scSummary?.data?.impressions
+        const scClicks = scSummary?.summary?.clicks ?? scSummary?.clicks ?? 0
+        const scImpr = scSummary?.summary?.impressions ?? scSummary?.impressions ?? 0
         const scCtr = (typeof scClicks === 'number' && typeof scImpr === 'number' && scImpr > 0)
           ? `${((scClicks / scImpr) * 100).toFixed(2)}%`
           : undefined
