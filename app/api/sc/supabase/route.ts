@@ -72,12 +72,33 @@ export async function GET(req: NextRequest) {
     const site = normalizeSite(rawSite)
     
     const supabase = getSupabaseClient()
+    const debug = (searchParams.get('debug') || '') === '1'
+    // Build candidate site variants to be tolerant of how data was stored
+    const candidates = (() => {
+      const host = site.replace('sc-domain:', '')
+      const withSlash = (s: string) => (s.endsWith('/') ? s : s + '/')
+      const withoutSlash = (s: string) => s.replace(/\/$/, '')
+      const variants = new Set<string>([
+        site,
+        withoutSlash(site),
+        withSlash(site),
+        `https://${host}`,
+        withSlash(`https://${host}`),
+        `http://${host}`,
+        withSlash(`http://${host}`),
+        `https://www.${host}`,
+        withSlash(`https://www.${host}`),
+        `http://www.${host}`,
+        withSlash(`http://www.${host}`),
+      ])
+      return Array.from(variants)
+    })()
     
     // Get daily summary data
     const { data: summaryData, error: summaryError } = await supabase
       .from('gsc_daily_summary')
       .select('*')
-      .eq('site', site)
+      .in('site', candidates)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true })
@@ -113,7 +134,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await supabase
         .from('gsc_performance')
         .select('query, clicks, impressions, ctr, position')
-        .eq('site', site)
+        .in('site', candidates)
         .gte('date', startDate)
         .lte('date', endDate)
         .not('query', 'is', null)
@@ -176,7 +197,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await supabase
         .from('gsc_performance')
         .select('page, clicks, impressions, ctr, position')
-        .eq('site', site)
+        .in('site', candidates)
         .gte('date', startDate)
         .lte('date', endDate)
         .not('page', 'is', null)
@@ -235,6 +256,32 @@ export async function GET(req: NextRequest) {
       console.error('Error fetching SC pages data from Supabase:', pagesError)
     }
     
+    // Optional debug diagnostics
+    let diagnostics: any = undefined
+    if (debug) {
+      try {
+        const { data: anySummary } = await supabase
+          .from('gsc_daily_summary')
+          .select('site, date')
+          .limit(1)
+        const { count: anySummaryCount } = await supabase
+          .from('gsc_daily_summary')
+          .select('*', { count: 'exact', head: true })
+        const { count: filteredSummaryCount } = await supabase
+          .from('gsc_daily_summary')
+          .select('*', { count: 'exact', head: true })
+          .in('site', candidates)
+        diagnostics = {
+          site,
+          candidates,
+          supabaseUrlHost: (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/^https?:\/\//, ''),
+          anySummaryCount,
+          filteredSummaryCount,
+          sampleSummary: anySummary || [],
+        }
+      } catch (_) {}
+    }
+
     return NextResponse.json({
       summary: {
         clicks: totalClicks,
@@ -247,6 +294,7 @@ export async function GET(req: NextRequest) {
       topQueries: topQueries || [],
       topPages: topPages || [],
       dataSource: 'supabase',
+      ...(debug ? { debug: diagnostics } : {}),
     })
     
   } catch (error) {
