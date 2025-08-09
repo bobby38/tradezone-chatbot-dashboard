@@ -61,51 +61,58 @@ export default function GoogleAnalyticsPage() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      try {
-        setLoading(true)
-        setError(null)
+      setLoading(true)
+      setError(null)
 
-        // Traffic trend (GA) — include version to bust cache after API shape change
+      // Traffic trend (GA)
+      try {
         const trendJson = await fetchWithCache<{ data: any[] }>(`/api/ga/daily-traffic?days=${daysParam}&metric=${gaMetric}&v=2`)
         if (!cancelled) setTrendData(trendJson?.data || [])
+      } catch (e: any) {
+        if (!cancelled) setError(prev => prev || e?.message || String(e))
+      }
 
-        // Top pages (GA, align days)
+      // Top pages (GA)
+      try {
         const pagesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-pages?days=${daysParam}`)
         if (!cancelled) setPageViewsData(pagesJson?.data || [])
+      } catch {}
 
-        // Devices (GA, align days)
+      // Devices (GA)
+      try {
         const devicesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-devices?days=${daysParam}`)
         if (!cancelled) setDeviceData(devicesJson?.data || [])
+      } catch {}
 
-        // Countries (GA)
+      // Countries (GA)
+      try {
         const countriesJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-countries?days=${daysParam}`)
         if (!cancelled) setCountriesData(countriesJson?.data || [])
+      } catch {}
 
-        // Channels (GA)
+      // Channels (GA)
+      try {
         const channelsJson = await fetchWithCache<{ data: any[] }>(`/api/ga/top-channels?days=${daysParam}`)
         if (!cancelled) setChannelsData(channelsJson?.data || [])
+      } catch {}
 
-        // Search Console summary (align days)
-        try {
-          const scJson = await fetchWithCache<{ summary: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/supabase?days=${daysParam}&v=2`)
-          if (!cancelled) setScSummary(scJson?.summary || null)
-        } catch (e) {
-          // Keep UI resilient if SC is not yet configured
-          if (!cancelled) setScSummary(null)
-        }
-
-        // Google Analytics summary (align days)
-        try {
-          const gaSum = await fetchWithCache<{ data: { activeUsers: number; newUsers: number; averageEngagementTime: number; eventCount: number } }>(`/api/ga/summary?days=${daysParam}`)
-          if (!cancelled) setGaSummary(gaSum?.data || null)
-        } catch (e) {
-          if (!cancelled) setGaSummary(null)
-        }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || String(e))
-      } finally {
-        if (!cancelled) setLoading(false)
+      // Search Console summary (align days) — independent of GA failures
+      try {
+        const scJson = await fetchWithCache<{ summary: { clicks: number; impressions: number; ctr: number; position: number } }>(`/api/sc/supabase?days=${daysParam}&v=2`)
+        if (!cancelled) setScSummary(scJson?.summary || null)
+      } catch {
+        if (!cancelled) setScSummary(null)
       }
+
+      // Google Analytics summary (align days)
+      try {
+        const gaSum = await fetchWithCache<{ data: { activeUsers: number; newUsers: number; averageEngagementTime: number; eventCount: number } }>(`/api/ga/summary?days=${daysParam}`)
+        if (!cancelled) setGaSummary(gaSum?.data || null)
+      } catch {
+        if (!cancelled) setGaSummary(null)
+      }
+
+      if (!cancelled) setLoading(false)
     }
     load()
     return () => {
@@ -152,6 +159,19 @@ export default function GoogleAnalyticsPage() {
     loadSC()
     return () => { cancelled = true }
   }, [daysParam, currentPage, itemsPerPage, deviceFilter, searchQuery])
+
+  // Fallback summary: if API summary missing but table rows present, derive totals
+  const scDisplaySummary = useMemo(() => {
+    if (scSummary) return scSummary
+    if (scRows && scRows.length > 0) {
+      const clicks = scRows.reduce((s, r) => s + (Number(r.clicks) || 0), 0)
+      const impressions = scRows.reduce((s, r) => s + (Number(r.impressions) || 0), 0)
+      const ctr = impressions > 0 ? clicks / impressions : 0
+      const position = scRows.reduce((s, r) => s + (Number(r.position) || 0), 0) / scRows.length || 0
+      return { clicks, impressions, ctr, position }
+    }
+    return null
+  }, [scSummary, scRows])
 
   // Derived totals for quick stats (live)
   const totalSessions = useMemo(() => trendData.reduce((s, d) => s + (d.current || 0), 0), [trendData])
@@ -225,7 +245,7 @@ export default function GoogleAnalyticsPage() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scSummary ? scSummary.impressions.toLocaleString() : '—'}</div>
+              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.impressions.toLocaleString() : '—'}</div>
               <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
             </CardContent>
           </Card>
@@ -235,7 +255,7 @@ export default function GoogleAnalyticsPage() {
               <MousePointer className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scSummary ? scSummary.clicks.toLocaleString() : '—'}</div>
+              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.clicks.toLocaleString() : '—'}</div>
               <p className="text-xs text-muted-foreground">Last {gaRange === '7d' ? '7' : gaRange === '90d' ? '90' : '28'} days</p>
             </CardContent>
           </Card>
@@ -245,7 +265,7 @@ export default function GoogleAnalyticsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scSummary ? (scSummary.ctr * 100).toFixed(2) + '%' : '—'}</div>
+              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? (scDisplaySummary.ctr * 100).toFixed(2) + '%' : '—'}</div>
               <p className="text-xs text-muted-foreground">Average CTR</p>
             </CardContent>
           </Card>
@@ -255,7 +275,7 @@ export default function GoogleAnalyticsPage() {
               <Search className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{scSummary ? scSummary.position.toFixed(1) : '—'}</div>
+              <div className="text-2xl font-bold text-purple-600">{scDisplaySummary ? scDisplaySummary.position.toFixed(1) : '—'}</div>
               <p className="text-xs text-muted-foreground">Average rank</p>
             </CardContent>
           </Card>
