@@ -47,13 +47,29 @@ export async function GET(req: NextRequest) {
     const days = searchParams.get('days') || '7'
     const { startDate, endDate } = getDateRange(days)
     
-    // Handle both formats of SC_SITE (https:// and sc-domain:)
-    let site = process.env.SC_SITE || 'sc-domain:tradezone.sg'
-    // If site starts with https://, convert it to sc-domain: format
-    if (site.startsWith('https://')) {
-      const domain = site.replace('https://', '')
-      site = `sc-domain:${domain}`
+    // Handle both formats of SC_SITE (https:// and sc-domain:) and accept query override
+    const rawSite = searchParams.get('site') || process.env.SC_SITE || 'sc-domain:tradezone.sg'
+    // Normalize to sc-domain:example.com (no trailing slash)
+    function normalizeSite(value: string) {
+      let v = value.trim()
+      // Strip protocol if present
+      if (v.startsWith('https://')) v = v.slice('https://'.length)
+      if (v.startsWith('http://')) v = v.slice('http://'.length)
+      // Remove leading www.
+      if (v.startsWith('www.')) v = v.slice('www.'.length)
+      // Remove leading slash for accidental inputs
+      v = v.replace(/^\//, '')
+      // Ensure no trailing slash
+      v = v.replace(/\/$/, '')
+      // If already sc-domain:, ensure no trailing slash after
+      if (v.startsWith('sc-domain:')) {
+        const rest = v.substring('sc-domain:'.length).replace(/\/$/, '')
+        return `sc-domain:${rest}`
+      }
+      // Otherwise treat v as hostname
+      return `sc-domain:${v}`
     }
+    const site = normalizeSite(rawSite)
     
     const supabase = getSupabaseClient()
     
