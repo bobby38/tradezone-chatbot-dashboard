@@ -87,11 +87,20 @@ export default function DashboardPage() {
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch(`/api/sc/daily-traffic?days=${trafficDays}&site=${encodeURIComponent('sc-domain:tradezone.sg')}`,
+        // Use Supabase API route instead of legacy route
+        const res = await fetch(`/api/sc/supabase?days=${trafficDays}`,
           { cache: 'no-store' })
         if (res.ok) {
           const json = await res.json()
-          if (Array.isArray(json.data)) setScTraffic(json.data)
+          // Map the Supabase response format to the expected format
+          if (json.dailyData && Array.isArray(json.dailyData)) {
+            const mappedData = json.dailyData.map(day => ({
+              date: day.date,
+              clicks: day.clicks,
+              impressions: day.impressions
+            }))
+            setScTraffic(mappedData)
+          }
         }
       } catch (e) {
         console.error('Failed to load SC traffic', e)

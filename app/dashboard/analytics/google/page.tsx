@@ -126,8 +126,22 @@ export default function GoogleAnalyticsPage() {
         params.set('pageSize', String(itemsPerPage))
         if (deviceFilter !== 'all') params.set('device', deviceFilter)
         if (searchQuery) params.set('q', searchQuery)
-        const json = await fetchWithCache<{ data: any[] }>(`/api/sc/queries?${params.toString()}`)
-        if (!cancelled) setScRows(json?.data || [])
+        // Use Supabase API route instead of legacy route
+        const json = await fetchWithCache<{ topQueries: any[] }>(`/api/sc/supabase?${params.toString()}`)
+        if (!cancelled) {
+          // Map the Supabase response format to the expected format
+          const mappedData = json?.topQueries?.map(q => ({
+            query: q.query,
+            page: q.page || '',
+            clicks: q.clicks,
+            impressions: q.impressions,
+            ctr: q.ctr,
+            position: q.position,
+            device: q.device || 'all',
+            country: q.country || 'all'
+          })) || []
+          setScRows(mappedData)
+        }
       } catch (e: any) {
         if (!cancelled) setScError(e?.message || String(e))
       } finally {
