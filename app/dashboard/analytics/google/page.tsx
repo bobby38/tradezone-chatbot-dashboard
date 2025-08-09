@@ -50,6 +50,11 @@ export default function GoogleAnalyticsPage() {
   const [scLoading, setScLoading] = useState(false)
   const [scError, setScError] = useState<string | null>(null)
 
+  // Clear any stale SC cache on first mount (handles prior empty responses)
+  useEffect(() => {
+    try { invalidateCache('/api/sc/supabase') } catch {}
+  }, [])
+
   // Map UI range to API days (GA daily-traffic supports 7, 28, 90)
   const daysParam = useMemo(() => {
     if (gaRange === '7d') return 7
