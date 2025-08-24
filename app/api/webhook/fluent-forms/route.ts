@@ -11,8 +11,14 @@ export async function POST(req: NextRequest) {
     
     const body = await req.json()
     
-    // Log webhook received for debugging
-    console.log('Fluent Forms webhook received from IP:', realIP)
+    // Enhanced logging for debugging
+    console.log('=== FLUENT FORMS WEBHOOK DEBUG ===')
+    console.log('Timestamp:', new Date().toISOString())
+    console.log('IP:', realIP)
+    console.log('Headers:', Object.fromEntries(req.headers.entries()))
+    console.log('Full Body:', JSON.stringify(body, null, 2))
+    console.log('Body keys:', Object.keys(body))
+    console.log('=====================================')
     
     // Extract form data from Fluent Forms webhook payload
     const formData = body.data || body
@@ -24,21 +30,31 @@ export async function POST(req: NextRequest) {
       submissionType = 'trade-in'
     }
     
+    console.log('Processed data:')
+    console.log('- Form Type:', submissionType)
+    console.log('- Form ID:', body.form_id)
+    console.log('- Form Data Keys:', Object.keys(formData))
+    
     // Insert into form_submissions table
+    const insertData = {
+      form_type: submissionType,
+      form_id: body.form_id?.toString() || 'unknown',
+      form_data: formData,
+      source: 'fluent-forms',
+      status: 'pending'
+    }
+    
+    console.log('Inserting to database:', JSON.stringify(insertData, null, 2))
+    
     const { data, error } = await supabase
       .from('form_submissions')
-      .insert({
-        form_type: submissionType,
-        form_id: body.form_id?.toString() || 'unknown',
-        form_data: formData,
-        source: 'fluent-forms',
-        status: 'pending'
-      })
+      .insert(insertData)
       .select()
     
     if (error) {
-      console.error('Error saving form submission:', error)
-      return NextResponse.json({ error: 'Failed to save submission' }, { status: 500 })
+      console.error('Database insert error:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      return NextResponse.json({ error: 'Failed to save submission', details: error.message }, { status: 500 })
     }
     
     console.log(`New ${submissionType} form submission received:`, data)
