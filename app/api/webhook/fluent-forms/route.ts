@@ -35,19 +35,21 @@ export async function POST(req: NextRequest) {
     console.log('- Form ID:', body.form_id)
     console.log('- Form Data Keys:', Object.keys(formData))
     
-    // Insert into form_submissions table
+    // Store the entire webhook payload in existing submissions table
     const insertData = {
-      form_type: submissionType,
-      form_id: body.form_id?.toString() || 'unknown',
-      form_data: formData,
-      source: 'fluent-forms',
-      status: 'pending'
+      user_id: '00000000-0000-0000-0000-000000000000', // dummy user ID
+      org_id: '00000000-0000-0000-0000-000000000000',  // dummy org ID  
+      title: `${submissionType} form submission`,
+      content_input: JSON.stringify(body, null, 2),
+      content_type: 'Form Submission',
+      ai_metadata: formData,
+      status: 'ready'
     }
     
-    console.log('Inserting to database:', JSON.stringify(insertData, null, 2))
+    console.log('Inserting to submissions table:', JSON.stringify(insertData, null, 2))
     
     const { data, error } = await supabase
-      .from('form_submissions')
+      .from('submissions')
       .insert(insertData)
       .select()
     

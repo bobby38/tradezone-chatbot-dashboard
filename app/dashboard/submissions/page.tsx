@@ -8,12 +8,12 @@ import { formatDate } from '@/lib/utils'
 
 interface Submission {
   id: string
-  form_type: string
-  form_id: string
-  form_data: any
-  source: string
-  submitted_at: string
+  title: string
+  content_input: string
+  content_type: string
+  ai_metadata: any
   status: string
+  created_at: string
 }
 
 export default function SubmissionsPage() {
@@ -29,8 +29,9 @@ export default function SubmissionsPage() {
     try {
       setLoading(true)
       const { data, error } = await supabase
-        .from('form_submissions')
+        .from('submissions')
         .select('*')
+        .eq('content_type', 'Form Submission')
         .order('created_at', { ascending: false })
         .limit(100)
 
@@ -87,10 +88,10 @@ export default function SubmissionsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">
-                    {submission.form_type === 'trade-in' ? 'Trade-In' : 'Contact'} Form #{submission.id.slice(-8)}
+                    {submission.title}
                   </CardTitle>
                   <div className="flex gap-2">
-                    <Badge variant="outline">{submission.form_type}</Badge>
+                    <Badge variant="outline">{submission.content_type}</Badge>
                     <Badge variant="secondary">{submission.status}</Badge>
                   </div>
                 </div>
@@ -99,9 +100,20 @@ export default function SubmissionsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <pre className="text-sm bg-muted p-3 rounded overflow-auto">
-                  {JSON.stringify(submission.form_data, null, 2)}
-                </pre>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Form Data:</h4>
+                    <pre className="text-sm bg-muted p-3 rounded overflow-auto">
+                      {JSON.stringify(submission.ai_metadata, null, 2)}
+                    </pre>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Raw Webhook:</h4>
+                    <pre className="text-sm bg-muted p-3 rounded overflow-auto max-h-32">
+                      {submission.content_input}
+                    </pre>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))
