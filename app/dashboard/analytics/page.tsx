@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchWithCache } from '@/lib/client-cache'
 import { supabase } from '@/lib/supabase'
 import AIAnalytics from '@/components/ai-analytics'
@@ -34,8 +34,6 @@ export default function AnalyticsPage() {
   const [selectedTab, setSelectedTab] = useState<'chat' | 'woo' | 'google'>('chat')
   const [insightsLoading, setInsightsLoading] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [searchConsoleLoading, setSearchConsoleLoading] = useState(false)
-  const [searchConsoleData, setSearchConsoleData] = useState<any>(null)
   const [historyItems, setHistoryItems] = useState<Array<{id: string, created_at: string, content: string}>>([])
 
   // Derive a short title from content (first non-empty line)
@@ -145,8 +143,7 @@ export default function AnalyticsPage() {
         const gaDevices = get(2)
         const scSummary = get(3)
         
-        // Store Search Console data for display
-        setSearchConsoleData(scSummary)
+        // Process Search Console data for analysis
         const sessions = gaSummary?.sessions ?? gaSummary?.data?.sessions
         const users = gaSummary?.users ?? gaSummary?.data?.users
         const topPage = gaPages?.rows?.[0]?.dimensionValues?.[0]?.value || gaPages?.data?.[0]?.page
@@ -450,7 +447,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={fetchChatLogs} variant="outline">
+            <Button onClick={() => window.location.reload()} variant="outline">
               Retry
             </Button>
           </CardContent>

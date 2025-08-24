@@ -21,13 +21,15 @@ import {
   Menu,
   X,
   Brain,
-  ShoppingCart
+  ShoppingCart,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Chat Logs', href: '/dashboard/logs', icon: MessageSquare },
+  { name: 'Form Submissions', href: '/dashboard/submissions', icon: FileText },
   { name: 'AI Analytics', href: '/dashboard/analytics', icon: Brain },
   { name: 'WooCommerce', href: '/dashboard/woocommerce', icon: ShoppingCart },
   { name: 'Google Analytics', href: '/dashboard/google-analytics', icon: BarChart3 },
