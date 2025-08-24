@@ -28,15 +28,14 @@ export default function SubmissionsPage() {
   const fetchSubmissions = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('content_type', 'Form Submission')
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (error) throw error
-      setSubmissions(data || [])
+      const response = await fetch('/api/submissions')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch submissions')
+      }
+      
+      const data = await response.json()
+      setSubmissions(data.submissions || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch submissions')
     } finally {
