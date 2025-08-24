@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     // Handle both formats of SC_SITE (https:// and sc-domain:) and accept query override
     const rawSite = searchParams.get('site') || process.env.SC_SITE || 'sc-domain:tradezone.sg'
     // Normalize to sc-domain:example.com (no trailing slash)
-    function normalizeSite(value: string) {
+    const normalizeSite = (value: string) => {
       let v = value.trim()
       // Strip protocol if present
       if (v.startsWith('https://')) v = v.slice('https://'.length)
@@ -127,8 +127,8 @@ export async function GET(req: NextRequest) {
     
     // Use direct queries instead of RPC functions
     // Query for top queries
-    let topQueries = [];
-    let queriesError = null;
+    let topQueries: any[] = [];
+    let queriesError: any = null;
     
     try {
       const { data, error } = await supabase
@@ -190,8 +190,8 @@ export async function GET(req: NextRequest) {
     }
     
     // Query for top pages
-    let topPages = [];
-    let pagesError = null;
+    let topPages: any[] = [];
+    let pagesError: any = null;
     
     try {
       const { data, error } = await supabase
@@ -291,8 +291,8 @@ export async function GET(req: NextRequest) {
         range: { startDate, endDate },
       },
       dailyData: summaryData,
-      topQueries: topQueries || [],
-      topPages: topPages || [],
+      topQueries,
+      topPages,
       dataSource: 'supabase',
       ...(debug ? { debug: diagnostics } : {}),
     })
