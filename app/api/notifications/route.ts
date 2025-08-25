@@ -44,14 +44,18 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    const { data: notifications, error } = await supabaseAdmin
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+    let notifications = null
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
 
-    if (error && error.code !== 'PGRST116' && error.code !== '42P01') { // Ignore table not found for now
-      throw error
+      if (error && error.code !== 'PGRST116' && error.code !== '42P01') { // Ignore table not found for now
+        throw error
+      }
+      notifications = data
     }
 
     // Mock notifications if table doesn't exist yet
