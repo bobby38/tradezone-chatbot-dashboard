@@ -383,55 +383,63 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          <p className="text-muted-foreground">Welcome to your Tradezone chatbot analytics dashboard</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Welcome to your Tradezone chatbot analytics dashboard</p>
         </div>
-        <div className="flex gap-2">
-          <div className="rounded-md border p-0.5 mr-2">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="rounded-md border p-0.5 mr-0 sm:mr-2">
             <Button variant={period === 'week' ? 'default' : 'ghost'} size="sm" onClick={() => setPeriod('week')}>Week</Button>
             <Button variant={period === 'month' ? 'default' : 'ghost'} size="sm" onClick={() => setPeriod('month')}>Month</Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Link href="/dashboard/logs">
-            <Button size="sm" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              View Logs
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 flex-1 sm:flex-initial"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-          </Link>
+            <Link href="/dashboard/logs" className="flex-1 sm:flex-initial">
+              <Button size="sm" className="flex items-center gap-2 w-full">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">View Logs</span>
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Search Console + Google Analytics side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <Card className="overflow-hidden">
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Search Console</CardTitle>
-              <CardDescription>Clicks & Impressions — last {trafficDays} days vs previous {trafficDays} days</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">Search Console</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Clicks & Impressions — last {trafficDays} days vs previous {trafficDays} days
+              </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 shrink-0">
               {[7, 28, 90].map((d) => (
                 <button
                   key={d}
                   onClick={() => setTrafficDays(d as 7 | 28 | 90)}
-                  className={`rounded-md px-3 py-1 text-xs border ${trafficDays === d ? 'bg-purple-600 text-white border-purple-600' : 'bg-transparent hover:bg-muted/50'}`}
+                  className={`rounded-md px-2 py-1 text-xs border whitespace-nowrap ${
+                    trafficDays === d 
+                      ? 'bg-purple-600 text-white border-purple-600' 
+                      : 'bg-transparent hover:bg-muted/50'
+                  }`}
                 >
-                  {d === 90 ? '3 months' : `${d} days`}
+                  {d === 90 ? '3mo' : `${d}d`}
                 </button>
               ))}
             </div>
@@ -444,15 +452,19 @@ export default function DashboardPage() {
             const iNow = scTraffic.reduce((s, x) => s + (x.impressions || 0), 0)
             const iPrev = scTraffic.reduce((s, x) => s + (x.prevImpressions || 0), 0)
             return (
-              <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
-                <span className="rounded-md bg-muted px-2 py-1">Clicks: {cNow.toLocaleString()} vs {cPrev.toLocaleString()}</span>
-                <span className="rounded-md bg-muted px-2 py-1">Impr.: {iNow.toLocaleString()} vs {iPrev.toLocaleString()}</span>
+              <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs">
+                <span className="rounded-md bg-muted px-2 py-1 text-center">
+                  Clicks: {cNow.toLocaleString()} vs {cPrev.toLocaleString()}
+                </span>
+                <span className="rounded-md bg-muted px-2 py-1 text-center">
+                  Impr.: {iNow.toLocaleString()} vs {iPrev.toLocaleString()}
+                </span>
               </div>
             )
           })()}
-          <div className="h-64">
+          <div className="h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={scTraffic.length ? scTraffic : []} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+              <LineChart data={scTraffic.length ? scTraffic : []} margin={{ left: 4, right: 4, top: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
@@ -469,21 +481,27 @@ export default function DashboardPage() {
       </Card>
 
       {/* Website Traffic (GA) comparative chart */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Website Traffic</CardTitle>
-              <CardDescription>New Users — last {trafficDays} days vs previous {trafficDays} days</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">Website Traffic</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                New Users — last {trafficDays} days vs previous {trafficDays} days
+              </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 shrink-0">
               {[7, 28, 90].map((d) => (
                 <button
                   key={d}
                   onClick={() => setTrafficDays(d as 7 | 28 | 90)}
-                  className={`rounded-md px-3 py-1 text-xs border ${trafficDays === d ? 'bg-purple-600 text-white border-purple-600' : 'bg-transparent hover:bg-muted/50'}`}
+                  className={`rounded-md px-2 py-1 text-xs border whitespace-nowrap ${
+                    trafficDays === d 
+                      ? 'bg-purple-600 text-white border-purple-600' 
+                      : 'bg-transparent hover:bg-muted/50'
+                  }`}
                 >
-                  {d === 90 ? '3 months' : `${d} days`}
+                  {d === 90 ? '3mo' : `${d}d`}
                 </button>
               ))}
             </div>
@@ -501,10 +519,10 @@ export default function DashboardPage() {
               const currAvg = trafficDays ? Math.round(currTotal / trafficDays) : 0
               const prevAvg = trafficDays ? Math.round(prevTotal / trafficDays) : 0
               return (
-                <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
-                  <span className="rounded-md bg-muted px-2 py-1">Current total: {currTotal.toLocaleString()}</span>
-                  <span className="rounded-md bg-muted px-2 py-1">Prev total: {prevTotal.toLocaleString()}</span>
-                  <span className="rounded-md bg-muted px-2 py-1">Avg/day: {currAvg} vs {prevAvg}</span>
+                <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-xs">
+                  <span className="rounded-md bg-muted px-2 py-1 text-center">Current: {currTotal.toLocaleString()}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-center">Prev: {prevTotal.toLocaleString()}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-center">Avg/day: {currAvg} vs {prevAvg}</span>
                 </div>
               )
             })()
@@ -521,9 +539,9 @@ export default function DashboardPage() {
             }
             return null
           })()}
-          <div className="h-64">
+          <div className="h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={gaTraffic} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+              <LineChart data={gaTraffic} margin={{ left: 4, right: 4, top: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
@@ -580,9 +598,9 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
+          <div className="h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+              <LineChart data={chartData} margin={{ left: 4, right: 4, top: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
@@ -758,9 +776,9 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {gaTopPages.slice(0, 5).map((p, i) => (
                 <div key={p.page} className="flex items-center justify-between rounded-md border p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 text-xs rounded-full bg-secondary flex items-center justify-center">{i + 1}</div>
-                    <div className="text-sm truncate max-w-[220px]" title={p.page}>{p.page}</div>
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div className="w-6 h-6 text-xs rounded-full bg-secondary flex items-center justify-center shrink-0">{i + 1}</div>
+                    <div className="text-sm truncate max-w-[150px] sm:max-w-[220px]" title={p.page}>{p.page}</div>
                   </div>
                   <div className="text-sm font-medium">{p.views.toLocaleString()} views</div>
                 </div>
