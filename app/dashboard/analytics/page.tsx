@@ -394,19 +394,23 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
+      <div className="space-y-4 md:space-y-6">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Back</span>
+              </Button>
+            </Link>
+          </div>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              AI Analytics
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+              <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 shrink-0" />
+              <span className="leading-tight">AI Analytics</span>
             </h1>
-            <p className="text-gray-600">Loading chat data for analysis...</p>
+            <p className="text-gray-600 text-sm sm:text-base md:text-lg mt-1">Loading chat data for analysis...</p>
           </div>
         </div>
         
@@ -425,19 +429,23 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
+      <div className="space-y-4 md:space-y-6">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Back</span>
+              </Button>
+            </Link>
+          </div>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              AI Analytics
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+              <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 shrink-0" />
+              <span className="leading-tight">AI Analytics</span>
             </h1>
-            <p className="text-gray-600">Error loading data</p>
+            <p className="text-gray-600 text-sm sm:text-base md:text-lg mt-1">Error loading data</p>
           </div>
         </div>
         
@@ -458,33 +466,19 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#1F1F1F' }}>
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 md:space-y-6 p-4 md:p-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-gray-700">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+              <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-gray-700 shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Back</span>
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2">
-                <Brain className="h-8 w-8 text-purple-400" />
-                AI Analytics
-              </h1>
-              <p className="text-gray-300 text-lg">
-                Intelligent insights from {chatLogs.length} conversations
-                {reportTimestamp && (
-                  <span className="block text-sm text-gray-500 mt-1">
-                    Report generated: {reportTimestamp.toLocaleString()}
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        
-          <div className="flex gap-2">
+            
+            <div className="flex gap-1 sm:gap-2">
             {persistentReport && (
               <>
                 <div className="flex gap-1">
@@ -533,8 +527,24 @@ export default function AnalyticsPage() {
               <Settings className="h-4 w-4 mr-2" />
               Configure API
             </Button>
+            </div>
           </div>
-      </div>
+          
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2">
+              <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400 shrink-0" />
+              <span className="leading-tight">AI Analytics</span>
+            </h1>
+            <p className="text-gray-300 text-sm sm:text-base md:text-lg mt-1">
+              Intelligent insights from {chatLogs.length} conversations
+              {reportTimestamp && (
+                <span className="block text-xs sm:text-sm text-gray-500 mt-1">
+                  Report generated: {reportTimestamp.toLocaleString()}
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
 
         {/* Tabs: Chat | WooCommerce | Google */}
         <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)} className="space-y-4">

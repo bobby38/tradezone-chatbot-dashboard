@@ -218,32 +218,35 @@ export default function GoogleAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 md:space-y-6 p-4 md:p-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="space-y-4">
+          {/* Top row: Back button and Export button */}
+          <div className="flex justify-between items-center">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+              <Button variant="ghost" size="sm" className="shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span className="sm:hidden">Back</span>
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
-                <BarChart3 className="h-8 w-8 text-purple-600" />
-                Google Analytics & Search Console
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                Comprehensive web analytics and search performance insights
-              </p>
-            </div>
-          </div>
-        
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="border-purple-200 hover:bg-purple-50 hover:text-purple-700">
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
+            
+            <Button variant="outline" size="sm" className="border-purple-200 hover:bg-purple-50 hover:text-purple-700 shrink-0">
+              <Download className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">Export</span>
             </Button>
+          </div>
+          
+          {/* Title and description row */}
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 shrink-0" />
+              <span className="leading-tight">Google Analytics & Search Console</span>
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg mt-1">
+              Comprehensive web analytics and search performance insights
+            </p>
           </div>
         </div>
 
