@@ -1058,7 +1058,7 @@ export default function SettingsPage() {
                 Database URL
               </label>
               <Input
-                value="https://jvkmxtbckpfwypnbubdy.supabase.co"
+                value="https://hbierdnotootxkzgerib.supabase.co"
                 disabled
                 className="bg-gray-50"
               />

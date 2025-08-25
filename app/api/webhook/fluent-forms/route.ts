@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// Use service role key to bypass RLS for webhook inserts
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,8 +43,8 @@ export async function POST(req: NextRequest) {
     
     // Store the entire webhook payload in existing submissions table
     const insertData = {
-      user_id: '00000000-0000-0000-0000-000000000000', // dummy user ID
-      org_id: '00000000-0000-0000-0000-000000000000',  // dummy org ID  
+      user_id: '7696939b-4bb3-4c76-bf63-0c47db8119e9', // real user ID from profiles
+      org_id: '765e1172-b666-471f-9b42-f80c9b5006de',  // real org ID from organizations  
       title: `${submissionType} form submission`,
       content_input: JSON.stringify(body, null, 2),
       content_type: 'Form Submission',
@@ -48,7 +54,9 @@ export async function POST(req: NextRequest) {
     
     console.log('Inserting to submissions table:', JSON.stringify(insertData, null, 2))
     
-    const { data, error } = await supabase
+    console.log('Attempting to insert directly with service role key...')
+    
+    const { data, error } = await supabaseAdmin
       .from('submissions')
       .insert(insertData)
       .select()
@@ -56,14 +64,46 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('Database insert error:', error)
       console.error('Error details:', JSON.stringify(error, null, 2))
-      return NextResponse.json({ error: 'Failed to save submission', details: error.message }, { status: 500 })
+      console.error('Error message:', error.message)
+      console.error('Error code:', error.code)
+      return NextResponse.json({ 
+        error: 'Failed to save submission', 
+        details: error.message || 'Unknown database error',
+        code: error.code,
+        hint: error.hint
+      }, { status: 500 })
     }
     
     console.log(`New ${submissionType} form submission received:`, data)
     
+    // Parse into structured table for analysis
+    if (data?.[0]?.id && formData) {
+      try {
+        console.log('Parsing form data into structured table...')
+        const parseResult = await supabaseAdmin.rpc('parse_fluent_form_submission', {
+          submission_data: formData
+        })
+        
+        if (parseResult.error) {
+          console.error('Error parsing form data:', parseResult.error)
+        } else {
+          console.log('Successfully parsed into structured table:', parseResult.data)
+          
+          // Link the parsed record to the submission
+          await supabaseAdmin
+            .from('fluent_forms_contacts')
+            .update({ submission_id: data[0].id })
+            .eq('id', parseResult.data)
+        }
+      } catch (parseError) {
+        console.error('Parse error:', parseError)
+        // Continue anyway - raw data is still saved
+      }
+    }
+    
     return NextResponse.json({ 
       success: true, 
-      message: 'Form submission received',
+      message: 'Form submission received and parsed',
       id: data?.[0]?.id 
     })
     
