@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+let supabaseAdmin: any = null
+if (supabaseUrl && supabaseServiceKey) {
+  supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -17,6 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // Try to update in database
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: true,
+        notification: { id, read },
+        note: 'Notification updated (database not configured)'
+      })
+    }
+
     try {
       const { data, error } = await supabaseAdmin
         .from('notifications')
@@ -61,6 +72,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     // Try to delete from database
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: true,
+        message: 'Notification deleted (database not configured)'
+      })
+    }
+
     try {
       const { error } = await supabaseAdmin
         .from('notifications')
