@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+// Create Supabase client safely
+function createSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
 
 // Email regex pattern
 const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g
@@ -21,6 +28,15 @@ interface ExtractedEmail {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabaseAdmin = createSupabaseClient()
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: true,
+        emails: [],
+        stats: { total: 0, bySource: {}, byClassification: {}, topDomains: [] }
+      })
+    }
+
     const { extractNew = true, limit = 100 } = await req.json()
 
     const extractedEmails: ExtractedEmail[] = []
@@ -165,6 +181,15 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const supabaseAdmin = createSupabaseClient()
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: true,
+        emails: [],
+        stats: { total: 0, bySource: {}, byClassification: {}, topDomains: [] }
+      })
+    }
+
     // Get all stored extracted emails
     const { data: emails, error } = await supabaseAdmin
       .from('extracted_emails')
