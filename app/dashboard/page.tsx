@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
  import { supabase } from '@/lib/supabase'
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
  import { Button } from '@/components/ui/button'
- import { BarChart3, MessageSquare, Users, TrendingUp, Clock, AlertCircle, CheckCircle, RefreshCw, Brain } from 'lucide-react'
+ import { BarChart3, MessageSquare, Users, TrendingUp, Clock, AlertCircle, CheckCircle, RefreshCw, Brain, FileText, Mail, PhoneCall } from 'lucide-react'
  import Link from 'next/link'
  import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 
@@ -17,6 +17,11 @@ interface DashboardStats {
   errorRate: number
   totalTokens: number
   avgSessionDuration: number
+  totalSubmissions: number
+  todaySubmissions: number
+  pendingSubmissions: number
+  contactForms: number
+  tradeInForms: number
 }
 
 interface RecentActivity {
@@ -38,7 +43,12 @@ export default function DashboardPage() {
     activeUsers: 0,
     errorRate: 0,
     totalTokens: 0,
-    avgSessionDuration: 0
+    avgSessionDuration: 0,
+    totalSubmissions: 0,
+    todaySubmissions: 0,
+    pendingSubmissions: 0,
+    contactForms: 0,
+    tradeInForms: 0
   })
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
@@ -247,6 +257,59 @@ export default function DashboardPage() {
         if (td?.data) setGaDevices(td.data)
       } catch {}
 
+      // Fetch form submission stats
+      try {
+        // Get total submissions
+        const { count: totalSubmissions } = await supabase
+          .from('submissions')
+          .select('*', { count: 'exact', head: true })
+          .eq('content_type', 'Form Submission')
+
+        // Get today's submissions
+        const { count: todaySubmissions } = await supabase
+          .from('submissions')
+          .select('*', { count: 'exact', head: true })
+          .eq('content_type', 'Form Submission')
+          .gte('created_at', today)
+
+        // Get pending submissions
+        const { count: pendingSubmissions } = await supabase
+          .from('submissions')
+          .select('*', { count: 'exact', head: true })
+          .eq('content_type', 'Form Submission')
+          .eq('status', 'ready')
+
+        // Get contact vs trade-in form counts
+        const { data: allSubmissions } = await supabase
+          .from('submissions')
+          .select('ai_metadata')
+          .eq('content_type', 'Form Submission')
+
+        let contactForms = 0
+        let tradeInForms = 0
+
+        allSubmissions?.forEach(submission => {
+          const metadata = submission.ai_metadata || {}
+          if (metadata.device_type || metadata.console_type || metadata.body_condition) {
+            tradeInForms++
+          } else {
+            contactForms++
+          }
+        })
+
+        setStats(prevStats => ({
+          ...prevStats,
+          totalSubmissions: totalSubmissions || 0,
+          todaySubmissions: todaySubmissions || 0,
+          pendingSubmissions: pendingSubmissions || 0,
+          contactForms,
+          tradeInForms
+        }))
+
+      } catch (submissionError) {
+        console.error('Error fetching submission stats:', submissionError)
+      }
+
       // chat traffic series now computed in a separate effect
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
@@ -259,7 +322,7 @@ export default function DashboardPage() {
   const statCards = [
     {
       title: 'Total Conversations',
-      value: stats.totalChats.toLocaleString(),
+      value: (stats.totalChats || 0).toLocaleString(),
       description: 'All time conversations',
       icon: MessageSquare,
       color: 'text-primary',
@@ -267,23 +330,23 @@ export default function DashboardPage() {
     },
     {
       title: 'Today\'s Chats',
-      value: stats.todayChats.toLocaleString(),
+      value: (stats.todayChats || 0).toLocaleString(),
       description: 'Conversations today',
       icon: TrendingUp,
       color: 'text-emerald-400',
       trend: '+8%'
     },
     {
-      title: 'Active Users',
-      value: stats.activeUsers.toLocaleString(),
-      description: 'Unique users today',
-      icon: Users,
-      color: 'text-blue-400',
-      trend: '+5%'
+      title: 'Form Submissions',
+      value: (stats.totalSubmissions || 0).toLocaleString(),
+      description: 'Total form submissions',
+      icon: FileText,
+      color: 'text-purple-400',
+      trend: `${(stats.todaySubmissions || 0) > 0 ? '+' : ''}${stats.todaySubmissions || 0} today`
     },
     {
       title: 'Success Rate',
-      value: `${stats.successRate}%`,
+      value: `${stats.successRate || 0}%`,
       description: 'Successful interactions',
       icon: CheckCircle,
       color: 'text-green-400',
@@ -532,6 +595,72 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Form Submissions Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-purple-400" />
+              Form Submissions Overview
+            </CardTitle>
+            <CardDescription>Summary of contact and trade-in forms</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                <Mail className="h-6 w-6 text-blue-500 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-blue-600">{stats.contactForms}</div>
+                <div className="text-sm text-blue-700 dark:text-blue-400">Contact Forms</div>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-950/30">
+                <PhoneCall className="h-6 w-6 text-green-500 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-green-600">{stats.tradeInForms}</div>
+                <div className="text-sm text-green-700 dark:text-green-400">Trade-in Forms</div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t flex items-center justify-between">
+              <div>
+                <div className="text-sm text-muted-foreground">Pending Review</div>
+                <div className="text-lg font-semibold text-orange-600">{stats.pendingSubmissions}</div>
+              </div>
+              <Link href="/dashboard/submissions">
+                <Button size="sm" variant="default">Manage</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle>Recent Submissions Activity</CardTitle>
+            <CardDescription>Latest form submission trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <span className="text-sm">Today's Submissions</span>
+                <span className="font-semibold text-primary">{stats.todaySubmissions}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <span className="text-sm">Total This Month</span>
+                <span className="font-semibold text-primary">{stats.totalSubmissions}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <span className="text-sm">Response Rate</span>
+                <span className="font-semibold text-green-600">
+                  {stats.totalSubmissions > 0 ? Math.round(((stats.totalSubmissions - stats.pendingSubmissions) / stats.totalSubmissions) * 100) : 0}%
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t flex justify-end">
+              <Link href="/dashboard/submissions">
+                <Button size="sm" variant="outline">View Analytics</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Highlights: keep each page birdview entry points */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

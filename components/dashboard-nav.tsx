@@ -22,14 +22,18 @@ import {
   X,
   Brain,
   ShoppingCart,
-  FileText
+  FileText,
+  Mail
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationCenter } from '@/components/notification-center'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
   { name: 'Chat Logs', href: '/dashboard/logs', icon: MessageSquare },
   { name: 'Form Submissions', href: '/dashboard/submissions', icon: FileText },
+  { name: 'Email Extraction', href: '/dashboard/emails', icon: Mail },
+  { name: 'AI Insights', href: '/dashboard/insights', icon: Brain },
   { name: 'AI Analytics', href: '/dashboard/analytics', icon: Brain },
   { name: 'WooCommerce', href: '/dashboard/woocommerce', icon: ShoppingCart },
   { name: 'Google Analytics', href: '/dashboard/google-analytics', icon: BarChart3 },
@@ -79,7 +83,8 @@ export function DashboardNav() {
             </div>
           </div>
           
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+            <NotificationCenter />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center justify-center h-8 w-8 rounded-full bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-colors">

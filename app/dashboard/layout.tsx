@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
-import { DashboardNav } from '@/components/dashboard-nav'
+import { SidebarNav } from '@/components/sidebar-nav'
 
 export default function DashboardLayout({
   children,
@@ -38,13 +38,15 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardNav />
-      <main className="py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {children}
-        </div>
-      </main>
+    <div className="min-h-screen bg-background flex">
+      <SidebarNav />
+      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8 overflow-auto">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
