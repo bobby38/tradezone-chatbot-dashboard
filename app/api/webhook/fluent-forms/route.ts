@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { EmailService } from '@/lib/email-service'
 
 // Use service role key to bypass RLS for webhook inserts
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -88,14 +89,27 @@ export async function POST(req: NextRequest) {
     console.log(`New ${submissionType} form submission received:`, data)
     
     // Form submission saved successfully to submissions table
-    // Note: Advanced parsing to fluent_forms_contacts table can be added later
+    // Send email notification
     if (data?.[0]?.id && formData) {
       console.log('Form data saved successfully to submissions table')
+      
+      // Send email notification (async, don't block response)
+      EmailService.sendFormNotification({
+        type: submissionType as 'contact' | 'trade-in',
+        submissionId: data[0].id,
+        formData: formData,
+        submittedAt: new Date().toISOString()
+      }).catch(error => {
+        console.error('Failed to send email notification:', error)
+        // Don't fail the webhook if email fails
+      })
+      
+      console.log('Email notification sent for submission:', data[0].id)
     }
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Form submission received and parsed',
+      message: 'Form submission received and notification sent',
       id: data?.[0]?.id 
     })
     
