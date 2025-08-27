@@ -1,41 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables:', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseServiceKey
+  })
+}
+
+const supabase = createClient(supabaseUrl!, supabaseServiceKey!)
+
+// Default organization ID - you can make this dynamic later
+const DEFAULT_ORG_ID = '765e1172-b666-471f-9b42-f80c9b5006de'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const settingType = searchParams.get('type')
-    const userId = searchParams.get('userId') || 'default'
-
-    let query = supabase
-      .from('settings')
-      .select('*')
-      .eq('user_id', userId)
-
-    if (settingType) {
-      query = query.eq('setting_type', settingType)
-    }
-
-    const { data, error } = await query
+    // Get settings from organization settings field instead of separate table
+    const { data: org, error } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', DEFAULT_ORG_ID)
+      .single()
 
     if (error) {
-      console.error('Error fetching settings:', error)
+      console.error('Error fetching organization settings:', error)
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
 
-    // Transform data into a more usable format
-    const settings: Record<string, any> = {}
-    data?.forEach(setting => {
-      if (!settings[setting.setting_type]) {
-        settings[setting.setting_type] = {}
-      }
-      settings[setting.setting_type][setting.setting_key] = setting.setting_value
-    })
-
+    const settings = org?.settings || {}
     return NextResponse.json({ settings })
   } catch (error) {
     console.error('Settings GET error:', error)
@@ -54,17 +49,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get current settings
+    const { data: org, error: fetchError } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', DEFAULT_ORG_ID)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching organization:', fetchError)
+      return NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 })
+    }
+
+    // Update the nested settings
+    const currentSettings = org?.settings || {}
+    if (!currentSettings[settingType]) {
+      currentSettings[settingType] = {}
+    }
+    currentSettings[settingType][settingKey] = settingValue
+
+    // Save back to organization
     const { data, error } = await supabase
-      .from('settings')
-      .upsert({
-        user_id: userId,
-        setting_type: settingType,
-        setting_key: settingKey,
-        setting_value: settingValue,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,setting_type,setting_key'
-      })
+      .from('organizations')
+      .update({ settings: currentSettings })
+      .eq('id', DEFAULT_ORG_ID)
       .select()
 
     if (error) {
@@ -81,7 +89,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { settings, userId = 'default' } = await request.json()
+    const { settings } = await request.json()
 
     if (!settings || typeof settings !== 'object') {
       return NextResponse.json(
@@ -90,25 +98,27 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Prepare batch upsert data
-    const upsertData = []
-    for (const [settingType, typeSettings] of Object.entries(settings)) {
-      for (const [settingKey, settingValue] of Object.entries(typeSettings as Record<string, any>)) {
-        upsertData.push({
-          user_id: userId,
-          setting_type: settingType,
-          setting_key: settingKey,
-          setting_value: settingValue,
-          updated_at: new Date().toISOString()
-        })
-      }
+    // Get current settings
+    const { data: org, error: fetchError } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', DEFAULT_ORG_ID)
+      .single()
+
+    if (fetchError) {
+      console.error('Error fetching organization:', fetchError)
+      return NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 })
     }
 
+    // Merge with existing settings
+    const currentSettings = org?.settings || {}
+    const mergedSettings = { ...currentSettings, ...settings }
+
+    // Save back to organization
     const { data, error } = await supabase
-      .from('settings')
-      .upsert(upsertData, {
-        onConflict: 'user_id,setting_type,setting_key'
-      })
+      .from('organizations')
+      .update({ settings: mergedSettings })
+      .eq('id', DEFAULT_ORG_ID)
       .select()
 
     if (error) {

@@ -39,7 +39,7 @@ export class SettingsManager {
       if (settingType) params.append('type', settingType)
       params.append('userId', this.userId)
 
-      const response = await fetch(`/api/settings?${params}`)
+      const response = await fetch(`/api/settings-simple?${params}`)
       if (!response.ok) {
         throw new Error('Failed to load settings')
       }
@@ -59,7 +59,7 @@ export class SettingsManager {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
       
-      const response = await fetch('/api/settings', {
+      const response = await fetch('/api/settings-simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,7 +96,7 @@ export class SettingsManager {
 
   static async saveAllSettings(settings: SettingsData): Promise<boolean> {
     try {
-      const response = await fetch('/api/settings', {
+      const response = await fetch('/api/settings-simple', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

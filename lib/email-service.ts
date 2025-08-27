@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { SettingsManager } from './settings'
+import { ServerSettingsManager } from './server-settings'
 
 export interface EmailNotificationData {
   type: 'contact' | 'trade-in'
@@ -11,25 +12,52 @@ export interface EmailNotificationData {
 export class EmailService {
   static async getSmtpConfig() {
     try {
-      // Try to load from settings first
+      // First try to load from server cache (for server-side access)
+      const serverSettings = ServerSettingsManager.getSettings('smtp')
+      if (serverSettings && serverSettings.config) {
+        const config = serverSettings.config
+        if (config.host && config.user && config.pass) {
+          console.log('Using SMTP config from server cache')
+          return {
+            host: config.host,
+            port: parseInt(config.port || '587'),
+            secure: config.port === '465', // true for 465, false for other ports
+            auth: {
+              user: config.user,
+              pass: config.pass,
+            },
+            fromEmail: config.fromEmail || config.user,
+            fromName: config.fromName || 'TradeZone Notifications'
+          }
+        }
+      }
+
+      // Fallback to client settings (for client-side access)
       const settings = await SettingsManager.loadSettings('smtp')
       const smtpSettings = settings.smtp
+      
+      // Handle both formats: direct fields or nested config object
+      let config = smtpSettings
+      if (smtpSettings && 'config' in smtpSettings && typeof (smtpSettings as any).config === 'object') {
+        config = (smtpSettings as any).config
+      }
 
-      if (smtpSettings && smtpSettings.host && smtpSettings.user && smtpSettings.pass) {
+      if (config && config.host && config.user && config.pass) {
+        console.log('Using SMTP config from client settings')
         return {
-          host: smtpSettings.host,
-          port: parseInt(smtpSettings.port || '587'),
-          secure: smtpSettings.port === '465', // true for 465, false for other ports
+          host: config.host,
+          port: parseInt(config.port || '587'),
+          secure: config.port === '465', // true for 465, false for other ports
           auth: {
-            user: smtpSettings.user,
-            pass: smtpSettings.pass,
+            user: config.user,
+            pass: config.pass,
           },
-          fromEmail: smtpSettings.fromEmail || smtpSettings.user,
-          fromName: smtpSettings.fromName || 'TradeZone Notifications'
+          fromEmail: config.fromEmail || config.user,
+          fromName: config.fromName || 'TradeZone Notifications'
         }
       }
     } catch (error) {
-      console.log('Could not load SMTP settings from database, falling back to env vars')
+      console.log('Could not load SMTP settings from server or client, falling back to env vars')
     }
 
     // Fallback to environment variables
@@ -55,7 +83,7 @@ export class EmailService {
         return false
       }
 
-      const transporter = nodemailer.createTransporter({
+      const transporter = nodemailer.createTransport({
         host: smtpConfig.host,
         port: smtpConfig.port,
         secure: smtpConfig.secure,
