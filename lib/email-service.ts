@@ -98,10 +98,17 @@ export class EmailService {
 
       // Determine recipient email (you can make this configurable later)
       const recipientEmail = smtpConfig.fromEmail // For now, send to same email
+      
+      // Extract customer email for reply-to
+      const customerEmail = data.formData.email || data.formData.customer_email
+      const customerName = data.formData.name || data.formData.full_name || data.formData.customer_name
 
       const mailOptions = {
         from: smtpConfig.fromName ? `"${smtpConfig.fromName}" <${smtpConfig.fromEmail}>` : smtpConfig.fromEmail,
         to: recipientEmail,
+        replyTo: customerEmail && customerEmail !== 'Not provided' ? 
+          (customerName ? `"${customerName}" <${customerEmail}>` : customerEmail) : 
+          undefined,
         subject: subject,
         html: emailContent,
       }
@@ -267,6 +274,7 @@ export class EmailService {
           </div>
           
           <div class="footer">
+            <p><strong>💡 To reply to this customer:</strong> Simply click "Reply" to send your response directly to ${email !== 'Not provided' ? email : 'the customer'}.</p>
             <p>This notification was sent from your TradeZone Dashboard.</p>
             <p>Visit your dashboard to manage and respond to submissions.</p>
           </div>
