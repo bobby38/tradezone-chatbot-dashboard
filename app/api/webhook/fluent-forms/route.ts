@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
     
     // Extract form data from Fluent Forms webhook payload
     const formData = body.data || body
-    const formType = body.form_id ? `form_${body.form_id}` : 'unknown'
     
     // Determine if this is contact form or trade-in form based on fields
     let submissionType = 'contact'
@@ -88,29 +87,10 @@ export async function POST(req: NextRequest) {
     
     console.log(`New ${submissionType} form submission received:`, data)
     
-    // Parse into structured table for analysis
+    // Form submission saved successfully to submissions table
+    // Note: Advanced parsing to fluent_forms_contacts table can be added later
     if (data?.[0]?.id && formData) {
-      try {
-        console.log('Parsing form data into structured table...')
-        const parseResult = await supabaseAdmin.rpc('parse_fluent_form_submission', {
-          submission_data: formData
-        })
-        
-        if (parseResult.error) {
-          console.error('Error parsing form data:', parseResult.error)
-        } else {
-          console.log('Successfully parsed into structured table:', parseResult.data)
-          
-          // Link the parsed record to the submission
-          await supabaseAdmin
-            .from('fluent_forms_contacts')
-            .update({ submission_id: data[0].id })
-            .eq('id', parseResult.data)
-        }
-      } catch (parseError) {
-        console.error('Parse error:', parseError)
-        // Continue anyway - raw data is still saved
-      }
+      console.log('Form data saved successfully to submissions table')
     }
     
     return NextResponse.json({ 
