@@ -70,17 +70,24 @@ Available tools:
 2. **sendemail**: Send inquiry to staff (use when customer explicitly requests contact)
 
 Always search for products when asked. Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
-              voice: config.config.voice || "alloy",
-              input_audio_format: "pcm16",
-              output_audio_format: "pcm16",
-              input_audio_transcription: {
-                model: "whisper-1",
-              },
-              turn_detection: {
-                type: "server_vad",
-                threshold: 0.5,
-                prefix_padding_ms: 300,
-                silence_duration_ms: 500,
+              modalities: ["text", "audio"],
+              tool_choice: "auto",
+              audio: {
+                input: {
+                  modalities: ["audio"],
+                  transcription: {
+                    model: "whisper-1",
+                  },
+                  turn_detection: {
+                    type: "server_vad",
+                    threshold: 0.5,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 500,
+                  },
+                },
+                output: {
+                  modalities: ["audio"],
+                },
               },
               tools: [
                 {
@@ -262,8 +269,12 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
         break;
 
       case "error":
-        console.error("[Realtime Error]:", event.error);
-        setStatus(`Error: ${event.error.message}`);
+        console.error("[Realtime Error]:", event);
+        if (event.error?.message) {
+          setStatus(`Error: ${event.error.message}`);
+        } else {
+          setStatus("Realtime error. See console for details.");
+        }
         break;
     }
   };

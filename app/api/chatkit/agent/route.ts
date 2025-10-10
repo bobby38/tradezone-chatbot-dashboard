@@ -7,6 +7,10 @@ import {
   handleEmailSend,
 } from "@/lib/tools";
 import { CHATKIT_DEFAULT_PROMPT } from "@/lib/chatkit/defaultPrompt";
+import {
+  recordAgentTelemetry,
+  ToolUsageSummary,
+} from "@/lib/chatkit/telemetry";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
@@ -148,6 +152,8 @@ export async function POST(request: NextRequest) {
         `[ChatKit] Processing ${assistantMessage.tool_calls.length} tool calls`,
       );
 
+      const toolSummaries: ToolUsageSummary[] = [];
+
       // Execute each tool
       for (const toolCall of assistantMessage.tool_calls) {
         const functionName = toolCall.function.name;
@@ -165,9 +171,21 @@ export async function POST(request: NextRequest) {
           } else if (functionName === "sendemail") {
             toolResult = await handleEmailSend(functionArgs);
           }
+          toolSummaries.push({
+            name: functionName,
+            args: functionArgs,
+            resultPreview: toolResult.slice(0, 200),
+          });
         } catch (error) {
           console.error(`[ChatKit] Tool error:`, error);
           toolResult = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
+          toolSummaries.push({
+            name: functionName,
+            args: functionArgs,
+            error:
+              error instanceof Error ? error.message : "Unknown error",
+            resultPreview: toolResult.slice(0, 200),
+          });
         }
 
         // Add tool result to messages as simple text
@@ -207,6 +225,16 @@ export async function POST(request: NextRequest) {
         finalResponse =
           "I ran into an issue preparing the results. Please try again in a moment.";
       }
+
+      recordAgentTelemetry({
+        timestamp: new Date().toISOString(),
+        sessionId,
+        prompt: message,
+        responsePreview: finalResponse.slice(0, 280),
+        model: textModel,
+        toolCalls: toolSummaries,
+        historyLength: Array.isArray(history) ? history.length : 0,
+      });
     }
 
     if (!finalResponse || finalResponse.trim().length === 0) {
@@ -230,6 +258,21 @@ export async function POST(request: NextRequest) {
       });
     } catch (logError) {
       console.error("[ChatKit] Logging error:", logError);
+    }
+
+    if (
+      !assistantMessage.tool_calls ||
+      assistantMessage.tool_calls.length === 0
+    ) {
+      recordAgentTelemetry({
+        timestamp: new Date().toISOString(),
+        sessionId,
+        prompt: message,
+        responsePreview: finalResponse.slice(0, 280),
+        model: textModel,
+        toolCalls: [],
+        historyLength: Array.isArray(history) ? history.length : 0,
+      });
     }
 
     return NextResponse.json({
