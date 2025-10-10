@@ -28,10 +28,13 @@
     config: {
       apiUrl: '',
       position: 'bottom-right',
-      primaryColor: '#2563eb',
+      primaryColor: '#8b5cf6', // TradeZone purple
+      secondaryColor: '#6d28d9',
+      accentColor: '#a78bfa',
+      darkBg: '#1a1a2e',
       greeting: 'Hi! How can I help you today?',
       botName: 'Izacc',
-      placeholder: 'Type your message...',
+      placeholder: 'Ask about products, prices, trade-ins...',
       videoUrl: '', // Optional hero video
       enableVoice: true,
       enableVideo: true

@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
 
+// CORS headers for widget integration
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
   try {
     const { sessionId } = await req.json();
@@ -7,7 +19,7 @@ export async function POST(req: Request) {
     if (!sessionId) {
       return NextResponse.json(
         { success: false, error: "Session ID is required" },
-        { status: 400 },
+        { status: 400, headers: corsHeaders },
       );
     }
 
@@ -26,16 +38,16 @@ export async function POST(req: Request) {
       console.error("Missing OpenAI API key or Vector Store ID");
       return NextResponse.json(
         { success: false, error: "Server configuration missing" },
-        { status: 500 },
+        { status: 500, headers: corsHeaders },
       );
     }
 
-    return NextResponse.json({ success: true, config });
+    return NextResponse.json({ success: true, config }, { headers: corsHeaders });
   } catch (error) {
     console.error("[Realtime API] Error:", error);
     return NextResponse.json(
       { success: false, error: "Internal Server Error" },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     );
   }
 }
