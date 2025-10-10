@@ -54,6 +54,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           JSON.stringify({
             type: "session.update",
             session: {
+              type: "realtime",
               modalities: ["text", "audio"],
               instructions: `You are Izacc, TradeZone Singapore's helpful AI assistant.
 
@@ -64,12 +65,10 @@ Your role:
 - Provide product recommendations
 
 Available tools:
-1. **file_search**: Search our product catalog and documentation (USE THIS FIRST)
-2. **searchtool**: Web search via Perplexity (use ONLY if file_search finds nothing)
-3. **sendemail**: Send inquiry to staff (use when customer explicitly requests contact)
+1. **searchtool**: Search for TradeZone products and information
+2. **sendemail**: Send inquiry to staff (use when customer explicitly requests contact)
 
-Always search file_search first. Only use searchtool if file_search returns no useful results.
-Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
+Always search for products first. Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
               voice: config.config.voice || "alloy",
               input_audio_format: "pcm16",
               output_audio_format: "pcm16",
@@ -84,23 +83,16 @@ Be friendly, concise, and helpful. Speak naturally as if talking to a customer i
               },
               tools: [
                 {
-                  type: "file_search",
-                  file_search: {
-                    max_num_results: 5,
-                  },
-                },
-                {
                   type: "function",
                   name: "searchtool",
                   description:
-                    "Search the web using Perplexity AI. ONLY use this if file_search returns no useful product information.",
+                    "Search for TradeZone products including gaming consoles, laptops, phones, accessories, pricing and availability.",
                   parameters: {
                     type: "object",
                     properties: {
                       query: {
                         type: "string",
-                        description:
-                          "The search query focused on tradezone.sg products",
+                        description: "The product search query",
                       },
                     },
                     required: ["query"],
