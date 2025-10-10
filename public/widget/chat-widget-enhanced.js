@@ -126,17 +126,25 @@
         #tz-chat-window {
           display: none;
           position: fixed;
-          ${this.config.position === 'bottom-right' ? 'right: 20px;' : 'left: 20px;'}
-          bottom: 90px;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
           width: 420px;
           height: 600px;
-          max-height: calc(100vh - 120px);
+          max-height: calc(100vh - 40px);
           background: #1a1a2e;
           border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.5);
           flex-direction: column;
           overflow: hidden;
           border: 1px solid rgba(139, 92, 246, 0.3);
+          cursor: move;
+          z-index: 999998;
+        }
+        
+        #tz-chat-window.dragging {
+          cursor: grabbing;
+          user-select: none;
         }
 
         #tz-chat-window.open {
@@ -235,19 +243,49 @@
           right: 12px;
           background: rgba(0,0,0,0.3);
           border: none;
-          color: white;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
           cursor: pointer;
-          padding: 8px;
-          border-radius: 20px;
           display: flex;
           align-items: center;
           justify-content: center;
-          backdrop-filter: blur(10px);
+          color: white;
           transition: background 0.2s;
+          z-index: 10;
         }
 
         .tz-chat-close:hover {
           background: rgba(0,0,0,0.5);
+        }
+        
+        .tz-position-controls {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          display: flex;
+          gap: 4px;
+          z-index: 10;
+        }
+        
+        .tz-position-btn {
+          background: rgba(0,0,0,0.3);
+          border: none;
+          border-radius: 4px;
+          width: 24px;
+          height: 24px;
+          cursor: pointer;
+          color: white;
+          font-size: 10px;
+          transition: background 0.2s;
+        }
+        
+        .tz-position-btn:hover {
+          background: rgba(139, 92, 246, 0.5);
+        }
+        
+        .tz-position-btn.active {
+          background: rgba(139, 92, 246, 0.8);
         }
 
         /* Mode Toggle */
@@ -693,6 +731,11 @@
             <div class="tz-chat-hero-overlay">
               <h3 class="tz-chat-hero-title">${this.config.botName}</h3>
               <p class="tz-chat-hero-subtitle">AI Assistant • Always here to help</p>
+            </div>
+            <div class="tz-position-controls">
+              <button class="tz-position-btn active" data-position="center" title="Center" aria-label="Center position">⊙</button>
+              <button class="tz-position-btn" data-position="bottom-right" title="Bottom Right" aria-label="Bottom right">↘</button>
+              <button class="tz-position-btn" data-position="bottom-left" title="Bottom Left" aria-label="Bottom left">↙</button>
             </div>
             <button class="tz-chat-close" aria-label="Close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
