@@ -135,14 +135,51 @@ export default function ChatPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Welcome Avatar Placeholder */}
-          <div className="aspect-video bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-black/20"></div>
-            <MessageSquare className="h-24 w-24 text-white opacity-80 relative z-10" />
-            <div className="absolute bottom-4 left-0 right-0 text-center">
-              <p className="text-white text-sm font-medium">
-                Hi! I'm Izacc from TradeZone
-              </p>
+          <div className="grid gap-4 lg:grid-cols-[2fr,1fr]">
+            {/* Hero Video */}
+            <div className="relative overflow-hidden rounded-xl bg-black">
+              <video
+                className="w-full h-full object-cover"
+                id="avatarVideo"
+                src="https://videostream44.b-cdn.net/tradezone-welcome-avatar-2.mp4"
+                autoPlay
+                muted
+                playsInline
+                loop
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4 text-white">
+                <p className="text-sm uppercase tracking-wide opacity-80">
+                  Meet Izacc
+                </p>
+                <p className="text-xl font-semibold leading-tight">
+                  Personalized tech recommendations, real-time catalogue search,
+                  and instant trade-in support.
+                </p>
+              </div>
+            </div>
+
+            {/* Spotlight Widgets */}
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  Featured Highlight
+                </p>
+                <p className="mt-2 text-sm font-medium">
+                  Need inspiration? Ask Izacc for “PlayStation racing bundles” or
+                  “latest Asus ROG laptops” to see stocked items instantly.
+                </p>
+              </div>
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  Quick Tips
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <li>• Say “Show me Mario games in stock” to browse the catalogue.</li>
+                  <li>• Try “I want to trade in my console” for trade-in support.</li>
+                  <li>• Use “Email the team” when you need a follow-up from staff.</li>
+                </ul>
+              </div>
             </div>
           </div>
 
