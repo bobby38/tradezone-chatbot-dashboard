@@ -44,17 +44,19 @@
     isOpen: false,
     messages: [],
     mode: 'text', // 'text' or 'voice'
-    
-    // Voice chat state
-    ws: null,
-    audioContext: null,
-    mediaStream: null,
-    processor: null,
-    playbackContext: null,
-    playbackNode: null,
-    audioQueue: [],
-    isRecording: false,
-    isResponding: false,
+    currentTranscript: '',
+    voiceState: {
+      sessionId: null,
+      isRecording: false,
+      ws: null,
+      audioContext: null,
+      mediaStream: null,
+      processor: null,
+      playbackContext: null,
+      playbackNode: null,
+      audioQueue: [],
+      isResponding: false
+    },
 
     init: function(options) {
       this.config = { ...this.config, ...options };
@@ -891,6 +893,7 @@
               modalities: ['text', 'audio'],
               voice: config.config.voice || 'verse',
               output_audio_format: 'pcm16',
+              instructions: 'You are Izacc, TradeZone.sg helpful AI assistant. ALWAYS respond in English. Keep responses brief for voice chat - 1-2 sentences maximum.',
               input_audio_transcription: {
                 model: 'whisper-1'
               },
@@ -1025,11 +1028,24 @@
     handleVoiceEvent: function(event) {
       switch (event.type) {
         case 'conversation.item.input_audio_transcription.completed':
+          console.log('[Voice] User said:', event.transcript);
           this.addTranscript(event.transcript, 'user');
           break;
 
         case 'response.audio_transcript.delta':
-          this.addTranscript(event.delta, 'assistant');
+          // Accumulate transcript instead of adding each word
+          if (!this.currentTranscript) {
+            this.currentTranscript = '';
+          }
+          this.currentTranscript += event.delta;
+          break;
+          
+        case 'response.audio_transcript.done':
+          // Add complete transcript when done
+          if (this.currentTranscript) {
+            this.addTranscript(this.currentTranscript, 'assistant');
+            this.currentTranscript = '';
+          }
           break;
 
         case 'response.audio.delta':
@@ -1039,14 +1055,24 @@
           break;
 
         case 'response.done':
+          console.log('[Voice] Response complete');
           this.updateVoiceStatus('Listening...');
           break;
 
+        case 'response.function_call_arguments.done':
+          console.log('[Voice] Tool called:', event.name, 'with args:', event.arguments);
+          break;
+
         case 'input_audio_buffer.speech_started':
+          console.log('[Voice] User started speaking');
           if (this.isResponding) {
             this.ws.send(JSON.stringify({ type: 'response.cancel' }));
             this.audioQueue = [];
           }
+          break;
+          
+        case 'input_audio_buffer.speech_stopped':
+          console.log('[Voice] User stopped speaking');
           break;
       }
     },
