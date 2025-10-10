@@ -251,6 +251,7 @@ Three main tools available to the AI agent:
 
 #### 4. Chat UI (`/dashboard/chat`)
 **Features**:
+- Hero welcome card with autoplay TradeZone avatar video and spotlight widgets for quick tips/promotions
 - Text chat interface with message history
 - Voice call button (START A CALL)
 - File upload support (coming soon)
@@ -291,7 +292,7 @@ Admins can configure via Supabase `organizations.settings` JSONB field:
 }
 ```
 
-**Note**: Settings page UI for ChatKit configuration can be added as future enhancement. Currently configure via Supabase directly.
+**Note**: The dashboard Settings screen now includes dedicated tabs (General, AI Models, Email, Bot Settings, Bot Logs). ChatKit prompt/model/voice can be edited there; the API falls back to default values if Supabase settings are unavailable so the chat page always loads.
 
 ### Migration from n8n
 
@@ -338,6 +339,10 @@ INSERT INTO chat_logs (
 ```
 
 This preserves compatibility with existing dashboard analytics and chat logs page.
+
+- Additional in-memory agent telemetry is recorded via `lib/chatkit/telemetry.ts` and surfaced at `GET /api/chatkit/telemetry`. The dashboard Settings → **Bot Logs** tab consumes this endpoint to show tool usage (vector store, Perplexity, email) for the most recent conversations.
+
+- `/api/settings` now returns sensible defaults (model, prompt, voice, vector store ID) when Supabase configuration is missing, preventing 500s in production while still persisting updates through Supabase when available.
 
 ### Benefits
 - ✅ **Single OpenAI Integration**: No ElevenLabs, unified billing
