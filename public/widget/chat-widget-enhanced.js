@@ -126,8 +126,8 @@
           position: fixed;
           ${this.config.position === 'bottom-right' ? 'right: 20px;' : 'left: 20px;'}
           bottom: 90px;
-          width: 380px;
-          height: 550px;
+          width: 420px;
+          height: 600px;
           max-height: calc(100vh - 120px);
           background: #1a1a2e;
           border-radius: 12px;
@@ -214,14 +214,14 @@
         }
 
         .tz-chat-hero-title {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 700;
           margin: 0 0 4px 0;
           text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
         .tz-chat-hero-subtitle {
-          font-size: 13px;
+          font-size: 14px;
           margin: 0;
           opacity: 0.95;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -339,13 +339,13 @@
 
         .tz-chat-message-bubble {
           max-width: 70%;
-          padding: 8px 12px;
+          padding: 10px 14px;
           border-radius: 10px;
           background: rgba(139, 92, 246, 0.1);
           border: 1px solid rgba(139, 92, 246, 0.2);
           color: #e5e7eb;
-          font-size: 13px;
-          line-height: 1.5;
+          font-size: 14px;
+          line-height: 1.6;
           word-wrap: break-word;
         }
 
@@ -458,11 +458,11 @@
 
         .tz-chat-input {
           flex: 1;
-          padding: 10px 14px;
+          padding: 12px 16px;
           border: 1px solid rgba(139, 92, 246, 0.2);
           background: rgba(139, 92, 246, 0.05);
           border-radius: 20px;
-          font-size: 14px;
+          font-size: 15px;
           color: #e5e7eb;
           outline: none;
           transition: all 0.2s;
@@ -977,9 +977,13 @@
       this.playbackNode.connect(this.playbackContext.destination);
       
       // Resume AudioContext (required by browsers)
+      console.log('[Voice] AudioContext initial state:', this.playbackContext.state);
       if (this.playbackContext.state === 'suspended') {
-        this.playbackContext.resume();
+        this.playbackContext.resume().then(() => {
+          console.log('[Voice] AudioContext resumed successfully');
+        });
       }
+      console.log('[Voice] Audio initialized, queue size:', this.audioQueue.length);
     },
 
     handleVoiceEvent: function(event) {
@@ -993,6 +997,7 @@
           break;
 
         case 'response.audio.delta':
+          console.log('[Voice] Received audio delta, length:', event.delta?.length || 0);
           this.playAudio(event.delta);
           this.updateVoiceStatus('Speaking...');
           break;
@@ -1011,6 +1016,11 @@
     },
 
     playAudio: function(base64) {
+      if (!base64) {
+        console.warn('[Voice] No audio data received');
+        return;
+      }
+      console.log('[Voice] Processing audio, base64 length:', base64.length);
       const buf = Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
       const i16 = new Int16Array(buf);
       const f32 = new Float32Array(i16.length);
@@ -1018,6 +1028,8 @@
         f32[i] = Math.max(-1, Math.min(1, i16[i] / 32768));
       }
       this.audioQueue.push(f32);
+      console.log('[Voice] Audio queued, total chunks:', this.audioQueue.length, 'samples:', f32.length);
+      console.log('[Voice] AudioContext state:', this.playbackContext?.state);
     },
 
     addTranscript: function(text, role) {
@@ -1068,11 +1080,11 @@
       // Convert **bold**
       text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
       
+      // Convert images FIRST (before links!) ![alt](url)
+      text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width: 100%; border-radius: 8px; margin-top: 8px; display: block;" />');
+      
       // Convert links [text](url)
       text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-      
-      // Convert images ![alt](url)
-      text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />');
       
       // Convert line breaks
       text = text.replace(/\n/g, '<br>');
