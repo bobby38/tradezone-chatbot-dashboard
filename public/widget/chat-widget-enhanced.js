@@ -57,11 +57,26 @@
       this.config = { ...this.config, ...options };
       this.sessionId = this.generateSessionId();
       
+      // Ensure viewport meta tag for mobile
+      this.ensureViewport();
+      
       this.injectStyles();
       this.createWidget();
       this.attachEventListeners();
       
       console.log('[TradeZone Chat Enhanced] Widget initialized', this.sessionId);
+    },
+
+    ensureViewport: function() {
+      // Check if viewport meta tag exists
+      let viewport = document.querySelector('meta[name="viewport"]');
+      if (!viewport) {
+        viewport = document.createElement('meta');
+        viewport.name = 'viewport';
+        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        document.head.appendChild(viewport);
+        console.log('[TradeZone Chat] Added viewport meta tag for mobile');
+      }
     },
 
     generateSessionId: function() {
@@ -384,11 +399,148 @@
           fill: white;
         }
 
-        /* Mobile */
-        @media (max-width: 480px) {
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
           #tz-chat-window {
-            width: calc(100vw - 40px);
-            height: calc(100vh - 120px);
+            width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            bottom: 0;
+            right: 0;
+            left: 0;
+            border-radius: 0;
+          }
+
+          #tz-chat-button {
+            width: 56px;
+            height: 56px;
+            bottom: 16px;
+            right: 16px;
+          }
+
+          .tz-chat-hero {
+            height: 160px;
+          }
+
+          .tz-chat-hero-title {
+            font-size: 20px;
+          }
+
+          .tz-chat-hero-subtitle {
+            font-size: 13px;
+          }
+
+          .tz-chat-mode-toggle {
+            padding: 10px 12px;
+          }
+
+          .tz-mode-btn {
+            padding: 10px 12px;
+            font-size: 13px;
+          }
+
+          .tz-mode-btn svg {
+            width: 14px;
+            height: 14px;
+          }
+
+          .tz-chat-messages {
+            padding: 16px;
+          }
+
+          .tz-chat-message-bubble {
+            max-width: 80%;
+            font-size: 14px;
+          }
+
+          .tz-voice-container {
+            padding: 30px 16px;
+          }
+
+          .tz-voice-button {
+            width: 72px;
+            height: 72px;
+          }
+
+          .tz-voice-button svg {
+            width: 32px;
+            height: 32px;
+          }
+
+          .tz-voice-status {
+            font-size: 15px;
+          }
+
+          .tz-voice-transcript {
+            font-size: 13px;
+            max-height: 150px;
+          }
+
+          .tz-chat-input-container {
+            padding: 12px;
+          }
+
+          .tz-chat-input {
+            font-size: 16px; /* Prevents zoom on iOS */
+            padding: 12px 16px;
+          }
+
+          .tz-chat-send {
+            width: 44px;
+            height: 44px;
+          }
+        }
+
+        /* Small mobile devices */
+        @media (max-width: 375px) {
+          .tz-chat-hero {
+            height: 140px;
+          }
+
+          .tz-chat-hero-title {
+            font-size: 18px;
+          }
+
+          .tz-voice-button {
+            width: 64px;
+            height: 64px;
+          }
+
+          .tz-voice-button svg {
+            width: 28px;
+            height: 28px;
+          }
+        }
+
+        /* Landscape mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+          .tz-chat-hero {
+            height: 120px;
+          }
+
+          .tz-voice-container {
+            padding: 20px 16px;
+          }
+
+          .tz-voice-transcript {
+            max-height: 100px;
+          }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+          .tz-mode-btn,
+          .tz-chat-send,
+          .tz-voice-button,
+          .tz-chat-close {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+          }
+
+          .tz-mode-btn:active,
+          .tz-chat-send:active,
+          .tz-voice-button:active {
+            transform: scale(0.95);
           }
         }
       `;
