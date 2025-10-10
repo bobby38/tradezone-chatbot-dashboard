@@ -145,7 +145,7 @@
         .tz-chat-hero {
           position: relative;
           height: 200px;
-          background: linear-gradient(135deg, ${this.config.primaryColor} 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
           overflow: hidden;
         }
 
@@ -294,7 +294,7 @@
           flex: 1;
           overflow-y: auto;
           padding: 20px;
-          background: #f9fafb;
+          background: #1a1a2e;
         }
 
         .tz-chat-message {
@@ -973,6 +973,11 @@
       };
 
       this.playbackNode.connect(this.playbackContext.destination);
+      
+      // Resume AudioContext (required by browsers)
+      if (this.playbackContext.state === 'suspended') {
+        this.playbackContext.resume();
+      }
     },
 
     handleVoiceEvent: function(event) {
@@ -1085,7 +1090,7 @@
         TradeZoneChatEnhanced.init({
           apiUrl: apiUrl,
           position: script.getAttribute('data-position') || 'bottom-right',
-          primaryColor: script.getAttribute('data-primary-color') || '#2563eb',
+          primaryColor: script.getAttribute('data-primary-color') || '#8b5cf6',
           videoUrl: script.getAttribute('data-video-url') || ''
         });
       }
