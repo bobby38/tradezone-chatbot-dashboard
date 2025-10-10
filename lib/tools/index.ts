@@ -3,27 +3,31 @@
  * Exports all available tools for the TradeZone chatbot agent
  */
 
-export { vectorSearchTool, handleVectorSearch } from './vectorSearch'
-export { perplexitySearchTool, handlePerplexitySearch } from './perplexitySearch'
-export { emailSendTool, handleEmailSend } from './emailSend'
+import { handleVectorSearch } from "./vectorSearch";
+import { handlePerplexitySearch } from "./perplexitySearch";
+import { handleEmailSend } from "./emailSend";
+
+export { vectorSearchTool } from "./vectorSearch";
+export { perplexitySearchTool } from "./perplexitySearch";
+export { emailSendTool } from "./emailSend";
 
 /**
  * Get all available tools as an array
  */
 export function getAllTools() {
-  return [
-    vectorSearchTool,
-    perplexitySearchTool,
-    emailSendTool
-  ]
+  const { vectorSearchTool } = require("./vectorSearch");
+  const { perplexitySearchTool } = require("./perplexitySearch");
+  const { emailSendTool } = require("./emailSend");
+
+  return [vectorSearchTool, perplexitySearchTool, emailSendTool];
 }
 
 /**
  * Tool handler map
  * Maps tool names to their handler functions
  */
-export const toolHandlers = {
+export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
   searchProducts: handleVectorSearch,
   searchtool: handlePerplexitySearch,
-  sendemail: handleEmailSend
-}
+  sendemail: handleEmailSend,
+};
