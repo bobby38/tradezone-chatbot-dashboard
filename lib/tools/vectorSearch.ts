@@ -1,3 +1,5 @@
+import { findCatalogMatches } from "@/lib/chatkit/productCatalog";
+
 /**
  * Vector Search Tool for TradeZone Products
  * Uses OpenAI's Docling hybrid chunk vector store
@@ -50,7 +52,55 @@ export async function handleVectorSearch(query: string): Promise<string> {
     }
 
     const data = await response.json()
-    return data.output || 'No product information found. Please try rephrasing your query.'
+
+    const result =
+      data.output
+        ?.flatMap((item: any) =>
+          item.content
+            ?.filter((block: any) => block.type === 'output_text')
+            ?.map((block: any) => block.text?.trim()),
+        )
+        ?.flat()
+        ?.filter(Boolean)
+        ?.join('\n\n') || ''
+
+    let enriched = result
+
+    const catalogMatches = findCatalogMatches(query, 3)
+
+    if (catalogMatches.length > 0) {
+      const lines = catalogMatches.map((match) => {
+        const details: string[] = []
+        details.push(
+          `- **${match.name}**${match.price ? ` — S$${match.price}` : ''}`,
+        )
+        if (match.stockStatus) {
+          const humanStock =
+            match.stockStatus === 'instock'
+              ? 'In stock'
+              : match.stockStatus === 'outofstock'
+                ? 'Out of stock'
+                : match.stockStatus
+          details.push(`  - Availability: ${humanStock}`)
+        }
+        if (match.permalink) {
+          details.push(`  - [View Product](${match.permalink})`)
+        }
+        if (match.image) {
+          details.push(`  - ![Product Image](${match.image})`)
+        }
+        return details.join('\n')
+      })
+
+      const section = ['**Online Store Matches**', ...lines].join('\n')
+      enriched = enriched ? `${enriched}\n\n${section}` : section
+    }
+
+    if (enriched.trim().length === 0) {
+      return 'No product information found. Please try rephrasing your query.'
+    }
+
+    return enriched
   } catch (error) {
     console.error('Error in vector search:', error)
     return 'I encountered an error searching our product database. Please try again or contact support.'

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "refresh:catalog": "node scripts/refresh-product-catalog.mjs"
   },
   "dependencies": {
     "@google-analytics/data": "^4.12.1",

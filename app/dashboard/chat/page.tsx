@@ -20,6 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { RealtimeVoice } from "@/components/realtime-voice";
+import { MarkdownMessage } from "@/components/markdown-message";
 
 interface Message {
   role: "user" | "assistant";
@@ -204,13 +205,7 @@ export default function ChatPage() {
                         : "bg-muted"
                     }`}
                   >
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      {msg.content.split("\n").map((line, i) => (
-                        <p key={i} className="mb-1 last:mb-0">
-                          {line}
-                        </p>
-                      ))}
-                    </div>
+                    <MarkdownMessage content={msg.content} />
                     <div className="text-xs opacity-70 mt-1">
                       {msg.timestamp.toLocaleTimeString()}
                     </div>
@@ -307,9 +302,7 @@ export default function ChatPage() {
                         : "bg-muted"
                     }`}
                   >
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      {msg.content}
-                    </div>
+                    <MarkdownMessage content={msg.content} />
                     <div className="text-xs opacity-70 mt-1">
                       {msg.timestamp.toLocaleTimeString()}
                     </div>

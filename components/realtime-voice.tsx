@@ -53,10 +53,8 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         ws.send(
           JSON.stringify({
             type: "session.update",
-            session: {
-              type: "response",
-              model: config.config.model,
-              modalities: ["text", "audio"],
+           session: {
+              type: "realtime",
               instructions: `You are Izacc, TradeZone Singapore's helpful AI assistant.
 
 Your role:
@@ -71,8 +69,16 @@ Available tools:
 
 Always search for products when asked. Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
               voice: config.config.voice || "alloy",
-              input_audio_format: "pcm16",
-              output_audio_format: "pcm16",
+              input_audio_format: {
+                type: "pcm16",
+                sample_rate: 24000,
+                channels: 1,
+              },
+              output_audio_format: {
+                type: "pcm16",
+                sample_rate: 24000,
+                channels: 1,
+              },
               input_audio_transcription: {
                 model: "whisper-1",
               },

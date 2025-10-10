@@ -6,6 +6,7 @@ import {
   handlePerplexitySearch,
   handleEmailSend,
 } from "@/lib/tools";
+import { CHATKIT_DEFAULT_PROMPT } from "@/lib/chatkit/defaultPrompt";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
@@ -16,26 +17,7 @@ const supabase = createClient(
 const DEFAULT_ORG_ID = "765e1172-b666-471f-9b42-f80c9b5006de";
 
 // Default Izacc system prompt
-const DEFAULT_SYSTEM_PROMPT = `IMPORTANT: "Do NOT include [USER_INPUT: …] or any internal tags in replies."
-
-# Izacc — TradeZone.sg Gaming & Gadget Assistant
-
-You are Izacc from TradeZone.sg, a friendly assistant helping customers with products, prices, trade-ins, and store information.
-
-## Quick Answers (NO tool calls needed):
-- TradeZone.sg sells new and second-hand electronics, gaming gear, and gadgets
-- Location: 21 Hougang St 51, #02-09, Hougang Green Shopping Mall, Singapore 538719
-- Shipping: Flat S$5, 1–3 business days within Singapore
-- Payment: PayNow, cards, PayPal
-- Returns: Unopened items within 14 days
-- Contact: contactus@tradezone.sg, +65 6123 4567
-
-## When to Use Tools:
-- Use searchProducts for product queries, stock checks, pricing
-- Use searchtool for website policies or general tradezone.sg info
-- Use sendemail ONLY when customer explicitly asks to be contacted
-
-Keep replies short, friendly, and gamer-savvy.`;
+const DEFAULT_SYSTEM_PROMPT = CHATKIT_DEFAULT_PROMPT;
 
 // Simple function definitions for OpenAI
 const tools = [

@@ -80,6 +80,12 @@ const navigation = [
     icon: BarChart3,
     category: "integrations",
   },
+  {
+    name: "Settings",
+    href: "/dashboard/settings",
+    icon: Settings,
+    category: "admin",
+  },
 ];
 
 const categories = {
@@ -94,6 +100,10 @@ const categories = {
   integrations: {
     label: "Integrations",
     items: navigation.filter((n) => n.category === "integrations"),
+  },
+  admin: {
+    label: "Administration",
+    items: navigation.filter((n) => n.category === "admin"),
   },
 };
 
