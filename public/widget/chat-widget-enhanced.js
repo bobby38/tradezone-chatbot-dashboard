@@ -436,12 +436,13 @@
           overflow-y: auto;
           width: 100%;
           padding: 16px;
-          background: rgba(139, 92, 246, 0.05);
+          background: #16162a !important;
           border: 1px solid rgba(139, 92, 246, 0.2);
           border-radius: 8px;
           font-size: 14px;
           line-height: 1.6;
           color: #e5e7eb;
+          min-height: 60px;
         }
 
         /* Input Area */
@@ -658,10 +659,16 @@
       widget.id = 'tz-chat-widget';
       
       const videoHtml = this.config.enableVideo && this.config.videoUrl ? `
-        <video autoplay loop muted playsinline>
+        <video autoplay loop muted playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;">
           <source src="${this.config.videoUrl}" type="video/mp4">
         </video>
       ` : '';
+      
+      if (this.config.enableVideo && this.config.videoUrl) {
+        console.log('[Video] Enabled with URL:', this.config.videoUrl);
+      } else {
+        console.log('[Video] Disabled or no URL');
+      }
 
       widget.innerHTML = `
         <button id="tz-chat-button" aria-label="Open chat">
@@ -867,9 +874,9 @@
 
         const config = await response.json();
 
-        // Connect to OpenAI Realtime
+        // Connect to OpenAI Realtime (EXACT COPY FROM DASHBOARD)
         this.ws = new WebSocket(
-          'wss://api.openai.com/v1/realtime',
+          `${config.config.websocketUrl}?model=${config.config.model}`,
           ['realtime', `openai-insecure-api-key.${config.config.apiKey}`, 'openai-beta.realtime-v1']
         );
 
@@ -877,13 +884,22 @@
           console.log('[Voice] Connected');
           this.updateVoiceStatus('Connected');
           
-          // Configure session
+          // Configure session (EXACT COPY FROM DASHBOARD)
           this.ws.send(JSON.stringify({
             type: 'session.update',
             session: {
               modalities: ['text', 'audio'],
               voice: config.config.voice || 'verse',
-              output_audio_format: 'pcm16'
+              output_audio_format: 'pcm16',
+              input_audio_transcription: {
+                model: 'whisper-1'
+              },
+              turn_detection: {
+                type: 'server_vad',
+                threshold: 0.5,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 200
+              }
             }
           }));
 
@@ -895,7 +911,18 @@
 
         this.ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
+          console.log('[Voice] Received event:', data.type, data);
           this.handleVoiceEvent(data);
+        };
+
+        this.ws.onerror = (error) => {
+          console.error('[Voice] WebSocket error:', error);
+          this.updateVoiceStatus('Connection error');
+        };
+
+        this.ws.onclose = (event) => {
+          console.log('[Voice] WebSocket closed:', event.code, event.reason);
+          this.updateVoiceStatus('Disconnected');
         };
 
       } catch (error) {
@@ -927,8 +954,12 @@
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
+      let audioChunkCount = 0;
       this.processor.onaudioprocess = (e) => {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          console.warn('[Voice] WebSocket not ready, state:', this.ws?.readyState);
+          return;
+        }
 
         const inputData = e.inputBuffer.getChannelData(0);
         const pcm16 = new Int16Array(inputData.length);
@@ -942,6 +973,11 @@
           type: 'input_audio_buffer.append',
           audio: base64
         }));
+        
+        audioChunkCount++;
+        if (audioChunkCount % 50 === 0) {
+          console.log('[Voice] Sent', audioChunkCount, 'audio chunks to OpenAI');
+        }
       };
 
       source.connect(this.processor);
