@@ -130,3 +130,275 @@ Apply helper scripts in `/scripts`:
 5. Implement notification integrations and AI enhancements per backlog priorities once production parity achieved.
 
 Keep this brief updated as deliverables land; append change log entries at the end with timestamp + summary.
+
+---
+
+## 11. OpenAI AgentKit Integration (Phase 2.5 - Deployed October 2025)
+
+### Architecture Overview
+The TradeZone chatbot now uses **OpenAI's complete ecosystem** for voice, text, and vision capabilities:
+
+```
+User → /dashboard/chat (ChatKit UI)
+         ↓
+    /api/chatkit/agent (Text) → OpenAI Chat Completions + Function Calling
+         ↓
+    /api/chatkit/realtime (Voice) → OpenAI Realtime API
+         ↓
+    Supabase chat_logs (Same logging as n8n)
+```
+
+### Core Components
+
+#### 1. Agent Tools Library (`lib/tools/`)
+Three main tools available to the AI agent:
+
+**Vector Search** (`vectorSearch.ts`)
+- Searches Docling hybrid chunk vector store (`vs_68e89cf979e88191bb8b4882caadbc0d`)
+- Uses OpenAI Responses API with `file_search` tool
+- Primary tool for product information and TradeZone knowledge
+
+**Perplexity Search** (`perplexitySearch.ts`)
+- Web search on tradezone.sg domain
+- Uses Perplexity Sonar Pro model
+- Fallback when vector search doesn't have current info
+
+**Email Send** (`emailSend.ts`)
+- Handles trade-in requests and customer inquiries
+- Creates submissions in Supabase
+- Sends notification emails via existing SMTP service
+- Only used when customer explicitly requests contact
+
+#### 2. ChatKit Agent API (`/api/chatkit/agent`)
+**Endpoint**: `POST /api/chatkit/agent`
+
+**Features**:
+- Uses OpenAI Chat Completions with function calling
+- Loads admin-configurable settings from Supabase (`organizations.settings.chatkit`)
+- Supports conversation history for context
+- Logs all interactions to `chat_logs` table (preserves Guest-XX session pattern)
+- Full Izacc personality prompt included
+
+**Configuration** (from Supabase settings):
+```javascript
+{
+  chatkit: {
+    textModel: "gpt-4o-mini",  // or gpt-4o, gpt-4.1-mini, etc.
+    systemPrompt: "..."        // Full Izacc prompt
+  }
+}
+```
+
+**Request Format**:
+```json
+{
+  "message": "Do you have PlayStation 5 in stock?",
+  "sessionId": "Guest-1234",
+  "history": [
+    { "role": "user", "content": "Hi" },
+    { "role": "assistant", "content": "Hi! I'm Izacc..." }
+  ]
+}
+```
+
+**Response Format**:
+```json
+{
+  "response": "Let me check our inventory for you...",
+  "sessionId": "Guest-1234",
+  "model": "gpt-4o-mini"
+}
+```
+
+#### 3. Realtime Voice API (`/api/chatkit/realtime`)
+**Endpoint**: `POST /api/chatkit/realtime`
+
+**Features**:
+- Configures OpenAI Realtime API for voice conversations
+- Uses `gpt-realtime-mini` by default (cost-effective)
+- Returns WebSocket connection details and configuration
+- Supports voice selection (alloy, echo, fable, onyx, nova, shimmer)
+
+**Configuration** (from Supabase settings):
+```javascript
+{
+  chatkit: {
+    voiceModel: "gpt-realtime-mini",  // or gpt-4o-realtime-preview
+    voice: "alloy"                     // Voice selection
+  }
+}
+```
+
+**Available Models**:
+- `gpt-realtime-mini` ⭐ (recommended, cost-effective)
+- `gpt-4o-realtime-preview`
+- `gpt-4o-mini-realtime-preview`
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "config": {
+    "model": "gpt-realtime-mini",
+    "voice": "alloy",
+    "websocketUrl": "wss://api.openai.com/v1/realtime",
+    "apiKey": "sk-proj-...",
+    "instructions": "You are Izacc...",
+    "turnDetection": { "type": "server_vad", ... }
+  }
+}
+```
+
+#### 4. Chat UI (`/dashboard/chat`)
+**Features**:
+- Text chat interface with message history
+- Voice call button (START A CALL)
+- File upload support (coming soon)
+- Session management with Guest-XX pattern
+- Auto-scrolling message display
+- Loading states and error handling
+- Mobile responsive design
+
+**User Flow**:
+1. User visits `/dashboard/chat`
+2. Session ID generated (Guest-XXXX)
+3. Choose text or voice mode
+4. Text: Type messages, get AI responses
+5. Voice: Click "Start A Call", speak naturally
+6. All interactions logged to Supabase
+
+### Environment Variables
+```env
+# OpenAI Configuration
+OPENAI_API_KEY=sk-proj-...
+OPENAI_VECTOR_STORE_ID=vs_68e89cf979e88191bb8b4882caadbc0d
+
+# Optional: Perplexity for web search
+PERPLEXITY_API_KEY=...
+```
+
+### Admin-Configurable Settings
+Admins can configure via Supabase `organizations.settings` JSONB field:
+
+```json
+{
+  "chatkit": {
+    "textModel": "gpt-4o-mini",
+    "voiceModel": "gpt-realtime-mini",
+    "voice": "alloy",
+    "systemPrompt": "IMPORTANT: Do NOT include [USER_INPUT...]..."
+  }
+}
+```
+
+**Note**: Settings page UI for ChatKit configuration can be added as future enhancement. Currently configure via Supabase directly.
+
+### Migration from n8n
+
+**Hybrid Approach** (Current):
+- Both n8n and ChatKit can coexist
+- Both log to same `chat_logs` table
+- Same session management (Guest-XX pattern)
+- ChatKit used for new chat page
+- n8n continues for existing webhooks
+
+**Migration Path**:
+1. **Phase 1** (Current): ChatKit available at `/dashboard/chat`, n8n continues
+2. **Phase 2**: Gradual user migration to ChatKit
+3. **Phase 3**: Deprecate n8n workflow once fully validated
+
+### Tool Execution Flow
+```
+User: "Do you have gaming keyboards?"
+  ↓
+Agent receives message
+  ↓
+Calls searchProducts tool → Vector search
+  ↓
+Vector store returns product info
+  ↓
+Agent synthesizes response with links
+  ↓
+User receives: "Yes! We have [Razer BlackWidow...]"
+```
+
+### Logging & Analytics
+All ChatKit interactions are logged to `chat_logs`:
+```sql
+INSERT INTO chat_logs (
+  session_id,      -- "Guest-1234"
+  prompt,          -- User message
+  response,        -- AI response
+  source,          -- "chatkit"
+  user_id,         -- Session ID
+  status,          -- "success"
+  created_at,      -- Timestamp
+  session_name     -- First 50 chars of prompt
+)
+```
+
+This preserves compatibility with existing dashboard analytics and chat logs page.
+
+### Benefits
+- ✅ **Single OpenAI Integration**: No ElevenLabs, unified billing
+- ✅ **Cost-Effective Voice**: gpt-realtime-mini vs premium alternatives
+- ✅ **Modern UI**: Clean chat interface in dashboard
+- ✅ **Multimodal Ready**: Text, voice, vision (file upload coming soon)
+- ✅ **Admin Configurable**: Models and prompts via database settings
+- ✅ **Existing Compatibility**: Same logging, same session patterns
+- ✅ **n8n Coexistence**: Gradual migration, no breaking changes
+
+### Rollback Plan
+All changes isolated in feature branch: `feature/openai-agentkit`
+
+To rollback:
+```bash
+git checkout main
+git branch -D feature/openai-agentkit
+```
+
+### Future Enhancements
+1. **Settings Page UI**: Add ChatKit configuration card to `/dashboard/settings`
+2. **File Upload**: Enable image/document uploads for vision capabilities
+3. **WebSocket Implementation**: Full WebRTC voice calling in browser
+4. **Analytics**: Track ChatKit-specific metrics (voice vs text usage)
+5. **A/B Testing**: Compare ChatKit vs n8n performance
+
+### File Structure
+```
+app/
+├── api/
+│   └── chatkit/
+│       ├── agent/route.ts        # Text chat API
+│       └── realtime/route.ts     # Voice API
+└── dashboard/
+    └── chat/page.tsx             # Chat UI
+
+lib/
+└── tools/
+    ├── vectorSearch.ts           # Docling vector store
+    ├── perplexitySearch.ts       # Web search
+    ├── emailSend.ts              # Trade-ins/inquiries
+    └── index.ts                  # Tool exports
+```
+
+---
+
+## Change Log
+
+### October 10, 2025 - OpenAI AgentKit Integration
+**Added**:
+- OpenAI Agents SDK integration with function calling
+- Docling hybrid chunk vector store (`vs_68e89cf979e88191bb8b4882caadbc0d`)
+- ChatKit UI at `/dashboard/chat` for text and voice
+- Realtime API support with `gpt-realtime-mini`
+- Agent tools: vector search, Perplexity search, email send
+- Navigation menu item for Chat
+- Environment variables for OpenAI configuration
+
+**Modified**:
+- Sidebar navigation to include Chat link
+- `.env.local` with OpenAI keys and vector store ID
+
+**Status**: ✅ Deployed on feature branch `feature/openai-agentkit`
+**Testing**: Manual validation required before main merge
