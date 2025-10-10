@@ -65,10 +65,10 @@ Your role:
 - Provide product recommendations
 
 Available tools:
-1. **searchtool**: Search for TradeZone products and information
+1. **searchtool**: Search TradeZone products (searches our vector database first, then web if needed)
 2. **sendemail**: Send inquiry to staff (use when customer explicitly requests contact)
 
-Always search for products first. Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
+Always search for products when asked. Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
               voice: config.config.voice || "alloy",
               input_audio_format: "pcm16",
               output_audio_format: "pcm16",
