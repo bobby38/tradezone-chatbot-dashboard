@@ -35,58 +35,62 @@ You are Izacc from TradeZone.sg, a friendly assistant helping customers with pro
 - Use searchtool for website policies or general tradezone.sg info
 - Use sendemail ONLY when customer explicitly asks to be contacted
 
-Keep replies short, friendly, and gamer-savvy.`
+Keep replies short, friendly, and gamer-savvy.`;
 
 // Simple function definitions for OpenAI
 const tools = [
   {
-    type: 'function' as const,
+    type: "function" as const,
     function: {
-      name: 'searchProducts',
-      description: 'Search TradeZone products using vector store',
+      name: "searchProducts",
+      description: "Search TradeZone products using vector store",
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
-          query: { type: 'string', description: 'Product search query' }
+          query: { type: "string", description: "Product search query" },
         },
-        required: ['query']
-      }
-    }
+        required: ["query"],
+      },
+    },
   },
   {
-    type: 'function' as const,
+    type: "function" as const,
     function: {
-      name: 'searchtool',
-      description: 'Search TradeZone.sg website',
+      name: "searchtool",
+      description: "Search TradeZone.sg website",
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
-          query: { type: 'string', description: 'Search query' }
+          query: { type: "string", description: "Search query" },
         },
-        required: ['query']
-      }
-    }
+        required: ["query"],
+      },
+    },
   },
   {
-    type: 'function' as const,
+    type: "function" as const,
     function: {
-      name: 'sendemail',
-      description: 'Send email for trade-ins or inquiries (only when customer requests contact)',
+      name: "sendemail",
+      description:
+        "Send email for trade-ins or inquiries (only when customer requests contact)",
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
-          emailType: { type: 'string', enum: ['trade_in', 'info_request', 'contact'] },
-          name: { type: 'string' },
-          email: { type: 'string' },
-          message: { type: 'string' },
-          deviceModel: { type: 'string' },
-          deviceCondition: { type: 'string' }
+          emailType: {
+            type: "string",
+            enum: ["trade_in", "info_request", "contact"],
+          },
+          name: { type: "string" },
+          email: { type: "string" },
+          message: { type: "string" },
+          deviceModel: { type: "string" },
+          deviceCondition: { type: "string" },
         },
-        required: ['emailType', 'name', 'email', 'message']
-      }
-    }
-  }
-]
+        required: ["emailType", "name", "email", "message"],
+      },
+    },
+  },
+];
 
 export async function POST(request: NextRequest) {
   try {
@@ -110,21 +114,22 @@ export async function POST(request: NextRequest) {
     const textModel = settings.textModel || "gpt-4o-mini";
     const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
-    console.log(
-      `[ChatKit] Session: ${sessionId}, Model: ${textModel}`,
-    );
+    console.log(`[ChatKit] Session: ${sessionId}, Model: ${textModel}`);
 
     // Build simple messages array - NO complex content types
-    const messages: Array<{role: 'system' | 'user' | 'assistant', content: string}> = [{ role: "system", content: systemPrompt }];
+    const messages: Array<{
+      role: "system" | "user" | "assistant";
+      content: string;
+    }> = [{ role: "system", content: systemPrompt }];
 
     // Add history as simple text messages only
     if (history && history.length > 0) {
       for (const msg of history) {
-        if (msg.role && msg.content && typeof msg.content === 'string') {
+        if (msg.role && msg.content && typeof msg.content === "string") {
           messages.push({
             role: msg.role,
-            content: msg.content
-          })
+            content: msg.content,
+          });
         }
       }
     }
@@ -156,37 +161,31 @@ export async function POST(request: NextRequest) {
         const functionName = toolCall.function.name;
         const functionArgs = JSON.parse(toolCall.function.arguments);
 
-        console.log(
-          `[ChatKit] Calling: ${functionName}`,
-          functionArgs,
-        );
+        console.log(`[ChatKit] Calling: ${functionName}`, functionArgs);
 
-        let toolResult = "''
+        let toolResult = "";
 
         try {
-          if (functionName === 'searchProducts') {
-            toolResult = await handleVectorSearch(functionArgs.query)
-          } else if (functionName === 'searchtool') {
-            toolResult = await handlePerplexitySearch(functionArgs.query)
-          } else if (functionName === 'sendemail') {
-            toolResult = await handleEmailSend(functionArgs)
+          if (functionName === "searchProducts") {
+            toolResult = await handleVectorSearch(functionArgs.query);
+          } else if (functionName === "searchtool") {
+            toolResult = await handlePerplexitySearch(functionArgs.query);
+          } else if (functionName === "sendemail") {
+            toolResult = await handleEmailSend(functionArgs);
           }
         } catch (error) {
-          console.error(
-            `[ChatKit] Tool error:`,
-            error,
-          );
+          console.error(`[ChatKit] Tool error:`, error);
           toolResult = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
         }
 
         // Add tool result to messages as simple text
         messages.push({
           role: "assistant",
-          content: `[Searched: ${functionName}]`
-        })
+          content: `[Searched: ${functionName}]`,
+        });
         messages.push({
-          role: 'user',
-          content: `Search results: ${toolResult}`
+          role: "user",
+          content: `Search results: ${toolResult}`,
         });
       }
 
