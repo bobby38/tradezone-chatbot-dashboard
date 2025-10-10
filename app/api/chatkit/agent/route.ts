@@ -1,20 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
 import {
   vectorSearchTool,
   perplexitySearchTool,
   emailSendTool,
-  toolHandlers
-} from '@/lib/tools'
+  toolHandlers,
+} from "@/lib/tools";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
-const DEFAULT_ORG_ID = '765e1172-b666-471f-9b42-f80c9b5006de'
+const DEFAULT_ORG_ID = "765e1172-b666-471f-9b42-f80c9b5006de";
 
 // Default Izacc system prompt (can be overridden via admin settings)
 const DEFAULT_SYSTEM_PROMPT = `IMPORTANT: "Do NOT include [USER_INPUT: …] or any internal tags in replies. We log user input separately."
@@ -101,163 +101,174 @@ Only after attempting multiple search methods, if information is unavailable:
 
 ## 7. Output Format
 
-All replies must be in Markdown. Use bold for key words, bullet lists for options, inline links, and fenced code blocks when useful. Keep it tidy and readable.`
+All replies must be in Markdown. Use bold for key words, bullet lists for options, inline links, and fenced code blocks when useful. Keep it tidy and readable.`;
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, sessionId, history = [] } = await request.json()
+    const { message, sessionId, history = [] } = await request.json();
 
     if (!message || !sessionId) {
       return NextResponse.json(
-        { error: 'Missing required fields: message, sessionId' },
-        { status: 400 }
-      )
+        { error: "Missing required fields: message, sessionId" },
+        { status: 400 },
+      );
     }
 
     // Load admin-configured settings from Supabase
     const { data: org } = await supabase
-      .from('organizations')
-      .select('settings')
-      .eq('id', DEFAULT_ORG_ID)
-      .single()
+      .from("organizations")
+      .select("settings")
+      .eq("id", DEFAULT_ORG_ID)
+      .single();
 
-    const settings = org?.settings?.chatkit || {}
-    const textModel = settings.textModel || 'gpt-4o-mini'
-    const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT
+    const settings = org?.settings?.chatkit || {};
+    const textModel = settings.textModel || "gpt-4o-mini";
+    const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
-    console.log(`[ChatKit Agent] Using model: ${textModel}, Session: ${sessionId}`)
+    console.log(
+      `[ChatKit Agent] Using model: ${textModel}, Session: ${sessionId}`,
+    );
 
     // Build messages array from history
-    const messages: any[] = [
-      { role: 'system', content: systemPrompt }
-    ]
+    const messages: any[] = [{ role: "system", content: systemPrompt }];
 
     // Add conversation history if provided
     if (history && history.length > 0) {
-      messages.push(...history)
+      messages.push(...history);
     }
 
     // Add current user message
-    messages.push({ role: 'user', content: message })
+    messages.push({ role: "user", content: message });
 
     // Call OpenAI with function calling
     const response = await openai.chat.completions.create({
       model: textModel,
       messages,
-      tools: [
-        vectorSearchTool,
-        perplexitySearchTool,
-        emailSendTool
-      ],
-      tool_choice: 'auto',
+      tools: [vectorSearchTool, perplexitySearchTool, emailSendTool],
+      tool_choice: "auto",
       temperature: 0.7,
-      max_tokens: 2000
-    })
+      max_tokens: 2000,
+    });
 
-    let aiMessage = response.choices[0].message
-    let finalResponse = aiMessage.content || ''
+    let aiMessage = response.choices[0].message;
+    let finalResponse = aiMessage.content || "";
 
     // Handle tool calls if any
     if (aiMessage.tool_calls && aiMessage.tool_calls.length > 0) {
-      console.log(`[ChatKit Agent] Processing ${aiMessage.tool_calls.length} tool calls`)
+      console.log(
+        `[ChatKit Agent] Processing ${aiMessage.tool_calls.length} tool calls`,
+      );
 
-      const toolMessages: any[] = []
+      const toolMessages: any[] = [];
 
       for (const toolCall of aiMessage.tool_calls) {
-        const functionName = toolCall.function.name
-        const functionArgs = JSON.parse(toolCall.function.arguments)
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
 
-        console.log(`[ChatKit Agent] Calling tool: ${functionName}`, functionArgs)
+        console.log(
+          `[ChatKit Agent] Calling tool: ${functionName}`,
+          functionArgs,
+        );
 
-        let toolResult = 'Tool execution failed'
+        let toolResult = "Tool execution failed";
 
         try {
           // Get the handler function
-          const handler = toolHandlers[functionName as keyof typeof toolHandlers]
+          const handler =
+            toolHandlers[functionName as keyof typeof toolHandlers];
 
           if (handler) {
             // Call the appropriate handler
-            if (functionName === 'searchProducts') {
-              toolResult = await handler(functionArgs.query)
-            } else if (functionName === 'searchtool') {
-              toolResult = await handler(functionArgs.query)
-            } else if (functionName === 'sendemail') {
-              toolResult = await handler(functionArgs)
+            if (functionName === "searchProducts") {
+              toolResult = await handler(functionArgs.query);
+            } else if (functionName === "searchtool") {
+              toolResult = await handler(functionArgs.query);
+            } else if (functionName === "sendemail") {
+              toolResult = await handler(functionArgs);
             }
           } else {
-            console.error(`[ChatKit Agent] Unknown tool: ${functionName}`)
-            toolResult = `Tool ${functionName} is not available`
+            console.error(`[ChatKit Agent] Unknown tool: ${functionName}`);
+            toolResult = `Tool ${functionName} is not available`;
           }
         } catch (error) {
-          console.error(`[ChatKit Agent] Error executing ${functionName}:`, error)
-          toolResult = `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`
+          console.error(
+            `[ChatKit Agent] Error executing ${functionName}:`,
+            error,
+          );
+          toolResult = `Error executing tool: ${error instanceof Error ? error.message : "Unknown error"}`;
         }
 
         toolMessages.push({
-          role: 'tool',
+          role: "tool",
           tool_call_id: toolCall.id,
-          content: toolResult
-        })
+          content: toolResult,
+        });
       }
 
       // Get final response after tool execution
       const finalMessages = [
         ...messages,
-        aiMessage,
-        ...toolMessages
-      ]
+        {
+          role: "assistant" as const,
+          content: aiMessage.content || null,
+          tool_calls: aiMessage.tool_calls,
+        },
+        ...toolMessages,
+      ];
 
       const finalCompletion = await openai.chat.completions.create({
         model: textModel,
         messages: finalMessages,
         temperature: 0.7,
-        max_tokens: 2000
-      })
+        max_tokens: 2000,
+      });
 
-      finalResponse = finalCompletion.choices[0].message.content || 'Sorry, I encountered an error processing your request.'
+      finalResponse =
+        finalCompletion.choices[0].message.content ||
+        "Sorry, I encountered an error processing your request.";
     }
 
     // Log to Supabase (preserve existing logging pattern)
     try {
-      await supabase.from('chat_logs').insert({
+      await supabase.from("chat_logs").insert({
         session_id: sessionId,
         prompt: message,
         response: finalResponse,
-        source: 'chatkit',
+        source: "chatkit",
         user_id: sessionId,
-        status: 'success',
+        status: "success",
         created_at: new Date().toISOString(),
-        session_name: message.substring(0, 50) + (message.length > 50 ? '...' : '')
-      })
+        session_name:
+          message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+      });
     } catch (logError) {
-      console.error('[ChatKit Agent] Error logging to Supabase:', logError)
+      console.error("[ChatKit Agent] Error logging to Supabase:", logError);
       // Don't fail the request if logging fails
     }
 
     return NextResponse.json({
       response: finalResponse,
       sessionId,
-      model: textModel
-    })
-
+      model: textModel,
+    });
   } catch (error) {
-    console.error('[ChatKit Agent] Error:', error)
+    console.error("[ChatKit Agent] Error:", error);
 
     return NextResponse.json(
       {
-        error: 'Failed to process chat',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Failed to process chat",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
 // Health check endpoint
 export async function GET() {
   return NextResponse.json({
-    status: 'healthy',
-    service: 'ChatKit Agent API',
-    timestamp: new Date().toISOString()
-  })
+    status: "healthy",
+    service: "ChatKit Agent API",
+    timestamp: new Date().toISOString(),
+  });
 }
