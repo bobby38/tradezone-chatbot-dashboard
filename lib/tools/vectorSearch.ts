@@ -66,7 +66,7 @@ export async function handleVectorSearch(query: string): Promise<string> {
 
     let enriched = result
 
-    const catalogMatches = findCatalogMatches(query, 3)
+    const catalogMatches = await findCatalogMatches(query, 3)
 
     if (catalogMatches.length > 0) {
       const lines = catalogMatches.map((match) => {

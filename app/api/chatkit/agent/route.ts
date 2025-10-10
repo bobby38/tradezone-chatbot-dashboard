@@ -79,6 +79,10 @@ export async function POST(request: NextRequest) {
     const { message, sessionId, history = [] } = await request.json();
 
     if (!message || !sessionId) {
+      console.warn("[ChatKit] Missing required fields", {
+        hasMessage: Boolean(message),
+        hasSessionId: Boolean(sessionId),
+      });
       return NextResponse.json(
         { error: "Missing required fields: message, sessionId" },
         { status: 400 },
@@ -97,6 +101,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
     console.log(`[ChatKit] Session: ${sessionId}, Model: ${textModel}`);
+    console.log("[ChatKit] Incoming message:", message);
 
     // Build simple messages array - NO complex content types
     const messages: Array<{
@@ -131,6 +136,11 @@ export async function POST(request: NextRequest) {
 
     let assistantMessage = response.choices[0].message;
     let finalResponse = assistantMessage.content || "";
+
+    console.log("[ChatKit] First completion details:", {
+      contentPreview: assistantMessage.content?.slice(0, 200),
+      toolCalls: assistantMessage.tool_calls?.map((tool) => tool.function.name),
+    });
 
     // Handle tool calls if present
     if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
@@ -169,19 +179,40 @@ export async function POST(request: NextRequest) {
           role: "user",
           content: `Search results: ${toolResult}`,
         });
+
+        console.log("[ChatKit] Tool result captured:", {
+          functionName,
+          resultPreview: toolResult.slice(0, 200),
+        });
       }
 
       // Get final response after tools
-      const finalCompletion = await openai.chat.completions.create({
-        model: textModel,
-        messages,
-        temperature: 0.7,
-        max_tokens: 2000,
-      });
+      try {
+        const finalCompletion = await openai.chat.completions.create({
+          model: textModel,
+          messages,
+          temperature: 0.7,
+          max_tokens: 2000,
+        });
 
+        finalResponse =
+          finalCompletion.choices[0].message.content ||
+          "Sorry, I encountered an error.";
+
+        console.log("[ChatKit] Final completion after tools:", {
+          contentPreview: finalResponse.slice(0, 200),
+        });
+      } catch (finalError) {
+        console.error("[ChatKit] Final completion error:", finalError);
+        finalResponse =
+          "I ran into an issue preparing the results. Please try again in a moment.";
+      }
+    }
+
+    if (!finalResponse || finalResponse.trim().length === 0) {
+      console.warn("[ChatKit] Empty final response, using fallback message.");
       finalResponse =
-        finalCompletion.choices[0].message.content ||
-        "Sorry, I encountered an error.";
+        "I had trouble finding an answer just now. Please try rephrasing your question or ask for a specific product.";
     }
 
     // Log to Supabase

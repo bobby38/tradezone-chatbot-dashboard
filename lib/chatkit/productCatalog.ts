@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 
 interface CatalogProduct {
@@ -18,6 +18,7 @@ interface CatalogProduct {
 
 let catalogCache: CatalogProduct[] | null = null;
 let lastLoadedAt = 0;
+let catalogPromise: Promise<CatalogProduct[]> | null = null;
 
 const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
 
@@ -32,7 +33,36 @@ function resolveCatalogPath(): string {
   );
 }
 
-function loadCatalog(): CatalogProduct[] {
+function isHttpPath(target: string): boolean {
+  return target.startsWith("http://") || target.startsWith("https://");
+}
+
+async function readCatalogFromSource(filePath: string): Promise<CatalogProduct[]> {
+  if (isHttpPath(filePath)) {
+    console.log(`[ProductCatalog] Fetching catalog from URL: ${filePath}`);
+    const response = await fetch(filePath);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} when fetching catalog`);
+    }
+    const parsed = await response.json();
+    if (!Array.isArray(parsed)) {
+      throw new Error("Catalog URL did not return an array payload");
+    }
+    return parsed as CatalogProduct[];
+  }
+
+  console.log(`[ProductCatalog] Reading catalog from file: ${filePath}`);
+  const fileContents = await fsp.readFile(filePath, "utf8");
+  const parsed = JSON.parse(fileContents);
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("Catalog file did not contain an array payload");
+  }
+
+  return parsed as CatalogProduct[];
+}
+
+async function loadCatalog(): Promise<CatalogProduct[]> {
   const now = Date.now();
   if (catalogCache && now - lastLoadedAt < CACHE_TTL_MS) {
     return catalogCache;
@@ -40,31 +70,31 @@ function loadCatalog(): CatalogProduct[] {
 
   const filePath = resolveCatalogPath();
 
-  try {
-    const fileContents = fs.readFileSync(filePath, "utf8");
-    const parsed = JSON.parse(fileContents);
-
-    if (Array.isArray(parsed)) {
-      catalogCache = parsed as CatalogProduct[];
-      lastLoadedAt = now;
-      return catalogCache;
-    }
-
-    console.warn(
-      "[ProductCatalog] Expected catalog JSON to be an array. Falling back to empty list.",
-    );
-    catalogCache = [];
-    lastLoadedAt = now;
-    return catalogCache;
-  } catch (error) {
-    console.error(
-      `[ProductCatalog] Failed to load catalog from ${filePath}:`,
-      error,
-    );
-    catalogCache = [];
-    lastLoadedAt = now;
-    return catalogCache;
+  if (!catalogPromise) {
+    catalogPromise = readCatalogFromSource(filePath)
+      .then((products) => {
+        catalogCache = products;
+        lastLoadedAt = Date.now();
+        console.log(
+          `[ProductCatalog] Catalog loaded with ${products.length} products.`,
+        );
+        return products;
+      })
+      .catch((error) => {
+        console.error(
+          `[ProductCatalog] Failed to load catalog from ${filePath}:`,
+          error,
+        );
+        catalogCache = [];
+        lastLoadedAt = Date.now();
+        return [];
+      })
+      .finally(() => {
+        catalogPromise = null;
+      });
   }
+
+  return catalogPromise!;
 }
 
 function scoreProduct(product: CatalogProduct, query: string): number {
@@ -116,11 +146,14 @@ export interface CatalogMatch {
   image?: string;
 }
 
-export function findCatalogMatches(query: string, limit = 3): CatalogMatch[] {
+export async function findCatalogMatches(
+  query: string,
+  limit = 3,
+): Promise<CatalogMatch[]> {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return [];
 
-  const catalog = loadCatalog();
+  const catalog = await loadCatalog();
 
   const ranked = catalog
     .map((product) => ({ product, score: scoreProduct(product, trimmed) }))
