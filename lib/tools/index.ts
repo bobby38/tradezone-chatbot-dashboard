@@ -7,9 +7,13 @@ import { handleVectorSearch } from "./vectorSearch";
 import { handlePerplexitySearch } from "./perplexitySearch";
 import { handleEmailSend } from "./emailSend";
 
+// Export tool definitions
 export { vectorSearchTool } from "./vectorSearch";
 export { perplexitySearchTool } from "./perplexitySearch";
 export { emailSendTool } from "./emailSend";
+
+// Export handler functions
+export { handleVectorSearch, handlePerplexitySearch, handleEmailSend };
 
 /**
  * Get all available tools as an array
