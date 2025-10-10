@@ -54,7 +54,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           JSON.stringify({
             type: "session.update",
             session: {
-              type: "realtime",
+              model: config.config.model,
               modalities: ["text", "audio"],
               instructions: `You are Izacc, TradeZone Singapore's helpful AI assistant.
 
