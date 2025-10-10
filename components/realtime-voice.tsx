@@ -21,6 +21,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const playbackContextRef = useRef<AudioContext | null>(null);
   const playbackNodeRef = useRef<ScriptProcessorNode | null>(null);
   const audioQueueRef = useRef<Float32Array[]>([]);
+  const isRespondingRef = useRef(false);
 
   const startVoiceSession = async () => {
     try {
@@ -81,7 +82,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
 - Answer FAQ questions directly from the Quick Answers list above - DO NOT use tools for these
 - For product queries (prices, availability, specs), use searchProducts tool FIRST
 - Be friendly, concise, and natural - speak as if helping a customer in-store
-- Keep responses brief and conversational for voice chat`,
+- Keep responses VERY BRIEF for voice chat - 1-2 sentences maximum
+- If user interrupts or speaks, STOP immediately and listen
+- Prioritize speed and brevity over completeness`,
               input_audio_transcription: {
                 model: "whisper-1",
               },
@@ -89,7 +92,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
                 type: "server_vad",
                 threshold: 0.5,
                 prefix_padding_ms: 300,
-                silence_duration_ms: 500,
+                silence_duration_ms: 200,
               },
               tools: [
                 {
@@ -174,16 +177,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         // Start capturing audio
         await startAudioCapture(ws);
       };
-
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         handleRealtimeEvent(data);
-      };
-
-      ws.onerror = (error) => {
-        console.error("[Realtime] Error:", error);
-        setStatus("Connection error");
-        stopVoiceSession();
       };
 
       ws.onclose = (event) => {
@@ -272,6 +268,26 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
     }
 
     switch (event.type) {
+      case "input_audio_buffer.speech_started":
+        // User started speaking - interrupt any ongoing response
+        console.log("[Interrupt] User started speaking");
+        setStatus("Listening...");
+        
+        // Cancel ongoing response only if AI is currently responding
+        if (isRespondingRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              type: "response.cancel"
+            })
+          );
+          console.log("[Interrupt] Cancelled active response");
+          isRespondingRef.current = false;
+        }
+        
+        // Clear audio queue to stop playback immediately
+        audioQueueRef.current = [];
+        break;
+
       case "conversation.item.input_audio_transcription.completed":
         // User speech transcribed
         const userText = event.transcript;
@@ -286,6 +302,11 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         onTranscript?.(assistantText, "assistant");
         break;
 
+      case "response.created":
+        // Response started
+        isRespondingRef.current = true;
+        break;
+
       case "response.audio.delta":
         // Play audio response
         console.log("[Audio Delta] Received chunk, length:", event.delta?.length);
@@ -298,6 +319,12 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         console.log("[Audio Transcript Done]:", event.transcript);
         break;
       
+      case "response.done":
+        // Response finished
+        isRespondingRef.current = false;
+        setStatus("Listening...");
+        break;
+
       case "response.function_call_arguments.done":
         // Tool called
         console.log("[Tool Called]:", event.name, event.arguments);
