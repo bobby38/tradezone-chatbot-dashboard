@@ -126,11 +126,11 @@
           position: fixed;
           ${this.config.position === 'bottom-right' ? 'right: 20px;' : 'left: 20px;'}
           bottom: 90px;
-          width: 400px;
-          height: 650px;
+          width: 380px;
+          height: 550px;
           max-height: calc(100vh - 120px);
           background: #1a1a2e;
-          border-radius: 16px;
+          border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.5);
           flex-direction: column;
           overflow: hidden;
@@ -144,7 +144,7 @@
         /* Hero/Video Section */
         .tz-chat-hero {
           position: relative;
-          height: 200px;
+          height: 160px;
           background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
           overflow: hidden;
         }
@@ -214,14 +214,14 @@
         }
 
         .tz-chat-hero-title {
-          font-size: 24px;
+          font-size: 20px;
           font-weight: 700;
           margin: 0 0 4px 0;
           text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
         .tz-chat-hero-subtitle {
-          font-size: 14px;
+          font-size: 13px;
           margin: 0;
           opacity: 0.95;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -293,12 +293,12 @@
         .tz-chat-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 20px;
+          padding: 16px;
           background: #1a1a2e;
         }
 
         .tz-chat-message {
-          margin-bottom: 16px;
+          margin-bottom: 12px;
           display: flex;
           gap: 8px;
           animation: messageSlide 0.3s ease;
@@ -339,12 +339,12 @@
 
         .tz-chat-message-bubble {
           max-width: 70%;
-          padding: 10px 14px;
-          border-radius: 12px;
+          padding: 8px 12px;
+          border-radius: 10px;
           background: rgba(139, 92, 246, 0.1);
           border: 1px solid rgba(139, 92, 246, 0.2);
           color: #e5e7eb;
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1.5;
           word-wrap: break-word;
         }
@@ -436,10 +436,12 @@
           overflow-y: auto;
           width: 100%;
           padding: 16px;
-          background: #f9fafb;
+          background: rgba(139, 92, 246, 0.05);
+          border: 1px solid rgba(139, 92, 246, 0.2);
           border-radius: 8px;
           font-size: 14px;
           line-height: 1.6;
+          color: #e5e7eb;
         }
 
         /* Input Area */
@@ -1022,7 +1024,7 @@
       const transcript = document.getElementById('tz-voice-transcript');
       const div = document.createElement('div');
       div.style.marginBottom = '8px';
-      div.innerHTML = `<strong>${role === 'user' ? 'You' : this.config.botName}:</strong> ${this.escapeHtml(text)}`;
+      div.innerHTML = `<strong style="color: ${role === 'user' ? '#a78bfa' : '#8b5cf6'};">${role === 'user' ? 'You' : this.config.botName}:</strong> <span style="color: #e5e7eb;">${this.escapeHtml(text)}</span>`;
       transcript.appendChild(div);
       transcript.scrollTop = transcript.scrollHeight;
     },
