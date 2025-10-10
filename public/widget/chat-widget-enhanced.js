@@ -886,23 +886,13 @@
           console.log('[Voice] Connected');
           this.updateVoiceStatus('Connected');
           
-          // Configure session (EXACT COPY FROM DASHBOARD)
+          // Use full config from API (same as dashboard!)
           this.ws.send(JSON.stringify({
             type: 'session.update',
             session: {
-              modalities: ['text', 'audio'],
-              voice: config.config.voice || 'verse',
-              output_audio_format: 'pcm16',
-              instructions: 'You are Izacc, TradeZone.sg helpful AI assistant. ALWAYS respond in English. Keep responses brief for voice chat - 1-2 sentences maximum.',
-              input_audio_transcription: {
-                model: 'whisper-1'
-              },
-              turn_detection: {
-                type: 'server_vad',
-                threshold: 0.5,
-                prefix_padding_ms: 300,
-                silence_duration_ms: 200
-              }
+              ...config.config.sessionConfig,
+              voice: config.config.voice || 'alloy',
+              output_audio_format: 'pcm16'
             }
           }));
 
