@@ -149,6 +149,50 @@
           overflow: hidden;
         }
 
+        /* Subtle particle effect */
+        .tz-particles {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .tz-particle {
+          position: absolute;
+          width: 4px;
+          height: 4px;
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 50%;
+          animation: float 8s infinite ease-in-out;
+        }
+
+        .tz-particle:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 7s; }
+        .tz-particle:nth-child(2) { left: 25%; animation-delay: 1s; animation-duration: 9s; }
+        .tz-particle:nth-child(3) { left: 40%; animation-delay: 2s; animation-duration: 6s; }
+        .tz-particle:nth-child(4) { left: 60%; animation-delay: 0.5s; animation-duration: 8s; }
+        .tz-particle:nth-child(5) { left: 75%; animation-delay: 1.5s; animation-duration: 7.5s; }
+        .tz-particle:nth-child(6) { left: 90%; animation-delay: 2.5s; animation-duration: 8.5s; }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(100%) translateX(0) scale(1);
+            opacity: 0;
+          }
+          10% {
+            opacity: 0.3;
+          }
+          50% {
+            transform: translateY(-50%) translateX(20px) scale(1.2);
+            opacity: 0.5;
+          }
+          90% {
+            opacity: 0.3;
+          }
+        }
+
         .tz-chat-hero video {
           width: 100%;
           height: 100%;
@@ -257,6 +301,18 @@
           margin-bottom: 16px;
           display: flex;
           gap: 8px;
+          animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         .tz-chat-message.user {
@@ -285,15 +341,40 @@
           max-width: 70%;
           padding: 10px 14px;
           border-radius: 12px;
-          background: white;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          background: rgba(139, 92, 246, 0.1);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          color: #e5e7eb;
           font-size: 14px;
           line-height: 1.5;
+          word-wrap: break-word;
         }
 
         .tz-chat-message.user .tz-chat-message-bubble {
-          background: ${this.config.primaryColor};
+          background: linear-gradient(135deg, ${this.config.primaryColor} 0%, ${this.config.secondaryColor} 100%);
+          border-color: ${this.config.primaryColor};
           color: white;
+        }
+
+        .tz-chat-message-bubble a {
+          color: #a78bfa;
+          text-decoration: underline;
+          transition: color 0.2s;
+        }
+
+        .tz-chat-message-bubble a:hover {
+          color: #c4b5fd;
+        }
+
+        .tz-chat-message-bubble img {
+          max-width: 100%;
+          border-radius: 8px;
+          margin-top: 8px;
+          display: block;
+        }
+
+        .tz-chat-message-bubble strong {
+          font-weight: 600;
+          color: #fff;
         }
 
         /* Voice Mode */
@@ -313,7 +394,7 @@
         .tz-voice-status {
           font-size: 16px;
           font-weight: 500;
-          color: #1f2937;
+          color: #e5e7eb;
           text-align: center;
         }
 
@@ -364,8 +445,8 @@
         /* Input Area */
         .tz-chat-input-container {
           padding: 16px;
-          background: white;
-          border-top: 1px solid #e5e7eb;
+          background: #16162a;
+          border-top: 1px solid rgba(139, 92, 246, 0.1);
         }
 
         .tz-chat-input-wrapper {
@@ -376,26 +457,41 @@
         .tz-chat-input {
           flex: 1;
           padding: 10px 14px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          background: rgba(139, 92, 246, 0.05);
           border-radius: 20px;
           font-size: 14px;
+          color: #e5e7eb;
           outline: none;
+          transition: all 0.2s;
+        }
+
+        .tz-chat-input::placeholder {
+          color: #6b7280;
         }
 
         .tz-chat-input:focus {
           border-color: ${this.config.primaryColor};
+          background: rgba(139, 92, 246, 0.1);
         }
 
         .tz-chat-send {
           width: 40px;
           height: 40px;
           border-radius: 20px;
-          background: ${this.config.primaryColor};
+          background: linear-gradient(135deg, ${this.config.primaryColor} 0%, ${this.config.secondaryColor} 100%);
           border: none;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+          transition: all 0.2s;
+        }
+
+        .tz-chat-send:hover {
+          transform: scale(1.05);
+          box-shadow: 0 6px 16px rgba(139, 92, 246, 0.5);
         }
 
         .tz-chat-send svg {
@@ -575,6 +671,14 @@
         <div id="tz-chat-window">
           <div class="tz-chat-hero">
             ${videoHtml}
+            <div class="tz-particles">
+              <div class="tz-particle"></div>
+              <div class="tz-particle"></div>
+              <div class="tz-particle"></div>
+              <div class="tz-particle"></div>
+              <div class="tz-particle"></div>
+              <div class="tz-particle"></div>
+            </div>
             <div class="tz-chat-hero-overlay">
               <h3 class="tz-chat-hero-title">${this.config.botName}</h3>
               <p class="tz-chat-hero-subtitle">AI Assistant • Always here to help</p>
@@ -730,9 +834,13 @@
       const container = document.getElementById('tz-messages');
       const div = document.createElement('div');
       div.className = `tz-chat-message ${role}`;
+      
+      // Use markdown for assistant messages, escape HTML for user messages
+      const formattedText = role === 'assistant' ? this.parseMarkdown(text) : this.escapeHtml(text);
+      
       div.innerHTML = `
         <div class="tz-chat-message-avatar">${role === 'user' ? 'U' : this.config.botName[0]}</div>
-        <div class="tz-chat-message-bubble">${this.escapeHtml(text)}</div>
+        <div class="tz-chat-message-bubble">${formattedText}</div>
       `;
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
@@ -944,6 +1052,25 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    },
+
+    parseMarkdown: function(text) {
+      // Escape HTML first
+      text = this.escapeHtml(text);
+      
+      // Convert **bold**
+      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      
+      // Convert links [text](url)
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      
+      // Convert images ![alt](url)
+      text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />');
+      
+      // Convert line breaks
+      text = text.replace(/\n/g, '<br>');
+      
+      return text;
     }
   };
 
