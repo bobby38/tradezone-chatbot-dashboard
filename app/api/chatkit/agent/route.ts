@@ -12,6 +12,13 @@ import {
   ToolUsageSummary,
 } from "@/lib/chatkit/telemetry";
 
+// CORS headers for widget integration
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -78,6 +85,11 @@ const tools = [
   },
 ];
 
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, { headers: corsHeaders });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, sessionId, history = [] } = await request.json();
@@ -89,7 +101,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         { error: "Missing required fields: message, sessionId" },
-        { status: 400 },
+        { status: 400, headers: corsHeaders },
       );
     }
 
@@ -279,7 +291,7 @@ export async function POST(request: NextRequest) {
       response: finalResponse,
       sessionId,
       model: textModel,
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error("[ChatKit] Error:", error);
 
@@ -288,7 +300,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to process chat",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     );
   }
 }
