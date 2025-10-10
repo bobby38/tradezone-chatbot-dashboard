@@ -130,3 +130,471 @@ Apply helper scripts in `/scripts`:
 5. Implement notification integrations and AI enhancements per backlog priorities once production parity achieved.
 
 Keep this brief updated as deliverables land; append change log entries at the end with timestamp + summary.
+
+---
+
+## 11. OpenAI AgentKit Integration (Phase 2.5 - Deployed October 2025)
+
+### Architecture Overview
+The TradeZone chatbot now uses **OpenAI's complete ecosystem** for voice, text, and vision capabilities:
+
+```
+User → /dashboard/chat (ChatKit UI)
+         ↓
+    /api/chatkit/agent (Text) → OpenAI Chat Completions + Function Calling
+         ↓
+    /api/chatkit/realtime (Voice) → OpenAI Realtime API
+         ↓
+    Supabase chat_logs (Same logging as n8n)
+```
+
+### Core Components
+
+#### 1. Agent Tools Library (`lib/tools/`)
+Three main tools available to the AI agent:
+
+**Vector Search** (`vectorSearch.ts`)
+- Searches Docling hybrid chunk vector store (`vs_68e89cf979e88191bb8b4882caadbc0d`)
+- Uses OpenAI Responses API with `file_search` tool
+- Primary tool for product information and TradeZone knowledge
+
+**Perplexity Search** (`perplexitySearch.ts`)
+- Web search on tradezone.sg domain
+- Uses Perplexity Sonar Pro model
+- Fallback when vector search doesn't have current info
+
+**Email Send** (`emailSend.ts`)
+- Handles trade-in requests and customer inquiries
+- Creates submissions in Supabase
+- Sends notification emails via existing SMTP service
+- Only used when customer explicitly requests contact
+
+#### 2. ChatKit Agent API (`/api/chatkit/agent`)
+**Endpoint**: `POST /api/chatkit/agent`
+
+**Features**:
+- Uses OpenAI Chat Completions with function calling
+- Loads admin-configurable settings from Supabase (`organizations.settings.chatkit`)
+- Supports conversation history for context
+- Logs all interactions to `chat_logs` table (preserves Guest-XX session pattern)
+- Full Izacc personality prompt included
+
+**Configuration** (from Supabase settings):
+```javascript
+{
+  chatkit: {
+    textModel: "gpt-4o-mini",  // or gpt-4o, gpt-4.1-mini, etc.
+    systemPrompt: "..."        // Full Izacc prompt
+  }
+}
+```
+
+**Request Format**:
+```json
+{
+  "message": "Do you have PlayStation 5 in stock?",
+  "sessionId": "Guest-1234",
+  "history": [
+    { "role": "user", "content": "Hi" },
+    { "role": "assistant", "content": "Hi! I'm Izacc..." }
+  ]
+}
+```
+
+**Response Format**:
+```json
+{
+  "response": "Let me check our inventory for you...",
+  "sessionId": "Guest-1234",
+  "model": "gpt-4o-mini"
+}
+```
+
+#### 3. Realtime Voice API (`/api/chatkit/realtime`)
+**Endpoint**: `POST /api/chatkit/realtime`
+
+**Features**:
+- Configures OpenAI Realtime API for voice conversations
+- Uses `gpt-realtime-mini` by default (cost-effective)
+- Returns WebSocket connection details and configuration
+- Supports voice selection (alloy, echo, fable, onyx, nova, shimmer)
+
+**Configuration** (from Supabase settings):
+```javascript
+{
+  chatkit: {
+    voiceModel: "gpt-realtime-mini",  // or gpt-4o-realtime-preview
+    voice: "alloy"                     // Voice selection
+  }
+}
+```
+
+**Available Models**:
+- `gpt-realtime-mini` ⭐ (recommended, cost-effective)
+- `gpt-4o-realtime-preview`
+- `gpt-4o-mini-realtime-preview`
+
+**Response Format**:
+```json
+{
+  "success": true,
+  "config": {
+    "model": "gpt-realtime-mini",
+    "voice": "alloy",
+    "websocketUrl": "wss://api.openai.com/v1/realtime",
+    "apiKey": "sk-proj-...",
+    "instructions": "You are Izacc...",
+    "turnDetection": { "type": "server_vad", ... }
+  }
+}
+```
+
+#### 4. Chat UI (`/dashboard/chat`)
+**Features**:
+- Text chat interface with message history
+- Voice call button (START A CALL)
+- File upload support (coming soon)
+- Session management with Guest-XX pattern
+- Auto-scrolling message display
+- Loading states and error handling
+- Mobile responsive design
+
+**User Flow**:
+1. User visits `/dashboard/chat`
+2. Session ID generated (Guest-XXXX)
+3. Choose text or voice mode
+4. Text: Type messages, get AI responses
+5. Voice: Click "Start A Call", speak naturally
+6. All interactions logged to Supabase
+
+### Environment Variables
+```env
+# OpenAI Configuration
+OPENAI_API_KEY=sk-proj-...
+OPENAI_VECTOR_STORE_ID=vs_68e89cf979e88191bb8b4882caadbc0d
+
+# Optional: Perplexity for web search
+PERPLEXITY_API_KEY=...
+```
+
+### Admin-Configurable Settings
+Admins can configure via Supabase `organizations.settings` JSONB field:
+
+```json
+{
+  "chatkit": {
+    "textModel": "gpt-4o-mini",
+    "voiceModel": "gpt-realtime-mini",
+    "voice": "alloy",
+    "systemPrompt": "IMPORTANT: Do NOT include [USER_INPUT...]..."
+  }
+}
+```
+
+**Note**: Settings page UI for ChatKit configuration can be added as future enhancement. Currently configure via Supabase directly.
+
+### Migration from n8n
+
+**Hybrid Approach** (Current):
+- Both n8n and ChatKit can coexist
+- Both log to same `chat_logs` table
+- Same session management (Guest-XX pattern)
+- ChatKit used for new chat page
+- n8n continues for existing webhooks
+
+**Migration Path**:
+1. **Phase 1** (Current): ChatKit available at `/dashboard/chat`, n8n continues
+2. **Phase 2**: Gradual user migration to ChatKit
+3. **Phase 3**: Deprecate n8n workflow once fully validated
+
+### Tool Execution Flow
+```
+User: "Do you have gaming keyboards?"
+  ↓
+Agent receives message
+  ↓
+Calls searchProducts tool → Vector search
+  ↓
+Vector store returns product info
+  ↓
+Agent synthesizes response with links
+  ↓
+User receives: "Yes! We have [Razer BlackWidow...]"
+```
+
+### Logging & Analytics
+All ChatKit interactions are logged to `chat_logs`:
+```sql
+INSERT INTO chat_logs (
+  session_id,      -- "Guest-1234"
+  prompt,          -- User message
+  response,        -- AI response
+  source,          -- "chatkit"
+  user_id,         -- Session ID
+  status,          -- "success"
+  created_at,      -- Timestamp
+  session_name     -- First 50 chars of prompt
+)
+```
+
+This preserves compatibility with existing dashboard analytics and chat logs page.
+
+### Benefits
+- ✅ **Single OpenAI Integration**: No ElevenLabs, unified billing
+- ✅ **Cost-Effective Voice**: gpt-realtime-mini vs premium alternatives
+- ✅ **Modern UI**: Clean chat interface in dashboard
+- ✅ **Multimodal Ready**: Text, voice, vision (file upload coming soon)
+- ✅ **Admin Configurable**: Models and prompts via database settings
+- ✅ **Existing Compatibility**: Same logging, same session patterns
+- ✅ **n8n Coexistence**: Gradual migration, no breaking changes
+
+### Rollback Plan
+All changes isolated in feature branch: `feature/openai-agentkit`
+
+To rollback:
+```bash
+git checkout main
+git branch -D feature/openai-agentkit
+```
+
+### Future Enhancements
+1. **Settings Page UI**: Add ChatKit configuration card to `/dashboard/settings`
+2. **File Upload**: Enable image/document uploads for vision capabilities
+3. **WebSocket Implementation**: Full WebRTC voice calling in browser
+4. **Analytics**: Track ChatKit-specific metrics (voice vs text usage)
+5. **A/B Testing**: Compare ChatKit vs n8n performance
+
+### File Structure
+```
+app/
+├── api/
+│   └── chatkit/
+│       ├── agent/route.ts        # Text chat API
+│       └── realtime/route.ts     # Voice API
+└── dashboard/
+    └── chat/page.tsx             # Chat UI
+
+lib/
+└── tools/
+    ├── vectorSearch.ts           # Docling vector store
+    ├── perplexitySearch.ts       # Web search
+    ├── emailSend.ts              # Trade-ins/inquiries
+    └── index.ts                  # Tool exports
+```
+
+---
+
+## Change Log
+
+### October 10, 2025 - OpenAI Realtime Voice Integration
+**Branch**: `feature/openai-agentkit`
+
+#### **✅ Completed Features**
+
+**1. OpenAI Realtime Voice Chat** (`components/realtime-voice.tsx`)
+- **WebSocket audio streaming** using OpenAI Realtime API (`wss://api.openai.com/v1/realtime`)
+- **Model**: `gpt-4o-realtime-preview` (configurable via admin settings)
+- **Voice**: `alloy` (configurable: alloy, echo, fable, onyx, nova, shimmer)
+- **Real-time transcription** with Whisper-1 model
+- **Server-side VAD** (Voice Activity Detection) for natural conversation flow
+- **Microphone capture** with echo cancellation and noise suppression
+- **Live transcript display** in chat UI
+
+**2. Intelligent Search System**
+- **Vector Store Search First**: Queries Docling hybrid chunk vector store (`vs_68e89cf979e88191bb8b4882caadbc0d`)
+- **Perplexity Fallback**: Uses web search only if vector store returns no useful results
+- **Smart Detection**: Validates result quality (length > 50 chars, no error messages)
+- **Source Tracking**: Logs whether answer came from vector_store or perplexity
+
+**Search Flow**:
+```
+User Query → searchtool called
+           ↓
+    STEP 1: handleVectorSearch()
+           → OpenAI Responses API with file_search
+           → Docling vector store (product catalog)
+           ↓
+    Result useful? (length > 50, no errors)
+           ↓
+    YES → Return vector store answer ✅
+           ↓
+    NO → STEP 2: handlePerplexitySearch()
+         → Perplexity Sonar Pro
+         → Web search focused on tradezone.sg
+         ↓
+         Return web search result 🌐
+```
+
+**3. Agent Tools** (`/lib/tools/`)
+- **`vectorSearch.ts`**: Searches Docling vector store via OpenAI Responses API
+- **`perplexitySearch.ts`**: Web search fallback using Perplexity Sonar Pro
+- **`emailSend.ts`**: Customer inquiry submission (trade-ins, info requests, contact)
+- **`index.ts`**: Exports tool definitions and handler functions
+
+**4. API Endpoints**
+- **`/api/chatkit/agent`**: Text chat with function calling (OpenAI Chat Completions)
+- **`/api/chatkit/realtime`**: Voice session configuration (returns WebSocket config)
+- **`/api/tools/perplexity`**: Hybrid search endpoint (vector → web fallback)
+- **`/api/tools/email`**: Email submission handler
+
+**5. Chat UI** (`/app/dashboard/chat/page.tsx`)
+- **Dual Mode**: Text chat + Voice chat with easy switching
+- **Text Mode**: Message history, input field, tool call execution
+- **Voice Mode**: RealtimeVoice component with live transcripts
+- **Session Management**: Guest-XXXX pattern for session tracking
+- **Welcome UI**: Product showcase with mode selection
+
+**6. Admin Configuration** (via Supabase `organizations.settings.chatkit`)
+```typescript
+{
+  chatkit: {
+    voiceModel: "gpt-4o-realtime-preview",
+    voice: "alloy",
+    systemPrompt: "Custom instructions...",
+    textModel: "gpt-4o-mini",
+    temperature: 0.7
+  }
+}
+```
+
+#### **🔧 Technical Implementation**
+
+**Environment Variables Required**:
+```env
+OPENAI_API_KEY=sk-proj-...
+OPENAI_VECTOR_STORE_ID=vs_68e89cf979e88191bb8b4882caadbc0d
+NEXT_PUBLIC_SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+PERPLEXITY_API_KEY=...
+```
+
+**Realtime API Session Configuration**:
+```typescript
+{
+  type: "session.update",
+  session: {
+    type: "response",  // Required by API
+    model: "gpt-4o-realtime-preview",
+    modalities: ["text", "audio"],
+    voice: "alloy",
+    input_audio_format: "pcm16",
+    output_audio_format: "pcm16",
+    input_audio_transcription: { model: "whisper-1" },
+    turn_detection: {
+      type: "server_vad",
+      threshold: 0.5,
+      prefix_padding_ms: 300,
+      silence_duration_ms: 500
+    },
+    tools: [
+      { type: "function", name: "searchtool", ... },
+      { type: "function", name: "sendemail", ... }
+    ],
+    tool_choice: "auto"
+  }
+}
+```
+
+**Key Fixes Applied**:
+- ✅ Added `session.type = "response"` (required parameter)
+- ✅ Removed `file_search` tool (not supported in Realtime API)
+- ✅ Implemented vector search in backend instead
+- ✅ Fixed TypeScript exports in `lib/tools/index.ts`
+- ✅ Corrected OpenAI message format for tool calls
+- ✅ Added proper error handling and logging
+
+#### **📊 Data Flow**
+
+**Voice Conversation**:
+```
+User speaks → Microphone → PCM16 encoding
+           ↓
+    WebSocket → OpenAI Realtime API
+           ↓
+    Whisper transcription (user speech)
+           ↓
+    AI processes → Calls tools if needed
+           ↓
+    searchtool → Vector DB → Perplexity (if needed)
+           ↓
+    AI generates response
+           ↓
+    Audio response + transcript → User hears answer
+           ↓
+    Logs to chat_logs table (Supabase)
+```
+
+**Text Conversation**:
+```
+User message → /api/chatkit/agent
+           ↓
+    OpenAI Chat Completions with tools
+           ↓
+    Function calls executed (vector search, etc.)
+           ↓
+    Response returned → UI
+           ↓
+    Logs to chat_logs table (Supabase)
+```
+
+#### **🚀 Deployment Notes**
+
+**Current Status**:
+- ✅ All features implemented and committed
+- ✅ Vector store integration working
+- ⚠️ Voice chat tested (session config fixed, awaiting final validation)
+- ⚠️ Text chat working with tool calls
+- 🔜 Production deployment to tradezone.sg pending
+
+**Pre-Deployment Checklist**:
+1. ✅ Verify all environment variables in production
+2. ⚠️ Test end-to-end voice conversation
+3. ⚠️ Test vector store search accuracy
+4. ⚠️ Validate Perplexity fallback triggers correctly
+5. ⚠️ Test email submission from voice chat
+6. 🔜 Implement ephemeral tokens (security - don't expose API key to client)
+7. 🔜 Add rate limiting on API endpoints
+8. 🔜 Configure CORS for production domain
+9. 🔜 Add monitoring/logging for tool calls
+10. 🔜 Create admin UI for ChatKit settings
+
+**Git Commits** (feature/openai-agentkit):
+- `c40155b` - fix(tools): correct TypeScript imports and type definitions
+- `a59bf6f` - fix(agent): correct OpenAI message format for tool calls
+- `87843c6` - fix(agent): simplify message format to avoid OpenAI API errors
+- `3e71c3e` - fix(agent): correct string literal syntax error
+- `33eb3d3` - feat(voice): implement OpenAI Realtime voice with vector store integration
+- `3e98cc4` - fix(voice): add session.type and remove file_search tool
+- `d0f2002` - feat(voice): integrate vector store search with Perplexity fallback
+- `c42f22d` - fix(voice): correct Realtime API session.update format
+- `2e67cf4` - fix(voice): add session.type parameter to session.update
+
+#### **🎯 Next Steps**
+
+**For Testing**:
+1. Start dev server: `npm run dev`
+2. Navigate to: http://localhost:3001/dashboard/chat
+3. Test text chat with product queries
+4. Click "VOICE CHAT" and allow microphone
+5. Speak naturally: "What gaming headsets do you have?"
+6. Verify vector store search executes first
+7. Test fallback with queries not in catalog
+
+**For Production (tradezone.sg)**:
+1. Merge `feature/openai-agentkit` → `main` after validation
+2. Deploy to production with environment variables
+3. Options for website integration:
+   - **Option A**: iframe `/dashboard/chat` on tradezone.sg
+   - **Option B**: Extract `RealtimeVoice` as standalone widget
+   - **Option C**: Add voice button to existing chat widget
+4. Implement security hardening (ephemeral tokens, rate limits)
+5. Add analytics tracking for voice usage
+6. Monitor costs (Realtime API + vector store + Perplexity)
+
+**Modified**:
+- ✅ Sidebar navigation (added Chat menu item)
+- ✅ Environment configuration (.env.local)
+- ✅ Tool exports and handlers
+- ✅ API route structure
+
+**Status**: ✅ Implementation complete, awaiting final voice validation and production deployment
