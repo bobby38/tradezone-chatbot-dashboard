@@ -18,6 +18,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const playbackContextRef = useRef<AudioContext | null>(null);
+  const playbackNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const audioQueueRef = useRef<Float32Array[]>([]);
 
   const startVoiceSession = async () => {
     try {
@@ -36,13 +39,10 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         throw new Error("Failed to get realtime configuration");
       }
 
-      // Connect to OpenAI Realtime API
-      const voiceParam = config.config.voice
-        ? `&voice=${encodeURIComponent(config.config.voice)}`
-        : "";
+      // Connect to OpenAI Realtime API with proper headers
       const ws = new WebSocket(
-        `${config.config.websocketUrl}?model=${config.config.model}${voiceParam}`,
-        ["realtime", `openai-insecure-api-key.${config.config.apiKey}`],
+        `${config.config.websocketUrl}?model=${config.config.model}`,
+        ["realtime", `openai-insecure-api-key.${config.config.apiKey}`, "openai-beta.realtime-v1"],
       );
 
       wsRef.current = ws;
@@ -52,55 +52,73 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         setIsConnected(true);
         setStatus("Connected");
 
-        // Configure the session with tools
+        // Configure the session with tools and PCM16 audio output
         ws.send(
           JSON.stringify({
             type: "session.update",
             session: {
-              instructions: `You are Izacc, TradeZone Singapore's helpful AI assistant.
-
-Your role:
-- Help customers find gaming consoles, laptops, phones, and tech products
-- Answer questions about pricing, specifications, availability
-- Assist with trade-in inquiries
-- Provide product recommendations
-
-Available tools:
-1. **searchtool**: Search TradeZone products (searches our vector database first, then web if needed)
-2. **sendemail**: Send inquiry to staff (use when customer explicitly requests contact)
-
-Always search for products when asked. Be friendly, concise, and helpful. Speak naturally as if talking to a customer in-store.`,
               modalities: ["text", "audio"],
-              tool_choice: "auto",
-              audio: {
-                input: {
-                  modalities: ["audio"],
-                  transcription: {
-                    model: "whisper-1",
-                  },
-                  turn_detection: {
-                    type: "server_vad",
-                    threshold: 0.5,
-                    prefix_padding_ms: 300,
-                    silence_duration_ms: 500,
-                  },
-                },
-                output: {
-                  modalities: ["audio"],
-                },
+              voice: config.config.voice || "verse",
+              output_audio_format: "pcm16",
+              instructions: `You are Izacc, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
+
+## Quick Answers (Answer instantly - NO tool calls)
+- What is TradeZone.sg? → TradeZone.sg buys and sells new and second-hand electronics, gaming gear, and gadgets in Singapore.
+- Where are you located? → 21 Hougang St 51, #02-09, Hougang Green Shopping Mall, Singapore 538719.
+- Opening hours? → Daily 11 am – 8 pm.
+- Shipping? → Flat $5, 1–3 business days within Singapore via EasyParcel.
+- Categories? → Console games, PlayStation items, graphic cards, mobile phones, plus trade-ins.
+- Payment & returns? → Cards, PayNow, PayPal. Returns on unopened items within 14 days.
+- Store pickup? → Yes—collect at our Hougang Green outlet during opening hours.
+- Support? → contactus@tradezone.sg, phone, or live chat on the site.
+
+## Available Tools (Use only when needed)
+1. **searchProducts** - Search TradeZone product catalog (use FIRST for product queries like "PS5", "gaming keyboard", etc.)
+2. **searchtool** - Search TradeZone website for detailed info (use if vector search doesn't find results)
+3. **sendemail** - Send inquiry to staff (ONLY when customer explicitly requests contact or follow-up)
+
+## Instructions
+- Answer FAQ questions directly from the Quick Answers list above - DO NOT use tools for these
+- For product queries (prices, availability, specs), use searchProducts tool FIRST
+- Be friendly, concise, and natural - speak as if helping a customer in-store
+- Keep responses brief and conversational for voice chat`,
+              input_audio_transcription: {
+                model: "whisper-1",
+              },
+              turn_detection: {
+                type: "server_vad",
+                threshold: 0.5,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 500,
               },
               tools: [
                 {
                   type: "function",
-                  name: "searchtool",
+                  name: "searchProducts",
                   description:
-                    "Search for TradeZone products including gaming consoles, laptops, phones, accessories, pricing and availability.",
+                    "Search TradeZone product catalog using vector database. Use this FIRST for all product-related queries including gaming consoles, laptops, phones, accessories, pricing and availability.",
                   parameters: {
                     type: "object",
                     properties: {
                       query: {
                         type: "string",
                         description: "The product search query",
+                      },
+                    },
+                    required: ["query"],
+                  },
+                },
+                {
+                  type: "function",
+                  name: "searchtool",
+                  description:
+                    "Search TradeZone website and web for general information. Use this if searchProducts doesn't find what you need.",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      query: {
+                        type: "string",
+                        description: "The search query",
                       },
                     },
                     required: ["query"],
@@ -145,11 +163,13 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
           }),
         );
 
-        // Note: Vector store is configured in session tools, not as a message
         console.log(
-          "[Realtime] Vector store configured:",
+          "[Realtime] Session configured with vector store:",
           config.config.vectorStoreId,
         );
+
+        // Initialize playback audio context
+        initializePlayback();
 
         // Start capturing audio
         await startAudioCapture(ws);
@@ -166,8 +186,12 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
         stopVoiceSession();
       };
 
-      ws.onclose = () => {
-        console.log("[Realtime] Disconnected");
+      ws.onclose = (event) => {
+        console.log("[Realtime] Disconnected", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        });
         setIsConnected(false);
         setStatus("Disconnected");
         stopVoiceSession();
@@ -198,8 +222,6 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
       processorRef.current = processor;
 
       processor.onaudioprocess = (e) => {
-        if (!isRecording) return;
-
         const inputData = e.inputBuffer.getChannelData(0);
         const pcm16 = new Int16Array(inputData.length);
 
@@ -209,8 +231,9 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
         }
 
         if (ws.readyState === WebSocket.OPEN) {
+          const uint8Array = new Uint8Array(pcm16.buffer);
           const base64 = btoa(
-            String.fromCharCode(...new Uint8Array(pcm16.buffer)),
+            String.fromCharCode.apply(null, Array.from(uint8Array)),
           );
           ws.send(
             JSON.stringify({
@@ -218,6 +241,8 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
               audio: base64,
             }),
           );
+        } else {
+          console.warn("[Realtime] WebSocket not open, state:", ws.readyState);
         }
       };
 
@@ -234,7 +259,17 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
   };
 
   const handleRealtimeEvent = (event: any) => {
-    console.log("[Realtime Event]:", event.type);
+    console.log("[Realtime Event]:", event.type, event);
+
+    // Log session details to verify model being used
+    if (event.type === "session.created" || event.type === "session.updated") {
+      console.log("[Realtime Session]:", {
+        model: event.session?.model,
+        modalities: event.session?.modalities,
+        voice: event.session?.voice,
+        turn_detection: event.session?.turn_detection
+      });
+    }
 
     switch (event.type) {
       case "conversation.item.input_audio_transcription.completed":
@@ -253,10 +288,16 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
 
       case "response.audio.delta":
         // Play audio response
+        console.log("[Audio Delta] Received chunk, length:", event.delta?.length);
         playAudioChunk(event.delta);
         setStatus("Izacc speaking...");
         break;
-
+      
+      case "response.audio_transcript.done":
+        // Full transcript available
+        console.log("[Audio Transcript Done]:", event.transcript);
+        break;
+      
       case "response.function_call_arguments.done":
         // Tool called
         console.log("[Tool Called]:", event.name, event.arguments);
@@ -264,12 +305,14 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
         setStatus(`Using tool: ${event.name}...`);
         break;
 
-      case "response.done":
-        setStatus("Listening...");
-        break;
-
       case "error":
-        console.error("[Realtime Error]:", event);
+        console.error("[Realtime Error]:", JSON.stringify(event, null, 2));
+        console.error("[Error Details]:", {
+          type: event.error?.type,
+          code: event.error?.code,
+          message: event.error?.message,
+          param: event.error?.param
+        });
         if (event.error?.message) {
           setStatus(`Error: ${event.error.message}`);
         } else {
@@ -284,8 +327,20 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
       const parsedArgs = JSON.parse(args);
       let result = "";
 
-      if (name === "searchtool") {
-        // Call Perplexity search
+      if (name === "searchProducts") {
+        // Call vector search (primary product search)
+        console.log("[Tool] Calling vector search:", parsedArgs.query);
+        const response = await fetch("/api/tools/vector-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: parsedArgs.query }),
+        });
+        const data = await response.json();
+        result = data.result || "No products found in catalog";
+        console.log("[Tool] Vector search result:", result.substring(0, 200));
+      } else if (name === "searchtool") {
+        // Call Perplexity search (fallback/web search)
+        console.log("[Tool] Calling Perplexity search:", parsedArgs.query);
         const response = await fetch("/api/tools/perplexity", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -293,6 +348,7 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
         });
         const data = await response.json();
         result = data.result || "No results found";
+        console.log("[Tool] Perplexity result:", result.substring(0, 200));
       } else if (name === "sendemail") {
         // Call email send
         const response = await fetch("/api/tools/email", {
@@ -329,18 +385,77 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
     }
   };
 
+  // Initialize PCM16 playback with ScriptProcessorNode
+  const initializePlayback = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass({ sampleRate: 24000 });
+      playbackContextRef.current = ctx;
+      
+      // Create ScriptProcessorNode for continuous playback
+      const node = ctx.createScriptProcessor(2048, 1, 1);
+      playbackNodeRef.current = node;
+      
+      node.onaudioprocess = (e) => {
+        const out = e.outputBuffer.getChannelData(0);
+        let offset = 0;
+        
+        while (offset < out.length) {
+          if (audioQueueRef.current.length === 0) {
+            // No data – output silence
+            for (; offset < out.length; offset++) out[offset] = 0;
+            break;
+          }
+          
+          const chunk = audioQueueRef.current[0];
+          const copyCount = Math.min(chunk.length, out.length - offset);
+          out.set(chunk.subarray(0, copyCount), offset);
+          offset += copyCount;
+
+          if (copyCount === chunk.length) {
+            audioQueueRef.current.shift(); // Finished this chunk
+          } else {
+            audioQueueRef.current[0] = chunk.subarray(copyCount); // Keep remainder
+          }
+        }
+      };
+      
+      node.connect(ctx.destination);
+      console.log("[Playback] Initialized, AudioContext state:", ctx.state);
+      
+      // Resume context (handle autoplay policy)
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          console.log("[Playback] AudioContext resumed");
+        });
+      }
+    } catch (error) {
+      console.error("[Playback Init Error]:", error);
+    }
+  };
+
+  // Push base64 PCM16 audio to playback queue
   const playAudioChunk = (base64Audio: string) => {
     try {
-      // Decode base64 PCM16 audio
-      const binaryString = atob(base64Audio);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      if (!base64Audio) return;
+      
+      // Decode base64 to PCM16
+      const buf = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0)).buffer;
+      const i16 = new Int16Array(buf);
+      const f32 = new Float32Array(i16.length);
+      
+      // Convert [-32768, 32767] -> [-1, 1]
+      for (let i = 0; i < i16.length; i++) {
+        f32[i] = Math.max(-1, Math.min(1, i16[i] / 32768));
       }
-
-      // TODO: Implement audio playback queue
-      // For now, log that we received audio
-      console.log("[Audio Chunk]:", bytes.length, "bytes");
+      
+      audioQueueRef.current.push(f32);
+      console.log("[Play Audio] Queued", i16.length, "samples, queue size:", audioQueueRef.current.length);
+      
+      // Ensure AudioContext is running
+      if (playbackContextRef.current?.state === 'suspended') {
+        playbackContextRef.current.resume();
+      }
     } catch (error) {
       console.error("[Audio Playback Error]:", error);
     }
@@ -364,10 +479,23 @@ Always search for products when asked. Be friendly, concise, and helpful. Speak 
       audioContextRef.current = null;
     }
 
+    if (playbackNodeRef.current) {
+      playbackNodeRef.current.disconnect();
+      playbackNodeRef.current = null;
+    }
+
+    if (playbackContextRef.current) {
+      playbackContextRef.current.close();
+      playbackContextRef.current = null;
+    }
+
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
+
+    // Clear audio queue
+    audioQueueRef.current = [];
 
     setIsConnected(false);
     setStatus("Stopped");
