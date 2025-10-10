@@ -129,11 +129,12 @@
           width: 400px;
           height: 650px;
           max-height: calc(100vh - 120px);
-          background: white;
+          background: #1a1a2e;
           border-radius: 16px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.5);
           flex-direction: column;
           overflow: hidden;
+          border: 1px solid rgba(139, 92, 246, 0.3);
         }
 
         #tz-chat-window.open {
@@ -208,19 +209,20 @@
           display: flex;
           gap: 8px;
           padding: 12px 16px;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
+          background: #16162a;
+          border-bottom: 1px solid rgba(139, 92, 246, 0.1);
         }
 
         .tz-mode-btn {
           flex: 1;
           padding: 8px 16px;
-          border: 1px solid #e5e7eb;
-          background: white;
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          background: rgba(139, 92, 246, 0.05);
           border-radius: 8px;
           cursor: pointer;
           font-size: 14px;
           font-weight: 500;
+          color: #9ca3af;
           transition: all 0.2s;
           display: flex;
           align-items: center;
@@ -233,7 +235,7 @@
         }
 
         .tz-mode-btn.active {
-          background: ${this.config.primaryColor};
+          background: linear-gradient(135deg, ${this.config.primaryColor} 0%, ${this.config.secondaryColor} 100%);
           color: white;
           border-color: ${this.config.primaryColor};
         }
