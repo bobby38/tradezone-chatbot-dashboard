@@ -46,14 +46,12 @@ export async function GET(request: NextRequest) {
     if (error) {
       // Supabase returns code PGRST116 when no rows found, treat as empty defaults
       if (error.code === 'PGRST116' || error.details?.includes('0 rows') || error.message?.includes('No rows')) {
-        console.warn(
-          `Organization ${DEFAULT_ORG_ID} not found. Returning default settings.`,
-        )
+        console.warn(`Organization ${DEFAULT_ORG_ID} not found. Returning default settings.`)
         return NextResponse.json({ settings: DEFAULT_SETTINGS, source: 'fallback_missing_org' })
       }
 
       console.error('Error fetching organization settings:', error)
-      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
+      return NextResponse.json({ settings: DEFAULT_SETTINGS, source: 'fallback_error', error: error.message }, { status: 200 })
     }
 
     const settings = org?.settings || DEFAULT_SETTINGS
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching organization:', fetchError)
-      return NextResponse.json({ error: 'Failed to fetch organization' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to fetch organization', code: fetchError.code }, { status: 500 })
     }
 
     // Update the nested settings
