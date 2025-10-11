@@ -191,41 +191,49 @@
           to { opacity: 1; }
         }
 
-        #tz-chat-window {
-          display: none;
-          position: fixed;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          width: 90vw;
-          max-width: 450px;
-          height: 85vh;
-          max-height: 700px;
-          background: transparent;
-          border-radius: 12px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-          flex-direction: column;
-          overflow: hidden;
-          border: 1px solid rgba(139, 92, 246, 0.3);
-          z-index: 999998;
-          /* Prevent mobile shifting */
-          margin: 0;
-          padding: 0;
-          animation: tzSlideIn 0.3s ease;
-        }
+                        #tz-chat-window {
+                          display: none;
+                          position: fixed;
+                          right: 20px;
+                          bottom: 100px; /* Position above the button */
+                          width: 90vw;
+                          max-width: 450px;
+                          height: 85vh;
+                          max-height: 700px;
+                          background: transparent;
+                          border-radius: 12px;
+                          box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                          flex-direction: column;
+                          overflow: hidden;
+                          border: 1px solid rgba(139, 92, 246, 0.3);
+                          z-index: 999998;
+                          margin: 0;
+                          padding: 0;
+                          animation: tzSlideInCorner 0.3s ease;
+                          transform-origin: bottom right;
+                        }
 
-        @keyframes tzSlideIn {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -45%);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, -50%);
-          }
-        }
+                        @keyframes tzSlideIn {
+                          from {
+                            opacity: 0;
+                            transform: translate(-50%, -45%);
+                          }
+                          to {
+                            opacity: 1;
+                            transform: translate(-50%, -50%);
+                          }
+                        }
 
-        /* Prevent body scroll when widget open */
+                        @keyframes tzSlideInCorner {
+                          from {
+                            opacity: 0;
+                            transform: translateY(15px) scale(0.98);
+                          }
+                          to {
+                            opacity: 1;
+                            transform: translateY(0) scale(1);
+                          }
+                        }        /* Prevent body scroll when widget open */
         body.tz-widget-open {
           overflow: hidden !important;
           position: fixed !important;
@@ -826,9 +834,16 @@
           to { transform: rotate(360deg); }
         }
 
-        /* Tablet landscape and up - Centered with fixed max size */
+        /* Desktop (769px and up) - Centered */
         @media (min-width: 769px) {
           #tz-chat-window {
+            left: 50%;
+            top: 50%;
+            right: auto;
+            bottom: auto;
+            transform: translate(-50%, -50%);
+            animation-name: tzSlideIn;
+            transform-origin: center center;
             width: 90vw;
             max-width: 450px;
             height: 85vh;
@@ -836,33 +851,24 @@
           }
         }
 
-        /* Tablet portrait (601-768px) - Centered, slightly smaller */
+        /* Tablet portrait (601-768px) - Size adjustments */
         @media (max-width: 768px) and (min-width: 601px) {
           #tz-chat-window {
             width: 85vw;
             max-width: 500px;
             height: 80vh;
             max-height: 650px;
-            left: 50% !important;
-            top: 50% !important;
-            transform: translate(-50%, -50%) !important;
           }
         }
 
-        /* Mobile (up to 600px) - Centered, 75% height */
+        /* Mobile (up to 600px) - Size adjustments */
         @media (max-width: 600px) {
           #tz-chat-window {
             width: 92vw;
             max-width: 420px;
             height: 75vh;
             max-height: none;
-            left: 50% !important;
-            top: 50% !important;
-            right: auto !important;
-            bottom: auto !important;
-            transform: translate(-50%, -50%) !important;
             border-radius: 16px;
-            inset: unset !important;
           }
 
           #tz-chat-button {
