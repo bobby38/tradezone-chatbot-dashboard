@@ -171,9 +171,10 @@
           left: 50%;
           top: 50%;
           transform: translate(-50%, -50%);
-          width: 420px;
-          height: 600px;
-          max-height: calc(100vh - 40px);
+          width: 90vw;
+          max-width: 450px;
+          height: 85vh;
+          max-height: 700px;
           background: #1a1a2e;
           border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.5);
@@ -183,59 +184,9 @@
           z-index: 999998;
         }
 
-        /* Mobile & Tablet - Centered smaller widget */
-        @media (max-width: 768px) {
-          #tz-chat-button {
-            position: fixed;
-            right: calc(env(safe-area-inset-right, 0px) + 16px);
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-          }
-
-          #tz-chat-window {
-            width: 90vw;
-            max-width: 420px;
-            height: 85vh;
-            max-height: 700px;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 12px;
-            border: 1px solid rgba(139, 92, 246, 0.3);
-          }
-
-          /* Messages must scroll, not widget */
-          .tz-chat-messages {
-            flex: 1;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch;
-            min-height: 0;
-            padding-bottom: 12px;
-          }
-
-          /* Input stays at bottom, above keyboard */
-          .tz-chat-input-container {
-            flex-shrink: 0;
-            padding-bottom: 16px;
-          }
-
-          /* Prevent body scroll */
-          body.tz-widget-open {
-            overflow: hidden !important;
-          }
-
-          /* Close button bottom right */
-          .tz-chat-close {
-            top: auto !important;
-            bottom: 20px !important;
-            right: 20px !important;
-            width: 48px !important;
-            height: 48px !important;
-            background: rgba(139, 92, 246, 0.9) !important;
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            border: 2px solid rgba(255,255,255,0.3);
-            color: white;
-          }
+        /* Prevent body scroll when widget open */
+        body.tz-widget-open {
+          overflow: hidden !important;
         }
 
         #tz-chat-window.open {
@@ -330,13 +281,13 @@
 
         .tz-chat-close {
           position: absolute;
-          top: 12px;
-          right: 12px;
-          background: rgba(0,0,0,0.5);
+          bottom: 20px;
+          right: 20px;
+          background: rgba(139, 92, 246, 0.9);
           border: none;
           border-radius: 50%;
-          width: 36px;
-          height: 36px;
+          width: 44px;
+          height: 44px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -348,15 +299,7 @@
         }
 
         .tz-chat-close:hover {
-          background: rgba(139, 92, 246, 0.8);
-        }
-
-        @media (max-width: 768px) {
-          .tz-chat-close {
-            width: 44px;
-            height: 44px;
-            background: rgba(0,0,0,0.7);
-          }
+          background: rgba(139, 92, 246, 1);
         }
 
         .tz-position-controls {
