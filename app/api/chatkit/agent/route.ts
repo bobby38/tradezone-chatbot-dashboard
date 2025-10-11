@@ -63,14 +63,18 @@ async function runHybridSearch(query: string): Promise<HybridSearchResult> {
       const matches = await findCatalogMatches(query, 3);
       if (matches.length) {
         const lines = matches.map((match, index) => {
+          const order = index + 1;
           const price = match.price ? ` — ${match.price}` : "";
           const availability = match.stockStatus
             ? ` (Availability: ${match.stockStatus})`
             : "";
-          const link = match.permalink
-            ? `\n• View product: ${match.permalink}`
+          const title = match.permalink
+            ? `[${match.name}](${match.permalink})`
+            : match.name;
+          const image = match.image
+            ? `\n![${match.name}](${match.image})`
             : "";
-          return `${index + 1}. ${match.name}${price}${availability}${link}`;
+          return `**${order}. ${title}**${price}${availability}${image}`;
         });
         result = `I found these matches in our product catalog:\n\n${lines.join("\n\n")}`;
         source = "product_catalog";
@@ -126,6 +130,10 @@ function formatHybridFallback(
       : source === "product_catalog"
         ? "TradeZone product catalog"
         : "TradeZone website";
+  const callToAction =
+    source === "product_catalog"
+      ? "I can reserve stock with the team or notify you when it’s back—just say the word."
+      : "Need help comparing options or checking stock? Let me know.";
   return [
     `Here’s what I found for “${query}”:`,
     "",
@@ -133,7 +141,7 @@ function formatHybridFallback(
     "",
     `_Source: ${sourceLabel}_`,
     "",
-    "Would you like more details, pricing comparisons, or help with something else?",
+    callToAction,
   ].join("\n");
 }
 
@@ -397,17 +405,19 @@ export async function POST(request: NextRequest) {
         });
         finalResponse = finalCompletion.choices[0].message.content || "";
 
-        if (
-          lastHybridResult &&
-          lastHybridSource &&
-          lastHybridQuery &&
-          isGenericAssistantReply(finalResponse)
-        ) {
-          finalResponse = formatHybridFallback(
+        if (lastHybridResult && lastHybridSource && lastHybridQuery) {
+          const hasLink = /https?:\/\//i.test(finalResponse);
+          const fallback = formatHybridFallback(
             lastHybridQuery,
             lastHybridResult,
             lastHybridSource,
           );
+
+          if (isGenericAssistantReply(finalResponse) || (lastHybridSource === "product_catalog" && !hasLink)) {
+            finalResponse = fallback;
+          } else if (!hasLink) {
+            finalResponse = `${finalResponse}\n\n${fallback}`;
+          }
         }
       }
     } else {
