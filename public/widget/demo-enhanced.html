@@ -1,294 +1,336 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeZone Enhanced Chat Widget Demo</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TradeZone Enhanced Chat Widget Demo</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
 
-        .container {
-            max-width: 900px;
-            width: 100%;
-            background: white;
-            border-radius: 20px;
-            padding: 60px 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        h1 {
-            font-size: 48px;
-            color: #1f2937;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-
-        .subtitle {
-            font-size: 20px;
-            color: #6b7280;
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
-        }
-
-        .feature {
-            text-align: center;
-            padding: 32px 24px;
-            background: #f9fafb;
-            border-radius: 16px;
-            transition: transform 0.2s;
-        }
-
-        .feature:hover {
-            transform: translateY(-4px);
-        }
-
-        .feature-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
-
-        .feature-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 8px;
-        }
-
-        .feature-desc {
-            font-size: 14px;
-            color: #6b7280;
-            line-height: 1.6;
-        }
-
-        .cta {
-            text-align: center;
-            padding: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            color: white;
-            margin-bottom: 40px;
-        }
-
-        .cta h2 {
-            font-size: 32px;
-            margin-bottom: 16px;
-        }
-
-        .cta p {
-            font-size: 18px;
-            opacity: 0.95;
-            margin-bottom: 24px;
-            line-height: 1.6;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .cta-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 16px 32px;
-            background: white;
-            color: #667eea;
-            border-radius: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            font-size: 16px;
-        }
-
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        }
-
-        .cta-button.secondary {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            backdrop-filter: blur(10px);
-        }
-
-        .info-box {
-            background: #f0f9ff;
-            border: 2px solid #3b82f6;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .info-box h3 {
-            color: #1e40af;
-            font-size: 18px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .info-box p {
-            color: #1e3a8a;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-
-        .info-box ul {
-            margin-left: 20px;
-            color: #1e3a8a;
-        }
-
-        .info-box li {
-            margin-bottom: 8px;
-        }
-
-        .code-section {
-            margin-top: 40px;
-            padding: 24px;
-            background: #1f2937;
-            border-radius: 12px;
-            color: white;
-        }
-
-        .code-section h3 {
-            font-size: 18px;
-            margin-bottom: 16px;
-            color: #10b981;
-        }
-
-        .code-section pre {
-            background: #111827;
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .code-section code {
-            color: #e5e7eb;
-        }
-
-        @media (max-width: 640px) {
             .container {
-                padding: 40px 24px;
+                max-width: 900px;
+                width: 100%;
+                background: white;
+                border-radius: 20px;
+                padding: 60px 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             }
 
             h1 {
-                font-size: 36px;
+                font-size: 48px;
+                color: #1f2937;
+                margin-bottom: 16px;
+                text-align: center;
+            }
+
+            .subtitle {
+                font-size: 20px;
+                color: #6b7280;
+                text-align: center;
+                margin-bottom: 40px;
             }
 
             .features {
-                grid-template-columns: 1fr;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 24px;
+                margin-bottom: 40px;
+            }
+
+            .feature {
+                text-align: center;
+                padding: 32px 24px;
+                background: #f9fafb;
+                border-radius: 16px;
+                transition: transform 0.2s;
+            }
+
+            .feature:hover {
+                transform: translateY(-4px);
+            }
+
+            .feature-icon {
+                font-size: 48px;
+                margin-bottom: 16px;
+            }
+
+            .feature-title {
+                font-size: 18px;
+                font-weight: 700;
+                color: #1f2937;
+                margin-bottom: 8px;
+            }
+
+            .feature-desc {
+                font-size: 14px;
+                color: #6b7280;
+                line-height: 1.6;
+            }
+
+            .cta {
+                text-align: center;
+                padding: 40px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 16px;
+                color: white;
+                margin-bottom: 40px;
+            }
+
+            .cta h2 {
+                font-size: 32px;
+                margin-bottom: 16px;
+            }
+
+            .cta p {
+                font-size: 18px;
+                opacity: 0.95;
+                margin-bottom: 24px;
+                line-height: 1.6;
             }
 
             .cta-buttons {
-                flex-direction: column;
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                flex-wrap: wrap;
             }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚀 Enhanced Chat Widget</h1>
-        <p class="subtitle">Full-featured AI assistant with text, voice, and video</p>
 
-        <div class="info-box">
-            <h3>✨ New Features</h3>
-            <ul>
-                <li><strong>Video Avatar</strong> - Hero section with autoplay video</li>
-                <li><strong>Voice Chat</strong> - Real-time voice conversations with GPT-4o-mini Realtime</li>
-                <li><strong>Mode Toggle</strong> - Switch between text and voice seamlessly</li>
-                <li><strong>Call Button</strong> - Start voice calls with one click</li>
-                <li><strong>Live Transcription</strong> - See what you and the AI are saying</li>
-            </ul>
-        </div>
+            .cta-button {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 16px 32px;
+                background: white;
+                color: #667eea;
+                border-radius: 12px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+                font-size: 16px;
+            }
 
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">💬</div>
-                <div class="feature-title">Text Chat</div>
-                <div class="feature-desc">Type your questions and get instant AI responses</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎙️</div>
-                <div class="feature-title">Voice Chat</div>
-                <div class="feature-desc">Speak naturally with real-time voice AI</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎬</div>
-                <div class="feature-title">Video Avatar</div>
-                <div class="feature-desc">Engaging hero section with your brand video</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🔄</div>
-                <div class="feature-title">Mode Switching</div>
-                <div class="feature-desc">Toggle between text and voice anytime</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">📱</div>
-                <div class="feature-title">Mobile Ready</div>
-                <div class="feature-desc">Perfect experience on all devices</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">⚡</div>
-                <div class="feature-title">Low Latency</div>
-                <div class="feature-desc">200-300ms voice response time</div>
-            </div>
-        </div>
+            .cta-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            }
 
-        <div class="cta">
-            <h2>Try it now!</h2>
-            <p>Click the chat button in the bottom-right corner to experience the full-featured widget</p>
-            <div class="cta-buttons">
-                <a href="#" class="cta-button" onclick="document.getElementById('tz-chat-button').click(); return false;">
-                    💬 Open Text Chat
-                </a>
-                <a href="#" class="cta-button secondary" onclick="document.getElementById('tz-chat-button').click(); setTimeout(() => document.querySelector('[data-mode=voice]').click(), 500); return false;">
-                    🎙️ Start Voice Call
-                </a>
-            </div>
-        </div>
+            .cta-button.secondary {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                backdrop-filter: blur(10px);
+            }
 
-        <div class="code-section">
-            <h3>Installation Code</h3>
-            <pre><code>&lt;!-- Enhanced Widget with Video + Voice --&gt;
-&lt;script 
+            .info-box {
+                background: #f0f9ff;
+                border: 2px solid #3b82f6;
+                border-radius: 12px;
+                padding: 24px;
+                margin-bottom: 24px;
+            }
+
+            .info-box h3 {
+                color: #1e40af;
+                font-size: 18px;
+                margin-bottom: 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .info-box p {
+                color: #1e3a8a;
+                line-height: 1.6;
+                margin-bottom: 8px;
+            }
+
+            .info-box ul {
+                margin-left: 20px;
+                color: #1e3a8a;
+            }
+
+            .info-box li {
+                margin-bottom: 8px;
+            }
+
+            .code-section {
+                margin-top: 40px;
+                padding: 24px;
+                background: #1f2937;
+                border-radius: 12px;
+                color: white;
+            }
+
+            .code-section h3 {
+                font-size: 18px;
+                margin-bottom: 16px;
+                color: #10b981;
+            }
+
+            .code-section pre {
+                background: #111827;
+                padding: 16px;
+                border-radius: 8px;
+                overflow-x: auto;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .code-section code {
+                color: #e5e7eb;
+            }
+
+            @media (max-width: 640px) {
+                .container {
+                    padding: 40px 24px;
+                }
+
+                h1 {
+                    font-size: 36px;
+                }
+
+                .features {
+                    grid-template-columns: 1fr;
+                }
+
+                .cta-buttons {
+                    flex-direction: column;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚀 Enhanced Chat Widget</h1>
+            <p class="subtitle">
+                Full-featured AI assistant with text, voice, and video
+            </p>
+
+            <div class="info-box">
+                <h3>✨ New Features</h3>
+                <ul>
+                    <li>
+                        <strong>Video Avatar</strong> - Hero section with
+                        autoplay video
+                    </li>
+                    <li>
+                        <strong>Voice Chat</strong> - Real-time voice
+                        conversations with GPT-4o-mini Realtime
+                    </li>
+                    <li>
+                        <strong>Mode Toggle</strong> - Switch between text and
+                        voice seamlessly
+                    </li>
+                    <li>
+                        <strong>Call Button</strong> - Start voice calls with
+                        one click
+                    </li>
+                    <li>
+                        <strong>Live Transcription</strong> - See what you and
+                        the AI are saying
+                    </li>
+                </ul>
+            </div>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">💬</div>
+                    <div class="feature-title">Text Chat</div>
+                    <div class="feature-desc">
+                        Type your questions and get instant AI responses
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎙️</div>
+                    <div class="feature-title">Voice Chat</div>
+                    <div class="feature-desc">
+                        Speak naturally with real-time voice AI
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎬</div>
+                    <div class="feature-title">Video Avatar</div>
+                    <div class="feature-desc">
+                        Engaging hero section with your brand video
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔄</div>
+                    <div class="feature-title">Mode Switching</div>
+                    <div class="feature-desc">
+                        Toggle between text and voice anytime
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-title">Mobile Ready</div>
+                    <div class="feature-desc">
+                        Perfect experience on all devices
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Low Latency</div>
+                    <div class="feature-desc">
+                        200-300ms voice response time
+                    </div>
+                </div>
+            </div>
+
+            <div class="cta">
+                <h2>Try it now!</h2>
+                <p>
+                    Click the chat button in the bottom-right corner to
+                    experience the full-featured widget
+                </p>
+                <div class="cta-buttons">
+                    <a
+                        href="#"
+                        class="cta-button"
+                        onclick="document.getElementById('tz-chat-button').click(); return false;"
+                    >
+                        💬 Open Text Chat
+                    </a>
+                    <a
+                        href="#"
+                        class="cta-button secondary"
+                        onclick="document.getElementById('tz-chat-button').click(); setTimeout(() => document.querySelector('[data-mode=voice]').click(), 500); return false;"
+                    >
+                        🎙️ Start Voice Call
+                    </a>
+                </div>
+            </div>
+
+            <div class="code-section">
+                <h3>Installation Code</h3>
+                <pre><code>&lt;!-- Enhanced Widget with Video + Voice --&gt;
+&lt;script
   src="https://your-domain.com/widget/chat-widget-enhanced.js"
   data-api-url="https://your-dashboard.com"
   data-position="bottom-right"
   data-primary-color="#2563eb"
   data-video-url="https://your-domain.com/avatar-video.mp4"
 &gt;&lt;/script&gt;</code></pre>
-        </div>
+            </div>
 
-        <div class="code-section" style="margin-top: 20px;">
-            <h3>Manual Initialization</h3>
-            <pre><code>&lt;script src="https://your-domain.com/widget/chat-widget-enhanced.js"&gt;&lt;/script&gt;
+            <div class="code-section" style="margin-top: 20px">
+                <h3>Manual Initialization</h3>
+                <pre><code>&lt;script src="https://your-domain.com/widget/chat-widget-enhanced.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   TradeZoneChatEnhanced.init({
     apiUrl: 'https://your-dashboard.com',
@@ -301,37 +343,42 @@
     enableVideo: true   // Enable video hero
   });
 &lt;/script&gt;</code></pre>
-        </div>
+            </div>
 
-        <div class="code-section" style="margin-top: 20px;">
-            <h3>Configuration Options</h3>
-            <pre><code>{
+            <div class="code-section" style="margin-top: 20px">
+                <h3>Configuration Options</h3>
+                <pre><code>{
   apiUrl: 'https://your-dashboard.com',  // Required
   position: 'bottom-right',              // or 'bottom-left'
   primaryColor: '#2563eb',               // Brand color
   videoUrl: 'https://...',               // Hero video URL
   greeting: 'Hi! How can I help?',       // Initial message
-  botName: 'Izacc',                      // Bot display name
+  botName: 'Amara',                      // Bot display name
   placeholder: 'Type your message...',   // Input placeholder
   enableVoice: true,                     // Enable voice chat
   enableVideo: true                      // Enable video hero
 }</code></pre>
+            </div>
         </div>
-    </div>
 
-    <!-- TradeZone Enhanced Chat Widget -->
-    <script src="./chat-widget-enhanced.js"></script>
-    <script>
-        TradeZoneChatEnhanced.init({
-            apiUrl: 'http://localhost:3000', // Change to your dashboard URL
-            position: 'bottom-right',
-            primaryColor: '#8b5cf6', // Purple - NO BLUE!
-            videoUrl: 'https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4', // Amara avatar video
-            greeting: 'Hi! Welcome to TradeZone. I can help via text or voice. What do you prefer?',
-            botName: 'Izacc',
-            enableVoice: true,
-            enableVideo: true // Video enabled
-        });
-    </script>
-</body>
+        <!-- TradeZone Enhanced Chat Widget -->
+        <script src="./chat-widget-enhanced.js"></script>
+        <script>
+            TradeZoneChatEnhanced.init({
+                apiUrl:
+                    window.location.hostname === "localhost"
+                        ? "http://localhost:3000"
+                        : "https://trade.rezult.co",
+                position: "bottom-right",
+                primaryColor: "#8b5cf6", // Purple - NO BLUE!
+                videoUrl:
+                    "https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4", // Amara avatar video
+                greeting:
+                    "Hi! Welcome to TradeZone. I can help via text or voice. What do you prefer?",
+                botName: "Amara",
+                enableVoice: true,
+                enableVideo: true, // Video enabled
+            });
+        </script>
+    </body>
 </html>
