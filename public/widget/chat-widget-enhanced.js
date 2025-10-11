@@ -437,12 +437,23 @@
         }
 
         /* Messages Area */
-        .tz-chat-content {
+        .tz-chat-body {
           display: flex;
           flex-direction: column;
           flex: 1;
           min-height: 0;
           background: #1a1a2e;
+        }
+
+        .tz-chat-body.voice-active .tz-chat-content {
+          display: none;
+        }
+
+        .tz-chat-content {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          min-height: 0;
         }
 
         .tz-chat-messages {
@@ -596,7 +607,7 @@
           min-height: 0;
         }
 
-        .tz-voice-container.active {
+        .tz-chat-body.voice-active .tz-voice-container {
           display: flex;
         }
 
@@ -972,61 +983,62 @@
               : ""
           }
 
-          <div class="tz-chat-content" id="tz-chat-content">
-            <div class="tz-chat-messages" id="tz-messages">
-              <div class="tz-chat-message">
-                <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
-                <div class="tz-chat-message-bubble">${this.config.greeting}</div>
+          <div class="tz-chat-body" id="tz-chat-body">
+            <div class="tz-chat-content" id="tz-chat-content">
+              <div class="tz-chat-messages" id="tz-messages">
+                <div class="tz-chat-message">
+                  <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
+                  <div class="tz-chat-message-bubble">${this.config.greeting}</div>
+                </div>
+              </div>
+              <div class="tz-chat-input-container" id="tz-input-container">
+                <div class="tz-chat-input-wrapper">
+                  <button class="tz-chat-attach" id="tz-attach" title="Attach image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                  </button>
+                  <input
+                    type="file"
+                    id="tz-file-input"
+                    accept="image/*"
+                    style="display: none;"
+                  />
+                  <input
+                    type="text"
+                    class="tz-chat-input"
+                    id="tz-input"
+                    placeholder="${this.config.placeholder}"
+                  />
+                  <button class="tz-chat-send" id="tz-send">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                  </button>
+                </div>
+                <div id="tz-image-preview" class="tz-image-preview" style="display: none;">
+                  <img id="tz-preview-img" src="" alt="Preview" />
+                  <button class="tz-remove-image" id="tz-remove-image">×</button>
+                </div>
               </div>
             </div>
-            <div class="tz-chat-input-container" id="tz-input-container">
-              <div class="tz-chat-input-wrapper">
-                <button class="tz-chat-attach" id="tz-attach" title="Attach image">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-                  </svg>
-                </button>
-                <input
-                  type="file"
-                  id="tz-file-input"
-                  accept="image/*"
-                  style="display: none;"
-                />
-                <input
-                  type="text"
-                  class="tz-chat-input"
-                  id="tz-input"
-                  placeholder="${this.config.placeholder}"
-                />
-                <button class="tz-chat-send" id="tz-send">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                  </svg>
-                </button>
-              </div>
-              <div id="tz-image-preview" class="tz-image-preview" style="display: none;">
-                <img id="tz-preview-img" src="" alt="Preview" />
-                <button class="tz-remove-image" id="tz-remove-image">×</button>
-              </div>
+            ${
+              this.config.enableVoice
+                ? `
+            <div class="tz-voice-container" id="tz-voice-container">
+              <div class="tz-voice-status" id="tz-voice-status">Ready to start</div>
+              <button class="tz-voice-button start" id="tz-voice-btn">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+              </button>
+              <div class="tz-voice-transcript" id="tz-voice-transcript"></div>
             </div>
+            `
+                : ""
+            }
           </div>
-
-          ${
-            this.config.enableVoice
-              ? `
-          <div class="tz-voice-container" id="tz-voice-container">
-            <div class="tz-voice-status" id="tz-voice-status">Ready to start</div>
-            <button class="tz-voice-button start" id="tz-voice-btn">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-              </svg>
-            </button>
-            <div class="tz-voice-transcript" id="tz-voice-transcript"></div>
-          </div>
-          `
-              : ""
-          }
         </div>
       `;
 
@@ -1110,26 +1122,17 @@
         btn.classList.toggle("active", btn.dataset.mode === mode);
       });
 
-      const content = document.getElementById("tz-chat-content");
-      const inputContainer = document.getElementById("tz-input-container");
+      const body = document.getElementById("tz-chat-body");
       const voiceContainer = document.getElementById("tz-voice-container");
 
       if (mode === "text") {
-        if (content) content.style.display = "flex";
-        document.getElementById("tz-messages").style.display = "block";
-        if (inputContainer) inputContainer.style.display = "block";
-        if (voiceContainer) voiceContainer.classList.remove("active");
-        if (voiceContainer) voiceContainer.style.display = "none";
+        body?.classList.remove("voice-active");
+        voiceContainer?.classList.remove("active");
         if (this.isRecording) this.stopVoice();
       } else {
         this.hideTypingIndicator();
-        document.getElementById("tz-messages").style.display = "none";
-        if (inputContainer) inputContainer.style.display = "none";
-        if (content) content.style.display = "none";
-        if (voiceContainer) {
-          voiceContainer.classList.add("active");
-          voiceContainer.style.display = "flex";
-        }
+        body?.classList.add("voice-active");
+        voiceContainer?.classList.add("active");
       }
       this.updateWidgetHeight();
     },
