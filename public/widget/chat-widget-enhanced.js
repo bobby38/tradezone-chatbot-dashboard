@@ -596,8 +596,54 @@
           min-height: 0;
         }
 
-
         .tz-voice-container.hidden { display: none !important; }
+
+        .tz-voice-button {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, ${this.config.primaryColor} 0%, ${this.config.secondaryColor} 100%);
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s;
+          box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+          color: white;
+        }
+
+        .tz-voice-button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 12px 32px rgba(139, 92, 246, 0.6);
+        }
+
+        .tz-voice-button:active {
+          transform: scale(0.95);
+        }
+
+        .tz-voice-button.recording {
+          animation: tzVoicePulse 1.5s infinite;
+          background: #ef4444;
+        }
+
+        .tz-voice-button svg {
+          width: 48px;
+          height: 48px;
+          fill: white;
+        }
+
+        @keyframes tzVoicePulse {
+          0%, 100% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4); }
+          50% { box-shadow: 0 8px 32px rgba(239, 68, 68, 0.8); }
+        }
+
+        .tz-voice-status {
+          font-size: 16px;
+          color: #9ca3af;
+          text-align: center;
+          font-weight: 500;
+        }
 
         .tz-voice-transcript {
           flex-grow: 1;
@@ -1121,15 +1167,15 @@
         this.hideTypingIndicator();
         if (chatContent) chatContent.style.display = "none";
         if (voiceContainer) {
-          voiceContainer.classList.remove('hidden');
-          voiceContainer.classList.add('active');
+          voiceContainer.classList.remove("hidden");
+          voiceContainer.classList.add("active");
         }
       } else {
         if (this.isRecording) this.stopVoice();
         if (chatContent) chatContent.style.display = "flex";
         if (voiceContainer) {
-          voiceContainer.classList.add('hidden');
-          voiceContainer.classList.remove('active');
+          voiceContainer.classList.add("hidden");
+          voiceContainer.classList.remove("active");
         }
       }
       this.updateWidgetHeight();
@@ -1150,7 +1196,9 @@
       this.removeImage(); // Clear after sending
 
       try {
-        this.showTypingIndicator("Amara is searching TradeZone for the best answers…");
+        this.showTypingIndicator(
+          "Amara is searching TradeZone for the best answers…",
+        );
 
         input.disabled = true;
         input.classList.add("is-disabled");
