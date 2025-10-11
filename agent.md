@@ -64,6 +64,9 @@ Apply helper scripts in `/scripts`:
 - **Settings**: `/api/settings`, `/api/settings-simple` manage persisted settings.
 - **Insights**: `/api/insights` composes AI summaries of chat + analytics data.
 - **Utility/testing**: `/api/test-webhook` quick echo endpoint.
+- **Agent Tools**:
+  - `/api/tools/perplexity`: Handles hybrid search (vector → web fallback) for voice agent.
+  - `/api/tools/email`: Handles email submissions for voice agent.
 
 ## 5. Frontend Modules & Key Behaviours
 - **Auth & Layout**
@@ -180,7 +183,8 @@ Three main tools available to the AI agent:
 **Endpoint**: `POST /api/chatkit/agent`
 
 **Features**:
-- Uses OpenAI Chat Completions with function calling
+- Uses OpenAI Chat Completions with function calling.
+- Uses standard OpenAI tool-calling format (`tool` role) for robust results.
 - Loads admin-configurable settings from Supabase (`organizations.settings.chatkit`)
 - Supports conversation history for context
 - Logs all interactions to `chat_logs` table (preserves Guest-XX session pattern)
@@ -480,7 +484,10 @@ app/
 ├── api/
 │   └── chatkit/
 │       ├── agent/route.ts        # Text chat API
-│       └── realtime/route.ts     # Voice API
+│       ├── realtime/route.ts     # Voice API
+│   └── tools/
+│       ├── perplexity/route.ts   # Hybrid search endpoint
+│       └── email/route.ts        # Email submission endpoint
 └── dashboard/
     └── chat/page.tsx             # Chat UI
 
@@ -491,6 +498,34 @@ lib/
     ├── emailSend.ts              # Trade-ins/inquiries
     └── index.ts                  # Tool exports
 ```
+
+---
+
+### October 11, 2025 - Agent Tool-Calling Fixes
+
+**Critical Fixes Completed**:
+
+#### Text Agent Reliability
+- ✅ **Refactored Tool Handling**: Updated `/api/chatkit/agent` to use the standard `tool` role for function call results instead of a simple user message. This significantly improves the model's ability to correctly interpret tool outputs and generate accurate, context-aware responses.
+- ✅ **Prevents Hallucination**: By using the correct format, the agent is less likely to hallucinate errors or ignore successful tool results.
+
+#### Voice Agent Tool Execution
+- ✅ **Created Missing Endpoints**: Implemented the `/api/tools/perplexity` and `/api/tools/email` API routes, which were being called by the voice agent but did not exist.
+- ✅ **Hybrid Search Implemented**: The `/api/tools/perplexity` endpoint now performs a hybrid search, first querying the vector store and then falling back to a Perplexity web search if the initial result is insufficient. This matches the intended logic for robust product and information discovery.
+- ✅ **Voice Tools Functional**: Voice chat can now correctly execute searches and send emails, making it fully functional.
+
+**Testing Status**:
+- ✅ **Automated Tests Added**: New Playwright tests were added in `tests/agent-tools.spec.ts` to validate the text agent's tool-calling functionality and prevent future regressions.
+- ✅ **All Tests Passing**: The new tests, along with existing ones, are passing, confirming the fixes are effective.
+
+**Files Modified**:
+- `/app/api/chatkit/agent/route.ts` - Refactored tool handling.
+- `/app/api/tools/perplexity/route.ts` - New file for hybrid search.
+- `/app/api/tools/email/route.ts` - New file for email submissions.
+- `/playwright.config.ts` - New file to configure testing environment.
+- `/tests/agent-tools.spec.ts` - New file with agent tests.
+
+**Status**: ✅ Production Ready - All agent functionalities are now working as expected.
 
 ---
 
