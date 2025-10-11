@@ -1299,7 +1299,10 @@
           `${this.config.apiUrl}/api/chatkit/agent`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": this.config.apiKey || "",
+            },
             body: JSON.stringify({
               sessionId: this.sessionId,
               message: message || "What is in this image?",
@@ -1417,7 +1420,10 @@
           `${this.config.apiUrl}/api/chatkit/realtime`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": this.config.apiKey || "",
+            },
             body: JSON.stringify({ sessionId: this.sessionId }),
           },
         );
@@ -1689,7 +1695,10 @@
             `${this.config.apiUrl}/api/tools/perplexity`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": this.config.apiKey || "",
+              },
               body: JSON.stringify({ query: parsedArgs.query }),
             },
           );
@@ -1706,7 +1715,10 @@
             `${this.config.apiUrl}/api/tools/email`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": this.config.apiKey || "",
+              },
               body: JSON.stringify(parsedArgs),
             },
           );

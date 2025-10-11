@@ -1,7 +1,7 @@
 /**
  * TradeZone Chat Widget
  * Embeddable chat widget for any website
- * 
+ *
  * Usage:
  * <script src="https://your-domain.com/widget/chat-widget.js"></script>
  * <script>
@@ -14,52 +14,52 @@
  * </script>
  */
 
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
   const TradeZoneChat = {
     config: {
-      apiUrl: '',
-      position: 'bottom-right',
-      primaryColor: '#2563eb',
-      greeting: 'Hi! How can I help you today?',
-      botName: 'Izacc',
-      placeholder: 'Type your message...'
+      apiUrl: "",
+      position: "bottom-right",
+      primaryColor: "#2563eb",
+      greeting: "Hi! How can I help you today?",
+      botName: "Izacc",
+      placeholder: "Type your message...",
     },
-    
+
     sessionId: null,
     isOpen: false,
     messages: [],
 
-    init: function(options) {
+    init: function (options) {
       // Merge config
       this.config = { ...this.config, ...options };
-      
+
       // Generate session ID
       this.sessionId = this.generateSessionId();
-      
+
       // Inject styles
       this.injectStyles();
-      
+
       // Create widget HTML
       this.createWidget();
-      
+
       // Attach event listeners
       this.attachEventListeners();
-      
-      console.log('[TradeZone Chat] Widget initialized', this.sessionId);
+
+      console.log("[TradeZone Chat] Widget initialized", this.sessionId);
     },
 
-    generateSessionId: function() {
-      return 'Guest-' + Math.floor(1000 + Math.random() * 9000);
+    generateSessionId: function () {
+      return "Guest-" + Math.floor(1000 + Math.random() * 9000);
     },
 
-    injectStyles: function() {
+    injectStyles: function () {
       const styles = `
         #tradezone-chat-widget {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           position: fixed;
-          ${this.config.position === 'bottom-right' ? 'right: 20px;' : 'left: 20px;'}
+          ${this.config.position === "bottom-right" ? "right: 20px;" : "left: 20px;"}
           bottom: 20px;
           z-index: 999999;
         }
@@ -92,7 +92,7 @@
         #tradezone-chat-window {
           display: none;
           position: fixed;
-          ${this.config.position === 'bottom-right' ? 'right: 20px;' : 'left: 20px;'}
+          ${this.config.position === "bottom-right" ? "right: 20px;" : "left: 20px;"}
           bottom: 90px;
           width: 380px;
           height: 600px;
@@ -327,14 +327,14 @@
         }
       `;
 
-      const styleSheet = document.createElement('style');
+      const styleSheet = document.createElement("style");
       styleSheet.textContent = styles;
       document.head.appendChild(styleSheet);
     },
 
-    createWidget: function() {
-      const widget = document.createElement('div');
-      widget.id = 'tradezone-chat-widget';
+    createWidget: function () {
+      const widget = document.createElement("div");
+      widget.id = "tradezone-chat-widget";
       widget.innerHTML = `
         <button id="tradezone-chat-button" aria-label="Open chat">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -372,9 +372,9 @@
 
           <div class="tradezone-chat-input-container">
             <div class="tradezone-chat-input-wrapper">
-              <input 
-                type="text" 
-                class="tradezone-chat-input" 
+              <input
+                type="text"
+                class="tradezone-chat-input"
                 id="tradezone-chat-input"
                 placeholder="${this.config.placeholder}"
                 autocomplete="off"
@@ -395,66 +395,70 @@
       document.body.appendChild(widget);
     },
 
-    attachEventListeners: function() {
-      const button = document.getElementById('tradezone-chat-button');
-      const closeBtn = document.querySelector('.tradezone-chat-close');
-      const input = document.getElementById('tradezone-chat-input');
-      const sendBtn = document.getElementById('tradezone-chat-send');
+    attachEventListeners: function () {
+      const button = document.getElementById("tradezone-chat-button");
+      const closeBtn = document.querySelector(".tradezone-chat-close");
+      const input = document.getElementById("tradezone-chat-input");
+      const sendBtn = document.getElementById("tradezone-chat-send");
 
-      button.addEventListener('click', () => this.toggleChat());
-      closeBtn.addEventListener('click', () => this.toggleChat());
-      
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+      button.addEventListener("click", () => this.toggleChat());
+      closeBtn.addEventListener("click", () => this.toggleChat());
+
+      input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           this.sendMessage();
         }
       });
 
-      sendBtn.addEventListener('click', () => this.sendMessage());
+      sendBtn.addEventListener("click", () => this.sendMessage());
     },
 
-    toggleChat: function() {
-      const window = document.getElementById('tradezone-chat-window');
-      const button = document.getElementById('tradezone-chat-button');
-      
+    toggleChat: function () {
+      const window = document.getElementById("tradezone-chat-window");
+      const button = document.getElementById("tradezone-chat-button");
+
       this.isOpen = !this.isOpen;
-      
+
       if (this.isOpen) {
-        window.classList.add('open');
-        button.style.display = 'none';
-        document.getElementById('tradezone-chat-input').focus();
+        window.classList.add("open");
+        button.style.display = "none";
+        document.getElementById("tradezone-chat-input").focus();
       } else {
-        window.classList.remove('open');
-        button.style.display = 'flex';
+        window.classList.remove("open");
+        button.style.display = "flex";
       }
     },
 
-    sendMessage: async function() {
-      const input = document.getElementById('tradezone-chat-input');
+    sendMessage: async function () {
+      const input = document.getElementById("tradezone-chat-input");
       const message = input.value.trim();
-      
+
       if (!message) return;
 
       // Add user message to UI
-      this.addMessage(message, 'user');
-      input.value = '';
+      this.addMessage(message, "user");
+      input.value = "";
 
       // Show typing indicator
       this.showTyping(true);
 
       try {
         // Send to API
-        const response = await fetch(`${this.config.apiUrl}/api/chatkit/agent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const response = await fetch(
+          `${this.config.apiUrl}/api/chatkit/agent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": this.config.apiKey || "",
+            },
+            body: JSON.stringify({
+              sessionId: this.sessionId,
+              message: message,
+            }),
           },
-          body: JSON.stringify({
-            sessionId: this.sessionId,
-            message: message
-          })
-        });
+        );
 
         const data = await response.json();
 
@@ -463,31 +467,39 @@
 
         // Add bot response
         if (data.response) {
-          this.addMessage(data.response, 'assistant');
+          this.addMessage(data.response, "assistant");
         } else {
-          this.addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+          this.addMessage(
+            "Sorry, I encountered an error. Please try again.",
+            "assistant",
+          );
         }
       } catch (error) {
-        console.error('[TradeZone Chat] Error:', error);
+        console.error("[TradeZone Chat] Error:", error);
         this.showTyping(false);
-        this.addMessage('Sorry, I\'m having trouble connecting. Please try again later.', 'assistant');
+        this.addMessage(
+          "Sorry, I'm having trouble connecting. Please try again later.",
+          "assistant",
+        );
       }
     },
 
-    addMessage: function(text, role) {
-      const messagesContainer = document.getElementById('tradezone-chat-messages');
-      const messageDiv = document.createElement('div');
+    addMessage: function (text, role) {
+      const messagesContainer = document.getElementById(
+        "tradezone-chat-messages",
+      );
+      const messageDiv = document.createElement("div");
       messageDiv.className = `tradezone-chat-message ${role}`;
-      
-      const avatar = role === 'user' ? 'U' : this.config.botName[0];
-      
+
+      const avatar = role === "user" ? "U" : this.config.botName[0];
+
       messageDiv.innerHTML = `
         <div class="tradezone-chat-message-avatar">${avatar}</div>
         <div class="tradezone-chat-message-bubble">${this.escapeHtml(text)}</div>
       `;
 
       // Insert before typing indicator
-      const typingIndicator = document.getElementById('tradezone-chat-typing');
+      const typingIndicator = document.getElementById("tradezone-chat-typing");
       messagesContainer.insertBefore(messageDiv, typingIndicator);
 
       // Scroll to bottom
@@ -497,42 +509,44 @@
       this.messages.push({ role, text, timestamp: new Date() });
     },
 
-    showTyping: function(show) {
-      const typing = document.getElementById('tradezone-chat-typing');
+    showTyping: function (show) {
+      const typing = document.getElementById("tradezone-chat-typing");
       if (show) {
-        typing.classList.add('active');
+        typing.classList.add("active");
       } else {
-        typing.classList.remove('active');
+        typing.classList.remove("active");
       }
 
       // Scroll to bottom
-      const messagesContainer = document.getElementById('tradezone-chat-messages');
+      const messagesContainer = document.getElementById(
+        "tradezone-chat-messages",
+      );
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     },
 
-    escapeHtml: function(text) {
-      const div = document.createElement('div');
+    escapeHtml: function (text) {
+      const div = document.createElement("div");
       div.textContent = text;
       return div.innerHTML;
-    }
+    },
   };
 
   // Expose to global scope
   window.TradeZoneChat = TradeZoneChat;
 
   // Auto-initialize if data attributes are present
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener("DOMContentLoaded", function () {
     const script = document.querySelector('script[src*="chat-widget.js"]');
     if (script) {
-      const apiUrl = script.getAttribute('data-api-url');
-      const position = script.getAttribute('data-position');
-      const primaryColor = script.getAttribute('data-primary-color');
-      
+      const apiUrl = script.getAttribute("data-api-url");
+      const position = script.getAttribute("data-position");
+      const primaryColor = script.getAttribute("data-primary-color");
+
       if (apiUrl) {
         TradeZoneChat.init({
           apiUrl: apiUrl,
-          position: position || 'bottom-right',
-          primaryColor: primaryColor || '#2563eb'
+          position: position || "bottom-right",
+          primaryColor: primaryColor || "#2563eb",
         });
       }
     }
