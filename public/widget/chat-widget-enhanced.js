@@ -437,6 +437,13 @@
         }
 
         /* Messages Area */
+        .tz-chat-content {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          min-height: 0;
+        }
+
         .tz-chat-messages {
           flex: 1;
           overflow-y: auto;
@@ -963,7 +970,8 @@
               : ""
           }
 
-          <div class="tz-chat-messages" id="tz-messages">
+          <div class="tz-chat-content">
+            <div class="tz-chat-messages" id="tz-messages">
             <div class="tz-chat-message">
               <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
               <div class="tz-chat-message-bubble">${this.config.greeting}</div>
@@ -1016,6 +1024,7 @@
               <img id="tz-preview-img" src="" alt="Preview" />
               <button class="tz-remove-image" id="tz-remove-image">×</button>
             </div>
+          </div>
           </div>
         </div>
       `;
