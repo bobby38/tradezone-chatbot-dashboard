@@ -17,12 +17,61 @@ import {
   ToolUsageSummary,
 } from "@/lib/chatkit/telemetry";
 
-// CORS headers for widget integration
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+// Security imports
+import {
+  getClientIdentifier,
+  applyRateLimit,
+  RATE_LIMITS,
+} from "@/lib/security/rateLimit";
+import {
+  validateChatMessage,
+  validationErrorResponse,
+  sanitizeMessage,
+  estimateTokens,
+} from "@/lib/security/validation";
+import {
+  verifyApiKey,
+  verifyOrigin,
+  authErrorResponse,
+  originErrorResponse,
+  isAuthRequired,
+} from "@/lib/security/auth";
+import {
+  logUsage,
+  calculateCost,
+  isHighUsage,
+  logSuspiciousActivity,
+  checkDailyBudget,
+} from "@/lib/security/monitoring";
+
+// CORS headers - Restrict to your domains only
+const ALLOWED_ORIGINS = [
+  "https://tradezone.sg",
+  "https://www.tradezone.sg",
+  "https://rezult.co",
+  "https://www.rezult.co",
+  "https://trade.rezult.co",
+  ...(process.env.NODE_ENV === "development"
+    ? ["http://localhost:3000", "http://localhost:3003"]
+    : []),
+];
+
+function getCorsHeaders(origin: string | null): HeadersInit {
+  const allowedOrigin =
+    origin &&
+    ALLOWED_ORIGINS.some((allowed) =>
+      origin.includes(allowed.replace("https://", "").replace("http://", "")),
+    )
+      ? origin
+      : ALLOWED_ORIGINS[0];
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-API-Key, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
@@ -226,8 +275,9 @@ const tools = [
 ];
 
 // Handle OPTIONS request for CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, { headers: corsHeaders });
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return new NextResponse(null, { headers: getCorsHeaders(origin) });
 }
 
 async function logToolRun(entry: {
@@ -261,14 +311,115 @@ async function logToolRun(entry: {
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const requestId = randomUUID();
-  const { message, sessionId, history = [] } = await request.json();
+  const origin = request.headers.get("origin");
+  const clientIp = getClientIdentifier(request);
+
+  // ============================================
+  // SECURITY LAYER 1: Rate Limiting
+  // ============================================
+  const ipRateLimit = applyRateLimit(
+    clientIp,
+    RATE_LIMITS.CHATKIT_PER_IP,
+    "/api/chatkit/agent",
+  );
+
+  if (!ipRateLimit.allowed) {
+    await logSuspiciousActivity("rate_limit_hit", {
+      clientIp,
+      endpoint: "/api/chatkit/agent",
+      metadata: { reason: "ip_rate_limit" },
+    });
+    return ipRateLimit.response!;
+  }
+
+  // ============================================
+  // SECURITY LAYER 2: Authentication
+  // ============================================
+  if (isAuthRequired()) {
+    const authResult = verifyApiKey(request);
+    if (!authResult.authenticated) {
+      await logSuspiciousActivity("auth_failure", {
+        clientIp,
+        endpoint: "/api/chatkit/agent",
+        metadata: { error: authResult.error },
+      });
+      return authErrorResponse(authResult.error);
+    }
+
+    // Verify origin for additional security
+    if (!verifyOrigin(request)) {
+      await logSuspiciousActivity("auth_failure", {
+        clientIp,
+        endpoint: "/api/chatkit/agent",
+        metadata: { reason: "invalid_origin", origin },
+      });
+      return originErrorResponse();
+    }
+  }
+
+  // ============================================
+  // SECURITY LAYER 3: Budget Check
+  // ============================================
+  const budgetCheck = await checkDailyBudget();
+  if (budgetCheck.exceeded) {
+    console.error("[ChatKit] Daily budget exceeded:", budgetCheck);
+    return NextResponse.json(
+      {
+        error: "Service temporarily unavailable",
+        message: "Daily usage limit reached. Please try again tomorrow.",
+      },
+      {
+        status: 503,
+        headers: getCorsHeaders(origin),
+      },
+    );
+  }
+
+  // ============================================
+  // Parse and validate input
+  // ============================================
+  let body;
+  try {
+    body = await request.json();
+  } catch (parseError) {
+    return NextResponse.json(
+      { error: "Invalid JSON payload" },
+      { status: 400, headers: getCorsHeaders(origin) },
+    );
+  }
+
+  const validation = validateChatMessage(body);
+  if (!validation.valid) {
+    return validationErrorResponse(validation.errors);
+  }
+
+  const { message, sessionId, history } = validation.sanitized!;
+
+  // Session-based rate limiting
+  const sessionRateLimit = applyRateLimit(
+    sessionId,
+    RATE_LIMITS.CHATKIT_PER_SESSION,
+    "/api/chatkit/agent",
+  );
+
+  if (!sessionRateLimit.allowed) {
+    await logSuspiciousActivity("rate_limit_hit", {
+      sessionId,
+      clientIp,
+      endpoint: "/api/chatkit/agent",
+      metadata: { reason: "session_rate_limit" },
+    });
+    return sessionRateLimit.response!;
+  }
+
   const requestContext = {
     request_id: requestId,
     session_id: sessionId,
     source: request.headers.get("x-client-source") || "widget",
     user_agent: request.headers.get("user-agent") || null,
-    ip_address: request.ip ?? null,
+    ip_address: clientIp,
   };
+
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
   let textModel = "gpt-4o-mini"; // Default model
@@ -276,12 +427,10 @@ export async function POST(request: NextRequest) {
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
   let errorMessage: string | null = null;
+  let promptTokens = 0;
+  let completionTokens = 0;
 
   try {
-    if (!message || !sessionId) {
-      throw new Error("Missing required fields: message, sessionId");
-    }
-
     // Load settings and system prompt
     const { data: org } = await supabase
       .from("organizations")
@@ -312,10 +461,16 @@ export async function POST(request: NextRequest) {
       tools,
       tool_choice: "auto",
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 800, // Reduced from 2000 for cost control
     });
 
     const assistantMessage = response.choices[0].message;
+
+    // Track token usage
+    if (response.usage) {
+      promptTokens += response.usage.prompt_tokens || 0;
+      completionTokens += response.usage.completion_tokens || 0;
+    }
 
     if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
       messages.push(assistantMessage);
@@ -433,9 +588,15 @@ export async function POST(request: NextRequest) {
           model: textModel,
           messages,
           temperature: 0.7,
-          max_tokens: 2000,
+          max_tokens: 800, // Reduced from 2000 for cost control
         });
         finalResponse = finalCompletion.choices[0].message.content || "";
+
+        // Track second call token usage
+        if (finalCompletion.usage) {
+          promptTokens += finalCompletion.usage.prompt_tokens || 0;
+          completionTokens += finalCompletion.usage.completion_tokens || 0;
+        }
 
         if (lastHybridResult && lastHybridSource && lastHybridQuery) {
           const hasLink = /https?:\/\//i.test(finalResponse);
@@ -463,6 +624,14 @@ export async function POST(request: NextRequest) {
     finalResponse =
       "I'm sorry, I ran into an issue processing your request. Please try again.";
     errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+    // Log repeated errors as suspicious activity
+    await logSuspiciousActivity("repeated_errors", {
+      sessionId,
+      clientIp,
+      endpoint: "/api/chatkit/agent",
+      metadata: { error: errorMessage },
+    });
   } finally {
     // This block ensures we ALWAYS log and have a valid response
     if (!finalResponse || finalResponse.trim() === "") {
@@ -471,6 +640,44 @@ export async function POST(request: NextRequest) {
     }
 
     const latencyMs = Date.now() - startedAt;
+    const totalTokens = promptTokens + completionTokens;
+    const estimatedCost = calculateCost(
+      textModel,
+      promptTokens,
+      completionTokens,
+    );
+
+    // Log usage metrics for monitoring
+    await logUsage({
+      requestId,
+      sessionId,
+      endpoint: "/api/chatkit/agent",
+      model: textModel,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      estimatedCost,
+      latencyMs,
+      success: !errorMessage,
+      errorMessage,
+      clientIp,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Alert on high usage
+    if (isHighUsage(totalTokens, estimatedCost)) {
+      console.warn("[ChatKit] High usage detected:", {
+        sessionId,
+        tokens: totalTokens,
+        cost: estimatedCost,
+      });
+      await logSuspiciousActivity("high_usage", {
+        sessionId,
+        clientIp,
+        endpoint: "/api/chatkit/agent",
+        metadata: { totalTokens, estimatedCost },
+      });
+    }
 
     try {
       await supabase.from("chat_request_logs").insert({
@@ -519,8 +726,17 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { response: finalResponse, sessionId, model: textModel },
-    { headers: corsHeaders },
+    {
+      response: finalResponse,
+      sessionId,
+      model: textModel,
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+      },
+    },
+    { headers: getCorsHeaders(origin) },
   );
 }
 

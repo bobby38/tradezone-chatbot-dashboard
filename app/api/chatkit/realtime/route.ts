@@ -1,25 +1,102 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getClientIdentifier,
+  applyRateLimit,
+  RATE_LIMITS,
+} from "@/lib/security/rateLimit";
+import {
+  verifyApiKey,
+  verifyOrigin,
+  authErrorResponse,
+  originErrorResponse,
+  isAuthRequired,
+} from "@/lib/security/auth";
+import { logSuspiciousActivity } from "@/lib/security/monitoring";
 
-// CORS headers for widget integration
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+// CORS headers - Restrict to your domains only
+const ALLOWED_ORIGINS = [
+  "https://tradezone.sg",
+  "https://www.tradezone.sg",
+  "https://rezult.co",
+  "https://www.rezult.co",
+  "https://trade.rezult.co",
+  ...(process.env.NODE_ENV === "development"
+    ? ["http://localhost:3000", "http://localhost:3003"]
+    : []),
+];
 
-// Handle OPTIONS request for CORS preflight
-export async function OPTIONS() {
-  return new NextResponse(null, { headers: corsHeaders });
+function getCorsHeaders(origin: string | null): HeadersInit {
+  const allowedOrigin =
+    origin &&
+    ALLOWED_ORIGINS.some((allowed) =>
+      origin.includes(allowed.replace("https://", "").replace("http://", "")),
+    )
+      ? origin
+      : ALLOWED_ORIGINS[0];
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-API-Key, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  };
 }
 
-export async function POST(req: Request) {
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return new NextResponse(null, { headers: getCorsHeaders(origin) });
+}
+
+export async function POST(req: NextRequest) {
+  const origin = req.headers.get("origin");
+  const clientIp = getClientIdentifier(req);
+
+  // Rate limiting
+  const rateLimit = applyRateLimit(
+    clientIp,
+    RATE_LIMITS.REALTIME_CONFIG,
+    "/api/chatkit/realtime",
+  );
+
+  if (!rateLimit.allowed) {
+    await logSuspiciousActivity("rate_limit_hit", {
+      clientIp,
+      endpoint: "/api/chatkit/realtime",
+      metadata: { reason: "realtime_config_rate_limit" },
+    });
+    return rateLimit.response!;
+  }
+
+  // Authentication
+  if (isAuthRequired()) {
+    const authResult = verifyApiKey(req);
+    if (!authResult.authenticated) {
+      await logSuspiciousActivity("auth_failure", {
+        clientIp,
+        endpoint: "/api/chatkit/realtime",
+        metadata: { error: authResult.error },
+      });
+      return authErrorResponse(authResult.error);
+    }
+
+    if (!verifyOrigin(req)) {
+      await logSuspiciousActivity("auth_failure", {
+        clientIp,
+        endpoint: "/api/chatkit/realtime",
+        metadata: { reason: "invalid_origin", origin },
+      });
+      return originErrorResponse();
+    }
+  }
+
   try {
     const { sessionId } = await req.json();
 
     if (!sessionId) {
       return NextResponse.json(
         { success: false, error: "Session ID is required" },
-        { status: 400, headers: corsHeaders },
+        { status: 400, headers: getCorsHeaders(origin) },
       );
     }
 
@@ -149,19 +226,19 @@ export async function POST(req: Request) {
       console.error("Missing OpenAI API key or Vector Store ID");
       return NextResponse.json(
         { success: false, error: "Server configuration missing" },
-        { status: 500, headers: corsHeaders },
+        { status: 500, headers: getCorsHeaders(origin) },
       );
     }
 
     return NextResponse.json(
       { success: true, config },
-      { headers: corsHeaders },
+      { headers: getCorsHeaders(origin) },
     );
   } catch (error) {
     console.error("[Realtime API] Error:", error);
     return NextResponse.json(
       { success: false, error: "Internal Server Error" },
-      { status: 500, headers: corsHeaders },
+      { status: 500, headers: getCorsHeaders(origin) },
     );
   }
 }

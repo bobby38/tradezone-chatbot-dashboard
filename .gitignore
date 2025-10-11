@@ -83,3 +83,4 @@ tsconfig.tsbuildinfo
 
 # Local backups
 .env.local.bak
+.env.coolify

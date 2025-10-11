@@ -4,12 +4,13 @@
 
 ### Working Components
 - ✅ **Chat Session Management** - n8n sends Guest-XX session IDs, conversations properly grouped
+- ✅ **ChatKit Security System** - Multi-layer protection against spam and API abuse (NEW)
 - ✅ **Search Console Integration** - Real data from Supabase with skeleton loaders and caching
 - ✅ **Google Analytics 4 API** - Returns real data (sessions, users, pageviews, etc.)
 - ✅ **WooCommerce API** - Returns real order data
 - ✅ **Dashboard Navigation** - Clean UI with proper routing
 - ✅ **Authentication System** - Supabase auth working
-- ✅ **Dev Server** - Runs on port 3003
+- ✅ **Dev Server** - Runs on port 3001/3003
 
 ### Session Management (Production Working ✅)
 Based on the dashboard screenshot, the session system is working correctly:
@@ -23,7 +24,9 @@ Based on the dashboard screenshot, the session system is working correctly:
 ### Chat Tables (Working)
 - `chat_logs` - Individual chat messages with session grouping
 - `chat_sessions` - Session metadata and management
-- Both tables have proper RLS policies and indexes
+- `chat_usage_metrics` - Token usage and cost tracking for ChatKit (NEW)
+- `chat_security_events` - Security incident logging (rate limits, auth failures) (NEW)
+- All tables have proper RLS policies and indexes
 
 ### Search Console Tables (Working)  
 - `gsc_daily_summary` - Daily aggregated metrics
@@ -37,10 +40,17 @@ Based on the dashboard screenshot, the session system is working correctly:
 ## API Endpoints Status
 
 ### Chat APIs ✅
-- `POST /api/n8n-chat` - Main webhook for n8n chat logs
+- `POST /api/chatkit/agent` - Main ChatKit endpoint with security (NEW)
+  - **Authentication:** Requires X-API-Key header
+  - **Rate Limiting:** 20 requests/min per IP, 50 requests/hr per session
+  - **Input Validation:** 1-1000 char messages, max 20 history turns
+  - **Budget Control:** $10/day default limit
+  - **Token Optimization:** Max 800 tokens (60% cost reduction)
+  - **Usage Tracking:** All requests logged to chat_usage_metrics
+- `POST /api/chatkit/realtime` - Realtime voice chat config (secured)
+- `POST /api/n8n-chat` - Legacy n8n webhook (still active)
   - Accepts: user_id, prompt, response, session_id (optional)
   - Auto-session management with 30-minute window
-  - Falls back to crypto.randomUUID() for new sessions
 - Session grouping works correctly as evidenced by Guest-XX pattern
 
 ### Analytics APIs ✅  
