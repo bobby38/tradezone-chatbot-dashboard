@@ -1381,8 +1381,8 @@
         const parsedArgs = JSON.parse(argsJson);
         let result = "";
 
-        if (name === "searchtool" || name === "searchProducts") {
-          // Call perplexity/vector search
+        if (name === "searchProducts" || name === "searchtool") {
+          // Use hybrid search (vector→perplexity fallback) for both tools
           const response = await fetch(
             `${this.config.apiUrl}/api/tools/perplexity`,
             {
@@ -1393,7 +1393,11 @@
           );
           const data = await response.json();
           result = data.result || "No results found";
-          console.log("[Tool] Search result:", result.substring(0, 200));
+          const source = data.source || "unknown";
+          console.log(
+            `[Tool] ${name} result from ${source}:`,
+            result.substring(0, 200),
+          );
         } else if (name === "sendemail") {
           // Call email send
           const response = await fetch(
