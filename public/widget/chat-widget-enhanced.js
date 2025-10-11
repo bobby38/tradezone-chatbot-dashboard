@@ -183,15 +183,8 @@
           z-index: 999998;
         }
 
-        /* Mobile responsive full-screen experience */
+        /* Mobile & Tablet - Centered smaller widget */
         @media (max-width: 768px) {
-          #tz-chat-widget {
-            right: auto;
-            left: 0;
-            bottom: 0;
-            width: 100vw;
-          }
-
           #tz-chat-button {
             position: fixed;
             right: calc(env(safe-area-inset-right, 0px) + 16px);
@@ -199,13 +192,15 @@
           }
 
           #tz-chat-window {
-            width: 100vw;
-            height: calc(var(--tz-widget-height, 100dvh));
-            max-height: none;
-            inset: 0;
-            border-radius: 0;
-            transform: none !important;
-            border: none;
+            width: 90vw;
+            max-width: 420px;
+            height: 85vh;
+            max-height: 700px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
           }
 
           /* Messages must scroll, not widget */
@@ -220,28 +215,26 @@
           /* Input stays at bottom, above keyboard */
           .tz-chat-input-container {
             flex-shrink: 0;
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+            padding-bottom: 16px;
           }
 
           /* Prevent body scroll */
           body.tz-widget-open {
             overflow: hidden !important;
-            position: fixed !important;
-            width: 100% !important;
-            height: 100% !important;
           }
 
-          /* Always visible close button */
+          /* Close button bottom right */
           .tz-chat-close {
-            top: calc(env(safe-area-inset-top, 0px) + 16px) !important;
-            right: calc(env(safe-area-inset-right, 0px) + 16px) !important;
+            top: auto !important;
+            bottom: 20px !important;
+            right: 20px !important;
             width: 48px !important;
             height: 48px !important;
-            background: rgba(0,0,0,0.65) !important;
+            background: rgba(139, 92, 246, 0.9) !important;
             backdrop-filter: blur(10px);
             z-index: 1000;
             border: 2px solid rgba(255,255,255,0.3);
-            color: #f8fafc;
+            color: white;
           }
         }
 
