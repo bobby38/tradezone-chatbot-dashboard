@@ -684,6 +684,29 @@
           color: #e5e7eb;
         }
 
+        .tz-voice-transcript img {
+          max-width: 150px;
+          border-radius: 8px;
+          margin: 8px 0;
+          display: block;
+          border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .tz-voice-transcript a {
+          color: #a78bfa;
+          text-decoration: underline;
+          word-break: break-word;
+        }
+
+        .tz-voice-transcript a:hover {
+          color: #c4b5fd;
+        }
+
+        .tz-voice-transcript strong {
+          color: #e5e7eb;
+          font-weight: 600;
+        }
+
         /* Input Area */
         .tz-chat-input-container {
           padding: 16px;
