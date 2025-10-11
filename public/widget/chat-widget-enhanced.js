@@ -1,5 +1,6 @@
 /**
  * TradeZone Enhanced Chat Widget
+ * Version: 2.0.0 - Centered Layout Fix
  * Full-featured chat widget with text, voice, and video avatar
  *
  * Features:
@@ -8,9 +9,10 @@
  * - Video avatar/hero section
  * - Call button for voice mode
  * - Responsive design
+ * - Centered on all devices (mobile, tablet, desktop)
  *
  * Usage:
- * <script src="https://your-domain.com/widget/chat-widget-enhanced.js"></script>
+ * <script src="https://your-domain.com/widget/chat-widget-enhanced.js?v=2.0"></script>
  * <script>
  *   TradeZoneChatEnhanced.init({
  *     apiUrl: 'https://your-dashboard.com',
@@ -182,11 +184,17 @@
           overflow: hidden;
           border: 1px solid rgba(139, 92, 246, 0.3);
           z-index: 999998;
+          /* Prevent mobile shifting */
+          margin: 0;
+          padding: 0;
         }
 
         /* Prevent body scroll when widget open */
         body.tz-widget-open {
           overflow: hidden !important;
+          position: fixed !important;
+          width: 100% !important;
+          height: 100% !important;
         }
 
         #tz-chat-window.open {
@@ -782,21 +790,27 @@
           to { transform: rotate(360deg); }
         }
 
-        /* Mobile Optimizations */
+        /* Mobile Optimizations - Keep centered with max-width */
         @media (max-width: 768px) {
           #tz-chat-window {
-            width: 100vw;
-            height: calc(var(--tz-widget-height, 100dvh));
-            max-height: none;
-            inset: 0;
-            border-radius: 0;
+            width: 90vw;
+            max-width: 450px;
+            height: 85vh;
+            max-height: 700px;
+            /* Always centered - use !important to override any conflicts */
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            border-radius: 12px;
+            right: auto !important;
+            bottom: auto !important;
+            inset: unset !important;
           }
 
           #tz-chat-button {
             width: 56px;
             height: 56px;
-            right: calc(env(safe-area-inset-right, 0px) + 16px);
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+            /* Keep button in bottom-right corner */
           }
 
           .tz-chat-hero {
@@ -877,6 +891,11 @@
 
         /* Small mobile devices */
         @media (max-width: 375px) {
+          #tz-chat-window {
+            width: 95vw;
+            max-width: 380px;
+          }
+
           .tz-chat-hero {
             height: 140px;
           }
