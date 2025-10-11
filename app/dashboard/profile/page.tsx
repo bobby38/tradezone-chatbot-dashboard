@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -23,13 +23,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile()
-    }
-  }, [user])
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -46,7 +40,13 @@ export default function ProfilePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile()
+    }
+  }, [fetchProfile, user])
 
   const handleSave = async () => {
     if (!profile) return

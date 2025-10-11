@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { fetchWithCache } from '@/lib/client-cache'
 import { supabase } from '@/lib/supabase'
 import AIAnalytics from '@/components/ai-analytics'
@@ -252,7 +252,7 @@ export default function AnalyticsPage() {
   }
 
   // Load last 10 insights for the current tab
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       setHistoryLoading(true)
       const { data, error } = await supabase
@@ -269,12 +269,12 @@ export default function AnalyticsPage() {
     } finally {
       setHistoryLoading(false)
     }
-  }
+  }, [selectedTab])
 
   // Auto-load history whenever the tab changes
   useEffect(() => {
     loadHistory().catch(() => {})
-  }, [selectedTab])
+  }, [loadHistory])
 
   // Delete a single history item by id
   const deleteHistory = async (id: string) => {

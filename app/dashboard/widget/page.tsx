@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,15 +37,7 @@ export default function WidgetConfigPage() {
 
   const supabase = createClient();
 
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
-  useEffect(() => {
-    generateEmbedCode();
-  }, [config]);
-
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     const { data } = await supabase
       .from('organizations')
       .select('settings')
@@ -53,9 +45,42 @@ export default function WidgetConfigPage() {
       .single();
 
     if (data?.settings?.widget) {
-      setConfig({ ...config, ...data.settings.widget });
+      setConfig(prev => ({ ...prev, ...data.settings.widget }));
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const generateEmbedCode = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const code = `<!-- TradeZone Chat Widget -->
+<script src="${window.location.origin}/widget/tradezone-persistent.js"></script>
+<script>
+  TradeZonePersistent.init({
+    apiUrl: '${window.location.origin}',
+    videoUrl: '${config.videoUrl}',
+    greeting: '${config.greeting}',
+    subGreeting: '${config.subGreeting}',
+    botName: '${config.botName}',
+    placeholder: '${config.placeholder}',
+    primaryColor: '${config.primaryColor}',
+    secondaryColor: '${config.secondaryColor}',
+    autoOpen: ${config.autoOpen},
+    enableVoice: ${config.enableVoice},
+    enableVideo: ${config.enableVideo},
+    position: '${config.position}'${config.customCSS ? `,
+    customCSS: \`${config.customCSS}\`` : ''}
+  });
+</script>`;
+    setEmbedCode(code);
+  }, [config]);
+
+  useEffect(() => {
+    generateEmbedCode();
+  }, [generateEmbedCode]);
 
   const saveConfig = async () => {
     setSaving(true);
@@ -98,29 +123,6 @@ export default function WidgetConfigPage() {
         customCSS: ''
       });
     }
-  };
-
-  const generateEmbedCode = () => {
-    const code = `<!-- TradeZone Chat Widget -->
-<script src="${window.location.origin}/widget/tradezone-persistent.js"></script>
-<script>
-  TradeZonePersistent.init({
-    apiUrl: '${window.location.origin}',
-    videoUrl: '${config.videoUrl}',
-    greeting: '${config.greeting}',
-    subGreeting: '${config.subGreeting}',
-    botName: '${config.botName}',
-    placeholder: '${config.placeholder}',
-    primaryColor: '${config.primaryColor}',
-    secondaryColor: '${config.secondaryColor}',
-    autoOpen: ${config.autoOpen},
-    enableVoice: ${config.enableVoice},
-    enableVideo: ${config.enableVideo},
-    position: '${config.position}'${config.customCSS ? `,
-    customCSS: \`${config.customCSS}\`` : ''}
-  });
-</script>`;
-    setEmbedCode(code);
   };
 
   const copyEmbedCode = () => {
@@ -424,7 +426,7 @@ export default function WidgetConfigPage() {
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <h4 className="font-semibold text-sm mb-2">For WooCommerce:</h4>
                 <p className="text-xs text-muted-foreground">
-                  Add to <code>functions.php</code> or use the "Insert Headers and Footers" plugin
+                  Add to <code>functions.php</code> or use the “Insert Headers and Footers” plugin
                 </p>
               </div>
             </CardContent>

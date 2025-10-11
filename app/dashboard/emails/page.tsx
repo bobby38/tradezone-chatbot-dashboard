@@ -263,7 +263,7 @@ export default function EmailsPage() {
                   <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-lg font-medium mb-2">No emails extracted yet</p>
                   <p className="text-muted-foreground mb-4">
-                    Click "Extract New" to start finding email addresses from your chat logs and form submissions.
+                    Click “Extract New” to start finding email addresses from your chat logs and form submissions.
                   </p>
                   <Button onClick={extractNewEmails} disabled={extracting}>
                     {extracting ? 'Extracting...' : 'Start Extraction'}

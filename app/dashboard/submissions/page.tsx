@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -58,18 +58,7 @@ export default function SubmissionsPage() {
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    fetchSubmissions()
-    calculateStats()
-  }, [])
-
-  useEffect(() => {
-    if (submissions.length > 0) {
-      calculateStats()
-    }
-  }, [submissions])
-
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/submissions')
@@ -85,9 +74,9 @@ export default function SubmissionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const calculateStats = () => {
+  const calculateStats = useCallback(() => {
     if (submissions.length === 0) return
 
     const now = new Date()
@@ -121,7 +110,15 @@ export default function SubmissionsPage() {
     })
 
     setStats(stats)
-  }
+  }, [submissions])
+
+  useEffect(() => {
+    fetchSubmissions()
+  }, [fetchSubmissions])
+
+  useEffect(() => {
+    calculateStats()
+  }, [calculateStats])
 
   const getFormType = (submission: Submission): string => {
     if (submission.ai_metadata?.device_type || submission.ai_metadata?.console_type) {

@@ -166,9 +166,9 @@ export default function ChatPage() {
                   Featured Highlight
                 </p>
                 <p className="mt-2 text-sm font-medium">
-                  Need inspiration? Ask Amara for "PlayStation racing bundles" or
+                  Need inspiration? Ask Amara for “PlayStation racing bundles” or
                   “latest Asus ROG laptops” to see stocked items instantly. You can also ask for
-                  "best gaming laptops under $1,500" or "latest gaming console deals".
+                  “best gaming laptops under $1,500” or “latest gaming console deals”.
                 </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -225,8 +225,8 @@ export default function ChatPage() {
                 <div className="text-center text-muted-foreground py-8">
                   <p>Start a conversation! Ask me anything about TradeZone.</p>
                   <p className="text-sm mt-2">
-                    Try: "What gaming headphones do you have?" or "I want to
-                    trade in my PS5"
+                    Try: “What gaming headphones do you have?” or “I want to
+                    trade in my PS5”
                   </p>
                 </div>
               )}
@@ -311,7 +311,7 @@ export default function ChatPage() {
               Voice Chat with Amara
             </CardTitle>
             <CardDescription>
-              Talk naturally - I'll search our product catalog and help you find
+              Talk naturally - I’ll search our product catalog and help you find
               what you need
             </CardDescription>
           </CardHeader>
@@ -323,7 +323,7 @@ export default function ChatPage() {
                   <Phone className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>Start your voice conversation with Amara</p>
                   <p className="text-sm mt-2">
-                    Click "Start Voice Chat" below to begin
+                    Click “Start Voice Chat” below to begin
                   </p>
                 </div>
               )}

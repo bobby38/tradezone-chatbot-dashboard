@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { formatDate, exportToCSV } from '@/lib/utils'
@@ -55,11 +55,7 @@ export default function ChatLogsPage() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'error'>('all')
 
-  useEffect(() => {
-    fetchLogs()
-  }, [currentPage, searchTerm, pageSize, statusFilter])
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
       let query = supabase
@@ -87,7 +83,11 @@ export default function ChatLogsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, pageSize, searchTerm, statusFilter])
+
+  useEffect(() => {
+    fetchLogs()
+  }, [fetchLogs])
 
   const handleDelete = async (logIds: string[]) => {
     if (!confirm(`Are you sure you want to delete ${logIds.length} log(s)?`)) {

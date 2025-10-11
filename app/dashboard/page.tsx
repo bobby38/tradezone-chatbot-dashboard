@@ -1,6 +1,6 @@
  'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
  import { supabase } from '@/lib/supabase'
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
  import { Button } from '@/components/ui/button'
@@ -76,7 +76,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardStats()
-  }, [trafficDays])
+  }, [fetchDashboardStats])
 
   // Fetch GA website traffic for selected range
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function DashboardPage() {
     })()
   }, [trafficDays])
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setRefreshing(true)
       
@@ -317,7 +317,7 @@ export default function DashboardPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [period, trafficDays])
 
   const statCards = [
     {
@@ -657,7 +657,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                <span className="text-sm">Today's Submissions</span>
+                <span className="text-sm">Today’s Submissions</span>
                 <span className="font-semibold text-primary">{stats.todaySubmissions}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">

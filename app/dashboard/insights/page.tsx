@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -42,11 +42,7 @@ export default function InsightsPage() {
   const [period, setPeriod] = useState<7 | 30 | 90>(30)
   const [activeTab, setActiveTab] = useState('overview')
 
-  useEffect(() => {
-    fetchInsights()
-  }, [period])
-
-  const fetchInsights = async () => {
+  const fetchInsights = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/insights?days=${period}`)
@@ -68,7 +64,11 @@ export default function InsightsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [period])
+
+  useEffect(() => {
+    fetchInsights()
+  }, [fetchInsights])
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {

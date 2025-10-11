@@ -53,6 +53,8 @@
     mode: "text", // 'text' or 'voice'
     currentTranscript: "",
     currentImage: null, // Store selected image as base64
+    typingIndicatorEl: null,
+    viewportHandler: null,
     voiceState: {
       sessionId: null,
       isRecording: false,
@@ -76,6 +78,7 @@
       this.injectStyles();
       this.createWidget();
       this.attachEventListeners();
+      this.registerViewportListeners();
       this.updateWidgetHeight(); // Set initial height
 
       console.log(
@@ -85,10 +88,12 @@
     },
 
     updateWidgetHeight: function () {
-      const vh = window.innerHeight;
+      const viewport = window.visualViewport;
+      const height = viewport ? viewport.height : window.innerHeight;
+      if (!height) return;
       document.documentElement.style.setProperty(
         "--tz-widget-height",
-        `${vh}px`,
+        `${Math.round(height)}px`,
       );
     },
 
@@ -105,6 +110,18 @@
       }
     },
 
+    registerViewportListeners: function () {
+      if (this.viewportHandler) return;
+      const handler = () => this.updateWidgetHeight();
+      this.viewportHandler = handler;
+      window.addEventListener("resize", handler, { passive: true });
+      window.addEventListener("orientationchange", handler);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", handler);
+        window.visualViewport.addEventListener("scroll", handler);
+      }
+    },
+
     generateSessionId: function () {
       return "Guest-" + Math.floor(1000 + Math.random() * 9000);
     },
@@ -115,8 +132,12 @@
         #tz-chat-widget {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           position: fixed;
-          ${this.config.position === "bottom-right" ? "right: 20px;" : "left: 20px;"}
-          bottom: 20px;
+          ${
+            this.config.position === "bottom-right"
+              ? "right: calc(env(safe-area-inset-right, 0px) + 20px);"
+              : "left: calc(env(safe-area-inset-left, 0px) + 20px);"
+          }
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
           z-index: 999999;
         }
 
@@ -166,9 +187,11 @@
         @media (max-width: 768px) {
           #tz-chat-window {
             width: 100vw;
-            height: var(--tz-widget-height, 100vh);
+            min-height: calc(var(--tz-widget-height, 100dvh));
+            height: auto;
             max-height: none;
-            bottom: 0;
+            top: env(safe-area-inset-top, 0px);
+            bottom: env(safe-area-inset-bottom, 0px);
             right: 0;
             left: 0;
             border-radius: 0;
@@ -462,6 +485,57 @@
           word-wrap: break-word;
         }
 
+        .tz-chat-message.typing .tz-chat-message-bubble {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #c7d2fe;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .tz-typing-indicator-content {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .tz-typing-indicator-content .tz-typing-label {
+          letter-spacing: 0.01em;
+        }
+
+        .tz-typing-dots {
+          display: inline-flex;
+          gap: 4px;
+        }
+
+        .tz-typing-dots span {
+          width: 6px;
+          height: 6px;
+          background: rgba(199, 210, 254, 0.85);
+          border-radius: 50%;
+          animation: tzTypingBounce 1.2s infinite ease-in-out;
+        }
+
+        .tz-typing-dots span:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+
+        .tz-typing-dots span:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+
+        @keyframes tzTypingBounce {
+          0%, 80%, 100% {
+            transform: scale(0.6);
+            opacity: 0.6;
+          }
+          40% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
         .tz-chat-message.user .tz-chat-message-bubble {
           background: linear-gradient(135deg, ${this.config.primaryColor} 0%, ${this.config.secondaryColor} 100%);
           border-color: ${this.config.primaryColor};
@@ -637,9 +711,11 @@
         @media (max-width: 768px) {
           #tz-chat-window {
             width: 100vw;
-            height: 100vh;
-            max-height: 100vh;
-            bottom: 0;
+            min-height: calc(var(--tz-widget-height, 100dvh));
+            height: auto;
+            max-height: none;
+            top: env(safe-area-inset-top, 0px);
+            bottom: env(safe-area-inset-bottom, 0px);
             right: 0;
             left: 0;
             border-radius: 0;
@@ -648,8 +724,8 @@
           #tz-chat-button {
             width: 56px;
             height: 56px;
-            bottom: 16px;
-            right: 16px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+            right: calc(env(safe-area-inset-right, 0px) + 16px);
           }
 
           .tz-chat-hero {
@@ -969,6 +1045,7 @@
       window.classList.remove("open");
       button.style.display = "flex";
       document.body.classList.remove("tz-widget-open"); // Unlock body scroll
+      this.hideTypingIndicator();
       if (this.isRecording) this.stopVoice();
     },
 
@@ -982,6 +1059,7 @@
         window.classList.add("open");
         button.style.display = "none";
         document.body.classList.add("tz-widget-open"); // Lock body scroll on mobile
+        this.updateWidgetHeight();
         document.getElementById("tz-input").focus();
       }
     },
@@ -1001,10 +1079,12 @@
           .classList.remove("active");
         if (this.isRecording) this.stopVoice();
       } else {
+        this.hideTypingIndicator();
         document.getElementById("tz-messages").style.display = "none";
         document.getElementById("tz-input-container").style.display = "none";
         document.getElementById("tz-voice-container").classList.add("active");
       }
+      this.updateWidgetHeight();
     },
 
     sendMessage: async function () {
@@ -1021,6 +1101,7 @@
       this.removeImage(); // Clear after sending
 
       try {
+        this.showTypingIndicator();
         // Build history from messages array
         const history = this.messages.map((msg) => ({
           role: msg.role,
@@ -1044,17 +1125,26 @@
         const data = await response.json();
         if (data.response) {
           this.addMessage(data.response, "assistant");
+        } else {
+          this.hideTypingIndicator();
         }
       } catch (error) {
         console.error("[Chat] Error:", error);
+        this.hideTypingIndicator();
         this.addMessage(
           "Sorry, I encountered an error. Please try again.",
           "assistant",
         );
+      } finally {
+        // Ensure typing indicator is cleared if no assistant message was added
+        this.hideTypingIndicator();
       }
     },
 
     addMessage: function (text, role, imageBase64 = null) {
+      if (role === "assistant") {
+        this.hideTypingIndicator();
+      }
       // Store message in history
       this.messages.push({
         role: role,
@@ -1080,6 +1170,39 @@
       `;
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
+    },
+
+    showTypingIndicator: function (label) {
+      if (this.typingIndicatorEl) return;
+
+      const container = document.getElementById("tz-messages");
+      if (!container) return;
+
+      const div = document.createElement("div");
+      div.className = "tz-chat-message assistant typing";
+      const statusLabel = label?.trim()
+        ? this.escapeHtml(label.trim())
+        : `${this.escapeHtml(this.config.botName)} is typing…`;
+      div.innerHTML = `
+        <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
+        <div class="tz-chat-message-bubble">
+          <span class="tz-typing-indicator-content">
+            <span class="tz-typing-label">${statusLabel}</span>
+            <span class="tz-typing-dots"><span></span><span></span><span></span></span>
+          </span>
+        </div>
+      `;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+      this.typingIndicatorEl = div;
+    },
+
+    hideTypingIndicator: function () {
+      if (!this.typingIndicatorEl) return;
+      if (this.typingIndicatorEl.parentNode) {
+        this.typingIndicatorEl.parentNode.removeChild(this.typingIndicatorEl);
+      }
+      this.typingIndicatorEl = null;
     },
 
     toggleVoice: async function () {
