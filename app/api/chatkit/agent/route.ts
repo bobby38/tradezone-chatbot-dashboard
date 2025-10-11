@@ -42,66 +42,76 @@ type HybridSearchResult = {
   source: HybridSearchSource;
 };
 
-async function runHybridSearch(query: string): Promise<HybridSearchResult> {
-  let result = "";
-  let source: HybridSearchSource = "vector_store";
+function renderCatalogMatches(matches: Awaited<ReturnType<typeof findCatalogMatches>>) {
+  if (!matches.length) return "";
+  const lines = matches.map((match, index) => {
+    const order = index + 1;
+    const price = match.price ? ` — ${match.price}` : "";
+    const availability = match.stockStatus
+      ? ` (Availability: ${match.stockStatus})`
+      : "";
+    const title = match.permalink
+      ? `[${match.name}](${match.permalink})`
+      : match.name;
+    const image = match.image
+      ? `\n![${match.name}](${match.image})`
+      : "";
+    return `**${order}. ${title}**${price}${availability}${image}`;
+  });
+  return lines.join("\n\n");
+}
 
+async function runHybridSearch(query: string): Promise<HybridSearchResult> {
+  let vectorResult = "";
   try {
-    result = await handleVectorSearch(query);
+    vectorResult = await handleVectorSearch(query);
   } catch (vectorError) {
     console.error("[ChatKit] Vector search error:", vectorError);
-    result = "";
+    vectorResult = "";
   }
 
-  const needsFallback =
-    !result ||
-    result.trim().length < 80 ||
-    /No product information|not found|unavailable/i.test(result);
+  let catalogMatches: Awaited<ReturnType<typeof findCatalogMatches>> = [];
+  try {
+    catalogMatches = await findCatalogMatches(query, 3);
+  } catch (catalogError) {
+    console.error("[ChatKit] Catalog fallback error:", catalogError);
+    catalogMatches = [];
+  }
 
-  if (needsFallback) {
-    try {
-      const matches = await findCatalogMatches(query, 3);
-      if (matches.length) {
-        const lines = matches.map((match, index) => {
-          const order = index + 1;
-          const price = match.price ? ` — ${match.price}` : "";
-          const availability = match.stockStatus
-            ? ` (Availability: ${match.stockStatus})`
-            : "";
-          const title = match.permalink
-            ? `[${match.name}](${match.permalink})`
-            : match.name;
-          const image = match.image
-            ? `\n![${match.name}](${match.image})`
-            : "";
-          return `**${order}. ${title}**${price}${availability}${image}`;
-        });
-        result = `I found these matches in our product catalog:\n\n${lines.join("\n\n")}`;
-        source = "product_catalog";
-      }
-    } catch (catalogError) {
-      console.error("[ChatKit] Catalog fallback error:", catalogError);
+  const catalogSection = catalogMatches.length
+    ? `Here are items from the TradeZone catalog that match your request:\n\n${renderCatalogMatches(catalogMatches)}`
+    : "";
+
+  const vectorUseful =
+    vectorResult &&
+    vectorResult.trim().length >= 120 &&
+    !/No product information|not found|unavailable/i.test(vectorResult);
+
+  if (vectorUseful) {
+    const combined = catalogSection
+      ? `${vectorResult}\n\n${catalogSection}`
+      : vectorResult;
+    return { result: combined, source: "vector_store" };
+  }
+
+  if (catalogSection) {
+    return { result: catalogSection, source: "product_catalog" };
+  }
+
+  try {
+    const fallback = await handlePerplexitySearch(query);
+    if (fallback && fallback.trim().length > 0) {
+      return { result: fallback, source: "perplexity" };
     }
+  } catch (fallbackError) {
+    console.error("[ChatKit] Perplexity fallback error:", fallbackError);
   }
 
-  if (source !== "product_catalog") {
-    try {
-      const fallback = await handlePerplexitySearch(query);
-      if (fallback && fallback.trim().length > 0) {
-        result = fallback;
-        source = "perplexity";
-      }
-    } catch (fallbackError) {
-      console.error("[ChatKit] Perplexity fallback error:", fallbackError);
-    }
-  }
-
-  if (!result || result.trim().length === 0) {
-    result =
-      "I could not find a relevant product or article for that request. Please try rephrasing or give me more detail.";
-  }
-
-  return { result, source };
+  const fallbackMessage =
+    vectorResult && vectorResult.trim().length > 0
+      ? vectorResult
+      : "I could not find a relevant product or article for that request. Please try rephrasing or give me more detail.";
+  return { result: fallbackMessage, source: "vector_store" };
 }
 
 function isGenericAssistantReply(text: string) {
