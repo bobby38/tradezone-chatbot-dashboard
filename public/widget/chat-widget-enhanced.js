@@ -1,6 +1,6 @@
 /**
  * TradeZone Enhanced Chat Widget
- * Version: 2.0.0 - Centered Layout Fix
+ * Version: 2.1.0 - Desktop Centered + Mobile Corner
  * Full-featured chat widget with text, voice, and video avatar
  *
  * Features:
@@ -9,10 +9,11 @@
  * - Video avatar/hero section
  * - Call button for voice mode
  * - Responsive design
- * - Centered on all devices (mobile, tablet, desktop)
+ * - Desktop: Centered with backdrop overlay
+ * - Mobile: Bottom-right corner (traditional chat widget)
  *
  * Usage:
- * <script src="https://your-domain.com/widget/chat-widget-enhanced.js?v=2.0"></script>
+ * <script src="https://your-domain.com/widget/chat-widget-enhanced.js?v=2.1"></script>
  * <script>
  *   TradeZoneChatEnhanced.init({
  *     apiUrl: 'https://your-dashboard.com',
@@ -167,6 +168,29 @@
           fill: white;
         }
 
+        /* Backdrop overlay */
+        #tz-chat-backdrop {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          z-index: 999997;
+          animation: tzFadeIn 0.2s ease;
+        }
+
+        #tz-chat-backdrop.open {
+          display: block;
+        }
+
+        @keyframes tzFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
         #tz-chat-window {
           display: none;
           position: fixed;
@@ -187,6 +211,18 @@
           /* Prevent mobile shifting */
           margin: 0;
           padding: 0;
+          animation: tzSlideIn 0.3s ease;
+        }
+
+        @keyframes tzSlideIn {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -45%);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+          }
         }
 
         /* Prevent body scroll when widget open */
@@ -790,27 +826,48 @@
           to { transform: rotate(360deg); }
         }
 
-        /* Mobile Optimizations - Keep centered with max-width */
-        @media (max-width: 768px) {
+        /* Tablet landscape and up - Centered with fixed max size */
+        @media (min-width: 769px) {
           #tz-chat-window {
             width: 90vw;
             max-width: 450px;
             height: 85vh;
             max-height: 700px;
-            /* Always centered - use !important to override any conflicts */
+          }
+        }
+
+        /* Tablet portrait (601-768px) - Centered, slightly smaller */
+        @media (max-width: 768px) and (min-width: 601px) {
+          #tz-chat-window {
+            width: 85vw;
+            max-width: 500px;
+            height: 80vh;
+            max-height: 650px;
             left: 50% !important;
             top: 50% !important;
             transform: translate(-50%, -50%) !important;
-            border-radius: 12px;
+          }
+        }
+
+        /* Mobile (up to 600px) - Centered, 75% height */
+        @media (max-width: 600px) {
+          #tz-chat-window {
+            width: 92vw;
+            max-width: 420px;
+            height: 75vh;
+            max-height: none;
+            left: 50% !important;
+            top: 50% !important;
             right: auto !important;
             bottom: auto !important;
+            transform: translate(-50%, -50%) !important;
+            border-radius: 16px;
             inset: unset !important;
           }
 
           #tz-chat-button {
             width: 56px;
             height: 56px;
-            /* Keep button in bottom-right corner */
           }
 
           .tz-chat-hero {
@@ -889,15 +946,16 @@
           }
         }
 
-        /* Small mobile devices */
+        /* Small mobile devices (up to 375px) */
         @media (max-width: 375px) {
           #tz-chat-window {
             width: 95vw;
-            max-width: 380px;
+            max-width: none;
+            height: 80vh;
           }
 
           .tz-chat-hero {
-            height: 140px;
+            height: 120px;
           }
 
           .tz-chat-hero-title {
@@ -980,6 +1038,8 @@
             <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
           </svg>
         </button>
+
+        <div id="tz-chat-backdrop"></div>
 
         <div id="tz-chat-window">
           <div class="tz-chat-hero">
@@ -1097,6 +1157,9 @@
       document
         .querySelector(".tz-chat-close")
         .addEventListener("touchstart", () => this.toggleChat());
+      document
+        .getElementById("tz-chat-backdrop")
+        .addEventListener("click", () => this.closeChat());
       window.addEventListener("popstate", () => this.closeChat());
       document.getElementById("tz-input").addEventListener("keypress", (e) => {
         if (e.key === "Enter") this.sendMessage();
@@ -1132,9 +1195,11 @@
       if (!this.isOpen) return;
       const window = document.getElementById("tz-chat-window");
       const button = document.getElementById("tz-chat-button");
+      const backdrop = document.getElementById("tz-chat-backdrop");
 
       this.isOpen = false;
       window.classList.remove("open");
+      backdrop.classList.remove("open");
       button.style.display = "flex";
       document.body.classList.remove("tz-widget-open"); // Unlock body scroll
       this.switchMode("text");
@@ -1148,8 +1213,10 @@
       } else {
         const window = document.getElementById("tz-chat-window");
         const button = document.getElementById("tz-chat-button");
+        const backdrop = document.getElementById("tz-chat-backdrop");
         this.isOpen = true;
         window.classList.add("open");
+        backdrop.classList.add("open");
         button.style.display = "none";
         document.body.classList.add("tz-widget-open"); // Lock body scroll on mobile
         this.updateWidgetHeight();
