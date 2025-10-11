@@ -255,6 +255,7 @@
           height: 175px;
           background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
           overflow: hidden;
+          flex-shrink: 0;
         }
 
         /* Subtle particle effect */
