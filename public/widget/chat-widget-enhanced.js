@@ -283,7 +283,7 @@
           position: absolute;
           bottom: 20px;
           right: 20px;
-          background: rgba(139, 92, 246, 0.9);
+          background: transparent;
           border: none;
           border-radius: 50%;
           width: 44px;
@@ -299,7 +299,7 @@
         }
 
         .tz-chat-close:hover {
-          background: rgba(139, 92, 246, 1);
+          background: rgba(139, 92, 246, 0.3);
         }
 
         .tz-position-controls {
