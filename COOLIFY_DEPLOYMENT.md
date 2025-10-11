@@ -29,9 +29,9 @@ Required variables for ChatKit Security:
 
 ```bash
 # ChatKit Security (REQUIRED)
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
-NEXT_PUBLIC_CHATKIT_WIDGET_KEY=tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq
-CHATKIT_DASHBOARD_KEY=tzck_dashboard_bB4OsbqHp-07Mn0EXwSWhNQeVGLVh0Od
+CHATKIT_API_KEY=tzck_YOUR_MAIN_API_KEY_HERE
+NEXT_PUBLIC_CHATKIT_WIDGET_KEY=tzck_widget_YOUR_WIDGET_KEY_HERE
+CHATKIT_DASHBOARD_KEY=tzck_dashboard_YOUR_DASHBOARD_KEY_HERE
 CHATKIT_ALLOWED_ORIGINS=tradezone.sg,www.tradezone.sg,rezult.co,www.rezult.co,trade.rezult.co
 CHATKIT_DAILY_BUDGET=10.00
 ```
@@ -188,7 +188,7 @@ Expected: `401 Unauthorized`
 ```bash
 curl -X POST https://trade.rezult.co/api/chatkit/agent \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+  -H "X-API-Key: tzck_YOUR_MAIN_API_KEY_HERE" \
   -d '{"message":"test","sessionId":"test-123"}'
 ```
 
@@ -201,7 +201,7 @@ Run this 25 times to trigger rate limit:
 for i in {1..25}; do
   curl -X POST https://trade.rezult.co/api/chatkit/agent \
     -H "Content-Type: application/json" \
-    -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+    -H "X-API-Key: tzck_YOUR_MAIN_API_KEY_HERE" \
     -d "{\"message\":\"test $i\",\"sessionId\":\"rate-test\"}"
   echo ""
 done
@@ -219,7 +219,7 @@ Update your widget code to use the new API key:
 
 ```javascript
 // In your chat widget JavaScript
-const CHATKIT_API_KEY = 'tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq';
+const CHATKIT_API_KEY = 'tzck_widget_YOUR_WIDGET_KEY_HERE';
 
 async function sendMessage(message, sessionId, history = []) {
   const response = await fetch('https://trade.rezult.co/api/chatkit/agent', {
@@ -243,7 +243,7 @@ const configResponse = await fetch('https://trade.rezult.co/api/chatkit/realtime
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'X-API-Key': 'tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq', // ✅ Add this
+    'X-API-Key': 'tzck_widget_YOUR_WIDGET_KEY_HERE', // ✅ Add this
   },
   body: JSON.stringify({ sessionId: 'your-session-id' })
 });
@@ -324,7 +324,7 @@ curl -X POST $CHATKIT_ALERT_WEBHOOK \
 ```bash
 # In Coolify, verify:
 echo $CHATKIT_API_KEY
-# Should output: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+# Should output: tzck_YOUR_MAIN_API_KEY_HERE
 ```
 
 ### Issue: CORS errors
@@ -466,8 +466,8 @@ CHATKIT_PER_IP: {
 ### Required (Must Set)
 
 ```bash
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
-NEXT_PUBLIC_CHATKIT_WIDGET_KEY=tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq
+CHATKIT_API_KEY=tzck_YOUR_MAIN_API_KEY_HERE
+NEXT_PUBLIC_CHATKIT_WIDGET_KEY=tzck_widget_YOUR_WIDGET_KEY_HERE
 ```
 
 ### Recommended
@@ -480,7 +480,7 @@ CHATKIT_DAILY_BUDGET=10.00
 ### Optional
 
 ```bash
-CHATKIT_DASHBOARD_KEY=tzck_dashboard_bB4OsbqHp-07Mn0EXwSWhNQeVGLVh0Od
+CHATKIT_DASHBOARD_KEY=tzck_dashboard_YOUR_DASHBOARD_KEY_HERE
 CHATKIT_ALERT_WEBHOOK=https://hooks.slack.com/...
 ```
 

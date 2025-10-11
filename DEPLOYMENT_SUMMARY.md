@@ -8,9 +8,9 @@
 
 ### 2. **API Keys Generated** (Secure & Unique)
 ```
-Main API Key:      tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
-Widget API Key:    tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq
-Dashboard API Key: tzck_dashboard_bB4OsbqHp-07Mn0EXwSWhNQeVGLVh0Od
+Main API Key:      tzck_YOUR_MAIN_API_KEY_HERE
+Widget API Key:    tzck_widget_YOUR_WIDGET_KEY_HERE
+Dashboard API Key: tzck_dashboard_YOUR_DASHBOARD_KEY_HERE
 ```
 
 ### 3. **Allowed Domains Configured**
@@ -56,7 +56,7 @@ Dashboard API Key: tzck_dashboard_bB4OsbqHp-07Mn0EXwSWhNQeVGLVh0Od
 ```javascript
 // Add API key to your widget:
 headers: {
-  'X-API-Key': 'tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq'
+  'X-API-Key': 'tzck_widget_YOUR_WIDGET_KEY_HERE'
 }
 ```
 
@@ -87,21 +87,21 @@ curl https://trade.rezult.co/api/chatkit/agent
 
 ### Widget (Frontend) - Use This:
 ```
-NEXT_PUBLIC_CHATKIT_WIDGET_KEY=tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq
+NEXT_PUBLIC_CHATKIT_WIDGET_KEY=tzck_widget_YOUR_WIDGET_KEY_HERE
 ```
 ✅ Safe to expose in browser
 ✅ Use in chat widget on tradezone.sg
 
 ### Server (Backend) - Keep Secret:
 ```
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+CHATKIT_API_KEY=tzck_YOUR_MAIN_API_KEY_HERE
 ```
 ❌ Never expose to browser
 ✅ Use in server-side API calls only
 
 ### Dashboard (Internal) - Optional:
 ```
-CHATKIT_DASHBOARD_KEY=tzck_dashboard_bB4OsbqHp-07Mn0EXwSWhNQeVGLVh0Od
+CHATKIT_DASHBOARD_KEY=tzck_dashboard_YOUR_DASHBOARD_KEY_HERE
 ```
 ✅ Use for internal analytics tools
 
@@ -113,7 +113,7 @@ CHATKIT_DASHBOARD_KEY=tzck_dashboard_bB4OsbqHp-07Mn0EXwSWhNQeVGLVh0Od
 ```bash
 curl -X POST https://trade.rezult.co/api/chatkit/agent \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+  -H "X-API-Key: tzck_YOUR_MAIN_API_KEY_HERE" \
   -d '{"message":"test","sessionId":"test-123"}'
 ```
 
@@ -139,7 +139,7 @@ ORDER BY timestamp DESC;
 for i in {1..25}; do
   curl -X POST https://trade.rezult.co/api/chatkit/agent \
     -H "Content-Type: application/json" \
-    -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+    -H "X-API-Key: tzck_YOUR_MAIN_API_KEY_HERE" \
     -d "{\"message\":\"test $i\",\"sessionId\":\"rate-test\"}"
 done
 ```
