@@ -204,6 +204,8 @@ export async function findClosestMatch(query: string): Promise<string | null> {
   return null;
 }
 
+const STOP_WORDS = new Set(['any', 'game', 'games', 'the', 'for', 'find', 'show', 'give', 'please']);
+
 export async function findCatalogMatches(
   query: string,
   limit = 3,
@@ -212,18 +214,33 @@ export async function findCatalogMatches(
   if (!trimmed) return [];
 
   const catalog = await loadCatalog();
+  const rawTokens = trimmed.split(/\s+/).filter(Boolean);
+  const filteredTokens = rawTokens.filter(token => token.length >= 3 && !STOP_WORDS.has(token));
+  const tokensToUse = filteredTokens.length ? filteredTokens : rawTokens;
 
   const ranked = catalog
-    .map((product) => ({ product, score: scoreProduct(product, trimmed) }))
+    .map((product) => {
+      const name = (product.name || '').toLowerCase();
+      const categories = (product.categories || []).map(c => c.name?.toLowerCase() || '');
+      const description = (product.short_description || product.description || '').toLowerCase();
+      const matchedTokens = tokensToUse.filter(token =>
+        name.includes(token) ||
+        categories.some(cat => cat.includes(token)) ||
+        description.includes(token)
+      );
+      const score = matchedTokens.length
+        ? scoreProduct(product, trimmed) + matchedTokens.length * 150
+        : 0;
+      return { product, score, matched: matchedTokens.length };
+    })
     .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  if (ranked.length === 0) {
-    return [];
-  }
+    .sort((a, b) => {
+      if (b.matched !== a.matched) return b.matched - a.matched;
+      return b.score - a.score;
+    });
 
   return ranked.slice(0, limit).map(({ product }) => ({
-    name: product.name || "TradeZone Product",
+    name: product.name || 'TradeZone Product',
     permalink: product.permalink,
     price:
       product.price || product.sale_price || product.regular_price || undefined,
