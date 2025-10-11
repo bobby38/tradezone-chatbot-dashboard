@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
   handleVectorSearch,
@@ -196,14 +197,52 @@ export async function OPTIONS() {
   return new NextResponse(null, { headers: corsHeaders });
 }
 
+async function logToolRun(entry: {
+  request_id: string
+  session_id: string
+  tool_name: string
+  args?: any
+  result_preview?: string
+  source?: string
+  success?: boolean
+  latency_ms?: number
+  error_message?: string | null
+}) {
+  try {
+    await supabase.from("chat_tool_runs").insert({
+      request_id: entry.request_id,
+      session_id: entry.session_id,
+      tool_name: entry.tool_name,
+      args: entry.args ?? null,
+      result_preview: entry.result_preview ?? null,
+      source: entry.source ?? null,
+      success: entry.success ?? true,
+      latency_ms: entry.latency_ms ?? null,
+      error_message: entry.error_message ?? null,
+    })
+  } catch (toolLogError) {
+    console.error("[ChatKit] tool run log insert failed:", toolLogError)
+  }
+}
+
 export async function POST(request: NextRequest) {
-  const { message, sessionId, history = [] } = await request.json();
-  let finalResponse = "";
-  let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gpt-4o-mini"; // Default model
-  let lastHybridResult: string | null = null;
-  let lastHybridSource: HybridSearchResult["source"] | null = null;
-  let lastHybridQuery: string | null = null;
+  const startedAt = Date.now()
+  const requestId = randomUUID()
+  const { message, sessionId, history = [] } = await request.json()
+  const requestContext = {
+    request_id: requestId,
+    session_id: sessionId,
+    source: request.headers.get("x-client-source") || "widget",
+    user_agent: request.headers.get("user-agent") || null,
+    ip_address: request.ip ?? null,
+  }
+  let finalResponse = ""
+  let toolSummaries: ToolUsageSummary[] = []
+  let textModel = "gpt-4o-mini" // Default model
+  let lastHybridResult: string | null = null
+  let lastHybridSource: HybridSearchSource | null = null
+  let lastHybridQuery: string | null = null
+  let errorMessage: string | null = null
 
   try {
     if (!message || !sessionId) {
@@ -256,23 +295,46 @@ export async function POST(request: NextRequest) {
         let toolSource: HybridSearchSource | undefined;
         try {
           if (functionName === "searchProducts" || functionName === "searchtool") {
+            const toolStart = Date.now();
             const { result, source } = await runHybridSearch(functionArgs.query);
             toolResult = result;
             toolSource = source;
             lastHybridResult = result;
             lastHybridSource = source;
             lastHybridQuery = functionArgs.query;
+            const toolLatency = Date.now() - toolStart;
             toolSummaries.push({
               name: functionName,
               args: { ...functionArgs, source },
               resultPreview: result.slice(0, 200),
             });
+            await logToolRun({
+              request_id: requestId,
+              session_id: sessionId,
+              tool_name: functionName,
+              args: functionArgs,
+              result_preview: result.slice(0, 280),
+              source,
+              success: true,
+              latency_ms: toolLatency,
+            });
           } else if (functionName === "sendemail") {
+            const toolStart = Date.now();
             toolResult = await handleEmailSend(functionArgs);
+            const toolLatency = Date.now() - toolStart;
             toolSummaries.push({
               name: functionName,
               args: functionArgs,
               resultPreview: toolResult.slice(0, 200),
+            });
+            await logToolRun({
+              request_id: requestId,
+              session_id: sessionId,
+              tool_name: functionName,
+              args: functionArgs,
+              result_preview: toolResult.slice(0, 280),
+              success: true,
+              latency_ms: toolLatency,
             });
           } else {
             console.warn("[ChatKit] Unknown tool requested:", functionName);
@@ -286,11 +348,18 @@ export async function POST(request: NextRequest) {
             args: functionArgs,
             error: toolResult,
           });
+          await logToolRun({
+            request_id: requestId,
+            session_id: sessionId,
+            tool_name: functionName,
+            args: functionArgs,
+            success: false,
+            error_message: error instanceof Error ? error.message : String(error),
+          });
         }
 
         if (
-          (functionName === "searchProducts" ||
-            functionName === "searchtool") &&
+          (functionName === "searchProducts" || functionName === "searchtool") &&
           (!toolResult ||
             toolResult.includes("No results found") ||
             toolResult.includes("not found"))
@@ -298,6 +367,13 @@ export async function POST(request: NextRequest) {
           const suggestion = await findClosestMatch(functionArgs.query);
           if (suggestion) {
             finalResponse = `I couldn't find anything for \"${functionArgs.query}\". Did you mean \"${suggestion}\"?`;
+            await logToolRun({
+              request_id: requestId,
+              session_id: sessionId,
+              tool_name: `${functionName}:suggestion`,
+              args: { query: functionArgs.query, suggestion },
+              success: true,
+            });
             break; // Exit loop to return suggestion
           }
         }
@@ -313,7 +389,7 @@ export async function POST(request: NextRequest) {
 
       if (!finalResponse) {
         // If no suggestion was made
-        const finalCompletion = await openai.chat.completions.create({
+      const finalCompletion = await openai.chat.completions.create({
           model: textModel,
           messages,
           temperature: 0.7,
@@ -341,11 +417,33 @@ export async function POST(request: NextRequest) {
     console.error("[ChatKit] Error in POST handler:", error);
     finalResponse =
       "I'm sorry, I ran into an issue processing your request. Please try again.";
+    errorMessage = error instanceof Error ? error.message : "Unknown error";
   } finally {
     // This block ensures we ALWAYS log and have a valid response
     if (!finalResponse || finalResponse.trim() === "") {
       finalResponse =
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
+    }
+
+    const latencyMs = Date.now() - startedAt;
+
+    try {
+      await supabase.from("chat_request_logs").insert({
+        ...requestContext,
+        prompt: message,
+        history_length: Array.isArray(history) ? history.length : 0,
+        final_response: finalResponse,
+        model: textModel,
+        status: errorMessage ? "error" : "success",
+        latency_ms: latencyMs,
+        tool_summary: toolSummaries.length ? toolSummaries : null,
+        error_message: errorMessage,
+        request_payload: {
+          history,
+        },
+      });
+    } catch (logError) {
+      console.error("[ChatKit] request log insert failed:", logError);
     }
 
     recordAgentTelemetry({

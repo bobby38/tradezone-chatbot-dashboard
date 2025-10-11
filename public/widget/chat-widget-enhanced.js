@@ -648,6 +648,11 @@
           transition: all 0.2s;
         }
 
+        .tz-chat-input.is-disabled {
+          opacity: 0.6;
+          cursor: wait;
+        }
+
         .tz-image-preview {
           margin-top: 8px;
           position: relative;
@@ -715,6 +720,22 @@
           width: 20px;
           height: 20px;
           fill: white;
+        }
+
+        .tz-chat-send:disabled {
+          cursor: wait;
+          opacity: 0.6;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .tz-chat-send.is-sending svg {
+          animation: tzRotate 1s linear infinite;
+        }
+
+        @keyframes tzRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         /* Mobile Optimizations */
@@ -1093,6 +1114,7 @@
     sendMessage: async function () {
       const input = document.getElementById("tz-input");
       const message = input.value.trim();
+      const sendButton = document.getElementById("tz-send");
 
       if (!message && !this.currentImage) return;
 
@@ -1104,7 +1126,20 @@
       this.removeImage(); // Clear after sending
 
       try {
-        this.showTypingIndicator();
+        this.showTypingIndicator("Amara is searching TradeZone for the best answers…");
+
+        input.disabled = true;
+        input.classList.add("is-disabled");
+        if (!input.dataset.prevPlaceholder) {
+          input.dataset.prevPlaceholder = input.placeholder;
+        }
+        input.placeholder = "Searching…";
+
+        if (sendButton) {
+          sendButton.disabled = true;
+          sendButton.classList.add("is-sending");
+        }
+
         // Build history from messages array
         const history = this.messages.map((msg) => ({
           role: msg.role,
@@ -1141,6 +1176,16 @@
       } finally {
         // Ensure typing indicator is cleared if no assistant message was added
         this.hideTypingIndicator();
+        input.disabled = false;
+        input.classList.remove("is-disabled");
+        if (input.dataset.prevPlaceholder) {
+          input.placeholder = input.dataset.prevPlaceholder;
+          delete input.dataset.prevPlaceholder;
+        }
+        if (sendButton) {
+          sendButton.disabled = false;
+          sendButton.classList.remove("is-sending");
+        }
       }
     },
 
