@@ -155,23 +155,35 @@
         /* Mobile responsive - 95% screen for better UX */
         @media (max-width: 768px) {
           #tz-chat-window {
-            width: 95vw;
-            height: 95vh;
-            height: 95dvh; /* Dynamic viewport height - excludes browser UI */
-            max-height: 95vh;
-            max-height: 95dvh;
-            left: 2.5vw !important;
-            top: 2.5vh !important;
-            top: 2.5dvh !important;
-            right: auto;
-            bottom: auto;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height */
+            max-height: 100vh;
+            max-height: 100dvh;
+            left: 0 !important;
+            top: 0 !important;
+            right: 0;
+            bottom: 0;
             transform: none !important;
-            border-radius: 16px;
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 0;
+            border: none;
           }
 
-          /* Prevent body scroll when widget is open */
+          /* Messages must scroll, not widget */
+          .tz-chat-messages {
+            flex: 1;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+          }
+
+          /* Input stays at bottom, above keyboard */
+          .tz-chat-input-container {
+            flex-shrink: 0;
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+          }
+
+          /* Prevent body scroll */
           body.tz-widget-open {
             overflow: hidden !important;
             position: fixed !important;
@@ -179,15 +191,16 @@
             height: 100% !important;
           }
 
-          /* Ensure close button is always visible with better contrast */
+          /* Always visible close button */
           .tz-chat-close {
-            top: 12px !important;
-            right: 12px !important;
-            width: 44px !important;
-            height: 44px !important;
-            background: rgba(0,0,0,0.8) !important;
+            top: 16px !important;
+            right: 16px !important;
+            width: 48px !important;
+            height: 48px !important;
+            background: rgba(0,0,0,0.9) !important;
             backdrop-filter: blur(10px);
-            z-index: 100;
+            z-index: 1000;
+            border: 2px solid rgba(255,255,255,0.3);
           }
         }
 
