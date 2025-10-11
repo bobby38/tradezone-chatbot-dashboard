@@ -103,61 +103,44 @@ function scoreProduct(product: CatalogProduct, query: string): number {
   const name = product.name?.toLowerCase() ?? "";
   const description = product.description?.toLowerCase() ?? "";
   const shortDescription = product.short_description?.toLowerCase() ?? "";
-  const permalink = product.permalink?.toLowerCase() ?? "";
-  const tags = product.tags?.map((tag) => tag.name?.toLowerCase() ?? "") ?? [];
-  const categories =
-    product.categories?.map((cat) => cat.name?.toLowerCase() ?? "") ?? [];
 
-  const haystack = [
-    name,
-    description,
-    shortDescription,
-    permalink,
-    ...tags,
-    ...categories,
-  ].join(" ");
+  if (!name && !description && !shortDescription) return 0;
 
-  if (!haystack) return 0;
-
-  const tokens = query
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
-
-  if (tokens.length === 0) return 0;
+  const queryTokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (queryTokens.length === 0) return 0;
 
   let score = 0;
 
-  tokens.forEach((token) => {
-    // Exact name match
-    if (name === token) score += 80;
-    // Name contains token
-    if (name.includes(token)) score += 40;
-    // Description contains token (for detailed searches)
-    if (description.includes(token)) score += 15;
-    if (shortDescription.includes(token)) score += 15;
-    // Permalink contains token
-    if (permalink.includes(token)) score += 20;
+  queryTokens.forEach((token) => {
+    const nameWords = name.split(/\s+/);
+    let bestNameMatch = 0;
 
-    // Tags match
-    tags.forEach((tag) => {
-      if (tag.includes(token)) score += 10;
+    nameWords.forEach((word) => {
+      const distance = levenshteinDistance(token, word);
+      const similarity = 1 - distance / Math.max(token.length, word.length);
+      if (similarity > 0.7) {
+        // Threshold for a decent match
+        bestNameMatch = Math.max(bestNameMatch, similarity);
+      }
     });
 
-    // Category match
-    categories.forEach((category) => {
-      if (category.includes(token)) score += 10;
-    });
+    if (bestNameMatch > 0) {
+      score += 50 * bestNameMatch; // Main score from name matching
+    }
+
+    if (description.includes(token) || shortDescription.includes(token)) {
+      score += 10; // Bonus for appearing in description
+    }
   });
 
-  // Bonus for full query match in name
-  if (name.includes(query)) {
-    score += 30;
+  // Bonus for all query tokens appearing in the name
+  if (queryTokens.every((token) => name.includes(token))) {
+    score += 40;
   }
 
-  // Bonus for full query match in description
-  if (description.includes(query) || shortDescription.includes(query)) {
-    score += 20;
+  // Big bonus for exact match of the full query
+  if (name.includes(query)) {
+    score += 60;
   }
 
   return score;
@@ -169,6 +152,56 @@ export interface CatalogMatch {
   price?: string;
   stockStatus?: string;
   image?: string;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix = Array(b.length + 1)
+    .fill(null)
+    .map(() => Array(a.length + 1).fill(null));
+  for (let i = 0; i <= a.length; i += 1) {
+    matrix[0][i] = i;
+  }
+  for (let j = 0; j <= b.length; j += 1) {
+    matrix[j][0] = j;
+  }
+  for (let j = 1; j <= b.length; j += 1) {
+    for (let i = 1; i <= a.length; i += 1) {
+      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1, // deletion
+        matrix[j - 1][i] + 1, // insertion
+        matrix[j - 1][i - 1] + indicator, // substitution
+      );
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+export async function findClosestMatch(query: string): Promise<string | null> {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  const catalog = await loadCatalog();
+  let closestMatch: string | null = null;
+  let minDistance = Infinity;
+
+  for (const product of catalog) {
+    const productName = product.name?.toLowerCase();
+    if (productName) {
+      const distance = levenshteinDistance(trimmed, productName);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestMatch = product.name;
+      }
+    }
+  }
+
+  // Only return a suggestion if the distance is reasonably small
+  if (closestMatch && minDistance <= 3) {
+    return closestMatch;
+  }
+
+  return null;
 }
 
 export async function findCatalogMatches(

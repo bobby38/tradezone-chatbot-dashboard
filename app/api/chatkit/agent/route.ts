@@ -7,6 +7,7 @@ import {
   handleEmailSend,
 } from "@/lib/tools";
 import { CHATKIT_DEFAULT_PROMPT } from "@/lib/chatkit/defaultPrompt";
+import { findClosestMatch } from "@/lib/chatkit/productCatalog";
 import {
   recordAgentTelemetry,
   ToolUsageSummary,
@@ -195,6 +196,23 @@ export async function POST(request: NextRequest) {
             error: error instanceof Error ? error.message : "Unknown error",
             resultPreview: toolResult.slice(0, 200),
           });
+        }
+
+        if (
+          (functionName === "searchProducts" ||
+            functionName === "searchtool") &&
+          (!toolResult ||
+            toolResult.includes("No results found") ||
+            toolResult.includes("not found"))
+        ) {
+          const suggestion = await findClosestMatch(functionArgs.query);
+          if (suggestion) {
+            const suggestionResponse = `I couldn't find anything for \"${functionArgs.query}\". Did you mean \"${suggestion}\"?`;
+            return NextResponse.json(
+              { response: suggestionResponse, sessionId, model: textModel },
+              { headers: corsHeaders },
+            );
+          }
         }
 
         // Add tool result to messages using the standard tool-calling format

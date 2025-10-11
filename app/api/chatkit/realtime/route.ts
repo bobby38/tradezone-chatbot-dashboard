@@ -60,7 +60,9 @@ export async function POST(req: Request) {
 - For **product queries** (prices, availability, specs), use **searchProducts** FIRST
 - For **trade-ins, policies, promotions, or store info**, use **searchtool** (searches website pages)
 - Be friendly, concise, and natural - speak as if helping a customer in-store
-- Keep responses VERY BRIEF for voice chat - 1-2 sentences maximum
+- Keep responses brief for voice chat, but always include important details like product links and prices if available.
+- Always review the recent conversation history to understand the user's context. If you have already provided a list of products, and the user asks for more details about one of them, use the tools again to get the specific details for that product.
+- When a product has a URL, always provide it to the user by saying "You can find it here:" followed by the URL.
 - If user interrupts or speaks, STOP immediately and listen
 - Prioritize speed and brevity over completeness`,
         input_audio_transcription: {
