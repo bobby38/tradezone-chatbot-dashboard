@@ -709,4 +709,28 @@ User message → /api/chatkit/agent
 - ✅ Tool exports and handlers
 - ✅ API route structure
 
-**Status**: ✅ Implementation complete, awaiting final voice validation and production deployment
+**Status**: ✅ Voice chat working, ⚠️ Widget voice needs tool execution
+
+### January 11, 2025 - Amara Branding Complete
+**Changes**:
+- ✅ All "Izacc" → "Amara" across codebase
+- ✅ Amara avatar video (tradezone-amara-welcome.mp4)
+- ✅ Widget hero: "Amara / TradeZone" (simplified)
+- ✅ Hero height 200px, text overlay at top with 90% opacity
+- ✅ Mobile responsive widget
+- ✅ Voice error logging improved
+- ✅ audioQueue initialization fixed
+
+**CRITICAL ISSUE - Widget Voice Tool Execution**:
+- Widget voice mode does NOT execute tools (searchProducts, searchtool, sendemail)
+- Tools are properly configured in `/api/chatkit/realtime`
+- Widget logs tool calls but doesn't execute them
+- Dashboard voice DOES execute tools properly (see `/components/realtime-voice.tsx`)
+- Result: Voice mode gives generic answers instead of searching products
+
+**Fix Required**: Copy tool execution logic from dashboard to widget
+- Dashboard handles `response.function_call_arguments.done` event
+- Calls tool APIs and sends results back via `conversation.item.create`
+- Widget needs same implementation
+
+**Status**: ✅ Branding complete, ⚠️ Widget voice tools not functional

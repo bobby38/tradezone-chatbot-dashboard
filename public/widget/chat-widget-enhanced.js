@@ -173,7 +173,7 @@
         /* Hero/Video Section */
         .tz-chat-hero {
           position: relative;
-          height: 200px;
+          height: 175px;
           background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
           overflow: hidden;
         }
@@ -886,12 +886,19 @@
       input.value = '';
 
       try {
+        // Build history from messages array
+        const history = this.messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
         const response = await fetch(`${this.config.apiUrl}/api/chatkit/agent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId: this.sessionId,
-            message: message
+            message: message,
+            history: history
           })
         });
 
@@ -906,6 +913,12 @@
     },
 
     addMessage: function(text, role) {
+      // Store message in history
+      this.messages.push({
+        role: role,
+        content: text
+      });
+
       const container = document.getElementById('tz-messages');
       const div = document.createElement('div');
       div.className = `tz-chat-message ${role}`;
