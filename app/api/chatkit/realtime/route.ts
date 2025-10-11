@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 // CORS headers for widget integration
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
 };
 
 // Handle OPTIONS request for CORS preflight
@@ -24,15 +24,17 @@ export async function POST(req: Request) {
     }
 
     // Support both GPT-4o Realtime and GPT-4o-mini Realtime
-    const model = process.env.OPENAI_REALTIME_MODEL || "gpt-4o-mini-realtime-preview-2024-12-17";
-    
+    const model =
+      process.env.OPENAI_REALTIME_MODEL ||
+      "gpt-4o-mini-realtime-preview-2024-12-17";
+
     const config = {
       apiKey: process.env.OPENAI_API_KEY,
       websocketUrl: "wss://api.openai.com/v1/realtime",
       model,
       voice: "alloy",
       vectorStoreId: process.env.OPENAI_VECTOR_STORE_ID,
-      
+
       // Full session configuration for both dashboard and widget
       sessionConfig: {
         modalities: ["text", "audio"],
@@ -50,12 +52,13 @@ export async function POST(req: Request) {
 
 ## Available Tools (Use only when needed)
 1. **searchProducts** - Search TradeZone product catalog (use FIRST for product queries like "PS5", "gaming keyboard", etc.)
-2. **searchtool** - Search TradeZone website for detailed info (use if vector search doesn't find results)
+2. **searchtool** - Search TradeZone website for detailed info (policies, trade-ins, promotions, guides, store info)
 3. **sendemail** - Send inquiry to staff (ONLY when customer explicitly requests contact or follow-up)
 
 ## Instructions
 - Answer FAQ questions directly from the Quick Answers list above - DO NOT use tools for these
-- For product queries (prices, availability, specs), use searchProducts tool FIRST
+- For **product queries** (prices, availability, specs), use **searchProducts** FIRST
+- For **trade-ins, policies, promotions, or store info**, use **searchtool** (searches website pages)
 - Be friendly, concise, and natural - speak as if helping a customer in-store
 - Keep responses VERY BRIEF for voice chat - 1-2 sentences maximum
 - If user interrupts or speaks, STOP immediately and listen
@@ -73,7 +76,8 @@ export async function POST(req: Request) {
           {
             type: "function",
             name: "searchProducts",
-            description: "Search TradeZone product catalog using vector database. Use this FIRST for all product-related queries including gaming consoles, laptops, phones, accessories, pricing and availability.",
+            description:
+              "Search TradeZone product catalog using vector database. Use this FIRST for all product-related queries including gaming consoles, laptops, phones, accessories, pricing and availability.",
             parameters: {
               type: "object",
               properties: {
@@ -88,7 +92,8 @@ export async function POST(req: Request) {
           {
             type: "function",
             name: "searchtool",
-            description: "Search TradeZone website and web for general information. Use this if searchProducts doesn't find what you need.",
+            description:
+              "Search TradeZone website and web for general information. Use this if searchProducts doesn't find what you need.",
             parameters: {
               type: "object",
               properties: {
@@ -103,7 +108,8 @@ export async function POST(req: Request) {
           {
             type: "function",
             name: "sendemail",
-            description: "Send an email inquiry to TradeZone staff. Only use when customer explicitly requests to be contacted or wants staff to follow up.",
+            description:
+              "Send an email inquiry to TradeZone staff. Only use when customer explicitly requests to be contacted or wants staff to follow up.",
             parameters: {
               type: "object",
               properties: {
@@ -145,7 +151,10 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ success: true, config }, { headers: corsHeaders });
+    return NextResponse.json(
+      { success: true, config },
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[Realtime API] Error:", error);
     return NextResponse.json(
