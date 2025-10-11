@@ -1,14 +1,14 @@
 /**
  * TradeZone Enhanced Chat Widget
  * Full-featured chat widget with text, voice, and video avatar
- * 
+ *
  * Features:
  * - Text chat with typing indicators
  * - Voice chat (GPT Realtime)
  * - Video avatar/hero section
  * - Call button for voice mode
  * - Responsive design
- * 
+ *
  * Usage:
  * <script src="https://your-domain.com/widget/chat-widget-enhanced.js"></script>
  * <script>
@@ -21,30 +21,37 @@
  * </script>
  */
 
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
   const TradeZoneChatEnhanced = {
     config: {
-      apiUrl: '',
-      position: 'bottom-right',
-      primaryColor: '#8b5cf6', // TradeZone purple
-      secondaryColor: '#6d28d9',
-      accentColor: '#a78bfa',
-      darkBg: '#1a1a2e',
-      greeting: 'Hi! How can I help you today?',
-      botName: 'Izacc',
-      placeholder: 'Ask about products, prices, trade-ins...',
-      videoUrl: '', // Optional hero video
+      apiUrl: "",
+      position: "bottom-right",
+      primaryColor: "#8b5cf6", // TradeZone purple
+      secondaryColor: "#6d28d9",
+      accentColor: "#a78bfa",
+      darkBg: "#1a1a2e",
+      greeting: "Hi! How can I help you today?",
+      botName: "Amara",
+      placeholder: "Ask about products, prices, trade-ins...",
+      videoUrl: "", // Optional hero video
       enableVoice: true,
-      enableVideo: true
+      enableVideo: true,
+      // Appwrite Storage Configuration
+      appwrite: {
+        endpoint: "https://studio.getrezult.com/v1",
+        projectId: "68e9c230002bf8a2f26f",
+        bucketId: "68e9c23f002de06d1e68",
+      },
     },
-    
+
     sessionId: null,
     isOpen: false,
     messages: [],
-    mode: 'text', // 'text' or 'voice'
-    currentTranscript: '',
+    mode: "text", // 'text' or 'voice'
+    currentTranscript: "",
+    currentImage: null, // Store selected image as base64
     voiceState: {
       sessionId: null,
       isRecording: false,
@@ -55,46 +62,50 @@
       playbackContext: null,
       playbackNode: null,
       audioQueue: [],
-      isResponding: false
+      isResponding: false,
     },
 
-    init: function(options) {
+    init: function (options) {
       this.config = { ...this.config, ...options };
       this.sessionId = this.generateSessionId();
-      
+
       // Ensure viewport meta tag for mobile
       this.ensureViewport();
-      
+
       this.injectStyles();
       this.createWidget();
       this.attachEventListeners();
-      
-      console.log('[TradeZone Chat Enhanced] Widget initialized', this.sessionId);
+
+      console.log(
+        "[TradeZone Chat Enhanced] Widget initialized",
+        this.sessionId,
+      );
     },
 
-    ensureViewport: function() {
+    ensureViewport: function () {
       // Check if viewport meta tag exists
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
-        viewport = document.createElement('meta');
-        viewport.name = 'viewport';
-        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        viewport = document.createElement("meta");
+        viewport.name = "viewport";
+        viewport.content =
+          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
         document.head.appendChild(viewport);
-        console.log('[TradeZone Chat] Added viewport meta tag for mobile');
+        console.log("[TradeZone Chat] Added viewport meta tag for mobile");
       }
     },
 
-    generateSessionId: function() {
-      return 'Guest-' + Math.floor(1000 + Math.random() * 9000);
+    generateSessionId: function () {
+      return "Guest-" + Math.floor(1000 + Math.random() * 9000);
     },
 
-    injectStyles: function() {
+    injectStyles: function () {
       const styles = `
         /* Base Widget Styles */
         #tz-chat-widget {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           position: fixed;
-          ${this.config.position === 'bottom-right' ? 'right: 20px;' : 'left: 20px;'}
+          ${this.config.position === "bottom-right" ? "right: 20px;" : "left: 20px;"}
           bottom: 20px;
           z-index: 999999;
         }
@@ -140,29 +151,30 @@
           border: 1px solid rgba(139, 92, 246, 0.3);
           z-index: 999998;
         }
-        
-        /* Mobile responsive */
+
+        /* Mobile responsive - Fixed overflow */
         @media (max-width: 768px) {
-          #tz-chat-window {
-            width: calc(100vw - 20px);
-            height: calc(100vh - 20px);
-            max-height: calc(100vh - 20px);
-            left: 10px;
-            top: 10px;
-            transform: none;
-            border-radius: 8px;
-          }
-        }
-        
-        @media (max-width: 480px) {
           #tz-chat-window {
             width: 100vw;
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height - excludes browser UI */
             max-height: 100vh;
-            left: 0;
-            top: 0;
+            max-height: 100dvh;
+            left: 0 !important;
+            top: 0 !important;
+            right: 0;
+            bottom: 0;
+            transform: none !important;
             border-radius: 0;
             border: none;
+          }
+
+          /* Prevent body scroll when widget is open */
+          body.tz-widget-open {
+            overflow: hidden !important;
+            position: fixed !important;
+            width: 100% !important;
+            height: 100% !important;
           }
         }
 
@@ -276,7 +288,7 @@
         .tz-chat-close:hover {
           background: rgba(139, 92, 246, 0.8);
         }
-        
+
         @media (max-width: 768px) {
           .tz-chat-close {
             width: 44px;
@@ -284,7 +296,7 @@
             background: rgba(0,0,0,0.7);
           }
         }
-        
+
         .tz-position-controls {
           position: absolute;
           top: 12px;
@@ -293,7 +305,7 @@
           gap: 4px;
           z-index: 10;
         }
-        
+
         .tz-position-btn {
           background: rgba(0,0,0,0.3);
           border: none;
@@ -305,11 +317,11 @@
           font-size: 10px;
           transition: background 0.2s;
         }
-        
+
         .tz-position-btn:hover {
           background: rgba(139, 92, 246, 0.5);
         }
-        
+
         .tz-position-btn.active {
           background: rgba(139, 92, 246, 0.8);
         }
@@ -521,6 +533,31 @@
         .tz-chat-input-wrapper {
           display: flex;
           gap: 8px;
+          align-items: center;
+        }
+
+        .tz-chat-attach {
+          width: 40px;
+          height: 40px;
+          border-radius: 20px;
+          background: rgba(139, 92, 246, 0.1);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          color: ${this.config.primaryColor};
+        }
+
+        .tz-chat-attach:hover {
+          background: rgba(139, 92, 246, 0.2);
+          border-color: ${this.config.primaryColor};
+        }
+
+        .tz-chat-attach svg {
+          width: 20px;
+          height: 20px;
         }
 
         .tz-chat-input {
@@ -533,6 +570,41 @@
           color: #e5e7eb;
           outline: none;
           transition: all 0.2s;
+        }
+
+        .tz-image-preview {
+          margin-top: 8px;
+          position: relative;
+          display: inline-block;
+        }
+
+        .tz-image-preview img {
+          max-width: 150px;
+          max-height: 150px;
+          border-radius: 8px;
+          border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .tz-remove-image {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          width: 24px;
+          height: 24px;
+          border-radius: 12px;
+          background: #ef4444;
+          border: none;
+          color: white;
+          cursor: pointer;
+          font-size: 18px;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .tz-remove-image:hover {
+          background: #dc2626;
         }
 
         .tz-chat-input::placeholder {
@@ -715,25 +787,28 @@
         }
       `;
 
-      const styleSheet = document.createElement('style');
+      const styleSheet = document.createElement("style");
       styleSheet.textContent = styles;
       document.head.appendChild(styleSheet);
     },
 
-    createWidget: function() {
-      const widget = document.createElement('div');
-      widget.id = 'tz-chat-widget';
-      
-      const videoHtml = this.config.enableVideo && this.config.videoUrl ? `
+    createWidget: function () {
+      const widget = document.createElement("div");
+      widget.id = "tz-chat-widget";
+
+      const videoHtml =
+        this.config.enableVideo && this.config.videoUrl
+          ? `
         <video autoplay loop muted playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;">
           <source src="${this.config.videoUrl}" type="video/mp4">
         </video>
-      ` : '';
-      
+      `
+          : "";
+
       if (this.config.enableVideo && this.config.videoUrl) {
-        console.log('[Video] Enabled with URL:', this.config.videoUrl);
+        console.log("[Video] Enabled with URL:", this.config.videoUrl);
       } else {
-        console.log('[Video] Disabled or no URL');
+        console.log("[Video] Disabled or no URL");
       }
 
       widget.innerHTML = `
@@ -765,7 +840,9 @@
             </button>
           </div>
 
-          ${this.config.enableVoice ? `
+          ${
+            this.config.enableVoice
+              ? `
           <div class="tz-chat-mode-toggle">
             <button class="tz-mode-btn active" data-mode="text">
               <svg viewBox="0 0 24 24" fill="currentColor">
@@ -781,7 +858,9 @@
               Voice
             </button>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <div class="tz-chat-messages" id="tz-messages">
             <div class="tz-chat-message">
@@ -790,7 +869,9 @@
             </div>
           </div>
 
-          ${this.config.enableVoice ? `
+          ${
+            this.config.enableVoice
+              ? `
           <div class="tz-voice-container" id="tz-voice-container">
             <div class="tz-voice-status" id="tz-voice-status">Ready to start</div>
             <button class="tz-voice-button start" id="tz-voice-btn">
@@ -801,13 +882,26 @@
             </button>
             <div class="tz-voice-transcript" id="tz-voice-transcript"></div>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <div class="tz-chat-input-container" id="tz-input-container">
             <div class="tz-chat-input-wrapper">
-              <input 
-                type="text" 
-                class="tz-chat-input" 
+              <button class="tz-chat-attach" id="tz-attach" title="Attach image">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21.02 15.38c-.69 2.61-2.88 4.62-5.54 4.62-3.18 0-5.75-2.58-5.75-5.75s2.58-5.75 5.75-5.75c.32 0 .64.03.94.08l1.66-1.66c-.88-.34-1.83-.52-2.6-.52-4.42 0-8 3.58-8 8s3.58 8 8 8c3.71 0 6.85-2.56 7.74-6l-2.2-.02zM16 4l-4 4h3c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4V2C7.27 2 4 5.27 4 9s3.27 7 7 7 7-3.27 7-7h3l-5-5z"/>
+                </svg>
+              </button>
+              <input
+                type="file"
+                id="tz-file-input"
+                accept="image/*"
+                style="display: none;"
+              />
+              <input
+                type="text"
+                class="tz-chat-input"
                 id="tz-input"
                 placeholder="${this.config.placeholder}"
               />
@@ -817,6 +911,10 @@
                 </svg>
               </button>
             </div>
+            <div id="tz-image-preview" class="tz-image-preview" style="display: none;">
+              <img id="tz-preview-img" src="" alt="Preview" />
+              <button class="tz-remove-image" id="tz-remove-image">×</button>
+            </div>
           </div>
         </div>
       `;
@@ -824,117 +922,159 @@
       document.body.appendChild(widget);
     },
 
-    attachEventListeners: function() {
-      document.getElementById('tz-chat-button').addEventListener('click', () => this.toggleChat());
-      document.querySelector('.tz-chat-close').addEventListener('click', () => this.toggleChat());
-      document.getElementById('tz-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') this.sendMessage();
+    attachEventListeners: function () {
+      document
+        .getElementById("tz-chat-button")
+        .addEventListener("click", () => this.toggleChat());
+      document
+        .querySelector(".tz-chat-close")
+        .addEventListener("click", () => this.toggleChat());
+      document.getElementById("tz-input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") this.sendMessage();
       });
-      document.getElementById('tz-send').addEventListener('click', () => this.sendMessage());
+      document
+        .getElementById("tz-send")
+        .addEventListener("click", () => this.sendMessage());
+
+      // File attachment
+      document.getElementById("tz-attach").addEventListener("click", () => {
+        document.getElementById("tz-file-input").click();
+      });
+      document
+        .getElementById("tz-file-input")
+        .addEventListener("change", (e) => this.handleFileSelect(e));
+      document
+        .getElementById("tz-remove-image")
+        .addEventListener("click", () => this.removeImage());
 
       if (this.config.enableVoice) {
-        document.querySelectorAll('.tz-mode-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => this.switchMode(e.target.closest('.tz-mode-btn').dataset.mode));
+        document.querySelectorAll(".tz-mode-btn").forEach((btn) => {
+          btn.addEventListener("click", (e) =>
+            this.switchMode(e.target.closest(".tz-mode-btn").dataset.mode),
+          );
         });
-        document.getElementById('tz-voice-btn').addEventListener('click', () => this.toggleVoice());
+        document
+          .getElementById("tz-voice-btn")
+          .addEventListener("click", () => this.toggleVoice());
       }
     },
 
-    toggleChat: function() {
-      const window = document.getElementById('tz-chat-window');
-      const button = document.getElementById('tz-chat-button');
-      
+    toggleChat: function () {
+      const window = document.getElementById("tz-chat-window");
+      const button = document.getElementById("tz-chat-button");
+
       this.isOpen = !this.isOpen;
-      
+
       if (this.isOpen) {
-        window.classList.add('open');
-        button.style.display = 'none';
-        document.getElementById('tz-input').focus();
+        window.classList.add("open");
+        button.style.display = "none";
+        document.body.classList.add("tz-widget-open"); // Lock body scroll on mobile
+        document.getElementById("tz-input").focus();
       } else {
-        window.classList.remove('open');
-        button.style.display = 'flex';
+        window.classList.remove("open");
+        button.style.display = "flex";
+        document.body.classList.remove("tz-widget-open"); // Unlock body scroll
         if (this.isRecording) this.stopVoice();
       }
     },
 
-    switchMode: function(mode) {
+    switchMode: function (mode) {
       this.mode = mode;
-      
-      document.querySelectorAll('.tz-mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === mode);
+
+      document.querySelectorAll(".tz-mode-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
       });
 
-      if (mode === 'text') {
-        document.getElementById('tz-messages').style.display = 'block';
-        document.getElementById('tz-input-container').style.display = 'block';
-        document.getElementById('tz-voice-container').classList.remove('active');
+      if (mode === "text") {
+        document.getElementById("tz-messages").style.display = "block";
+        document.getElementById("tz-input-container").style.display = "block";
+        document
+          .getElementById("tz-voice-container")
+          .classList.remove("active");
         if (this.isRecording) this.stopVoice();
       } else {
-        document.getElementById('tz-messages').style.display = 'none';
-        document.getElementById('tz-input-container').style.display = 'none';
-        document.getElementById('tz-voice-container').classList.add('active');
+        document.getElementById("tz-messages").style.display = "none";
+        document.getElementById("tz-input-container").style.display = "none";
+        document.getElementById("tz-voice-container").classList.add("active");
       }
     },
 
-    sendMessage: async function() {
-      const input = document.getElementById('tz-input');
+    sendMessage: async function () {
+      const input = document.getElementById("tz-input");
       const message = input.value.trim();
-      
-      if (!message) return;
 
-      this.addMessage(message, 'user');
-      input.value = '';
+      if (!message && !this.currentImage) return;
+
+      // Show user message with image if present
+      this.addMessage(message || "(Image)", "user", this.currentImage);
+      input.value = "";
+
+      const imageToSend = this.currentImage;
+      this.removeImage(); // Clear after sending
 
       try {
         // Build history from messages array
-        const history = this.messages.map(msg => ({
+        const history = this.messages.map((msg) => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content,
         }));
 
-        const response = await fetch(`${this.config.apiUrl}/api/chatkit/agent`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: this.sessionId,
-            message: message,
-            history: history
-          })
-        });
+        const response = await fetch(
+          `${this.config.apiUrl}/api/chatkit/agent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: this.sessionId,
+              message: message || "What is in this image?",
+              image: imageToSend, // Send base64 image
+              history: history,
+            }),
+          },
+        );
 
         const data = await response.json();
         if (data.response) {
-          this.addMessage(data.response, 'assistant');
+          this.addMessage(data.response, "assistant");
         }
       } catch (error) {
-        console.error('[Chat] Error:', error);
-        this.addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        console.error("[Chat] Error:", error);
+        this.addMessage(
+          "Sorry, I encountered an error. Please try again.",
+          "assistant",
+        );
       }
     },
 
-    addMessage: function(text, role) {
+    addMessage: function (text, role, imageBase64 = null) {
       // Store message in history
       this.messages.push({
         role: role,
-        content: text
+        content: text,
       });
 
-      const container = document.getElementById('tz-messages');
-      const div = document.createElement('div');
+      const container = document.getElementById("tz-messages");
+      const div = document.createElement("div");
       div.className = `tz-chat-message ${role}`;
-      
+
       // Use markdown for assistant messages, escape HTML for user messages
-      const formattedText = role === 'assistant' ? this.parseMarkdown(text) : this.escapeHtml(text);
-      
+      const formattedText =
+        role === "assistant" ? this.parseMarkdown(text) : this.escapeHtml(text);
+
+      // Add image if present
+      const imageHtml = imageBase64
+        ? `<img src="${imageBase64}" style="max-width: 200px; border-radius: 8px; margin-top: 8px; display: block;" />`
+        : "";
+
       div.innerHTML = `
-        <div class="tz-chat-message-avatar">${role === 'user' ? 'U' : this.config.botName[0]}</div>
-        <div class="tz-chat-message-bubble">${formattedText}</div>
+        <div class="tz-chat-message-avatar">${role === "user" ? "U" : this.config.botName[0]}</div>
+        <div class="tz-chat-message-bubble">${formattedText}${imageHtml}</div>
       `;
       container.appendChild(div);
       container.scrollTop = container.scrollHeight;
     },
 
-    toggleVoice: async function() {
+    toggleVoice: async function () {
       if (!this.isRecording) {
         await this.startVoice();
       } else {
@@ -942,36 +1082,45 @@
       }
     },
 
-    startVoice: async function() {
+    startVoice: async function () {
       try {
         // Get realtime config
-        const response = await fetch(`${this.config.apiUrl}/api/chatkit/realtime`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: this.sessionId })
-        });
+        const response = await fetch(
+          `${this.config.apiUrl}/api/chatkit/realtime`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: this.sessionId }),
+          },
+        );
 
         const config = await response.json();
 
         // Connect to OpenAI Realtime (EXACT COPY FROM DASHBOARD)
         this.ws = new WebSocket(
           `${config.config.websocketUrl}?model=${config.config.model}`,
-          ['realtime', `openai-insecure-api-key.${config.config.apiKey}`, 'openai-beta.realtime-v1']
+          [
+            "realtime",
+            `openai-insecure-api-key.${config.config.apiKey}`,
+            "openai-beta.realtime-v1",
+          ],
         );
 
         this.ws.onopen = async () => {
-          console.log('[Voice] Connected');
-          this.updateVoiceStatus('Connected');
-          
+          console.log("[Voice] Connected");
+          this.updateVoiceStatus("Connected");
+
           // Use full config from API (same as dashboard!)
-          this.ws.send(JSON.stringify({
-            type: 'session.update',
-            session: {
-              ...config.config.sessionConfig,
-              voice: config.config.voice || 'alloy',
-              output_audio_format: 'pcm16'
-            }
-          }));
+          this.ws.send(
+            JSON.stringify({
+              type: "session.update",
+              session: {
+                ...config.config.sessionConfig,
+                voice: config.config.voice || "alloy",
+                output_audio_format: "pcm16",
+              },
+            }),
+          );
 
           // Initialize audio
           await this.initAudio();
@@ -981,58 +1130,70 @@
 
         this.ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          console.log('[Voice] Received event:', data.type, data);
+          console.log("[Voice] Received event:", data.type, data);
           this.handleVoiceEvent(data);
         };
 
         this.ws.onerror = (error) => {
-          console.error('[Voice] WebSocket error:', error);
-          this.updateVoiceStatus('Connection error');
+          console.error("[Voice] WebSocket error:", error);
+          this.updateVoiceStatus("Connection error");
         };
 
         this.ws.onclose = (event) => {
-          console.log('[Voice] WebSocket closed:', event.code, event.reason);
-          this.updateVoiceStatus('Disconnected');
+          console.log("[Voice] WebSocket closed:", event.code, event.reason);
+          this.updateVoiceStatus("Disconnected");
         };
-
       } catch (error) {
-        console.error('[Voice] Error:', error);
-        console.error('[Voice] Error details:', error.message, error.stack);
-        this.updateVoiceStatus('Error: ' + (error.message || 'Failed to start'));
-        alert('Voice error: ' + error.message + '\n\nCheck console for details.');
+        console.error("[Voice] Error:", error);
+        console.error("[Voice] Error details:", error.message, error.stack);
+        this.updateVoiceStatus(
+          "Error: " + (error.message || "Failed to start"),
+        );
+        alert(
+          "Voice error: " + error.message + "\n\nCheck console for details.",
+        );
       }
     },
 
-    stopVoice: function() {
+    stopVoice: function () {
       if (this.ws) this.ws.close();
       if (this.mediaStream) {
-        this.mediaStream.getTracks().forEach(track => track.stop());
+        this.mediaStream.getTracks().forEach((track) => track.stop());
       }
       if (this.audioContext) this.audioContext.close();
       if (this.playbackContext) this.playbackContext.close();
-      
+
       this.isRecording = false;
       this.updateVoiceButton();
-      this.updateVoiceStatus('Stopped');
+      this.updateVoiceStatus("Stopped");
     },
 
-    initAudio: async function() {
+    initAudio: async function () {
       // Initialize audio queue
       this.audioQueue = [];
-      
+
       // Input (microphone)
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 24000 }
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 24000,
+        },
       });
 
       this.audioContext = new AudioContext({ sampleRate: 24000 });
-      const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+      const source = this.audioContext.createMediaStreamSource(
+        this.mediaStream,
+      );
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
       let audioChunkCount = 0;
       this.processor.onaudioprocess = (e) => {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-          console.warn('[Voice] WebSocket not ready, state:', this.ws?.readyState);
+          console.warn(
+            "[Voice] WebSocket not ready, state:",
+            this.ws?.readyState,
+          );
           return;
         }
 
@@ -1043,15 +1204,26 @@
           pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
         }
 
-        const base64 = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(pcm16.buffer))));
-        this.ws.send(JSON.stringify({
-          type: 'input_audio_buffer.append',
-          audio: base64
-        }));
-        
+        const base64 = btoa(
+          String.fromCharCode.apply(
+            null,
+            Array.from(new Uint8Array(pcm16.buffer)),
+          ),
+        );
+        this.ws.send(
+          JSON.stringify({
+            type: "input_audio_buffer.append",
+            audio: base64,
+          }),
+        );
+
         audioChunkCount++;
         if (audioChunkCount % 50 === 0) {
-          console.log('[Voice] Sent', audioChunkCount, 'audio chunks to OpenAI');
+          console.log(
+            "[Voice] Sent",
+            audioChunkCount,
+            "audio chunks to OpenAI",
+          );
         }
       };
 
@@ -1060,18 +1232,22 @@
 
       // Output (playback)
       this.playbackContext = new AudioContext({ sampleRate: 24000 });
-      this.playbackNode = this.playbackContext.createScriptProcessor(2048, 1, 1);
-      
+      this.playbackNode = this.playbackContext.createScriptProcessor(
+        2048,
+        1,
+        1,
+      );
+
       this.playbackNode.onaudioprocess = (e) => {
         const out = e.outputBuffer.getChannelData(0);
         let offset = 0;
-        
+
         while (offset < out.length) {
           if (this.audioQueue.length === 0) {
             for (; offset < out.length; offset++) out[offset] = 0;
             break;
           }
-          
+
           const chunk = this.audioQueue[0];
           const copyCount = Math.min(chunk.length, out.length - offset);
           out.set(chunk.subarray(0, copyCount), offset);
@@ -1086,112 +1262,203 @@
       };
 
       this.playbackNode.connect(this.playbackContext.destination);
-      
+
       // Resume AudioContext (required by browsers)
-      console.log('[Voice] AudioContext initial state:', this.playbackContext.state);
-      if (this.playbackContext.state === 'suspended') {
+      console.log(
+        "[Voice] AudioContext initial state:",
+        this.playbackContext.state,
+      );
+      if (this.playbackContext.state === "suspended") {
         this.playbackContext.resume().then(() => {
-          console.log('[Voice] AudioContext resumed successfully');
+          console.log("[Voice] AudioContext resumed successfully");
         });
       }
-      console.log('[Voice] Audio initialized, queue size:', this.audioQueue.length);
+      console.log(
+        "[Voice] Audio initialized, queue size:",
+        this.audioQueue.length,
+      );
     },
 
-    handleVoiceEvent: function(event) {
+    handleVoiceEvent: function (event) {
       switch (event.type) {
-        case 'conversation.item.input_audio_transcription.completed':
-          console.log('[Voice] User said:', event.transcript);
-          this.addTranscript(event.transcript, 'user');
+        case "conversation.item.input_audio_transcription.completed":
+          console.log("[Voice] User said:", event.transcript);
+          this.addTranscript(event.transcript, "user");
           break;
 
-        case 'response.audio_transcript.delta':
+        case "response.audio_transcript.delta":
           // Accumulate transcript instead of adding each word
           if (!this.currentTranscript) {
-            this.currentTranscript = '';
+            this.currentTranscript = "";
           }
           this.currentTranscript += event.delta;
           break;
-          
-        case 'response.audio_transcript.done':
+
+        case "response.audio_transcript.done":
           // Add complete transcript when done
           if (this.currentTranscript) {
-            this.addTranscript(this.currentTranscript, 'assistant');
-            this.currentTranscript = '';
+            this.addTranscript(this.currentTranscript, "assistant");
+            this.currentTranscript = "";
           }
           break;
 
-        case 'response.audio.delta':
-          console.log('[Voice] Received audio delta, length:', event.delta?.length || 0);
+        case "response.audio.delta":
+          console.log(
+            "[Voice] Received audio delta, length:",
+            event.delta?.length || 0,
+          );
           this.playAudio(event.delta);
-          this.updateVoiceStatus('Speaking...');
+          this.updateVoiceStatus("Speaking...");
           break;
 
-        case 'response.done':
-          console.log('[Voice] Response complete');
-          this.updateVoiceStatus('Listening...');
+        case "response.done":
+          console.log("[Voice] Response complete");
+          this.updateVoiceStatus("Listening...");
           break;
 
-        case 'response.function_call_arguments.done':
-          console.log('[Voice] Tool called:', event.name, 'with args:', event.arguments);
+        case "response.function_call_arguments.done":
+          // Tool execution (CRITICAL - was missing!)
+          console.log(
+            "[Voice] Tool called:",
+            event.name,
+            "with args:",
+            event.arguments,
+          );
+          this.handleToolCall(event.call_id, event.name, event.arguments);
+          this.updateVoiceStatus(`Using tool: ${event.name}...`);
           break;
 
-        case 'input_audio_buffer.speech_started':
-          console.log('[Voice] User started speaking');
-          if (this.isResponding) {
-            this.ws.send(JSON.stringify({ type: 'response.cancel' }));
+        case "input_audio_buffer.speech_started":
+          console.log("[Voice] User started speaking");
+          if (this.voiceState.isResponding) {
+            this.ws.send(JSON.stringify({ type: "response.cancel" }));
             this.audioQueue = [];
           }
           break;
-          
-        case 'input_audio_buffer.speech_stopped':
-          console.log('[Voice] User stopped speaking');
+
+        case "input_audio_buffer.speech_stopped":
+          console.log("[Voice] User stopped speaking");
+          break;
+
+        case "error":
+          console.error("[Voice] Error:", event.error);
+          this.updateVoiceStatus(
+            "Error: " + (event.error?.message || "Unknown error"),
+          );
           break;
       }
     },
 
-    playAudio: function(base64) {
+    handleToolCall: async function (callId, name, argsJson) {
+      try {
+        console.log("[Tool] Executing:", name, "with args:", argsJson);
+        const parsedArgs = JSON.parse(argsJson);
+        let result = "";
+
+        if (name === "searchtool" || name === "searchProducts") {
+          // Call perplexity/vector search
+          const response = await fetch(
+            `${this.config.apiUrl}/api/tools/perplexity`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: parsedArgs.query }),
+            },
+          );
+          const data = await response.json();
+          result = data.result || "No results found";
+          console.log("[Tool] Search result:", result.substring(0, 200));
+        } else if (name === "sendemail") {
+          // Call email send
+          const response = await fetch(
+            `${this.config.apiUrl}/api/tools/email`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(parsedArgs),
+            },
+          );
+          const data = await response.json();
+          result = data.result || "Email sent successfully";
+          console.log("[Tool] Email result:", result);
+        }
+
+        // Send tool result back to Realtime API
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(
+            JSON.stringify({
+              type: "conversation.item.create",
+              item: {
+                type: "function_call_output",
+                call_id: callId,
+                output: result,
+              },
+            }),
+          );
+
+          // Trigger response generation
+          this.ws.send(
+            JSON.stringify({
+              type: "response.create",
+            }),
+          );
+
+          console.log("[Tool] Result sent back to AI");
+        }
+      } catch (error) {
+        console.error("[Tool] Error:", error);
+        this.updateVoiceStatus("Tool error: " + error.message);
+      }
+    },
+
+    playAudio: function (base64) {
       if (!base64) {
-        console.warn('[Voice] No audio data received');
+        console.warn("[Voice] No audio data received");
         return;
       }
-      console.log('[Voice] Processing audio, base64 length:', base64.length);
-      const buf = Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
+      console.log("[Voice] Processing audio, base64 length:", base64.length);
+      const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)).buffer;
       const i16 = new Int16Array(buf);
       const f32 = new Float32Array(i16.length);
       for (let i = 0; i < i16.length; i++) {
         f32[i] = Math.max(-1, Math.min(1, i16[i] / 32768));
       }
       this.audioQueue.push(f32);
-      console.log('[Voice] Audio queued, total chunks:', this.audioQueue.length, 'samples:', f32.length);
-      console.log('[Voice] AudioContext state:', this.playbackContext?.state);
+      console.log(
+        "[Voice] Audio queued, total chunks:",
+        this.audioQueue.length,
+        "samples:",
+        f32.length,
+      );
+      console.log("[Voice] AudioContext state:", this.playbackContext?.state);
     },
 
-    addTranscript: function(text, role) {
-      const transcript = document.getElementById('tz-voice-transcript');
-      const div = document.createElement('div');
-      div.style.marginBottom = '8px';
-      div.innerHTML = `<strong style="color: ${role === 'user' ? '#a78bfa' : '#8b5cf6'};">${role === 'user' ? 'You' : this.config.botName}:</strong> <span style="color: #e5e7eb;">${this.escapeHtml(text)}</span>`;
+    addTranscript: function (text, role) {
+      const transcript = document.getElementById("tz-voice-transcript");
+      const div = document.createElement("div");
+      div.style.marginBottom = "8px";
+      div.innerHTML = `<strong style="color: ${role === "user" ? "#a78bfa" : "#8b5cf6"};">${role === "user" ? "You" : this.config.botName}:</strong> <span style="color: #e5e7eb;">${this.escapeHtml(text)}</span>`;
       transcript.appendChild(div);
       transcript.scrollTop = transcript.scrollHeight;
     },
 
-    updateVoiceStatus: function(status) {
-      document.getElementById('tz-voice-status').textContent = status;
+    updateVoiceStatus: function (status) {
+      document.getElementById("tz-voice-status").textContent = status;
     },
 
-    updateVoiceButton: function() {
-      const btn = document.getElementById('tz-voice-btn');
+    updateVoiceButton: function () {
+      const btn = document.getElementById("tz-voice-btn");
       if (this.isRecording) {
-        btn.classList.remove('start');
-        btn.classList.add('stop');
+        btn.classList.remove("start");
+        btn.classList.add("stop");
         btn.innerHTML = `
           <svg viewBox="0 0 24 24">
             <rect x="6" y="6" width="12" height="12"/>
           </svg>
         `;
       } else {
-        btn.classList.remove('stop');
-        btn.classList.add('start');
+        btn.classList.remove("stop");
+        btn.classList.add("start");
         btn.innerHTML = `
           <svg viewBox="0 0 24 24">
             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
@@ -1201,45 +1468,136 @@
       }
     },
 
-    escapeHtml: function(text) {
-      const div = document.createElement('div');
+    handleFileSelect: async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Check if it's an image
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+
+      // Show loading state
+      this.updateVoiceStatus && this.updateVoiceStatus("Uploading image...");
+
+      try {
+        // Upload to Appwrite
+        const imageUrl = await this.uploadToAppwrite(file);
+
+        if (imageUrl) {
+          this.currentImage = imageUrl; // Store Appwrite URL instead of base64
+          // Show preview
+          document.getElementById("tz-preview-img").src = imageUrl;
+          document.getElementById("tz-image-preview").style.display = "block";
+          console.log("[File] Image uploaded to Appwrite:", imageUrl);
+        } else {
+          // Fallback to base64 if Appwrite fails
+          console.warn("[File] Appwrite upload failed, using base64 fallback");
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            this.currentImage = e.target.result;
+            document.getElementById("tz-preview-img").src = this.currentImage;
+            document.getElementById("tz-image-preview").style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        }
+      } catch (error) {
+        console.error("[File] Upload error:", error);
+        alert("Failed to upload image. Please try again.");
+      }
+    },
+
+    uploadToAppwrite: async function (file) {
+      try {
+        // Use API endpoint to handle upload with server-side API key
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("sessionId", this.sessionId);
+
+        const response = await fetch(
+          `${this.config.apiUrl}/api/upload/appwrite`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `Upload failed: ${response.status}`,
+          );
+        }
+
+        const data = await response.json();
+
+        if (data.url) {
+          console.log("[Appwrite] Upload successful:", data.url);
+          return data.url;
+        } else {
+          throw new Error("No URL returned from upload");
+        }
+      } catch (error) {
+        console.error("[Appwrite] Upload error:", error);
+        return null; // Return null to trigger base64 fallback
+      }
+    },
+
+    removeImage: function () {
+      this.currentImage = null;
+      document.getElementById("tz-image-preview").style.display = "none";
+      document.getElementById("tz-preview-img").src = "";
+      document.getElementById("tz-file-input").value = ""; // Reset file input
+    },
+
+    escapeHtml: function (text) {
+      const div = document.createElement("div");
       div.textContent = text;
       return div.innerHTML;
     },
 
-    parseMarkdown: function(text) {
+    parseMarkdown: function (text) {
       // Escape HTML first
       text = this.escapeHtml(text);
-      
+
       // Convert **bold**
-      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      
+      text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
       // Convert images FIRST (before links!) ![alt](url)
-      text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width: 100%; border-radius: 8px; margin-top: 8px; display: block;" />');
-      
+      text = text.replace(
+        /!\[([^\]]*)\]\(([^)]+)\)/g,
+        '<img src="$2" alt="$1" loading="lazy" style="max-width: 100%; border-radius: 8px; margin-top: 8px; display: block;" />',
+      );
+
       // Convert links [text](url)
-      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-      
+      text = text.replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+      );
+
       // Convert line breaks
-      text = text.replace(/\n/g, '<br>');
-      
+      text = text.replace(/\n/g, "<br>");
+
       return text;
-    }
+    },
   };
 
   window.TradeZoneChatEnhanced = TradeZoneChatEnhanced;
 
   // Auto-initialize
-  document.addEventListener('DOMContentLoaded', function() {
-    const script = document.querySelector('script[src*="chat-widget-enhanced.js"]');
+  document.addEventListener("DOMContentLoaded", function () {
+    const script = document.querySelector(
+      'script[src*="chat-widget-enhanced.js"]',
+    );
     if (script) {
-      const apiUrl = script.getAttribute('data-api-url');
+      const apiUrl = script.getAttribute("data-api-url");
       if (apiUrl) {
         TradeZoneChatEnhanced.init({
           apiUrl: apiUrl,
-          position: script.getAttribute('data-position') || 'bottom-right',
-          primaryColor: script.getAttribute('data-primary-color') || '#8b5cf6',
-          videoUrl: script.getAttribute('data-video-url') || ''
+          position: script.getAttribute("data-position") || "bottom-right",
+          primaryColor: script.getAttribute("data-primary-color") || "#8b5cf6",
+          videoUrl: script.getAttribute("data-video-url") || "",
         });
       }
     }
