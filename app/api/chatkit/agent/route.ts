@@ -14,9 +14,9 @@ import {
 
 // CORS headers for widget integration
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
 };
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -119,18 +119,16 @@ export async function POST(request: NextRequest) {
     console.log(`[ChatKit] Session: ${sessionId}, Model: ${textModel}`);
     console.log("[ChatKit] Incoming message:", message);
 
-    // Build simple messages array - NO complex content types
-    const messages: Array<{
-      role: "system" | "user" | "assistant";
-      content: string;
-    }> = [{ role: "system", content: systemPrompt }];
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: "system", content: systemPrompt },
+    ];
 
     // Add history as simple text messages only
     if (history && history.length > 0) {
       for (const msg of history) {
         if (msg.role && msg.content && typeof msg.content === "string") {
           messages.push({
-            role: msg.role,
+            role: msg.role as "user" | "assistant",
             content: msg.content,
           });
         }
@@ -194,20 +192,31 @@ export async function POST(request: NextRequest) {
           toolSummaries.push({
             name: functionName,
             args: functionArgs,
-            error:
-              error instanceof Error ? error.message : "Unknown error",
+            error: error instanceof Error ? error.message : "Unknown error",
             resultPreview: toolResult.slice(0, 200),
           });
         }
 
-        // Add tool result to messages as simple text
+        // Add tool result to messages using the standard tool-calling format
         messages.push({
           role: "assistant",
-          content: `[Searched: ${functionName}]`,
+          content: null,
+          tool_calls: [
+            {
+              id: toolCall.id,
+              type: "function",
+              function: {
+                name: functionName,
+                arguments: toolCall.function.arguments,
+              },
+            },
+          ],
         });
+
         messages.push({
-          role: "user",
-          content: `Search results: ${toolResult}`,
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: toolResult,
         });
 
         console.log("[ChatKit] Tool result captured:", {
@@ -287,11 +296,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      response: finalResponse,
-      sessionId,
-      model: textModel,
-    }, { headers: corsHeaders });
+    return NextResponse.json(
+      {
+        response: finalResponse,
+        sessionId,
+        model: textModel,
+      },
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[ChatKit] Error:", error);
 
