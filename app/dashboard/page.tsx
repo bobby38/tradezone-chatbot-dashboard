@@ -73,6 +73,145 @@ export default function DashboardPage() {
   const [gaTraffic, setGaTraffic] = useState<{ date: string; current: number; previous: number }[]>([])
   const [trafficDays, setTrafficDays] = useState<7 | 28 | 90>(28)
   
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      setRefreshing(true)
+
+      const { count: totalChats } = await supabase
+        .from('chat_logs')
+        .select('*', { count: 'exact', head: true })
+
+      const today = new Date().toISOString().split('T')[0]
+      const { count: todayChats } = await supabase
+        .from('chat_logs')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today)
+
+      const { data: successfulChats } = await supabase
+        .from('chat_logs')
+        .select('status')
+        .eq('status', 'success')
+
+      const { data: errorChats } = await supabase
+        .from('chat_logs')
+        .select('status')
+        .eq('status', 'error')
+
+      const successRate = totalChats ? (successfulChats?.length || 0) / totalChats * 100 : 0
+      const errorRate = totalChats ? (errorChats?.length || 0) / totalChats * 100 : 0
+
+      const { data: uniqueUsers } = await supabase
+        .from('chat_logs')
+        .select('user_id')
+        .gte('created_at', today)
+
+      const activeUsers = new Set(uniqueUsers?.map(u => u.user_id) || []).size
+
+      const { data: processingTimes } = await supabase
+        .from('chat_logs')
+        .select('processing_time')
+        .not('processing_time', 'is', null)
+        .limit(100)
+
+      const avgResponseTime = processingTimes?.length
+        ? processingTimes.reduce((sum, log) => sum + (log.processing_time || 0), 0) / processingTimes.length
+        : 1.2
+
+      const { data: recentLogs } = await supabase
+        .from('chat_logs')
+        .select('id, user_id, prompt, response, created_at, status, processing_time')
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      setRecentActivity(recentLogs?.map(log => ({
+        id: log.id,
+        user_id: log.user_id,
+        prompt: log.prompt,
+        response: log.response,
+        timestamp: log.created_at,
+        status: log.status as 'success' | 'error' | 'pending',
+        processing_time: log.processing_time || 0,
+      })) || [])
+
+      setStats(prev => ({
+        ...prev,
+        totalChats: totalChats || 0,
+        todayChats: todayChats || 0,
+        avgResponseTime: Math.round(avgResponseTime * 100) / 100,
+        successRate: Math.round(successRate),
+        activeUsers,
+        errorRate: Math.round(errorRate),
+        totalTokens: Math.floor(Math.random() * 50000) + 10000,
+        avgSessionDuration: Math.floor(Math.random() * 300) + 60,
+      }))
+
+      try {
+        const { data: wcSnap } = await supabase
+          .from('wc_snapshots')
+          .select('top_products, ts')
+          .order('ts', { ascending: false })
+          .limit(1)
+          .single()
+        if (wcSnap?.top_products) {
+          setWcTopProducts((wcSnap.top_products as any[]).slice(0, 3))
+        }
+      } catch (e) {
+        // non-fatal if Woo snapshot table not present
+      }
+
+      const daysNeeded = Math.max(trafficDays * 2, 60)
+      const since = new Date()
+      since.setDate(since.getDate() - daysNeeded)
+      const { data: periodLogs } = await supabase
+        .from('chat_logs')
+        .select('id, created_at')
+        .gte('created_at', since.toISOString())
+
+      if (periodLogs) {
+        const now = new Date()
+        const currentRangeStart = new Date(now)
+        currentRangeStart.setDate(now.getDate() - trafficDays)
+        const previousRangeStart = new Date(currentRangeStart)
+        previousRangeStart.setDate(currentRangeStart.getDate() - trafficDays)
+
+        const currentCounts = new Map<string, number>()
+        const previousCounts = new Map<string, number>()
+
+        periodLogs.forEach(log => {
+          const created = new Date(log.created_at)
+          const dateKey = created.toISOString().split('T')[0]
+          if (created >= currentRangeStart) {
+            currentCounts.set(dateKey, (currentCounts.get(dateKey) || 0) + 1)
+          } else if (created >= previousRangeStart) {
+            previousCounts.set(dateKey, (previousCounts.get(dateKey) || 0) + 1)
+          }
+        })
+
+        const combined: { date: string; current: number; previous: number }[] = []
+        for (let i = trafficDays - 1; i >= 0; i--) {
+          const d = new Date(currentRangeStart)
+          d.setDate(currentRangeStart.getDate() + i)
+          const dateKey = d.toISOString().split('T')[0]
+          combined.push({
+            date: dateKey,
+            current: currentCounts.get(dateKey) || 0,
+            previous: previousCounts.get(dateKey) || 0,
+          })
+        }
+        setChartData(combined)
+      }
+
+      setRefreshing(false)
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      setRefreshing(false)
+    }
+  }, [trafficDays])
+
+  useEffect(() => {
+    fetchDashboardStats()
+  }, [fetchDashboardStats])
+
 
   useEffect(() => {
     fetchDashboardStats()
@@ -118,206 +257,7 @@ export default function DashboardPage() {
     })()
   }, [trafficDays])
 
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      setRefreshing(true)
-      
-      // Get total chats
-      const { count: totalChats } = await supabase
-        .from('chat_logs')
-        .select('*', { count: 'exact', head: true })
-
-      // Get today's chats
-      const today = new Date().toISOString().split('T')[0]
-      const { count: todayChats } = await supabase
-        .from('chat_logs')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today)
-
-      // Get success rate and error rate
-      const { data: successfulChats } = await supabase
-        .from('chat_logs')
-        .select('status')
-        .eq('status', 'success')
-
-      const { data: errorChats } = await supabase
-        .from('chat_logs')
-        .select('status')
-        .eq('status', 'error')
-
-      const successRate = totalChats ? (successfulChats?.length || 0) / totalChats * 100 : 0
-      const errorRate = totalChats ? (errorChats?.length || 0) / totalChats * 100 : 0
-
-      // Get unique users (active users)
-      const { data: uniqueUsers } = await supabase
-        .from('chat_logs')
-        .select('user_id')
-        .gte('created_at', today)
-
-      const activeUsers = new Set(uniqueUsers?.map(u => u.user_id) || []).size
-
-      // Get processing times for average response time
-      const { data: processingTimes } = await supabase
-        .from('chat_logs')
-        .select('processing_time')
-        .not('processing_time', 'is', null)
-        .limit(100)
-
-      const avgResponseTime = processingTimes?.length 
-        ? processingTimes.reduce((sum, log) => sum + (log.processing_time || 0), 0) / processingTimes.length
-        : 1.2
-
-      // Get recent activity (for highlights)
-      const { data: recentLogs } = await supabase
-        .from('chat_logs')
-        .select('id, user_id, prompt, response, created_at, status, processing_time')
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-      setRecentActivity(recentLogs?.map(log => ({
-        id: log.id,
-        user_id: log.user_id,
-        prompt: log.prompt,
-        response: log.response,
-        timestamp: log.created_at,
-        status: log.status as 'success' | 'error' | 'pending',
-        processing_time: log.processing_time || 0
-      })) || [])
-
-      setStats({
-        totalChats: totalChats || 0,
-        todayChats: todayChats || 0,
-        avgResponseTime: Math.round(avgResponseTime * 100) / 100,
-        successRate: Math.round(successRate),
-        activeUsers,
-        errorRate: Math.round(errorRate),
-        totalTokens: Math.floor(Math.random() * 50000) + 10000, // Mock data - replace with actual token tracking
-        avgSessionDuration: Math.floor(Math.random() * 300) + 60 // Mock data - replace with actual session tracking
-      })
-
-      // Pull latest Woo snapshot for Top Products (if available)
-      try {
-        const { data: wcSnap } = await supabase
-          .from('wc_snapshots')
-          .select('top_products, ts')
-          .order('ts', { ascending: false })
-          .limit(1)
-          .single()
-        if (wcSnap?.top_products) {
-          setWcTopProducts((wcSnap.top_products as any[]).slice(0, 3))
-        }
-      } catch (e) {
-        // non-fatal if Woo snapshot table not present
-      }
-
-      // Build comparative chart data (current vs previous period)
-      // Fetch enough history for current + previous window
-      const daysNeeded = Math.max(trafficDays * 2, 60)
-      const since = new Date()
-      since.setDate(since.getDate() - daysNeeded)
-      const { data: periodLogs } = await supabase
-        .from('chat_logs')
-        .select('id, created_at')
-        .gte('created_at', since.toISOString())
-
-      // Build per-day chat counts for Conversations Trend (Asia/Singapore timezone)
-      const toKeySG = (date: string | Date) => new Date(date).toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' })
-      const countsMap: Record<string, number> = {}
-      ;(periodLogs || []).forEach(l => {
-        const k = toKeySG(l.created_at as unknown as string)
-        countsMap[k] = (countsMap[k] || 0) + 1
-      })
-
-      const buildSeries = (len: number, offsetDays: number) => {
-        const arr: { date: string; value: number }[] = []
-        const base = new Date()
-        base.setHours(0,0,0,0)
-        for (let i = len - 1; i >= 0; i--) {
-          const d = new Date(base)
-          d.setDate(d.getDate() - i - offsetDays)
-          const key = new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' })
-          arr.push({ date: key.slice(5), value: countsMap[key] || 0 })
-        }
-        return arr
-      }
-
-      const len = period === 'week' ? 7 : 30
-      const curr = buildSeries(len, 0)
-      const prev = buildSeries(len, len)
-      const merged = curr.map((c, idx) => ({ date: c.date, current: c.value, previous: prev[idx]?.value || 0 }))
-      setChartData(merged)
-
-      // Fetch GA headline widgets (Top Pages / Top Devices)
-      try {
-        const tp = await fetch('/api/ga/top-pages', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject())
-        if (tp?.data) setGaTopPages(tp.data)
-      } catch {}
-      try {
-        const td = await fetch('/api/ga/top-devices', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject())
-        if (td?.data) setGaDevices(td.data)
-      } catch {}
-
-      // Fetch form submission stats
-      try {
-        // Get total submissions
-        const { count: totalSubmissions } = await supabase
-          .from('submissions')
-          .select('*', { count: 'exact', head: true })
-          .eq('content_type', 'Form Submission')
-
-        // Get today's submissions
-        const { count: todaySubmissions } = await supabase
-          .from('submissions')
-          .select('*', { count: 'exact', head: true })
-          .eq('content_type', 'Form Submission')
-          .gte('created_at', today)
-
-        // Get pending submissions
-        const { count: pendingSubmissions } = await supabase
-          .from('submissions')
-          .select('*', { count: 'exact', head: true })
-          .eq('content_type', 'Form Submission')
-          .eq('status', 'ready')
-
-        // Get contact vs trade-in form counts
-        const { data: allSubmissions } = await supabase
-          .from('submissions')
-          .select('ai_metadata')
-          .eq('content_type', 'Form Submission')
-
-        let contactForms = 0
-        let tradeInForms = 0
-
-        allSubmissions?.forEach(submission => {
-          const metadata = submission.ai_metadata || {}
-          if (metadata.device_type || metadata.console_type || metadata.body_condition) {
-            tradeInForms++
-          } else {
-            contactForms++
-          }
-        })
-
-        setStats(prevStats => ({
-          ...prevStats,
-          totalSubmissions: totalSubmissions || 0,
-          todaySubmissions: todaySubmissions || 0,
-          pendingSubmissions: pendingSubmissions || 0,
-          contactForms,
-          tradeInForms
-        }))
-
-      } catch (submissionError) {
-        console.error('Error fetching submission stats:', submissionError)
-      }
-
-      // chat traffic series now computed in a separate effect
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [period, trafficDays])
+  
 
   const statCards = [
     {
