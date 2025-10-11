@@ -42,7 +42,9 @@ type HybridSearchResult = {
   source: HybridSearchSource;
 };
 
-function renderCatalogMatches(matches: Awaited<ReturnType<typeof findCatalogMatches>>) {
+function renderCatalogMatches(
+  matches: Awaited<ReturnType<typeof findCatalogMatches>>,
+) {
   if (!matches.length) return "";
   const lines = matches.map((match, index) => {
     const order = index + 1;
@@ -53,9 +55,7 @@ function renderCatalogMatches(matches: Awaited<ReturnType<typeof findCatalogMatc
     const title = match.permalink
       ? `[${match.name}](${match.permalink})`
       : match.name;
-    const image = match.image
-      ? `\n![${match.name}](${match.image})`
-      : "";
+    const image = match.image ? `\n![${match.name}](${match.image})` : "";
     return `**${order}. ${title}**${price}${availability}${image}`;
   });
   return lines.join("\n\n");
@@ -97,7 +97,9 @@ async function runHybridSearch(query: string): Promise<HybridSearchResult> {
   const vectorUseful =
     vectorResult &&
     vectorResult.trim().length >= 160 &&
-    !/No product information|not found|unavailable/i.test(vectorResult) &&
+    !/No product information|not found|unavailable|no results|don't have|do not have|not available|no items|no specific|were no|not listed/i.test(
+      vectorResult,
+    ) &&
     !disallowedVectorPatterns.some((pattern) => pattern.test(vectorResult));
 
   if (vectorUseful) {
@@ -229,15 +231,15 @@ export async function OPTIONS() {
 }
 
 async function logToolRun(entry: {
-  request_id: string
-  session_id: string
-  tool_name: string
-  args?: any
-  result_preview?: string
-  source?: string
-  success?: boolean
-  latency_ms?: number
-  error_message?: string | null
+  request_id: string;
+  session_id: string;
+  tool_name: string;
+  args?: any;
+  result_preview?: string;
+  source?: string;
+  success?: boolean;
+  latency_ms?: number;
+  error_message?: string | null;
 }) {
   try {
     await supabase.from("chat_tool_runs").insert({
@@ -250,30 +252,30 @@ async function logToolRun(entry: {
       success: entry.success ?? true,
       latency_ms: entry.latency_ms ?? null,
       error_message: entry.error_message ?? null,
-    })
+    });
   } catch (toolLogError) {
-    console.error("[ChatKit] tool run log insert failed:", toolLogError)
+    console.error("[ChatKit] tool run log insert failed:", toolLogError);
   }
 }
 
 export async function POST(request: NextRequest) {
-  const startedAt = Date.now()
-  const requestId = randomUUID()
-  const { message, sessionId, history = [] } = await request.json()
+  const startedAt = Date.now();
+  const requestId = randomUUID();
+  const { message, sessionId, history = [] } = await request.json();
   const requestContext = {
     request_id: requestId,
     session_id: sessionId,
     source: request.headers.get("x-client-source") || "widget",
     user_agent: request.headers.get("user-agent") || null,
     ip_address: request.ip ?? null,
-  }
-  let finalResponse = ""
-  let toolSummaries: ToolUsageSummary[] = []
-  let textModel = "gpt-4o-mini" // Default model
-  let lastHybridResult: string | null = null
-  let lastHybridSource: HybridSearchSource | null = null
-  let lastHybridQuery: string | null = null
-  let errorMessage: string | null = null
+  };
+  let finalResponse = "";
+  let toolSummaries: ToolUsageSummary[] = [];
+  let textModel = "gpt-4o-mini"; // Default model
+  let lastHybridResult: string | null = null;
+  let lastHybridSource: HybridSearchSource | null = null;
+  let lastHybridQuery: string | null = null;
+  let errorMessage: string | null = null;
 
   try {
     if (!message || !sessionId) {
@@ -325,9 +327,14 @@ export async function POST(request: NextRequest) {
 
         let toolSource: HybridSearchSource | undefined;
         try {
-          if (functionName === "searchProducts" || functionName === "searchtool") {
+          if (
+            functionName === "searchProducts" ||
+            functionName === "searchtool"
+          ) {
             const toolStart = Date.now();
-            const { result, source } = await runHybridSearch(functionArgs.query);
+            const { result, source } = await runHybridSearch(
+              functionArgs.query,
+            );
             toolResult = result;
             toolSource = source;
             lastHybridResult = result;
@@ -385,12 +392,14 @@ export async function POST(request: NextRequest) {
             tool_name: functionName,
             args: functionArgs,
             success: false,
-            error_message: error instanceof Error ? error.message : String(error),
+            error_message:
+              error instanceof Error ? error.message : String(error),
           });
         }
 
         if (
-          (functionName === "searchProducts" || functionName === "searchtool") &&
+          (functionName === "searchProducts" ||
+            functionName === "searchtool") &&
           (!toolResult ||
             toolResult.includes("No results found") ||
             toolResult.includes("not found"))
@@ -420,7 +429,7 @@ export async function POST(request: NextRequest) {
 
       if (!finalResponse) {
         // If no suggestion was made
-      const finalCompletion = await openai.chat.completions.create({
+        const finalCompletion = await openai.chat.completions.create({
           model: textModel,
           messages,
           temperature: 0.7,
@@ -436,7 +445,10 @@ export async function POST(request: NextRequest) {
             lastHybridSource,
           );
 
-          if (isGenericAssistantReply(finalResponse) || (lastHybridSource === "product_catalog" && !hasLink)) {
+          if (
+            isGenericAssistantReply(finalResponse) ||
+            (lastHybridSource === "product_catalog" && !hasLink)
+          ) {
             finalResponse = fallback;
           } else if (!hasLink) {
             finalResponse = `${finalResponse}\n\n${fallback}`;

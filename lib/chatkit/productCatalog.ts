@@ -204,7 +204,21 @@ export async function findClosestMatch(query: string): Promise<string | null> {
   return null;
 }
 
-const STOP_WORDS = new Set(['any', 'game', 'games', 'the', 'for', 'find', 'show', 'give', 'please']);
+const STOP_WORDS = new Set([
+  "any",
+  "the",
+  "for",
+  "find",
+  "show",
+  "give",
+  "please",
+  "some",
+  "get",
+  "need",
+  "want",
+  "have",
+  "got",
+]);
 
 export async function findCatalogMatches(
   query: string,
@@ -215,18 +229,45 @@ export async function findCatalogMatches(
 
   const catalog = await loadCatalog();
   const rawTokens = trimmed.split(/\s+/).filter(Boolean);
-  const filteredTokens = rawTokens.filter(token => token.length >= 3 && !STOP_WORDS.has(token));
+
+  // Smart filtering: keep "game"/"games" if it's part of a meaningful query
+  const filteredTokens = rawTokens.filter((token) => {
+    if (token.length < 3) return false;
+    if (STOP_WORDS.has(token)) return false;
+    // Keep "game"/"games" unless it's ONLY that word with stop words
+    if (token === "game" || token === "games" || token === "gaming") {
+      // Keep if there are other meaningful tokens
+      return rawTokens.some(
+        (t) =>
+          t !== token &&
+          t.length >= 3 &&
+          !STOP_WORDS.has(t) &&
+          t !== "game" &&
+          t !== "games" &&
+          t !== "gaming",
+      );
+    }
+    return true;
+  });
+
   const tokensToUse = filteredTokens.length ? filteredTokens : rawTokens;
 
   const ranked = catalog
     .map((product) => {
-      const name = (product.name || '').toLowerCase();
-      const categories = (product.categories || []).map(c => c.name?.toLowerCase() || '');
-      const description = (product.short_description || product.description || '').toLowerCase();
-      const matchedTokens = tokensToUse.filter(token =>
-        name.includes(token) ||
-        categories.some(cat => cat.includes(token)) ||
-        description.includes(token)
+      const name = (product.name || "").toLowerCase();
+      const categories = (product.categories || []).map(
+        (c) => c.name?.toLowerCase() || "",
+      );
+      const description = (
+        product.short_description ||
+        product.description ||
+        ""
+      ).toLowerCase();
+      const matchedTokens = tokensToUse.filter(
+        (token) =>
+          name.includes(token) ||
+          categories.some((cat) => cat.includes(token)) ||
+          description.includes(token),
       );
       const score = matchedTokens.length
         ? scoreProduct(product, trimmed) + matchedTokens.length * 150
@@ -240,7 +281,7 @@ export async function findCatalogMatches(
     });
 
   return ranked.slice(0, limit).map(({ product }) => ({
-    name: product.name || 'TradeZone Product',
+    name: product.name || "TradeZone Product",
     permalink: product.permalink,
     price:
       product.price || product.sale_price || product.regular_price || undefined,
