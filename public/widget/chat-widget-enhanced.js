@@ -972,11 +972,42 @@
               : ""
           }
 
-          <div class="tz-chat-content">
+          <div class="tz-chat-content" id="tz-chat-content">
             <div class="tz-chat-messages" id="tz-messages">
-            <div class="tz-chat-message">
-              <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
-              <div class="tz-chat-message-bubble">${this.config.greeting}</div>
+              <div class="tz-chat-message">
+                <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
+                <div class="tz-chat-message-bubble">${this.config.greeting}</div>
+              </div>
+            </div>
+            <div class="tz-chat-input-container" id="tz-input-container">
+              <div class="tz-chat-input-wrapper">
+                <button class="tz-chat-attach" id="tz-attach" title="Attach image">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                  </svg>
+                </button>
+                <input
+                  type="file"
+                  id="tz-file-input"
+                  accept="image/*"
+                  style="display: none;"
+                />
+                <input
+                  type="text"
+                  class="tz-chat-input"
+                  id="tz-input"
+                  placeholder="${this.config.placeholder}"
+                />
+                <button class="tz-chat-send" id="tz-send">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                  </svg>
+                </button>
+              </div>
+              <div id="tz-image-preview" class="tz-image-preview" style="display: none;">
+                <img id="tz-preview-img" src="" alt="Preview" />
+                <button class="tz-remove-image" id="tz-remove-image">×</button>
+              </div>
             </div>
           </div>
 
@@ -996,38 +1027,6 @@
           `
               : ""
           }
-
-          <div class="tz-chat-input-container" id="tz-input-container">
-            <div class="tz-chat-input-wrapper">
-              <button class="tz-chat-attach" id="tz-attach" title="Attach image">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-                </svg>
-              </button>
-              <input
-                type="file"
-                id="tz-file-input"
-                accept="image/*"
-                style="display: none;"
-              />
-              <input
-                type="text"
-                class="tz-chat-input"
-                id="tz-input"
-                placeholder="${this.config.placeholder}"
-              />
-              <button class="tz-chat-send" id="tz-send">
-                <svg viewBox="0 0 24 24">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-              </button>
-            </div>
-            <div id="tz-image-preview" class="tz-image-preview" style="display: none;">
-              <img id="tz-preview-img" src="" alt="Preview" />
-              <button class="tz-remove-image" id="tz-remove-image">×</button>
-            </div>
-          </div>
-          </div>
         </div>
       `;
 
@@ -1111,18 +1110,26 @@
         btn.classList.toggle("active", btn.dataset.mode === mode);
       });
 
+      const content = document.getElementById("tz-chat-content");
+      const inputContainer = document.getElementById("tz-input-container");
+      const voiceContainer = document.getElementById("tz-voice-container");
+
       if (mode === "text") {
+        if (content) content.style.display = "flex";
         document.getElementById("tz-messages").style.display = "block";
-        document.getElementById("tz-input-container").style.display = "block";
-        document
-          .getElementById("tz-voice-container")
-          .classList.remove("active");
+        if (inputContainer) inputContainer.style.display = "block";
+        if (voiceContainer) voiceContainer.classList.remove("active");
+        if (voiceContainer) voiceContainer.style.display = "none";
         if (this.isRecording) this.stopVoice();
       } else {
         this.hideTypingIndicator();
         document.getElementById("tz-messages").style.display = "none";
-        document.getElementById("tz-input-container").style.display = "none";
-        document.getElementById("tz-voice-container").classList.add("active");
+        if (inputContainer) inputContainer.style.display = "none";
+        if (content) content.style.display = "none";
+        if (voiceContainer) {
+          voiceContainer.classList.add("active");
+          voiceContainer.style.display = "flex";
+        }
       }
       this.updateWidgetHeight();
     },

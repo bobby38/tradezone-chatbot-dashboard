@@ -78,6 +78,10 @@ async function runHybridSearch(query: string): Promise<HybridSearchResult> {
     catalogMatches = [];
   }
 
+  if (catalogMatches.length === 0) {
+    console.warn("[ChatKit] No catalog matches found for query:", query);
+  }
+
   const catalogSection = catalogMatches.length
     ? `Here are items from the TradeZone catalog that match your request:\n\n${renderCatalogMatches(catalogMatches)}`
     : "";
