@@ -917,6 +917,7 @@
       document
         .querySelector(".tz-chat-close")
         .addEventListener("touchstart", () => this.toggleChat());
+      window.addEventListener("popstate", () => this.closeChat());
       document.getElementById("tz-input").addEventListener("keypress", (e) => {
         if (e.key === "Enter") this.sendMessage();
       });
@@ -947,22 +948,29 @@
       }
     },
 
-    toggleChat: function () {
+    closeChat: function () {
+      if (!this.isOpen) return;
       const window = document.getElementById("tz-chat-window");
       const button = document.getElementById("tz-chat-button");
 
-      this.isOpen = !this.isOpen;
+      this.isOpen = false;
+      window.classList.remove("open");
+      button.style.display = "flex";
+      document.body.classList.remove("tz-widget-open"); // Unlock body scroll
+      if (this.isRecording) this.stopVoice();
+    },
 
+    toggleChat: function () {
       if (this.isOpen) {
+        this.closeChat();
+      } else {
+        const window = document.getElementById("tz-chat-window");
+        const button = document.getElementById("tz-chat-button");
+        this.isOpen = true;
         window.classList.add("open");
         button.style.display = "none";
         document.body.classList.add("tz-widget-open"); // Lock body scroll on mobile
         document.getElementById("tz-input").focus();
-      } else {
-        window.classList.remove("open");
-        button.style.display = "flex";
-        document.body.classList.remove("tz-widget-open"); // Unlock body scroll
-        if (this.isRecording) this.stopVoice();
       }
     },
 
