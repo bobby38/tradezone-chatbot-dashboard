@@ -449,6 +449,7 @@
           overflow-y: auto;
           padding: 16px;
           background: #1a1a2e;
+          min-height: 150px;
         }
 
         .tz-chat-message {
