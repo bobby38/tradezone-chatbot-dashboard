@@ -26,6 +26,9 @@ Configure the following before running locally or deploying (see `plan.md` and `
    - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` (fallbacks used in `lib/email-service.ts:63-74`).
 6. **WooCommerce**
    - `WC_SITE`, `WC_KEY`, `WC_SECRET` for `/api/woocommerce` routes.
+   - `WOOCOMMERCE_PRODUCT_JSON_PATH` - URL or local path to product catalog JSON (supports HTTP/HTTPS URLs or file paths)
+     - Production: `https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json`
+     - Used by vector search to enrich product results with live pricing and availability
 7. **Misc**
    - `GOOGLE_SERVICE_ACCOUNT_KEY` also powers Search Console sync scripts in `scripts/`.
 
@@ -916,10 +919,14 @@ https://studio.getrezult.com/v1/storage/buckets/68e9c23f002de06d1e68/files/{file
 
 #### Environment Variables Added
 ```bash
+# Appwrite Storage
 NEXT_PUBLIC_APPWRITE_ENDPOINT=https://studio.getrezult.com/v1
 NEXT_PUBLIC_APPWRITE_PROJECT_ID=68e9c230002bf8a2f26f
 NEXT_PUBLIC_APPWRITE_BUCKET_ID=68e9c23f002de06d1e68
 APPWRITE_API_KEY=standard_beaed1a9e4dae3069f9e472815762d7aa2f4b6cfc3d5ec94507f98407f377b22f6d3283d0e541e54ec3fbcf8813aa5d1bc206d28167f80a103290974082ae9fd57bea6888955246c3fc4be8226d3626d9f5e4f7dc2dfea0767fc8a16cf706f46ceb2b36906597ef8c5c6024f70f10eeab58d0cd168dd0869e3cbb8dd370f6626
+
+# Product Catalog (for vector search enrichment)
+WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
 ```
 
 #### Upload Flow
