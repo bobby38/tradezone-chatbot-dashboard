@@ -6,6 +6,11 @@
 - **Key services**: Supabase database/auth, Google Analytics 4, Search Console (synced into Supabase), WooCommerce API, n8n webhooks, SMTP/SMTP2GO, OpenAI/OpenRouter for AI insights.
 - **Latest documented status**: Phase 1 shipped; Phase 2 deployment checklist in progress as of August 25, 2025 (see `plan.md`).
 
+### Development Workflow Expectations
+- For every incoming request, produce a numbered task list before touching code, keep it updated, and check off each item only after verifying the fix.
+- Tackle tasks sequentially: complete and validate one item before moving to the next to avoid partial or conflicting changes.
+- Document verification steps (command outputs, manual test notes) for each completed item so others can reproduce the confirmation quickly.
+
 ## 2. Environment & Secrets
 Configure the following before running locally or deploying (see `plan.md` and `.sql` docs for context):
 1. **Supabase**

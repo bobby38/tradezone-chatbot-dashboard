@@ -7,7 +7,10 @@ import {
   handleEmailSend,
 } from "@/lib/tools";
 import { CHATKIT_DEFAULT_PROMPT } from "@/lib/chatkit/defaultPrompt";
-import { findClosestMatch } from "@/lib/chatkit/productCatalog";
+import {
+  findCatalogMatches,
+  findClosestMatch,
+} from "@/lib/chatkit/productCatalog";
 import {
   recordAgentTelemetry,
   ToolUsageSummary,
@@ -30,6 +33,108 @@ const DEFAULT_ORG_ID = "765e1172-b666-471f-9b42-f80c9b5006de";
 
 // Default Izacc system prompt
 const DEFAULT_SYSTEM_PROMPT = CHATKIT_DEFAULT_PROMPT;
+
+type HybridSearchSource = "vector_store" | "product_catalog" | "perplexity";
+
+type HybridSearchResult = {
+  result: string;
+  source: HybridSearchSource;
+};
+
+async function runHybridSearch(query: string): Promise<HybridSearchResult> {
+  let result = "";
+  let source: HybridSearchSource = "vector_store";
+
+  try {
+    result = await handleVectorSearch(query);
+  } catch (vectorError) {
+    console.error("[ChatKit] Vector search error:", vectorError);
+    result = "";
+  }
+
+  const needsFallback =
+    !result ||
+    result.trim().length < 80 ||
+    /No product information|not found|unavailable/i.test(result);
+
+  if (needsFallback) {
+    try {
+      const matches = await findCatalogMatches(query, 3);
+      if (matches.length) {
+        const lines = matches.map((match, index) => {
+          const price = match.price ? ` — ${match.price}` : "";
+          const availability = match.stockStatus
+            ? ` (Availability: ${match.stockStatus})`
+            : "";
+          const link = match.permalink
+            ? `\n• View product: ${match.permalink}`
+            : "";
+          return `${index + 1}. ${match.name}${price}${availability}${link}`;
+        });
+        result = `I found these matches in our product catalog:\n\n${lines.join("\n\n")}`;
+        source = "product_catalog";
+      }
+    } catch (catalogError) {
+      console.error("[ChatKit] Catalog fallback error:", catalogError);
+    }
+  }
+
+  if (source !== "product_catalog") {
+    try {
+      const fallback = await handlePerplexitySearch(query);
+      if (fallback && fallback.trim().length > 0) {
+        result = fallback;
+        source = "perplexity";
+      }
+    } catch (fallbackError) {
+      console.error("[ChatKit] Perplexity fallback error:", fallbackError);
+    }
+  }
+
+  if (!result || result.trim().length === 0) {
+    result =
+      "I could not find a relevant product or article for that request. Please try rephrasing or give me more detail.";
+  }
+
+  return { result, source };
+}
+
+function isGenericAssistantReply(text: string) {
+  if (!text) return true;
+  const normalized = text.trim().toLowerCase();
+  if (normalized.length < 60) return true;
+  const patterns = [
+    /let me check/,
+    /one moment/,
+    /hold on/,
+    /give me a moment/,
+    /i'll look into/i,
+    /checking/i,
+  ];
+  return patterns.some((pattern) => pattern.test(normalized));
+}
+
+function formatHybridFallback(
+  query: string,
+  result: string,
+  source: HybridSearchSource,
+) {
+  const sourceLabel =
+    source === "vector_store"
+      ? "TradeZone knowledge base"
+      : source === "product_catalog"
+        ? "TradeZone product catalog"
+        : "TradeZone website";
+  return [
+    `Here’s what I found for “${query}”:`,
+    "",
+    result,
+    "",
+    `_Source: ${sourceLabel}_`,
+    "",
+    "Would you like more details, pricing comparisons, or help with something else?",
+  ].join("\n");
+}
 
 // Simple function definitions for OpenAI
 const tools = [
@@ -96,6 +201,9 @@ export async function POST(request: NextRequest) {
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
   let textModel = "gpt-4o-mini"; // Default model
+  let lastHybridResult: string | null = null;
+  let lastHybridSource: HybridSearchResult["source"] | null = null;
+  let lastHybridQuery: string | null = null;
 
   try {
     if (!message || !sessionId) {
@@ -145,19 +253,31 @@ export async function POST(request: NextRequest) {
         const functionArgs = JSON.parse(toolCall.function.arguments);
         let toolResult = "";
 
+        let toolSource: HybridSearchSource | undefined;
         try {
-          if (functionName === "searchProducts") {
-            toolResult = await handleVectorSearch(functionArgs.query);
-          } else if (functionName === "searchtool") {
-            toolResult = await handlePerplexitySearch(functionArgs.query);
+          if (functionName === "searchProducts" || functionName === "searchtool") {
+            const { result, source } = await runHybridSearch(functionArgs.query);
+            toolResult = result;
+            toolSource = source;
+            lastHybridResult = result;
+            lastHybridSource = source;
+            lastHybridQuery = functionArgs.query;
+            toolSummaries.push({
+              name: functionName,
+              args: { ...functionArgs, source },
+              resultPreview: result.slice(0, 200),
+            });
           } else if (functionName === "sendemail") {
             toolResult = await handleEmailSend(functionArgs);
+            toolSummaries.push({
+              name: functionName,
+              args: functionArgs,
+              resultPreview: toolResult.slice(0, 200),
+            });
+          } else {
+            console.warn("[ChatKit] Unknown tool requested:", functionName);
+            toolResult = `Tool ${functionName} is not implemented.`;
           }
-          toolSummaries.push({
-            name: functionName,
-            args: functionArgs,
-            resultPreview: toolResult.slice(0, 200),
-          });
         } catch (error) {
           console.error(`[ChatKit] Tool error:`, error);
           toolResult = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
@@ -185,7 +305,9 @@ export async function POST(request: NextRequest) {
         messages.push({
           role: "tool",
           tool_call_id: toolCall.id,
-          content: toolResult,
+          content: toolSource
+            ? `${toolResult}\n\n[Source: ${toolSource}]`
+            : toolResult,
         });
       }
 
@@ -198,6 +320,19 @@ export async function POST(request: NextRequest) {
           max_tokens: 2000,
         });
         finalResponse = finalCompletion.choices[0].message.content || "";
+
+        if (
+          lastHybridResult &&
+          lastHybridSource &&
+          lastHybridQuery &&
+          isGenericAssistantReply(finalResponse)
+        ) {
+          finalResponse = formatHybridFallback(
+            lastHybridQuery,
+            lastHybridResult,
+            lastHybridSource,
+          );
+        }
       }
     } else {
       finalResponse = assistantMessage.content || "";
