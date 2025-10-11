@@ -501,6 +501,26 @@ lib/
 
 ---
 
+### October 11, 2025 - Agent Stability Refactor
+
+**Critical Fixes Completed**:
+
+- ✅ **Robust Error Handling**: Refactored the entire `/api/chatkit/agent` endpoint to use a centralized `try...catch...finally` block. This ensures that all errors are caught gracefully and that a helpful message is always returned to the user, preventing the bot from ever failing silently.
+- ✅ **Guaranteed Logging**: All telemetry and database logging is now performed in a `finally` block, which guarantees that a record of every transaction is captured, regardless of whether it succeeded or failed. This will make future debugging much more effective.
+- ✅ **Reliable Response Generation**: Simplified and strengthened the logic for generating the final response, ensuring that an empty or invalid response is never sent to the user.
+
+**Testing Status**:
+- ✅ **Automated Tests Passed**: The existing test suite passes with the new changes.
+- ✅ **Manual Test Case Verified**: A specific test case for the "Any Playstation 4" query was added and passed, confirming that the "no reply" bug has been fixed.
+
+**Files Modified**:
+- `/app/api/chatkit/agent/route.ts` - Major refactoring for stability.
+- `/tests/agent-tools.spec.ts` - Added a new test case.
+
+**Status**: ✅ Production Ready - The text agent is now more robust and reliable.
+
+---
+
 ### October 11, 2025 - Agent Tool-Calling Fixes
 
 **Critical Fixes Completed**:

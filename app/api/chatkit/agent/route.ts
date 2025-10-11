@@ -92,55 +92,41 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const { message, sessionId, history = [] } = await request.json();
+  const { message, sessionId, history = [] } = await request.json();
+  let finalResponse = "";
+  let toolSummaries: ToolUsageSummary[] = [];
+  let textModel = "gpt-4o-mini"; // Default model
 
+  try {
     if (!message || !sessionId) {
-      console.warn("[ChatKit] Missing required fields", {
-        hasMessage: Boolean(message),
-        hasSessionId: Boolean(sessionId),
-      });
-      return NextResponse.json(
-        { error: "Missing required fields: message, sessionId" },
-        { status: 400, headers: corsHeaders },
-      );
+      throw new Error("Missing required fields: message, sessionId");
     }
 
-    // Load settings
+    // Load settings and system prompt
     const { data: org } = await supabase
       .from("organizations")
       .select("settings")
       .eq("id", DEFAULT_ORG_ID)
       .single();
-
     const settings = org?.settings?.chatkit || {};
-    const textModel = settings.textModel || "gpt-4o-mini";
+    textModel = settings.textModel || "gpt-4o-mini";
     const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
-
-    console.log(`[ChatKit] Session: ${sessionId}, Model: ${textModel}`);
-    console.log("[ChatKit] Incoming message:", message);
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },
     ];
 
-    // Add history as simple text messages only
     if (history && history.length > 0) {
-      for (const msg of history) {
-        if (msg.role && msg.content && typeof msg.content === "string") {
-          messages.push({
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-          });
+      history.forEach((msg: any) => {
+        if (msg.role && msg.content) {
+          messages.push({ role: msg.role, content: msg.content });
         }
-      }
+      });
     }
-
-    // Add current user message
     messages.push({ role: "user", content: message });
 
-    // First call to OpenAI
-    let response = await openai.chat.completions.create({
+    // First call to OpenAI to determine if tools are needed
+    const response = await openai.chat.completions.create({
       model: textModel,
       messages,
       tools,
@@ -149,29 +135,14 @@ export async function POST(request: NextRequest) {
       max_tokens: 2000,
     });
 
-    let assistantMessage = response.choices[0].message;
-    let finalResponse = assistantMessage.content || "";
+    const assistantMessage = response.choices[0].message;
 
-    console.log("[ChatKit] First completion details:", {
-      contentPreview: assistantMessage.content?.slice(0, 200),
-      toolCalls: assistantMessage.tool_calls?.map((tool) => tool.function.name),
-    });
-
-    // Handle tool calls if present
     if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-      console.log(
-        `[ChatKit] Processing ${assistantMessage.tool_calls.length} tool calls`,
-      );
+      messages.push(assistantMessage);
 
-      const toolSummaries: ToolUsageSummary[] = [];
-
-      // Execute each tool
       for (const toolCall of assistantMessage.tool_calls) {
         const functionName = toolCall.function.name;
         const functionArgs = JSON.parse(toolCall.function.arguments);
-
-        console.log(`[ChatKit] Calling: ${functionName}`, functionArgs);
-
         let toolResult = "";
 
         try {
@@ -193,8 +164,7 @@ export async function POST(request: NextRequest) {
           toolSummaries.push({
             name: functionName,
             args: functionArgs,
-            error: error instanceof Error ? error.message : "Unknown error",
-            resultPreview: toolResult.slice(0, 200),
+            error: toolResult,
           });
         }
 
@@ -207,82 +177,52 @@ export async function POST(request: NextRequest) {
         ) {
           const suggestion = await findClosestMatch(functionArgs.query);
           if (suggestion) {
-            const suggestionResponse = `I couldn't find anything for \"${functionArgs.query}\". Did you mean \"${suggestion}\"?`;
-            return NextResponse.json(
-              { response: suggestionResponse, sessionId, model: textModel },
-              { headers: corsHeaders },
-            );
+            finalResponse = `I couldn't find anything for \"${functionArgs.query}\". Did you mean \"${suggestion}\"?`;
+            break; // Exit loop to return suggestion
           }
         }
-
-        // Add tool result to messages using the standard tool-calling format
-        messages.push({
-          role: "assistant",
-          content: null,
-          tool_calls: [
-            {
-              id: toolCall.id,
-              type: "function",
-              function: {
-                name: functionName,
-                arguments: toolCall.function.arguments,
-              },
-            },
-          ],
-        });
 
         messages.push({
           role: "tool",
           tool_call_id: toolCall.id,
           content: toolResult,
         });
-
-        console.log("[ChatKit] Tool result captured:", {
-          functionName,
-          resultPreview: toolResult.slice(0, 200),
-        });
       }
 
-      // Get final response after tools
-      try {
+      if (!finalResponse) {
+        // If no suggestion was made
         const finalCompletion = await openai.chat.completions.create({
           model: textModel,
           messages,
           temperature: 0.7,
           max_tokens: 2000,
         });
-
-        finalResponse =
-          finalCompletion.choices[0].message.content ||
-          "Sorry, I encountered an error.";
-
-        console.log("[ChatKit] Final completion after tools:", {
-          contentPreview: finalResponse.slice(0, 200),
-        });
-      } catch (finalError) {
-        console.error("[ChatKit] Final completion error:", finalError);
-        finalResponse =
-          "I ran into an issue preparing the results. Please try again in a moment.";
+        finalResponse = finalCompletion.choices[0].message.content || "";
       }
-
-      recordAgentTelemetry({
-        timestamp: new Date().toISOString(),
-        sessionId,
-        prompt: message,
-        responsePreview: finalResponse.slice(0, 280),
-        model: textModel,
-        toolCalls: toolSummaries,
-        historyLength: Array.isArray(history) ? history.length : 0,
-      });
+    } else {
+      finalResponse = assistantMessage.content || "";
     }
-
-    if (!finalResponse || finalResponse.trim().length === 0) {
-      console.warn("[ChatKit] Empty final response, using fallback message.");
+  } catch (error) {
+    console.error("[ChatKit] Error in POST handler:", error);
+    finalResponse =
+      "I'm sorry, I ran into an issue processing your request. Please try again.";
+  } finally {
+    // This block ensures we ALWAYS log and have a valid response
+    if (!finalResponse || finalResponse.trim() === "") {
       finalResponse =
-        "I had trouble finding an answer just now. Please try rephrasing your question or ask for a specific product.";
+        "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
     }
 
-    // Log to Supabase
+    recordAgentTelemetry({
+      timestamp: new Date().toISOString(),
+      sessionId,
+      prompt: message,
+      responsePreview: finalResponse.slice(0, 280),
+      model: textModel,
+      toolCalls: toolSummaries,
+      historyLength: Array.isArray(history) ? history.length : 0,
+    });
+
     try {
       await supabase.from("chat_logs").insert({
         session_id: sessionId,
@@ -296,43 +236,14 @@ export async function POST(request: NextRequest) {
           message.substring(0, 50) + (message.length > 50 ? "..." : ""),
       });
     } catch (logError) {
-      console.error("[ChatKit] Logging error:", logError);
+      console.error("[ChatKit] Supabase logging error:", logError);
     }
-
-    if (
-      !assistantMessage.tool_calls ||
-      assistantMessage.tool_calls.length === 0
-    ) {
-      recordAgentTelemetry({
-        timestamp: new Date().toISOString(),
-        sessionId,
-        prompt: message,
-        responsePreview: finalResponse.slice(0, 280),
-        model: textModel,
-        toolCalls: [],
-        historyLength: Array.isArray(history) ? history.length : 0,
-      });
-    }
-
-    return NextResponse.json(
-      {
-        response: finalResponse,
-        sessionId,
-        model: textModel,
-      },
-      { headers: corsHeaders },
-    );
-  } catch (error) {
-    console.error("[ChatKit] Error:", error);
-
-    return NextResponse.json(
-      {
-        error: "Failed to process chat",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500, headers: corsHeaders },
-    );
   }
+
+  return NextResponse.json(
+    { response: finalResponse, sessionId, model: textModel },
+    { headers: corsHeaders },
+  );
 }
 
 // Health check
