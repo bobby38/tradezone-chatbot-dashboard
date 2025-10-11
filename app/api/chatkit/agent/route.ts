@@ -82,10 +82,19 @@ async function runHybridSearch(query: string): Promise<HybridSearchResult> {
     ? `Here are items from the TradeZone catalog that match your request:\n\n${renderCatalogMatches(catalogMatches)}`
     : "";
 
+  const disallowedVectorPatterns = [
+    /you mentioned/i,
+    /uploaded some files/i,
+    /analyze .* uploaded/i,
+    /summarize the uploaded/i,
+    /within your uploaded/i,
+  ];
+
   const vectorUseful =
     vectorResult &&
-    vectorResult.trim().length >= 120 &&
-    !/No product information|not found|unavailable/i.test(vectorResult);
+    vectorResult.trim().length >= 160 &&
+    !/No product information|not found|unavailable/i.test(vectorResult) &&
+    !disallowedVectorPatterns.some((pattern) => pattern.test(vectorResult));
 
   if (vectorUseful) {
     const combined = catalogSection
