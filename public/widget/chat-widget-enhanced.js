@@ -175,7 +175,7 @@
           max-width: 450px;
           height: 85vh;
           max-height: 700px;
-          background: #1a1a2e;
+          background: transparent;
           border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.5);
           flex-direction: column;
