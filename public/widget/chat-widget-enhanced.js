@@ -442,6 +442,7 @@
           flex-direction: column;
           flex: 1;
           min-height: 0;
+          background: #1a1a2e;
         }
 
         .tz-chat-messages {
