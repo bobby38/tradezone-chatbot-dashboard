@@ -489,66 +489,23 @@
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 40px 20px;
-          gap: 24px;
-        }
-
-        .tz-voice-container.active {
-          display: flex;
-        }
-
-        .tz-voice-status {
-          font-size: 16px;
-          font-weight: 500;
-          color: #e5e7eb;
-          text-align: center;
-        }
-
-        .tz-voice-button {
-          width: 80px;
-          height: 80px;
-          border-radius: 40px;
-          border: none;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .tz-voice-button.start {
-          background: ${this.config.primaryColor};
-        }
-
-        .tz-voice-button.stop {
-          background: #ef4444;
-          animation: pulse 2s infinite;
-        }
-
-        .tz-voice-button svg {
-          width: 36px;
-          height: 36px;
-          fill: white;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+          padding: 20px;
+          gap: 16px;
+          flex: 1;
+          min-height: 0;
         }
 
         .tz-voice-transcript {
-          max-height: 200px;
+          flex-grow: 1;
           overflow-y: auto;
           width: 100%;
-          padding: 16px;
+          padding: 12px;
           background: #16162a !important;
           border: 1px solid rgba(139, 92, 246, 0.2);
           border-radius: 8px;
           font-size: 14px;
           line-height: 1.6;
           color: #e5e7eb;
-          min-height: 60px;
         }
 
         /* Input Area */
