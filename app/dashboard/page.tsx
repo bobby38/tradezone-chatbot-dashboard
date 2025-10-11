@@ -141,8 +141,6 @@ export default function DashboardPage() {
         successRate: Math.round(successRate),
         activeUsers,
         errorRate: Math.round(errorRate),
-        totalTokens: Math.floor(Math.random() * 50000) + 10000,
-        avgSessionDuration: Math.floor(Math.random() * 300) + 60,
       }))
 
       try {
