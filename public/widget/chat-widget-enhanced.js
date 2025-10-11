@@ -34,6 +34,7 @@
       darkBg: "#1a1a2e",
       greeting: "Hi! How can I help you today?",
       botName: "Amara",
+      botSubtitle: "AI Assistant",
       placeholder: "Ask about products, prices, trade-ins...",
       videoUrl: "", // Optional hero video
       enableVoice: true,
@@ -309,6 +310,7 @@
           color: white;
           transition: background 0.2s;
           z-index: 10;
+          pointer-events: auto !important;
         }
 
         .tz-chat-close:hover {
@@ -856,8 +858,8 @@
               <div class="tz-particle"></div>
             </div>
             <div class="tz-chat-hero-overlay">
-              <h3 class="tz-chat-hero-title">Amara</h3>
-              <p class="tz-chat-hero-subtitle">TradeZone</p>
+              <h3 class="tz-chat-hero-title">${this.config.botName}</h3>
+              <p class="tz-chat-hero-subtitle">${this.config.botSubtitle}</p>
             </div>
             <button class="tz-chat-close" aria-label="Close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -955,6 +957,9 @@
       document
         .querySelector(".tz-chat-close")
         .addEventListener("click", () => this.toggleChat());
+      document
+        .querySelector(".tz-chat-close")
+        .addEventListener("touchstart", () => this.toggleChat());
       document.getElementById("tz-input").addEventListener("keypress", (e) => {
         if (e.key === "Enter") this.sendMessage();
       });
