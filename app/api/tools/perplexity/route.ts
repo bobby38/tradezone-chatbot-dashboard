@@ -16,14 +16,35 @@ export async function POST(request: NextRequest) {
     const vectorResult = await handleVectorSearch(query);
 
     // Check if vector search returned useful results
+    const unhelpfulPhrases = [
+      "No product information found",
+      "error",
+      "How can I assist",
+      "Please clarify",
+      "Could you please clarify",
+      "What would you like to know",
+      "Let me know how",
+      "Can you provide more details",
+      "I need more information",
+      "uploaded some files", // Generic response from vector store
+    ];
+
+    const isUnhelpful = unhelpfulPhrases.some((phrase) =>
+      vectorResult.toLowerCase().includes(phrase.toLowerCase()),
+    );
+
     const hasUsefulResult =
       vectorResult &&
-      !vectorResult.includes("No product information found") &&
-      !vectorResult.includes("error") &&
-      vectorResult.length > 50; // Minimum length for useful answer
+      !isUnhelpful &&
+      vectorResult.length > 50 && // Minimum length
+      (vectorResult.includes("S$") || // Has pricing
+        vectorResult.includes("stock") || // Has stock info
+        vectorResult.includes("View Product") || // Has product links
+        vectorResult.includes("**") || // Has markdown formatting (product names)
+        vectorResult.includes("tradezone.sg/product")); // Has product URLs
 
     if (hasUsefulResult) {
-      console.log("[Search Tool] ✅ Vector store found answer");
+      console.log("[Search Tool] ✅ Vector store found products");
       return NextResponse.json({
         result: vectorResult,
         source: "vector_store",

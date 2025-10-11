@@ -101,12 +101,21 @@ async function loadCatalog(): Promise<CatalogProduct[]> {
 
 function scoreProduct(product: CatalogProduct, query: string): number {
   const name = product.name?.toLowerCase() ?? "";
+  const description = product.description?.toLowerCase() ?? "";
+  const shortDescription = product.short_description?.toLowerCase() ?? "";
   const permalink = product.permalink?.toLowerCase() ?? "";
   const tags = product.tags?.map((tag) => tag.name?.toLowerCase() ?? "") ?? [];
   const categories =
     product.categories?.map((cat) => cat.name?.toLowerCase() ?? "") ?? [];
 
-  const haystack = [name, permalink, ...tags, ...categories].join(" ");
+  const haystack = [
+    name,
+    description,
+    shortDescription,
+    permalink,
+    ...tags,
+    ...categories,
+  ].join(" ");
 
   if (!haystack) return 0;
 
@@ -120,21 +129,35 @@ function scoreProduct(product: CatalogProduct, query: string): number {
   let score = 0;
 
   tokens.forEach((token) => {
+    // Exact name match
     if (name === token) score += 80;
+    // Name contains token
     if (name.includes(token)) score += 40;
+    // Description contains token (for detailed searches)
+    if (description.includes(token)) score += 15;
+    if (shortDescription.includes(token)) score += 15;
+    // Permalink contains token
     if (permalink.includes(token)) score += 20;
 
+    // Tags match
     tags.forEach((tag) => {
       if (tag.includes(token)) score += 10;
     });
 
+    // Category match
     categories.forEach((category) => {
       if (category.includes(token)) score += 10;
     });
   });
 
+  // Bonus for full query match in name
   if (name.includes(query)) {
     score += 30;
+  }
+
+  // Bonus for full query match in description
+  if (description.includes(query) || shortDescription.includes(query)) {
+    score += 20;
   }
 
   return score;
