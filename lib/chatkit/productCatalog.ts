@@ -20,7 +20,7 @@ let catalogCache: CatalogProduct[] | null = null;
 let lastLoadedAt = 0;
 let catalogPromise: Promise<CatalogProduct[]> | null = null;
 
-const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutes
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour (catalog refreshes weekly)
 
 function resolveCatalogPath(): string {
   if (process.env.WOOCOMMERCE_PRODUCT_JSON_PATH) {
@@ -37,7 +37,9 @@ function isHttpPath(target: string): boolean {
   return target.startsWith("http://") || target.startsWith("https://");
 }
 
-async function readCatalogFromSource(filePath: string): Promise<CatalogProduct[]> {
+async function readCatalogFromSource(
+  filePath: string,
+): Promise<CatalogProduct[]> {
   if (isHttpPath(filePath)) {
     console.log(`[ProductCatalog] Fetching catalog from URL: ${filePath}`);
     const response = await fetch(filePath);

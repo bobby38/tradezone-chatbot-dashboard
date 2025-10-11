@@ -920,14 +920,19 @@ https://studio.getrezult.com/v1/storage/buckets/68e9c23f002de06d1e68/files/{file
 
 #### Environment Variables Added
 ```bash
-# Appwrite Storage
+# Appwrite Storage (Public - for widget uploads)
 NEXT_PUBLIC_APPWRITE_ENDPOINT=https://studio.getrezult.com/v1
 NEXT_PUBLIC_APPWRITE_PROJECT_ID=68e9c230002bf8a2f26f
 NEXT_PUBLIC_APPWRITE_BUCKET_ID=68e9c23f002de06d1e68
+
+# Appwrite Storage (Server-side only - for product catalog upload)
+APPWRITE_ENDPOINT=https://studio.getrezult.com/v1
+APPWRITE_PROJECT_ID=68e9c230002bf8a2f26f
+APPWRITE_BUCKET_ID=68e9c23f002de06d1e68
 APPWRITE_API_KEY=standard_beaed1a9e4dae3069f9e472815762d7aa2f4b6cfc3d5ec94507f98407f377b22f6d3283d0e541e54ec3fbcf8813aa5d1bc206d28167f80a103290974082ae9fd57bea6888955246c3fc4be8226d3626d9f5e4f7dc2dfea0767fc8a16cf706f46ceb2b36906597ef8c5c6024f70f10eeab58d0cd168dd0869e3cbb8dd370f6626
 
 # Product Catalog (for vector search enrichment)
-WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+WOOCOMMERCE_PRODUCT_JSON_PATH=https://studio.getrezult.com/v1/storage/buckets/68e9c23f002de06d1e68/files/tradezone-WooCommerce-Products.json/view?project=68e9c230002bf8a2f26f
 
 # WooCommerce API (for weekly product refresh)
 WOOCOMMERCE_CONSUMER_KEY=ck_9c3e0a271969ea56a3d294e54537ec1e7518c92e
@@ -935,10 +940,14 @@ WOOCOMMERCE_CONSUMER_SECRET=cs_c13ac8aa41322b22a5d25fcb5f422982acec5a53
 WOOCOMMERCE_API_BASE=https://tradezone.sg/wp-json/wc/v3
 ```
 
-**Note**: The product catalog JSON is hosted on CDN. To refresh it:
-1. Local: Run `node scripts/refresh-product-catalog.mjs` (outputs to `public/tradezone-WooCommerce-Products.json`)
-2. Upload the generated file to your CDN at `https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json`
-3. Or set up automated weekly refresh via launchd (see Operations & Tooling section)
+**Automated Product Catalog Refresh**:
+The refresh script automatically uploads to Appwrite Storage:
+1. Run `node scripts/refresh-product-catalog.mjs`
+2. Script fetches ~1000 products from WooCommerce API
+3. Saves locally to `public/tradezone-WooCommerce-Products.json`
+4. **Automatically uploads to Appwrite Storage** (replaces old version)
+5. Returns public URL - update `WOOCOMMERCE_PRODUCT_JSON_PATH` if fileId changes
+6. Set up weekly automation via launchd (see Operations & Tooling section)
 
 #### Upload Flow
 ```

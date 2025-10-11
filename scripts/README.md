@@ -75,10 +75,12 @@ rm ~/Library/LaunchAgents/com.tradezone.product-weekly.plist
 node scripts/refresh-product-catalog.mjs
 ```
 
-**Output**: `public/tradezone-WooCommerce-Products.json` (1.1MB, ~1000 products)
+**Output**: 
+- Local: `public/tradezone-WooCommerce-Products.json` (1.1MB, ~1000 products)
+- **Appwrite**: Automatically uploaded to storage bucket
+- Public URL: `https://studio.getrezult.com/v1/storage/buckets/68e9c23f002de06d1e68/files/tradezone-WooCommerce-Products.json/view?project=68e9c230002bf8a2f26f`
 
-**Next step**: Upload the generated file to your CDN:
-- Production URL: `https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json`
+**No manual upload needed!** Script automatically replaces the old version in Appwrite.
 
 ### Run Search Console Sync
 
@@ -95,7 +97,13 @@ node scripts/refresh-product-catalog.mjs
 WOOCOMMERCE_CONSUMER_KEY=ck_...
 WOOCOMMERCE_CONSUMER_SECRET=cs_...
 WOOCOMMERCE_API_BASE=https://tradezone.sg/wp-json/wc/v3
-WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+WOOCOMMERCE_PRODUCT_JSON_PATH=https://studio.getrezult.com/v1/storage/buckets/68e9c23f002de06d1e68/files/tradezone-WooCommerce-Products.json/view?project=68e9c230002bf8a2f26f
+
+# For Appwrite auto-upload (server-side only)
+APPWRITE_ENDPOINT=https://studio.getrezult.com/v1
+APPWRITE_PROJECT_ID=68e9c230002bf8a2f26f
+APPWRITE_BUCKET_ID=68e9c23f002de06d1e68
+APPWRITE_API_KEY=standard_...
 ```
 
 ### For Search Console Sync

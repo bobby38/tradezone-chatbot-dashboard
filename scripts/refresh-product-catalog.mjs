@@ -134,13 +134,98 @@ async function writeCatalog(products) {
   await fsp.writeFile(OUTPUT_PATH, JSON.stringify(trimmed, null, 2), "utf8");
 }
 
+async function uploadToAppwrite(filePath) {
+  const endpoint =
+    process.env.APPWRITE_ENDPOINT || process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const projectId =
+    process.env.APPWRITE_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const bucketId =
+    process.env.APPWRITE_BUCKET_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID;
+  const apiKey = process.env.APPWRITE_API_KEY;
+
+  if (!endpoint || !projectId || !bucketId || !apiKey) {
+    console.warn(
+      "[Catalog] Appwrite credentials not configured, skipping upload",
+    );
+    return null;
+  }
+
+  try {
+    console.log("[Catalog] Uploading to Appwrite Storage...");
+
+    const fileContent = await fsp.readFile(filePath);
+    const fileId = "tradezone-WooCommerce-Products.json";
+
+    // Delete existing file if it exists
+    try {
+      await fetch(`${endpoint}/storage/buckets/${bucketId}/files/${fileId}`, {
+        method: "DELETE",
+        headers: {
+          "X-Appwrite-Project": projectId,
+          "X-Appwrite-Key": apiKey,
+        },
+      });
+      console.log("[Catalog] Deleted old catalog from Appwrite");
+    } catch (deleteError) {
+      // File doesn't exist, that's fine
+    }
+
+    // Upload new file
+    const formData = new FormData();
+    const blob = new Blob([fileContent], { type: "application/json" });
+    formData.append("fileId", fileId);
+    formData.append("file", blob, fileId);
+
+    const uploadResponse = await fetch(
+      `${endpoint}/storage/buckets/${bucketId}/files`,
+      {
+        method: "POST",
+        headers: {
+          "X-Appwrite-Project": projectId,
+          "X-Appwrite-Key": apiKey,
+        },
+        body: formData,
+      },
+    );
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      throw new Error(
+        `Appwrite upload failed: ${uploadResponse.status} - ${errorText}`,
+      );
+    }
+
+    const uploadData = await uploadResponse.json();
+    const publicUrl = `${endpoint}/storage/buckets/${bucketId}/files/${uploadData.$id}/view?project=${projectId}`;
+
+    console.log("[Catalog] ✅ Uploaded to Appwrite!");
+    console.log("[Catalog] Public URL:", publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error("[Catalog] Appwrite upload error:", error);
+    return null;
+  }
+}
+
 async function main() {
   try {
     console.log("[Catalog] Fetching products from WooCommerce...");
     const products = await fetchAllProducts();
     console.log(`[Catalog] Retrieved ${products.length} products.`);
+
     await writeCatalog(products);
     console.log(`[Catalog] Saved catalog to ${OUTPUT_PATH}`);
+
+    // Upload to Appwrite
+    const appwriteUrl = await uploadToAppwrite(OUTPUT_PATH);
+    if (appwriteUrl) {
+      console.log(
+        "[Catalog] 🎉 Complete! Update WOOCOMMERCE_PRODUCT_JSON_PATH to:",
+      );
+      console.log(`[Catalog]    ${appwriteUrl}`);
+    }
   } catch (error) {
     console.error("[Catalog] Refresh failed:", error);
     process.exit(1);
