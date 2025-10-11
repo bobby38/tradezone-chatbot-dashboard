@@ -437,23 +437,12 @@
         }
 
         /* Messages Area */
-        .tz-chat-body {
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-          min-height: 0;
-          background: #1a1a2e;
-        }
-
-        .tz-chat-body.voice-active .tz-chat-content {
-          display: none;
-        }
-
         .tz-chat-content {
           display: flex;
           flex-direction: column;
           flex: 1;
           min-height: 0;
+          background: #1a1a2e;
         }
 
         .tz-chat-messages {
@@ -607,9 +596,6 @@
           min-height: 0;
         }
 
-        .tz-chat-body.voice-active .tz-voice-container {
-          display: flex;
-        }
 
         .tz-voice-transcript {
           flex-grow: 1;
@@ -1025,7 +1011,7 @@
             ${
               this.config.enableVoice
                 ? `
-            <div class="tz-voice-container" id="tz-voice-container">
+            <div class="tz-voice-container" id="tz-voice-container" style="display:none;">
               <div class="tz-voice-status" id="tz-voice-status">Ready to start</div>
               <button class="tz-voice-button start" id="tz-voice-btn">
                 <svg viewBox="0 0 24 24">
@@ -1122,17 +1108,23 @@
         btn.classList.toggle("active", btn.dataset.mode === mode);
       });
 
-      const body = document.getElementById("tz-chat-body");
+      const chatContent = document.getElementById("tz-chat-content");
       const voiceContainer = document.getElementById("tz-voice-container");
 
-      if (mode === "text") {
-        body?.classList.remove("voice-active");
-        voiceContainer?.classList.remove("active");
-        if (this.isRecording) this.stopVoice();
-      } else {
+      if (mode === "voice") {
         this.hideTypingIndicator();
-        body?.classList.add("voice-active");
-        voiceContainer?.classList.add("active");
+        if (chatContent) chatContent.style.display = "none";
+        if (voiceContainer) {
+          voiceContainer.style.display = "flex";
+          voiceContainer.classList.add("active");
+        }
+      } else {
+        if (this.isRecording) this.stopVoice();
+        if (chatContent) chatContent.style.display = "flex";
+        if (voiceContainer) {
+          voiceContainer.style.display = "none";
+          voiceContainer.classList.remove("active");
+        }
       }
       this.updateWidgetHeight();
     },
