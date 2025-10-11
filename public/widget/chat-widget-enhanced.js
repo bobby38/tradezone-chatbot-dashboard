@@ -138,13 +138,32 @@
           flex-direction: column;
           overflow: hidden;
           border: 1px solid rgba(139, 92, 246, 0.3);
-          cursor: move;
           z-index: 999998;
         }
         
-        #tz-chat-window.dragging {
-          cursor: grabbing;
-          user-select: none;
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          #tz-chat-window {
+            width: calc(100vw - 20px);
+            height: calc(100vh - 20px);
+            max-height: calc(100vh - 20px);
+            left: 10px;
+            top: 10px;
+            transform: none;
+            border-radius: 8px;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          #tz-chat-window {
+            width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            left: 0;
+            top: 0;
+            border-radius: 0;
+            border: none;
+          }
         }
 
         #tz-chat-window.open {
@@ -154,7 +173,7 @@
         /* Hero/Video Section */
         .tz-chat-hero {
           position: relative;
-          height: 160px;
+          height: 200px;
           background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
           overflow: hidden;
         }
@@ -214,38 +233,37 @@
           top: 0;
           left: 0;
           right: 0;
-          bottom: 0;
-          background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 100%);
           display: flex;
           flex-direction: column;
-          justify-content: flex-end;
-          padding: 20px;
+          justify-content: flex-start;
+          padding: 16px 20px;
           color: white;
         }
 
         .tz-chat-hero-title {
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 700;
           margin: 0 0 4px 0;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+          opacity: 0.9;
         }
 
         .tz-chat-hero-subtitle {
           font-size: 14px;
           margin: 0;
-          opacity: 0.95;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          opacity: 0.9;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.8);
         }
 
         .tz-chat-close {
           position: absolute;
           top: 12px;
           right: 12px;
-          background: rgba(0,0,0,0.3);
+          background: rgba(0,0,0,0.5);
           border: none;
           border-radius: 50%;
-          width: 32px;
-          height: 32px;
+          width: 36px;
+          height: 36px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -256,7 +274,15 @@
         }
 
         .tz-chat-close:hover {
-          background: rgba(0,0,0,0.5);
+          background: rgba(139, 92, 246, 0.8);
+        }
+        
+        @media (max-width: 768px) {
+          .tz-chat-close {
+            width: 44px;
+            height: 44px;
+            background: rgba(0,0,0,0.7);
+          }
         }
         
         .tz-position-controls {
@@ -729,13 +755,8 @@
               <div class="tz-particle"></div>
             </div>
             <div class="tz-chat-hero-overlay">
-              <h3 class="tz-chat-hero-title">${this.config.botName}</h3>
-              <p class="tz-chat-hero-subtitle">AI Assistant • Always here to help</p>
-            </div>
-            <div class="tz-position-controls">
-              <button class="tz-position-btn active" data-position="center" title="Center" aria-label="Center position">⊙</button>
-              <button class="tz-position-btn" data-position="bottom-right" title="Bottom Right" aria-label="Bottom right">↘</button>
-              <button class="tz-position-btn" data-position="bottom-left" title="Bottom Left" aria-label="Bottom left">↙</button>
+              <h3 class="tz-chat-hero-title">Amara</h3>
+              <p class="tz-chat-hero-subtitle">TradeZone</p>
             </div>
             <button class="tz-chat-close" aria-label="Close">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -963,7 +984,9 @@
 
       } catch (error) {
         console.error('[Voice] Error:', error);
-        this.updateVoiceStatus('Error starting voice');
+        console.error('[Voice] Error details:', error.message, error.stack);
+        this.updateVoiceStatus('Error: ' + (error.message || 'Failed to start'));
+        alert('Voice error: ' + error.message + '\n\nCheck console for details.');
       }
     },
 
@@ -981,6 +1004,9 @@
     },
 
     initAudio: async function() {
+      // Initialize audio queue
+      this.audioQueue = [];
+      
       // Input (microphone)
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 24000 }

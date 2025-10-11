@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       // Full session configuration for both dashboard and widget
       sessionConfig: {
         modalities: ["text", "audio"],
-        instructions: `You are Izacc, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
+        instructions: `You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
 
 ## Quick Answers (Answer instantly - NO tool calls)
 - What is TradeZone.sg? → TradeZone.sg buys and sells new and second-hand electronics, gaming gear, and gadgets in Singapore.

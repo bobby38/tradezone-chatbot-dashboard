@@ -119,7 +119,7 @@ export default function ChatPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-          Chat with Izacc
+          Chat with Amara
         </h1>
         <p className="text-muted-foreground">
           Your TradeZone AI Assistant • Session: {sessionId}
@@ -141,7 +141,7 @@ export default function ChatPage() {
               <video
                 className="w-full h-full object-cover"
                 id="avatarVideo"
-                src="https://videostream44.b-cdn.net/tradezone-welcome-avatar-2.mp4"
+                src="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
                 autoPlay
                 muted
                 playsInline
@@ -150,7 +150,7 @@ export default function ChatPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 text-white">
                 <p className="text-sm uppercase tracking-wide opacity-80">
-                  Meet Izacc
+                  Meet Amara
                 </p>
                 <p className="text-xl font-semibold leading-tight">
                   Personalized tech recommendations, real-time catalogue search,
@@ -166,8 +166,9 @@ export default function ChatPage() {
                   Featured Highlight
                 </p>
                 <p className="mt-2 text-sm font-medium">
-                  Need inspiration? Ask Izacc for “PlayStation racing bundles” or
-                  “latest Asus ROG laptops” to see stocked items instantly.
+                  Need inspiration? Ask Amara for "PlayStation racing bundles" or
+                  “latest Asus ROG laptops” to see stocked items instantly. You can also ask for
+                  "best gaming laptops under $1,500" or "latest gaming console deals".
                 </p>
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -254,7 +255,7 @@ export default function ChatPage() {
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Izacc is typing...</span>
+                    <span className="text-sm">Amara is typing...</span>
                   </div>
                 </div>
               )}
@@ -307,7 +308,7 @@ export default function ChatPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5" />
-              Voice Chat with Izacc
+              Voice Chat with Amara
             </CardTitle>
             <CardDescription>
               Talk naturally - I'll search our product catalog and help you find
@@ -320,7 +321,7 @@ export default function ChatPage() {
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground py-8">
                   <Phone className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Start your voice conversation with Izacc</p>
+                  <p>Start your voice conversation with Amara</p>
                   <p className="text-sm mt-2">
                     Click "Start Voice Chat" below to begin
                   </p>
