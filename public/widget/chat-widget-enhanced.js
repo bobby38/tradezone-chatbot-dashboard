@@ -586,7 +586,7 @@
 
         /* Voice Mode */
         .tz-voice-container {
-          display: none;
+          display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
@@ -596,6 +596,8 @@
           min-height: 0;
         }
 
+
+        .tz-voice-container.hidden { display: none !important; }
 
         .tz-voice-transcript {
           flex-grow: 1;
@@ -820,7 +822,9 @@
             font-size: 15px;
           }
 
-          .tz-voice-transcript {
+          .tz-voice-container.hidden { display: none !important; }
+
+        .tz-voice-transcript {
             font-size: 13px;
             max-height: 150px;
           }
@@ -871,7 +875,9 @@
             padding: 20px 16px;
           }
 
-          .tz-voice-transcript {
+          .tz-voice-container.hidden { display: none !important; }
+
+        .tz-voice-transcript {
             max-height: 100px;
           }
         }
@@ -1011,7 +1017,7 @@
             ${
               this.config.enableVoice
                 ? `
-            <div class="tz-voice-container" id="tz-voice-container" style="display:none;">
+            <div class="tz-voice-container hidden" id="tz-voice-container">
               <div class="tz-voice-status" id="tz-voice-status">Ready to start</div>
               <button class="tz-voice-button start" id="tz-voice-btn">
                 <svg viewBox="0 0 24 24">
@@ -1115,15 +1121,15 @@
         this.hideTypingIndicator();
         if (chatContent) chatContent.style.display = "none";
         if (voiceContainer) {
-          voiceContainer.style.display = "flex";
-          voiceContainer.classList.add("active");
+          voiceContainer.classList.remove('hidden');
+          voiceContainer.classList.add('active');
         }
       } else {
         if (this.isRecording) this.stopVoice();
         if (chatContent) chatContent.style.display = "flex";
         if (voiceContainer) {
-          voiceContainer.style.display = "none";
-          voiceContainer.classList.remove("active");
+          voiceContainer.classList.add('hidden');
+          voiceContainer.classList.remove('active');
         }
       }
       this.updateWidgetHeight();
