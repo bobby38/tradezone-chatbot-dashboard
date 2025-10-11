@@ -76,10 +76,19 @@
       this.injectStyles();
       this.createWidget();
       this.attachEventListeners();
+      this.updateWidgetHeight(); // Set initial height
 
       console.log(
         "[TradeZone Chat Enhanced] Widget initialized",
         this.sessionId,
+      );
+    },
+
+    updateWidgetHeight: function () {
+      const vh = window.innerHeight;
+      document.documentElement.style.setProperty(
+        "--tz-widget-height",
+        `${vh}px`,
       );
     },
 
@@ -157,16 +166,13 @@
         @media (max-width: 768px) {
           #tz-chat-window {
             width: 100vw;
-            height: 100vh;
-            height: 100dvh; /* Dynamic viewport height */
-            max-height: 100vh;
-            max-height: 100dvh;
-            left: 0 !important;
-            top: 0 !important;
-            right: 0;
+            height: var(--tz-widget-height, 100vh);
+            max-height: none;
             bottom: 0;
-            transform: none !important;
+            right: 0;
+            left: 0;
             border-radius: 0;
+            transform: none !important;
             border: none;
           }
 
@@ -202,6 +208,7 @@
             backdrop-filter: blur(10px);
             z-index: 1000;
             border: 2px solid rgba(255,255,255,0.3);
+            background-color: transparent !important;
           }
         }
 
@@ -646,7 +653,8 @@
           }
 
           .tz-chat-hero {
-            height: 160px;
+            flex-shrink: 0;
+            height: 25%;
           }
 
           .tz-chat-hero-title {
@@ -918,6 +926,10 @@
         .querySelector(".tz-chat-close")
         .addEventListener("touchstart", () => this.toggleChat());
       window.addEventListener("popstate", () => this.closeChat());
+      window.addEventListener("resize", () => this.updateWidgetHeight());
+      window.addEventListener("orientationchange", () =>
+        this.updateWidgetHeight(),
+      );
       document.getElementById("tz-input").addEventListener("keypress", (e) => {
         if (e.key === "Enter") this.sendMessage();
       });
