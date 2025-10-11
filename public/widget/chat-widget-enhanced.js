@@ -183,17 +183,26 @@
           z-index: 999998;
         }
 
-        /* Mobile responsive - 95% screen for better UX */
+        /* Mobile responsive full-screen experience */
         @media (max-width: 768px) {
+          #tz-chat-widget {
+            right: auto;
+            left: 0;
+            bottom: 0;
+            width: 100vw;
+          }
+
+          #tz-chat-button {
+            position: fixed;
+            right: calc(env(safe-area-inset-right, 0px) + 16px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+          }
+
           #tz-chat-window {
             width: 100vw;
-            min-height: calc(var(--tz-widget-height, 100dvh));
-            height: auto;
+            height: calc(var(--tz-widget-height, 100dvh));
             max-height: none;
-            top: env(safe-area-inset-top, 0px);
-            bottom: env(safe-area-inset-bottom, 0px);
-            right: 0;
-            left: 0;
+            inset: 0;
             border-radius: 0;
             transform: none !important;
             border: none;
@@ -205,12 +214,13 @@
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch;
             min-height: 0;
+            padding-bottom: 12px;
           }
 
           /* Input stays at bottom, above keyboard */
           .tz-chat-input-container {
             flex-shrink: 0;
-            padding-bottom: env(safe-area-inset-bottom, 16px);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
           }
 
           /* Prevent body scroll */
@@ -223,15 +233,15 @@
 
           /* Always visible close button */
           .tz-chat-close {
-            top: 16px !important;
-            right: 16px !important;
+            top: calc(env(safe-area-inset-top, 0px) + 16px) !important;
+            right: calc(env(safe-area-inset-right, 0px) + 16px) !important;
             width: 48px !important;
             height: 48px !important;
-            background: rgba(0,0,0,0.9) !important;
+            background: rgba(0,0,0,0.65) !important;
             backdrop-filter: blur(10px);
             z-index: 1000;
             border: 2px solid rgba(255,255,255,0.3);
-            background-color: transparent !important;
+            color: #f8fafc;
           }
         }
 
@@ -711,26 +721,22 @@
         @media (max-width: 768px) {
           #tz-chat-window {
             width: 100vw;
-            min-height: calc(var(--tz-widget-height, 100dvh));
-            height: auto;
+            height: calc(var(--tz-widget-height, 100dvh));
             max-height: none;
-            top: env(safe-area-inset-top, 0px);
-            bottom: env(safe-area-inset-bottom, 0px);
-            right: 0;
-            left: 0;
+            inset: 0;
             border-radius: 0;
           }
 
           #tz-chat-button {
             width: 56px;
             height: 56px;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
             right: calc(env(safe-area-inset-right, 0px) + 16px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
           }
 
           .tz-chat-hero {
             flex-shrink: 0;
-            height: 25%;
+            height: min(200px, 28vh);
           }
 
           .tz-chat-hero-title {
@@ -760,7 +766,7 @@
           }
 
           .tz-chat-message-bubble {
-            max-width: 80%;
+            max-width: 88%;
             font-size: 14px;
           }
 
@@ -1002,10 +1008,6 @@
         .querySelector(".tz-chat-close")
         .addEventListener("touchstart", () => this.toggleChat());
       window.addEventListener("popstate", () => this.closeChat());
-      window.addEventListener("resize", () => this.updateWidgetHeight());
-      window.addEventListener("orientationchange", () =>
-        this.updateWidgetHeight(),
-      );
       document.getElementById("tz-input").addEventListener("keypress", (e) => {
         if (e.key === "Enter") this.sendMessage();
       });
@@ -1045,6 +1047,7 @@
       window.classList.remove("open");
       button.style.display = "flex";
       document.body.classList.remove("tz-widget-open"); // Unlock body scroll
+      this.switchMode("text");
       this.hideTypingIndicator();
       if (this.isRecording) this.stopVoice();
     },
