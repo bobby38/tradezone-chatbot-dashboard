@@ -10,15 +10,36 @@ if (fs.existsSync(envLocalPath)) {
   loadEnv();
 }
 
-const API_BASE = (process.env.WOOCOMMERCE_API_BASE ?? "https://tradezone.sg/wp-json/wc/v3").replace(/\/$/, "");
+const API_BASE = (
+  process.env.WOOCOMMERCE_API_BASE ?? "https://tradezone.sg/wp-json/wc/v3"
+).replace(/\/$/, "");
 const CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY;
 const CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET;
-const OUTPUT_PATH = process.env.WOOCOMMERCE_PRODUCT_JSON_PATH
-  ? path.resolve(process.cwd(), process.env.WOOCOMMERCE_PRODUCT_JSON_PATH)
-  : path.resolve(
+// Determine output path - if WOOCOMMERCE_PRODUCT_JSON_PATH is a URL, save to local public directory
+function resolveOutputPath() {
+  const envPath = process.env.WOOCOMMERCE_PRODUCT_JSON_PATH;
+
+  if (!envPath) {
+    // Default: save to parent pipeline directory
+    return path.resolve(
       process.cwd(),
       "../tradezone_md_pipeline/product-json/tradezone-WooCommerce-Products.json",
     );
+  }
+
+  if (envPath.startsWith("http://") || envPath.startsWith("https://")) {
+    // If it's a URL, save locally to public directory (you'll need to upload manually or via CI)
+    return path.resolve(
+      process.cwd(),
+      "public/tradezone-WooCommerce-Products.json",
+    );
+  }
+
+  // Otherwise treat as local path
+  return path.resolve(process.cwd(), envPath);
+}
+
+const OUTPUT_PATH = resolveOutputPath();
 
 if (!CONSUMER_KEY || !CONSUMER_SECRET) {
   console.error(
@@ -91,8 +112,16 @@ function trimProduct(product) {
       name,
       slug,
     })),
-    tags: (product.tags || []).map(({ id, name, slug }) => ({ id, name, slug })),
-    images: (product.images || []).map(({ id, src, alt }) => ({ id, src, alt })),
+    tags: (product.tags || []).map(({ id, name, slug }) => ({
+      id,
+      name,
+      slug,
+    })),
+    images: (product.images || []).map(({ id, src, alt }) => ({
+      id,
+      src,
+      alt,
+    })),
     attributes: product.attributes,
     variations: product.variations,
   };

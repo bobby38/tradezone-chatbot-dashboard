@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tradezone.product-weekly</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>"/Users/bobbymini/Documents/tradezone-chatbot-dashboard/scripts/weekly-product-refresh.sh"</string>
+  </array>
+
+  <!-- Run at load so you can test immediately -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Weekly: Sunday at 02:00 local time -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <!-- Where to log stdout/stderr -->
+  <key>StandardOutPath</key>
+  <string>/Users/bobbymini/Library/Logs/com.tradezone.product-weekly.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/bobbymini/Library/Logs/com.tradezone.product-weekly.err.log</string>
+
+  <!-- Ensure it has a valid working directory -->
+  <key>WorkingDirectory</key>
+  <string>/Users/bobbymini/Documents/tradezone-chatbot-dashboard</string>
+</dict>
+</plist>

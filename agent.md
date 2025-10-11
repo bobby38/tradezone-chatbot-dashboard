@@ -116,7 +116,8 @@ Apply helper scripts in `/scripts`:
 - **GitHub export / tenant theming** — reserved hooks mentioned in `tradezone.md` growth section.
 
 ## 8. Operations & Tooling
-- **Search Console Sync**: Run `scripts/run-sc-sync.sh` weekly; maintain Launchd plist `scripts/com.tradezone.sc-weekly.plist`.
+- **Search Console Sync**: Run `scripts/run-sc-sync.sh` weekly; maintain Launchd plist `scripts/com.tradezone.sc-weekly.plist` (Saturday 02:15).
+- **Product Catalog Refresh**: Run `scripts/refresh-product-catalog.mjs` weekly; maintain Launchd plist `scripts/com.tradezone.product-weekly.plist` (Sunday 02:00). Fetches all products from WooCommerce API and saves to `public/tradezone-WooCommerce-Products.json`. Upload to CDN manually or via CI after refresh.
 - **Supabase migrations**: use `scripts/apply-supabase-migration.js` for ordered execution.
 - **Testing**: Playwright spec (`tests/ui-analysis.spec.js`) generates viewport screenshots and layout diagnostics. Augment with assertions and CI integration.
 - **Deployment**: Target Coolify + Docker per `plan.md`, ensure env secrets, run `npm run build` (Next 14) with Node ≥18.
@@ -927,7 +928,17 @@ APPWRITE_API_KEY=standard_beaed1a9e4dae3069f9e472815762d7aa2f4b6cfc3d5ec94507f98
 
 # Product Catalog (for vector search enrichment)
 WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+
+# WooCommerce API (for weekly product refresh)
+WOOCOMMERCE_CONSUMER_KEY=ck_9c3e0a271969ea56a3d294e54537ec1e7518c92e
+WOOCOMMERCE_CONSUMER_SECRET=cs_c13ac8aa41322b22a5d25fcb5f422982acec5a53
+WOOCOMMERCE_API_BASE=https://tradezone.sg/wp-json/wc/v3
 ```
+
+**Note**: The product catalog JSON is hosted on CDN. To refresh it:
+1. Local: Run `node scripts/refresh-product-catalog.mjs` (outputs to `public/tradezone-WooCommerce-Products.json`)
+2. Upload the generated file to your CDN at `https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json`
+3. Or set up automated weekly refresh via launchd (see Operations & Tooling section)
 
 #### Upload Flow
 ```
