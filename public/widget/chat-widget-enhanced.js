@@ -586,6 +586,10 @@
           min-height: 0;
         }
 
+        .tz-voice-container.active {
+          display: flex;
+        }
+
         .tz-voice-transcript {
           flex-grow: 1;
           overflow-y: auto;
