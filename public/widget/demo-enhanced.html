@@ -15,21 +15,18 @@
                 font-family:
                     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                     sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: #f9fafb;
                 min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
             }
 
             .container {
                 max-width: 900px;
                 width: 100%;
+                margin: 40px auto;
                 background: white;
                 border-radius: 20px;
                 padding: 60px 40px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
             }
 
             h1 {
@@ -212,9 +209,106 @@
                     flex-direction: column;
                 }
             }
+
+            .hero-video-container {
+                position: relative;
+                width: 100%;
+                height: 60vh;
+                overflow: hidden;
+            }
+
+            .hero-video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .hero-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.3);
+                text-align: center;
+                color: white;
+            }
+
+            .hero-cta-button {
+                padding: 16px 32px;
+                background: #8b5cf6;
+                color: white;
+                border-radius: 12px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+                font-size: 18px;
+                border: none;
+                cursor: pointer;
+            }
+
+            .hero-cta-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            }
+
+            .unmute-button {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.5);
+                border: none;
+                border-radius: 50%;
+                width: 44px;
+                height: 44px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1;
+            }
         </style>
     </head>
     <body>
+        <div class="hero-video-container">
+            <video
+                id="hero-video-player"
+                autoplay
+                playsinline
+                class="hero-video"
+            >
+                <source
+                    src="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
+                    type="video/mp4"
+                />
+            </video>
+            <div class="hero-overlay">
+                <button id="hero-unmute-button" class="unmute-button">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="white"
+                    >
+                        <path
+                            d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"
+                        />
+                    </svg>
+                </button>
+                <button
+                    class="hero-cta-button"
+                    onclick="document.getElementById('tz-chat-button').click(); return false;"
+                >
+                    Chat with Us
+                </button>
+            </div>
+        </div>
+
         <div class="container">
             <h1>🚀 Enhanced Chat Widget</h1>
             <p class="subtitle">
@@ -302,7 +396,7 @@
                     <a
                         href="#"
                         class="cta-button"
-                        onclick="document.getElementById('tz-chat-button').click(); return false;"
+                        onclick="TradeZoneChatEnhanced.toggleChat(); return false;"
                     >
                         💬 Open Text Chat
                     </a>
@@ -379,6 +473,58 @@
                 enableVoice: true,
                 enableVideo: true, // Video enabled
             });
+        </script>
+
+        <script>
+            const video = document.getElementById("hero-video-player");
+            const unmuteButton = document.getElementById("hero-unmute-button");
+            let loopCount = 0;
+            let hasPlayedOnce = false;
+
+            if (video && unmuteButton) {
+                // Try to play with sound on first load
+                video.muted = false;
+                video.play().catch((e) => {
+                    // If autoplay with sound fails (browser policy), fallback to muted
+                    console.log(
+                        "Autoplay with sound blocked, falling back to muted",
+                    );
+                    video.muted = true;
+                    video.play();
+                });
+
+                unmuteButton.addEventListener("click", function () {
+                    video.muted = !video.muted;
+                    if (!video.muted) {
+                        video
+                            .play()
+                            .catch((e) =>
+                                console.error("Video play failed", e),
+                            );
+                        unmuteButton.innerHTML =
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                    } else {
+                        unmuteButton.innerHTML =
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"/></svg>';
+                    }
+                });
+
+                video.addEventListener("ended", function () {
+                    if (!hasPlayedOnce) {
+                        // After first play with sound, mute for subsequent loops
+                        hasPlayedOnce = true;
+                        video.muted = true;
+                    }
+
+                    if (loopCount < 1) {
+                        // Loop 2 times total (initial play + 1 loop)
+                        loopCount++;
+                        this.play();
+                    } else {
+                        // Optional: hide unmute button or show a replay button
+                    }
+                });
+            }
         </script>
     </body>
 </html>
