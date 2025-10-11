@@ -889,8 +889,8 @@
           <div class="tz-chat-input-container" id="tz-input-container">
             <div class="tz-chat-input-wrapper">
               <button class="tz-chat-attach" id="tz-attach" title="Attach image">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M21.02 15.38c-.69 2.61-2.88 4.62-5.54 4.62-3.18 0-5.75-2.58-5.75-5.75s2.58-5.75 5.75-5.75c.32 0 .64.03.94.08l1.66-1.66c-.88-.34-1.83-.52-2.6-.52-4.42 0-8 3.58-8 8s3.58 8 8 8c3.71 0 6.85-2.56 7.74-6l-2.2-.02zM16 4l-4 4h3c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4V2C7.27 2 4 5.27 4 9s3.27 7 7 7 7-3.27 7-7h3l-5-5z"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
                 </svg>
               </button>
               <input
@@ -1437,7 +1437,12 @@
       const transcript = document.getElementById("tz-voice-transcript");
       const div = document.createElement("div");
       div.style.marginBottom = "8px";
-      div.innerHTML = `<strong style="color: ${role === "user" ? "#a78bfa" : "#8b5cf6"};">${role === "user" ? "You" : this.config.botName}:</strong> <span style="color: #e5e7eb;">${this.escapeHtml(text)}</span>`;
+
+      // Parse markdown for assistant messages, escape for user
+      const formattedText =
+        role === "assistant" ? this.parseMarkdown(text) : this.escapeHtml(text);
+
+      div.innerHTML = `<strong style="color: ${role === "user" ? "#a78bfa" : "#8b5cf6"};">${role === "user" ? "You" : this.config.botName}:</strong> <span style="color: #e5e7eb;">${formattedText}</span>`;
       transcript.appendChild(div);
       transcript.scrollTop = transcript.scrollHeight;
     },
