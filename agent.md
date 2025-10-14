@@ -1421,3 +1421,270 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
 **Cost Savings**: ~75% reduction in API costs
 **Security Level**: Enterprise-grade with 6-layer protection
 **Monitoring**: Real-time usage tracking & alerts
+
+---
+
+### October 14, 2025 - Widget Installation Guide for Elementor/WordPress
+
+#### Hero Section with Video + Chat Trigger
+
+**Complete Elementor HTML Code** for hero section with Amara video, auto-play with sound, and chat button:
+
+```html
+<style>
+  .tz-hero-section {
+    position: relative;
+    width: 100%;
+    height: 60vh;
+    min-height: 400px;
+    overflow: hidden;
+    border-radius: 16px;
+    margin-bottom: 40px;
+  }
+  
+  .tz-hero-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .tz-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    text-align: center;
+    gap: 12px;
+    padding-top: 120px;
+  }
+  
+  .tz-hero-title {
+    color: white;
+    font-size: 48px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+  
+  .tz-hero-subtitle {
+    color: white;
+    font-size: 20px;
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+  
+  .tz-hero-cta-button {
+    padding: 18px 36px;
+    background: #822EE3;
+    color: white;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 18px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(130, 46, 227, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .tz-hero-cta-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(130, 46, 227, 0.6);
+    background: #9333ea;
+  }
+  
+  .tz-unmute-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: all 0.2s;
+  }
+  
+  .tz-unmute-button:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+  
+  @media (max-width: 768px) {
+    .tz-hero-section {
+      height: 50vh;
+      min-height: 300px;
+    }
+    
+    .tz-hero-overlay {
+      padding-top: 60px;
+      gap: 8px;
+    }
+    
+    .tz-hero-title {
+      font-size: 32px;
+    }
+    
+    .tz-hero-subtitle {
+      font-size: 16px;
+    }
+    
+    .tz-hero-cta-button {
+      padding: 16px 28px;
+      font-size: 16px;
+    }
+  }
+</style>
+
+<div class="tz-hero-section">
+  <video id="tz-hero-video" autoplay playsinline class="tz-hero-video">
+    <source src="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4" type="video/mp4">
+  </video>
+  
+  <button id="tz-unmute-btn" class="tz-unmute-button">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+      <path d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"/>
+    </svg>
+  </button>
+  
+  <div class="tz-hero-overlay">
+    <h1 class="tz-hero-title">Meet Amara</h1>
+    <p class="tz-hero-subtitle">Your AI Shopping Assistant</p>
+    
+    <button class="tz-hero-cta-button" onclick="document.getElementById('tz-chat-button').click();">
+      💬 Chat with Us
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const video = document.getElementById('tz-hero-video');
+  const unmuteBtn = document.getElementById('tz-unmute-btn');
+  
+  if (!video || !unmuteBtn) return;
+  
+  let loopCount = 0;
+  let hasPlayedOnce = false;
+  
+  // Try to play with sound on first load
+  video.muted = false;
+  video.play().catch(() => {
+    console.log('Autoplay with sound blocked, falling back to muted');
+    video.muted = true;
+    video.play();
+  });
+  
+  // Unmute button toggle
+  unmuteBtn.addEventListener('click', function() {
+    video.muted = !video.muted;
+    
+    if (!video.muted) {
+      video.play().catch(e => console.error('Video play failed', e));
+      unmuteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+    } else {
+      unmuteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"/></svg>';
+    }
+  });
+  
+  // After first play, mute for subsequent loops
+  video.addEventListener('ended', function() {
+    if (!hasPlayedOnce) {
+      hasPlayedOnce = true;
+      video.muted = true;
+    }
+    
+    if (loopCount < 2) {
+      loopCount++;
+      this.play();
+    }
+  });
+})();
+</script>
+```
+
+#### Installation Steps
+
+**1. Add Widget Script** (Theme Header or Elementor Custom Code):
+```html
+<!-- TradeZone Chat Widget -->
+<script
+  src="https://trade.rezult.co/widget/chat-widget-enhanced.js"
+  data-api-url="https://trade.rezult.co"
+  data-api-key="tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq"
+  data-position="bottom-right"
+  data-primary-color="#8b5cf6"
+  data-video-url="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
+></script>
+```
+
+**2. Add Hero Section** (Elementor HTML Widget):
+- Paste the complete HTML code above
+- Place at top of page or in hero section
+
+**3. Features**:
+- ✅ Video plays with sound on first load (falls back to muted if blocked)
+- ✅ Unmute button (top-right corner)
+- ✅ "Chat with Us" button opens widget
+- ✅ Loops 3 times, then stops
+- ✅ Mobile responsive
+- ✅ Text positioned below Amara's mouth
+- ✅ TradeZone purple color (#822EE3)
+
+#### Alternative: Simple Button Only
+
+For pages without video, add this in Elementor HTML widget:
+
+```html
+<button 
+  style="padding: 18px 36px; background: #822EE3; color: white; border-radius: 12px; font-weight: 600; font-size: 18px; border: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(130, 46, 227, 0.4);"
+  onclick="document.getElementById('tz-chat-button').click();"
+  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(130, 46, 227, 0.6)'; this.style.background='#9333ea';"
+  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(130, 46, 227, 0.4)'; this.style.background='#822EE3';"
+>
+  💬 Chat with Us
+</button>
+```
+
+Or use Elementor Button widget with `onclick` attribute:
+- **Advanced → Attributes**: Add `onclick` = `document.getElementById('tz-chat-button').click(); return false;`
+
+#### Customization
+
+**Change colors**:
+```css
+background: #822EE3;  /* Purple button */
+background: #9333ea;  /* Hover purple */
+```
+
+**Change text**:
+```html
+<h1 class="tz-hero-title">Meet Amara</h1>
+<p class="tz-hero-subtitle">Your AI Shopping Assistant</p>
+<button>💬 Chat with Us</button>
+```
+
+**Change video**:
+```html
+<source src="YOUR_VIDEO_URL.mp4" type="video/mp4">
+```
+
+**Adjust loop count**:
+```javascript
+if (loopCount < 2) {  // Change to loop more/less times
+```
+
+**Status**: ✅ Production Ready - Working on tradezone.sg
+
