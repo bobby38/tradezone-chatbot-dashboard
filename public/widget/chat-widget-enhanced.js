@@ -728,8 +728,9 @@
         }
 
         .tz-chat-attach svg {
-          width: 20px;
-          height: 20px;
+          width: 20px !important;
+          height: 20px !important;
+          display: block !important;
         }
 
         .tz-chat-input {
@@ -813,9 +814,10 @@
         }
 
         .tz-chat-send svg {
-          width: 20px;
-          height: 20px;
-          fill: white;
+          width: 20px !important;
+          height: 20px !important;
+          fill: white !important;
+          display: block !important;
         }
 
         .tz-chat-send:disabled {
