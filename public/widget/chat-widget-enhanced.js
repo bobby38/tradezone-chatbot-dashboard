@@ -163,9 +163,11 @@
         }
 
         #tz-chat-button svg {
-          width: 28px;
-          height: 28px;
-          fill: white;
+          width: 28px !important;
+          height: 28px !important;
+          fill: white !important;
+          display: block !important;
+          stroke: none !important;
         }
 
         /* Backdrop overlay */
@@ -350,6 +352,15 @@
           pointer-events: auto !important;
         }
 
+        .tz-chat-close svg {
+          width: 20px !important;
+          height: 20px !important;
+          display: block !important;
+          stroke: white !important;
+          stroke-width: 2 !important;
+          fill: none !important;
+        }
+
         .tz-chat-close:hover {
           background: rgba(139, 92, 246, 0.3);
         }
@@ -420,8 +431,10 @@
         }
 
         .tz-mode-btn svg {
-          width: 16px;
-          height: 16px;
+          width: 16px !important;
+          height: 16px !important;
+          display: inline-block !important;
+          fill: currentColor !important;
         }
 
         /* Messages Area */
@@ -642,9 +655,10 @@
         }
 
         .tz-voice-button svg {
-          width: 48px;
-          height: 48px;
-          fill: white;
+          width: 48px !important;
+          height: 48px !important;
+          display: block !important;
+          fill: white !important;
         }
 
         @keyframes tzVoicePulse {
