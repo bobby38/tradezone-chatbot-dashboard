@@ -1947,6 +1947,7 @@
           position: script.getAttribute("data-position") || "bottom-right",
           primaryColor: script.getAttribute("data-primary-color") || "#8b5cf6",
           videoUrl: script.getAttribute("data-video-url") || "",
+          apiKey: script.getAttribute("data-api-key") || "",
         });
       }
     }
