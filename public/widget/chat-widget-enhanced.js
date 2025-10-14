@@ -319,18 +319,20 @@
         }
 
         .tz-chat-hero-title {
-          font-size: 24px;
-          font-weight: 700;
-          margin: 0 0 4px 0;
-          text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-          opacity: 0.9;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          font-size: 24px !important;
+          font-weight: 700 !important;
+          margin: 0 0 4px 0 !important;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.8) !important;
+          opacity: 0.9 !important;
         }
 
         .tz-chat-hero-subtitle {
-          font-size: 14px;
-          margin: 0;
-          opacity: 0.9;
-          text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          font-size: 14px !important;
+          margin: 0 !important;
+          opacity: 0.9 !important;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.8) !important;
         }
 
         .tz-chat-close {
