@@ -51,6 +51,7 @@
     },
 
     sessionId: null,
+    clientId: null, // Persistent client identifier
     isOpen: false,
     messages: [],
     mode: "text", // 'text' or 'voice'
@@ -73,7 +74,8 @@
 
     init: function (options) {
       this.config = { ...this.config, ...options };
-      this.sessionId = this.generateSessionId();
+      this.clientId = this.getOrCreateClientId();
+      this.sessionId = this.getOrCreateSessionId();
 
       // Ensure viewport meta tag for mobile
       this.ensureViewport();
@@ -125,8 +127,94 @@
       }
     },
 
-    generateSessionId: function () {
-      return "Guest-" + Math.floor(1000 + Math.random() * 9000);
+    // Get or create persistent client ID (survives page reloads)
+    getOrCreateClientId: function () {
+      const STORAGE_KEY = "tz_client_id";
+      try {
+        let clientId = localStorage.getItem(STORAGE_KEY);
+        if (!clientId) {
+          // Generate UUID-like ID
+          clientId = "client_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem(STORAGE_KEY, clientId);
+          console.log("[TradeZone] New client ID created:", clientId);
+        }
+        return clientId;
+      } catch (e) {
+        // Fallback if localStorage blocked (incognito/privacy mode)
+        console.warn("[TradeZone] localStorage unavailable, using session-only ID");
+        return "client_temp_" + Date.now();
+      }
+    },
+
+    // Get or create session ID (tied to client ID)
+    getOrCreateSessionId: function () {
+      const STORAGE_KEY = "tz_session_id";
+      const EXPIRY_KEY = "tz_session_expiry";
+      const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+      try {
+        let sessionId = localStorage.getItem(STORAGE_KEY);
+        let expiry = localStorage.getItem(EXPIRY_KEY);
+
+        // Check if session expired
+        if (sessionId && expiry && Date.now() < parseInt(expiry)) {
+          console.log("[TradeZone] Resuming session:", sessionId);
+          this.loadHistoryFromStorage();
+          return sessionId;
+        }
+
+        // Create new session
+        sessionId = this.clientId + "_" + Date.now();
+        localStorage.setItem(STORAGE_KEY, sessionId);
+        localStorage.setItem(EXPIRY_KEY, (Date.now() + SESSION_DURATION).toString());
+        console.log("[TradeZone] New session created:", sessionId);
+        return sessionId;
+      } catch (e) {
+        console.warn("[TradeZone] localStorage unavailable, using temp session");
+        return "session_temp_" + Date.now();
+      }
+    },
+
+    // Load chat history from localStorage
+    loadHistoryFromStorage: function () {
+      const HISTORY_KEY = "tz_chat_history";
+      try {
+        const stored = localStorage.getItem(HISTORY_KEY);
+        if (stored) {
+          this.messages = JSON.parse(stored);
+          console.log("[TradeZone] Loaded", this.messages.length, "messages from storage");
+        }
+      } catch (e) {
+        console.warn("[TradeZone] Failed to load history:", e);
+        this.messages = [];
+      }
+    },
+
+    // Save chat history to localStorage
+    saveHistoryToStorage: function () {
+      const HISTORY_KEY = "tz_chat_history";
+      const MAX_MESSAGES = 50; // Limit storage size
+      try {
+        // Keep only last N messages
+        const toSave = this.messages.slice(-MAX_MESSAGES);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(toSave));
+      } catch (e) {
+        console.warn("[TradeZone] Failed to save history:", e);
+      }
+    },
+
+    // Clear session and start fresh
+    clearSession: function () {
+      try {
+        localStorage.removeItem("tz_session_id");
+        localStorage.removeItem("tz_session_expiry");
+        localStorage.removeItem("tz_chat_history");
+        this.messages = [];
+        this.sessionId = this.getOrCreateSessionId();
+        console.log("[TradeZone] Session cleared, new session:", this.sessionId);
+      } catch (e) {
+        console.warn("[TradeZone] Failed to clear session:", e);
+      }
     },
 
     injectStyles: function () {
@@ -1171,6 +1259,38 @@
       document.body.appendChild(widget);
     },
 
+    // Render loaded history when widget opens
+    renderLoadedHistory: function () {
+      const container = document.getElementById("tz-messages");
+      if (!container || this.messages.length === 0) return;
+
+      // Clear existing messages (except greeting)
+      container.innerHTML = `
+        <div class="tz-chat-message">
+          <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
+          <div class="tz-chat-message-bubble">${this.config.greeting}</div>
+        </div>
+      `;
+
+      // Render each message from history
+      this.messages.forEach((msg) => {
+        const div = document.createElement("div");
+        div.className = `tz-chat-message ${msg.role}`;
+        const formattedText =
+          msg.role === "assistant"
+            ? this.parseMarkdown(msg.content)
+            : this.escapeHtml(msg.content);
+        div.innerHTML = `
+          <div class="tz-chat-message-avatar">${msg.role === "user" ? "U" : this.config.botName[0]}</div>
+          <div class="tz-chat-message-bubble">${formattedText}</div>
+        `;
+        container.appendChild(div);
+      });
+
+      container.scrollTop = container.scrollHeight;
+      console.log("[TradeZone] Rendered", this.messages.length, "messages from history");
+    },
+
     attachEventListeners: function () {
       document
         .getElementById("tz-chat-button")
@@ -1244,6 +1364,10 @@
         button.style.display = "none";
         document.body.classList.add("tz-widget-open"); // Lock body scroll on mobile
         this.updateWidgetHeight();
+        
+        // Render loaded history on first open
+        this.renderLoadedHistory();
+        
         document.getElementById("tz-input").focus();
       }
     },
@@ -1368,6 +1492,9 @@
         role: role,
         content: text,
       });
+      
+      // Save to localStorage for persistence
+      this.saveHistoryToStorage();
 
       const container = document.getElementById("tz-messages");
       const div = document.createElement("div");

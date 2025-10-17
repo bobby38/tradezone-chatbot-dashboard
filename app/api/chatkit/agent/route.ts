@@ -83,7 +83,7 @@ const supabase = createClient(
 
 const DEFAULT_ORG_ID = "765e1172-b666-471f-9b42-f80c9b5006de";
 
-// Default Izacc system prompt
+// Default Amara system prompt
 const DEFAULT_SYSTEM_PROMPT = CHATKIT_DEFAULT_PROMPT;
 
 type HybridSearchSource = "vector_store" | "product_catalog" | "perplexity";

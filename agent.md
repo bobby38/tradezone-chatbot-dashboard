@@ -554,7 +554,201 @@ lib/
 
 ---
 
+---
+
+## 12. Quick Backup & Recovery Guide
+
+### What You Need to Do RIGHT NOW
+
+#### 1. Backup Environment Variables (MOST CRITICAL) ⚠️
+
+This is your #1 priority because if you lose these, the system won't work:
+
+```bash
+# Option A: Copy to secure password manager (RECOMMENDED)
+# Open .env.local and copy ALL content to:
+# - 1Password / LastPass / BitWarden
+# - Save as "TradeZone Environment Variables"
+
+# Option B: Encrypted backup file
+cd /Users/bobbymini/Documents/tradezone-chatbot-dashboard
+openssl enc -aes-256-cbc -salt -in .env.local -out .env.backup_$(date +%Y%m%d).enc
+
+# Save the encrypted file to:
+# - External USB drive
+# - Google Drive (it's encrypted so safe)
+```
+
+**Do this TODAY** - Takes 5 minutes, saves you from disaster! ⭐
+
+#### 2. Supabase Auto-Backups (Already Working!) ✅
+
+Good news - Supabase automatically backs up your database:
+
+**Nothing to do!** But know where to find it:
+1. Go to: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/backup
+2. You'll see daily backups (kept for 7 days on free tier)
+3. If disaster strikes, just click "Restore"
+
+#### 3. Weekly Manual Backup (RECOMMENDED) 📅
+
+Set a calendar reminder every **Sunday** to run this:
+
+```bash
+# Get your database URL from Supabase Dashboard
+export SUPABASE_DB_URL="postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres"
+
+# Create backup (takes 1-2 minutes)
+pg_dump $SUPABASE_DB_URL | gzip > ~/backups/tradezone_backup_$(date +%Y%m%d).sql.gz
+
+# Keep last 4 weeks (delete older)
+find ~/backups -name "tradezone_backup_*.sql.gz" -mtime +28 -delete
+```
+
+**First time setup:**
+```bash
+# Create backups folder
+mkdir -p ~/backups
+```
+
+#### 4. Code is Already Backed Up ✅
+
+Your code is on GitHub, so it's already safe. Just make sure:
+```bash
+# Push any uncommitted changes
+cd /Users/bobbymini/Documents/tradezone-chatbot-dashboard
+git add .
+git commit -m "Backup checkpoint"
+git push
+```
+
+### Recommended Backup Schedule
+
+| Task | Frequency | Time Required |
+|------|-----------|---------------|
+| **Env variables backup** | **TODAY (one-time)** | 5 minutes ⚠️ |
+| Manual database backup | Weekly (Sunday) | 2 minutes |
+| Check Supabase auto-backup | Monthly | 1 minute |
+| Test restore procedure | Quarterly | 15 minutes |
+| Git push code | After changes | 30 seconds |
+
+### Minimum Viable Backup (If Short on Time)
+
+If you only have 10 minutes, do these **2 things**:
+
+1. **Copy `.env.local` to password manager** (5 min) ⭐⭐⭐
+2. **Verify Supabase auto-backups enabled** (2 min) ⭐⭐
+
+That covers 90% of disaster scenarios!
+
+### Where to Store Backups
+
+**Good:**
+- ✅ Password manager (1Password, LastPass) - for .env files
+- ✅ External USB/SSD drive - for database dumps
+- ✅ Google Drive (with encryption) - for .env backups
+- ✅ Supabase built-in backups (already working)
+
+**Bad:**
+- ❌ Don't commit .env to GitHub
+- ❌ Don't email backups unencrypted
+- ❌ Don't store only on local machine
+
+### Emergency Recovery: "I Lost Everything!"
+
+If disaster strikes, here's recovery priority:
+
+1. **Restore Supabase database** → Use auto-backup (7 days available)
+2. **Restore environment variables** → Get from password manager
+3. **Clone code from GitHub** → `git clone`
+4. **Redeploy to Coolify** → Push to main branch
+
+**Recovery time:** 30-60 minutes if you have backups ✅
+
+**For complete backup/recovery procedures, see `BACKUP_RECOVERY.md`**
+
+---
+
+## 13. Client Account Management
+
+### Creating Secure Client Accounts
+
+The system uses a **3-tier role hierarchy**:
+
+| Role | Permissions | Use Case |
+|------|-------------|----------|
+| **admin** | Full access to organization settings, can modify ChatKit config, manage users | Your account (owner) |
+| **editor** | Can view/create/edit content, view analytics, manage submissions | ✅ **Recommended for clients** |
+| **viewer** | Read-only access to analytics and content | Limited access clients |
+
+### Quick Setup for Client Account
+
+**Step 1: Create User in Supabase Dashboard**
+1. Go to: Supabase Dashboard → Authentication → Users
+2. Click "Add user" → "Create new user"
+3. Enter email, password, and **check "Auto Confirm User"**
+4. Copy the User ID (UUID)
+
+**Step 2: Create Profile & Link to Organization**
+```sql
+-- Replace USER_ID and ORG_ID with actual values
+INSERT INTO profiles (id, email, full_name)
+VALUES ('USER_ID'::uuid, 'client@example.com', 'Client Name');
+
+INSERT INTO user_organizations (user_id, org_id, role)
+VALUES ('USER_ID'::uuid, 'ORG_ID'::uuid, 'editor');
+
+-- Verify
+SELECT p.email, uo.role, o.name as organization
+FROM profiles p
+JOIN user_organizations uo ON p.id = uo.user_id
+JOIN organizations o ON uo.org_id = o.id
+WHERE p.email = 'client@example.com';
+```
+
+**Get Your Organization ID:**
+```sql
+SELECT id, name, slug FROM organizations;
+```
+
+### What Clients CAN and CANNOT Access
+
+**✅ Editor Role Can Access:**
+- Dashboard overview and analytics
+- Chat logs and session management
+- Form submissions and AI content generation
+- Google Analytics, Search Console, WooCommerce data
+- Chat interface (text and voice)
+- Profile settings
+
+**❌ Editor Role CANNOT Access:**
+- ChatKit configuration (API keys, models, prompts)
+- Organization settings (webhook config, credentials)
+- User management (add/remove users)
+- Security settings and rate limits
+- Database operations and migrations
+
+**For complete client account setup guide, see `CLIENT_ACCOUNT_SETUP.md`**
+
+---
+
 ## Change Log
+
+### January 16, 2025 - Client Account Setup & Backup Documentation
+**Updates**:
+- ✅ Created comprehensive client account setup guide (`CLIENT_ACCOUNT_SETUP.md`)
+- ✅ Created complete backup/recovery procedures (`BACKUP_RECOVERY.md`)
+- ✅ Added quick backup guide to agent.md for easy reference
+- ✅ Documented 3-tier role system (admin/editor/viewer)
+- ✅ Added client account management procedures
+- ✅ Successfully set up tradezonehougang@gmail.com as editor role
+- ✅ Confirmed production auth enforcement (no bypass in Coolify)
+
+**Security Notes**:
+- Editor role provides safe client access without system modification rights
+- RLS policies enforce organization-scoped data access
+- Environment variables backup identified as critical priority
+- Supabase auto-backups confirmed working (7-day retention)
 
 ### October 10, 2025 - OpenAI Realtime Voice Integration
 **Branch**: `feature/openai-agentkit`

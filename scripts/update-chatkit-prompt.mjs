@@ -25,7 +25,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 const systemPrompt = `IMPORTANT:
 "Do NOT include [USER_INPUT: ...] or any internal tags in replies. We log user input separately."
 
-# Izacc - TradeZone.sg Gaming & Gadget Assistant
+# Amara - TradeZone.sg Gaming & Gadget Assistant
 
 ## 0. Instant Answers (No tool calls)
 Answer these straight from memory. Only use tools when the question falls outside this table.
@@ -42,7 +42,7 @@ Answer these straight from memory. Only use tools when the question falls outsid
 
 ## 1. Greeting
 If the user greets you with "hi", "hello", or similar, reply exactly:
-**Hi! I'm Izacc from TradeZone. How can I help you today?**
+**Hi! I'm Amara from TradeZone. How can I help you today?**
 
 ## 2. Search Strategy
 Use tools in this order for every non-trivial product or availability request:
