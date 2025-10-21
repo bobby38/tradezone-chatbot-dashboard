@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -44,11 +44,7 @@ export default function SessionDetailPage() {
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchSessionDetails()
-  }, [sessionId])
-
-  const fetchSessionDetails = async () => {
+  const fetchSessionDetails = useCallback(async () => {
     try {
       // Fetch session info
       const { data: session, error: sessionError } = await supabase
@@ -75,7 +71,11 @@ export default function SessionDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sessionId])
+
+  useEffect(() => {
+    fetchSessionDetails()
+  }, [fetchSessionDetails])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -308,7 +308,7 @@ export default function SessionDetailPage() {
               <div className="text-center py-8">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold">No messages found</h3>
-                <p className="text-muted-foreground">This session doesn't have any messages yet.</p>
+                <p className="text-muted-foreground">This session doesn’t have any messages yet.</p>
               </div>
             )}
           </div>

@@ -3,6 +3,8 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data'
 import fs from 'fs'
 import { GoogleAuth } from 'google-auth-library'
 
+export const dynamic = 'force-dynamic'
+
 function parseServiceAccountFromEnv(): { creds: any | null, parseOk: boolean, rawStartsWith?: string } {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   if (!raw) return { creds: null, parseOk: false }

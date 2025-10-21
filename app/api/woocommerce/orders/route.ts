@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import WooCommerceRestApi from '@woocommerce/woocommerce-rest-api'
 
+export const dynamic = 'force-dynamic'
+
 function getWoo() {
   const url = process.env.WC_SITE
   const key = process.env.WC_KEY

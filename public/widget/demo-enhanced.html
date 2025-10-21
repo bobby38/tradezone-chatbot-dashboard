@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TradeZone Enhanced Chat Widget Demo</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                background: #f9fafb;
+                min-height: 100vh;
+            }
+
+            .container {
+                max-width: 900px;
+                width: 100%;
+                margin: 40px auto;
+                background: white;
+                border-radius: 20px;
+                padding: 60px 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            }
+
+            h1 {
+                font-size: 48px;
+                color: #1f2937;
+                margin-bottom: 16px;
+                text-align: center;
+            }
+
+            .subtitle {
+                font-size: 20px;
+                color: #6b7280;
+                text-align: center;
+                margin-bottom: 40px;
+            }
+
+            .features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 24px;
+                margin-bottom: 40px;
+            }
+
+            .feature {
+                text-align: center;
+                padding: 32px 24px;
+                background: #f9fafb;
+                border-radius: 16px;
+                transition: transform 0.2s;
+            }
+
+            .feature:hover {
+                transform: translateY(-4px);
+            }
+
+            .feature-icon {
+                font-size: 48px;
+                margin-bottom: 16px;
+            }
+
+            .feature-title {
+                font-size: 18px;
+                font-weight: 700;
+                color: #1f2937;
+                margin-bottom: 8px;
+            }
+
+            .feature-desc {
+                font-size: 14px;
+                color: #6b7280;
+                line-height: 1.6;
+            }
+
+            .cta {
+                text-align: center;
+                padding: 40px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 16px;
+                color: white;
+                margin-bottom: 40px;
+            }
+
+            .cta h2 {
+                font-size: 32px;
+                margin-bottom: 16px;
+            }
+
+            .cta p {
+                font-size: 18px;
+                opacity: 0.95;
+                margin-bottom: 24px;
+                line-height: 1.6;
+            }
+
+            .cta-buttons {
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .cta-button {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 16px 32px;
+                background: white;
+                color: #667eea;
+                border-radius: 12px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+                font-size: 16px;
+            }
+
+            .cta-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            }
+
+            .cta-button.secondary {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                backdrop-filter: blur(10px);
+            }
+
+            .info-box {
+                background: #f0f9ff;
+                border: 2px solid #3b82f6;
+                border-radius: 12px;
+                padding: 24px;
+                margin-bottom: 24px;
+            }
+
+            .info-box h3 {
+                color: #1e40af;
+                font-size: 18px;
+                margin-bottom: 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .info-box p {
+                color: #1e3a8a;
+                line-height: 1.6;
+                margin-bottom: 8px;
+            }
+
+            .info-box ul {
+                margin-left: 20px;
+                color: #1e3a8a;
+            }
+
+            .info-box li {
+                margin-bottom: 8px;
+            }
+
+            .code-section {
+                margin-top: 40px;
+                padding: 24px;
+                background: #1f2937;
+                border-radius: 12px;
+                color: white;
+            }
+
+            .code-section h3 {
+                font-size: 18px;
+                margin-bottom: 16px;
+                color: #10b981;
+            }
+
+            .code-section pre {
+                background: #111827;
+                padding: 16px;
+                border-radius: 8px;
+                overflow-x: auto;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .code-section code {
+                color: #e5e7eb;
+            }
+
+            @media (max-width: 640px) {
+                .container {
+                    padding: 40px 24px;
+                }
+
+                h1 {
+                    font-size: 36px;
+                }
+
+                .features {
+                    grid-template-columns: 1fr;
+                }
+
+                .cta-buttons {
+                    flex-direction: column;
+                }
+            }
+
+            .hero-video-container {
+                position: relative;
+                width: 100%;
+                height: 60vh;
+                overflow: hidden;
+            }
+
+            .hero-video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .hero-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0, 0, 0, 0.3);
+                text-align: center;
+                color: white;
+            }
+
+            .hero-cta-button {
+                padding: 16px 32px;
+                background: #8b5cf6;
+                color: white;
+                border-radius: 12px;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+                font-size: 18px;
+                border: none;
+                cursor: pointer;
+            }
+
+            .hero-cta-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            }
+
+            .unmute-button {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.5);
+                border: none;
+                border-radius: 50%;
+                width: 44px;
+                height: 44px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="hero-video-container">
+            <video
+                id="hero-video-player"
+                autoplay
+                playsinline
+                class="hero-video"
+            >
+                <source
+                    src="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
+                    type="video/mp4"
+                />
+            </video>
+            <div class="hero-overlay">
+                <button id="hero-unmute-button" class="unmute-button">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="white"
+                    >
+                        <path
+                            d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"
+                        />
+                    </svg>
+                </button>
+                <button
+                    class="hero-cta-button"
+                    onclick="document.getElementById('tz-chat-button').click(); return false;"
+                >
+                    Chat with Us
+                </button>
+            </div>
+        </div>
+
+        <div class="container">
+            <h1>🚀 Enhanced Chat Widget</h1>
+            <p class="subtitle">
+                Full-featured AI assistant with text, voice, and video
+            </p>
+
+            <div class="info-box">
+                <h3>✨ New Features</h3>
+                <ul>
+                    <li>
+                        <strong>Video Avatar</strong> - Hero section with
+                        autoplay video
+                    </li>
+                    <li>
+                        <strong>Voice Chat</strong> - Real-time voice
+                        conversations with GPT-4o-mini Realtime
+                    </li>
+                    <li>
+                        <strong>Mode Toggle</strong> - Switch between text and
+                        voice seamlessly
+                    </li>
+                    <li>
+                        <strong>Call Button</strong> - Start voice calls with
+                        one click
+                    </li>
+                    <li>
+                        <strong>Live Transcription</strong> - See what you and
+                        the AI are saying
+                    </li>
+                </ul>
+            </div>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">💬</div>
+                    <div class="feature-title">Text Chat</div>
+                    <div class="feature-desc">
+                        Type your questions and get instant AI responses
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎙️</div>
+                    <div class="feature-title">Voice Chat</div>
+                    <div class="feature-desc">
+                        Speak naturally with real-time voice AI
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎬</div>
+                    <div class="feature-title">Video Avatar</div>
+                    <div class="feature-desc">
+                        Engaging hero section with your brand video
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔄</div>
+                    <div class="feature-title">Mode Switching</div>
+                    <div class="feature-desc">
+                        Toggle between text and voice anytime
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-title">Mobile Ready</div>
+                    <div class="feature-desc">
+                        Perfect experience on all devices
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Low Latency</div>
+                    <div class="feature-desc">
+                        200-300ms voice response time
+                    </div>
+                </div>
+            </div>
+
+            <div class="cta">
+                <h2>Try it now!</h2>
+                <p>
+                    Click the chat button in the bottom-right corner to
+                    experience the full-featured widget
+                </p>
+                <div class="cta-buttons">
+                    <a
+                        href="#"
+                        class="cta-button"
+                        onclick="TradeZoneChatEnhanced.toggleChat(); return false;"
+                    >
+                        💬 Open Text Chat
+                    </a>
+                    <a
+                        href="#"
+                        class="cta-button secondary"
+                        onclick="document.getElementById('tz-chat-button').click(); setTimeout(() => document.querySelector('[data-mode=voice]').click(), 500); return false;"
+                    >
+                        🎙️ Start Voice Call
+                    </a>
+                </div>
+            </div>
+
+            <div class="code-section">
+                <h3>Installation Code</h3>
+                <pre><code>&lt;!-- Enhanced Widget with Video + Voice --&gt;
+&lt;script
+  src="https://your-domain.com/widget/chat-widget-enhanced.js"
+  data-api-url="https://your-dashboard.com"
+  data-position="bottom-right"
+  data-primary-color="#2563eb"
+  data-video-url="https://your-domain.com/avatar-video.mp4"
+&gt;&lt;/script&gt;</code></pre>
+            </div>
+
+            <div class="code-section" style="margin-top: 20px">
+                <h3>Manual Initialization</h3>
+                <pre><code>&lt;script src="https://your-domain.com/widget/chat-widget-enhanced.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  TradeZoneChatEnhanced.init({
+    apiUrl: 'https://your-dashboard.com',
+    position: 'bottom-right',
+    primaryColor: '#2563eb',
+    videoUrl: 'https://your-domain.com/avatar-video.mp4',
+    greeting: 'Hi! I can help via text or voice. What do you prefer?',
+    botName: 'Izacc',
+    enableVoice: true,  // Enable voice chat
+    enableVideo: true   // Enable video hero
+  });
+&lt;/script&gt;</code></pre>
+            </div>
+
+            <div class="code-section" style="margin-top: 20px">
+                <h3>Configuration Options</h3>
+                <pre><code>{
+  apiUrl: 'https://your-dashboard.com',  // Required
+  position: 'bottom-right',              // or 'bottom-left'
+  primaryColor: '#2563eb',               // Brand color
+  videoUrl: 'https://...',               // Hero video URL
+  greeting: 'Hi! How can I help?',       // Initial message
+  botName: 'Amara',                      // Bot display name
+  placeholder: 'Type your message...',   // Input placeholder
+  enableVoice: true,                     // Enable voice chat
+  enableVideo: true                      // Enable video hero
+}</code></pre>
+            </div>
+        </div>
+
+        <!-- TradeZone Enhanced Chat Widget -->
+        <script src="./chat-widget-enhanced.js?v=2.1"></script>
+        <script>
+            TradeZoneChatEnhanced.init({
+                apiUrl:
+                    window.location.hostname === "localhost"
+                        ? "http://localhost:3000"
+                        : "https://trade.rezult.co",
+                apiKey: "tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq", // Widget API key
+                position: "bottom-right",
+                primaryColor: "#8b5cf6", // Purple - NO BLUE!
+                videoUrl:
+                    "https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4", // Amara avatar video
+                greeting:
+                    "Hi! Welcome to TradeZone. I can help via text or voice. What do you prefer?",
+                botName: "Amara",
+                enableVoice: true,
+                enableVideo: true, // Video enabled
+            });
+        </script>
+
+        <script>
+            const video = document.getElementById("hero-video-player");
+            const unmuteButton = document.getElementById("hero-unmute-button");
+            let loopCount = 0;
+            let hasPlayedOnce = false;
+
+            if (video && unmuteButton) {
+                // Try to play with sound on first load
+                video.muted = false;
+                video.play().catch((e) => {
+                    // If autoplay with sound fails (browser policy), fallback to muted
+                    console.log(
+                        "Autoplay with sound blocked, falling back to muted",
+                    );
+                    video.muted = true;
+                    video.play();
+                });
+
+                unmuteButton.addEventListener("click", function () {
+                    video.muted = !video.muted;
+                    if (!video.muted) {
+                        video
+                            .play()
+                            .catch((e) =>
+                                console.error("Video play failed", e),
+                            );
+                        unmuteButton.innerHTML =
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                    } else {
+                        unmuteButton.innerHTML =
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"/></svg>';
+                    }
+                });
+
+                video.addEventListener("ended", function () {
+                    if (!hasPlayedOnce) {
+                        // After first play with sound, mute for subsequent loops
+                        hasPlayedOnce = true;
+                        video.muted = true;
+                    }
+
+                    if (loopCount < 1) {
+                        // Loop 2 times total (initial play + 1 loop)
+                        loopCount++;
+                        this.play();
+                    } else {
+                        // Optional: hide unmute button or show a replay button
+                    }
+                });
+            }
+        </script>
+    </body>
+</html>

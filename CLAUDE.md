@@ -4,12 +4,14 @@
 
 ### Working Components
 - ✅ **Chat Session Management** - n8n sends Guest-XX session IDs, conversations properly grouped
+- ✅ **ChatKit Security System** - Multi-layer protection against spam and API abuse
+- ✅ **Trade-In Email Notifications** - Text & voice chat trade-in submissions send emails (FIXED 2025-01-20)
 - ✅ **Search Console Integration** - Real data from Supabase with skeleton loaders and caching
 - ✅ **Google Analytics 4 API** - Returns real data (sessions, users, pageviews, etc.)
 - ✅ **WooCommerce API** - Returns real order data
 - ✅ **Dashboard Navigation** - Clean UI with proper routing
 - ✅ **Authentication System** - Supabase auth working
-- ✅ **Dev Server** - Runs on port 3003
+- ✅ **Dev Server** - Runs on port 3001/3003
 
 ### Session Management (Production Working ✅)
 Based on the dashboard screenshot, the session system is working correctly:
@@ -23,7 +25,9 @@ Based on the dashboard screenshot, the session system is working correctly:
 ### Chat Tables (Working)
 - `chat_logs` - Individual chat messages with session grouping
 - `chat_sessions` - Session metadata and management
-- Both tables have proper RLS policies and indexes
+- `chat_usage_metrics` - Token usage and cost tracking for ChatKit (NEW)
+- `chat_security_events` - Security incident logging (rate limits, auth failures) (NEW)
+- All tables have proper RLS policies and indexes
 
 ### Search Console Tables (Working)  
 - `gsc_daily_summary` - Daily aggregated metrics
@@ -37,10 +41,17 @@ Based on the dashboard screenshot, the session system is working correctly:
 ## API Endpoints Status
 
 ### Chat APIs ✅
-- `POST /api/n8n-chat` - Main webhook for n8n chat logs
+- `POST /api/chatkit/agent` - Main ChatKit endpoint with security (NEW)
+  - **Authentication:** Requires X-API-Key header
+  - **Rate Limiting:** 20 requests/min per IP, 50 requests/hr per session
+  - **Input Validation:** 1-1000 char messages, max 20 history turns
+  - **Budget Control:** $10/day default limit
+  - **Token Optimization:** Max 800 tokens (60% cost reduction)
+  - **Usage Tracking:** All requests logged to chat_usage_metrics
+- `POST /api/chatkit/realtime` - Realtime voice chat config (secured)
+- `POST /api/n8n-chat` - Legacy n8n webhook (still active)
   - Accepts: user_id, prompt, response, session_id (optional)
   - Auto-session management with 30-minute window
-  - Falls back to crypto.randomUUID() for new sessions
 - Session grouping works correctly as evidenced by Guest-XX pattern
 
 ### Analytics APIs ✅  
@@ -49,6 +60,14 @@ Based on the dashboard screenshot, the session system is working correctly:
   - Supports pagination, filtering, debug mode
   - Combined performance data for tables
 - `GET /api/ga/summary` - Google Analytics 4 summary data
+
+### Trade-In APIs ✅
+- `POST /api/tradein/update` - Update trade-in lead data (brand, model, condition, etc.)
+- `POST /api/tradein/submit` - Finalize lead and send email notifications
+  - Used by both text and voice chat
+  - Sends to: `contactus@tradezone.sg` (BCC: `info@rezult.co`)
+  - Subject: `🎮 New Trade-In Request - {lead-id}`
+- `POST /api/tradein/media` - Link uploaded images to trade-in leads
 
 ### Other APIs ✅
 - `GET /api/woocommerce/orders` - WooCommerce order data
@@ -109,7 +128,36 @@ WC_SECRET=your-consumer-secret
 3. **Performance Optimized** - Skeleton loaders, caching, pagination working
 4. **Database Stable** - All tables exist with proper RLS policies
 
-## Recent Improvements (Last Commit)
+## Recent Improvements (Latest Commits)
+
+### 2025-01-20: Trade-In Email & Agent Improvements (FINAL FIX)
+- **CRITICAL FIX - Email System Fully Working** ✅
+  - **Root Cause**: Settings save/load path mismatch for 2+ hours
+  - Dashboard saved to: `org.settings.smtp.config`
+  - EmailService read from: `org.settings.smtp`
+  - **Fix**: Both now use `org.settings.smtp`
+  - Unified email system - all flows use same SMTP config:
+    * Trade-in submissions (text & voice)
+    * Support/contact requests (Singapore-only)
+    * Dashboard "Reply via Email" button
+    * Test Email button
+  - Emails sent to: `contactus@tradezone.sg` (BCC: `info@rezult.co`)
+  
+- **Agent Enhancements**:
+  - Trade-in workflow: Ask for photos BEFORE submission
+  - Concise responses, no verbose numbered lists
+  - Post-submission image upload: Brief acknowledgment
+  - Singapore location verification for support flow
+  - Streamlined support email: ask ONCE, send immediately
+  - Phone number collection in support requests
+  
+- **Diagnostic Improvements**:
+  - Detailed SMTP error logging (env vars, config state)
+  - Settings API logging for troubleshooting
+  - Email tool logging for all send attempts
+  - Trade-in submission comprehensive logging
+
+### Previous Improvements
 - Added per-widget skeleton loaders for better UX
 - Enhanced Search Console API with combined performance data
 - Improved caching and cache-busting logic
@@ -127,6 +175,22 @@ WC_SECRET=your-consumer-secret
 - Check n8n is sending session_id in webhook payload
 - Verify chat_sessions table has active records
 - Monitor logs for session creation/reuse patterns
+
+### Email Notification Issues
+- **SMTP Settings**: Configure at https://trade.rezult.co/dashboard/settings (Email tab)
+- **Check Logs**: Look for `[EmailService]` and `[TradeIn]` in Coolify logs
+- **Success Pattern**: 
+  ```
+  [EmailService] Using SMTP config from database
+  [TradeIn] Email sent: true
+  ```
+- **Failure Pattern**: 
+  ```
+  [EmailService] SMTP configuration missing
+  [TradeIn] Email sent: false
+  ```
+- **Email Delivery**: Check SMTP2GO dashboard for delivery status
+- **Recipients**: All trade-in emails go to `contactus@tradezone.sg` (BCC: `info@rezult.co`)
 
 ### Data Issues
 - Verify Supabase connection and RLS policies

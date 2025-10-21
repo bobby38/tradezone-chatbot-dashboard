@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -82,11 +82,7 @@ export default function ConversationPage() {
   const [logs, setLogs] = useState<ChatLog[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchConversation()
-  }, [sessionId])
-
-  const fetchConversation = async () => {
+  const fetchConversation = useCallback(async () => {
     try {
       // Try both user_id and direct session lookup
       let { data, error } = await supabase
@@ -116,7 +112,11 @@ export default function ConversationPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sessionId])
+
+  useEffect(() => {
+    fetchConversation()
+  }, [fetchConversation])
 
   if (loading) {
     return (

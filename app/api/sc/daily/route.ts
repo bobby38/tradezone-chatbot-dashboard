@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
+export const dynamic = 'force-dynamic'
+
 async function getScClient() {
   const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/webmasters.readonly'],

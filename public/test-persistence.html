@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Persistence Test - TradeZone</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f5f5f5;
+    }
+    .test-container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #8b5cf6;
+      margin-bottom: 10px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    .status.ready {
+      background: #10b981;
+      color: white;
+    }
+    .test-section {
+      margin: 30px 0;
+    }
+    .test-section h2 {
+      color: #333;
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+    .test-steps {
+      background: #f9fafb;
+      border-left: 4px solid #8b5cf6;
+      padding: 20px;
+      border-radius: 4px;
+    }
+    .test-steps ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .test-steps li {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+    .code {
+      background: #1a1a2e;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #8b5cf6;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #7c3aed;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .storage-info {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .storage-info pre {
+      margin: 10px 0 0 0;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+    .nav-links {
+      display: flex;
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .nav-links a {
+      color: #8b5cf6;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .nav-links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>
+      🧪 Chat Persistence Test
+      <span class="status ready">READY</span>
+    </h1>
+    <p>Test the new localStorage-based chat session persistence feature.</p>
+  </div>
+
+  <div class="test-container">
+    <div class="test-section">
+      <h2>📋 Test Scenario 1: Basic Persistence</h2>
+      <div class="test-steps">
+        <ol>
+          <li>Click the chat button (bottom-right corner)</li>
+          <li>Send a message: <strong>"Do you have PS5?"</strong></li>
+          <li>Wait for Amara's response</li>
+          <li>Click "Refresh Page" button below</li>
+          <li>Open chat again → <strong>Your message should still be there!</strong> ✅</li>
+        </ol>
+      </div>
+      <div class="button-group">
+        <button class="btn-primary" onclick="location.reload()">🔄 Refresh Page</button>
+        <button class="btn-secondary" onclick="openChat()">💬 Open Chat</button>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔗 Test Scenario 2: Cross-Page Navigation</h2>
+      <div class="test-steps">
+        <ol>
+          <li>Send a message in the chat</li>
+          <li>Click one of the navigation links below</li>
+          <li>Open chat on the new page → <strong>History preserved!</strong> ✅</li>
+        </ol>
+      </div>
+      <div class="nav-links">
+        <a href="/test-persistence.html">🏠 Test Page</a>
+        <a href="/test-persistence.html?page=2">📄 Page 2</a>
+        <a href="/test-persistence.html?page=3">📄 Page 3</a>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🗑️ Test Scenario 3: Clear Session</h2>
+      <div class="test-steps">
+        <ol>
+          <li>Send some messages in chat</li>
+          <li>Click "Clear Session" button below</li>
+          <li>Open chat → <strong>Fresh start, no history!</strong> ✅</li>
+        </ol>
+      </div>
+      <div class="button-group">
+        <button class="btn-danger" onclick="clearChatSession()">🗑️ Clear Session</button>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔍 localStorage Inspector</h2>
+      <div class="storage-info">
+        <strong>Current Storage State:</strong>
+        <pre id="storage-display">Loading...</pre>
+      </div>
+      <div class="button-group">
+        <button class="btn-secondary" onclick="updateStorageDisplay()">🔄 Refresh Storage View</button>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>✅ Expected Console Logs</h2>
+      <div class="code" id="console-logs">
+[TradeZone] New client ID created: client_1729180800000_a1b2c3d4e
+[TradeZone] New session created: client_1729180800000_a1b2c3d4e_1729267200000
+[TradeZone Chat Enhanced] Widget initialized client_xxx_xxx
+
+// After refresh:
+[TradeZone] Resuming session: client_1729180800000_a1b2c3d4e_1729267200000
+[TradeZone] Loaded 2 messages from storage
+[TradeZone] Rendered 2 messages from history
+      </div>
+      <p><em>Open browser DevTools (F12) → Console tab to see these logs</em></p>
+    </div>
+  </div>
+
+  <!-- TradeZone Chat Widget -->
+  <script
+    src="/widget/chat-widget-enhanced.js"
+    data-api-url="http://localhost:3000"
+    data-api-key="tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq"
+    data-position="bottom-right"
+    data-primary-color="#8b5cf6"
+    data-video-url="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
+  ></script>
+
+  <script>
+    // Helper functions
+    function openChat() {
+      const chatButton = document.getElementById('tz-chat-button');
+      if (chatButton) {
+        chatButton.click();
+      }
+    }
+
+    function clearChatSession() {
+      if (confirm('This will clear your chat history and start a fresh session. Continue?')) {
+        if (window.TradeZoneChatEnhanced) {
+          window.TradeZoneChatEnhanced.clearSession();
+          updateStorageDisplay();
+          alert('✅ Session cleared! Open the chat to start fresh.');
+        }
+      }
+    }
+
+    function updateStorageDisplay() {
+      const display = document.getElementById('storage-display');
+      const storage = {
+        client_id: localStorage.getItem('tz_client_id'),
+        session_id: localStorage.getItem('tz_session_id'),
+        session_expiry: localStorage.getItem('tz_session_expiry'),
+        history_count: localStorage.getItem('tz_chat_history') 
+          ? JSON.parse(localStorage.getItem('tz_chat_history')).length 
+          : 0
+      };
+
+      // Format expiry time
+      if (storage.session_expiry) {
+        const expiryDate = new Date(parseInt(storage.session_expiry));
+        storage.expires_at = expiryDate.toLocaleString();
+        storage.expires_in = Math.round((expiryDate - Date.now()) / 1000 / 60 / 60) + ' hours';
+      }
+
+      display.textContent = JSON.stringify(storage, null, 2);
+    }
+
+    // Auto-update storage display every 2 seconds
+    setInterval(updateStorageDisplay, 2000);
+    updateStorageDisplay();
+
+    // Log page load
+    console.log('📄 Test page loaded:', window.location.href);
+  </script>
+</body>
+</html>

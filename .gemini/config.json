@@ -1,0 +1,86 @@
+{
+  "model": "gemini-1.5-pro",
+  "extensions": ["file-system", "terminal"],
+  "approval_mode": "default",
+  "telemetry": false,
+  "show_memory_usage": true,
+  "include_directories": [".", "app", "components", "lib", "public"],
+  "git": {
+    "auto_commit": false,
+    "auto_push": false,
+    "commit_template": "feat: {summary}\n\n{description}",
+    "branch": "main",
+    "wrapper_script": "./.gemini/git-wrapper.sh"
+  },
+  "tools": {
+    "terminal": {
+      "enabled": true,
+      "allow_git_commands": true,
+      "safe_commands": [
+        "git status",
+        "git add",
+        "git commit",
+        "git push",
+        "git pull",
+        "git log",
+        "git branch",
+        "git checkout",
+        "git diff",
+        "./.gemini/git-wrapper.sh"
+      ]
+    },
+    "file-system": {
+      "enabled": true,
+      "allowed_paths": [".", "app", "components", "lib", "public", ".gemini"]
+    }
+  },
+  "commands": {
+    "git_status": {
+      "description": "Check git status",
+      "command": "./.gemini/git-wrapper.sh status",
+      "type": "terminal"
+    },
+    "git_add": {
+      "description": "Add files to git",
+      "command": "./.gemini/git-wrapper.sh add",
+      "type": "terminal",
+      "requires_input": true
+    },
+    "git_commit": {
+      "description": "Commit changes",
+      "command": "./.gemini/git-wrapper.sh commit",
+      "type": "terminal",
+      "requires_input": true
+    },
+    "git_push": {
+      "description": "Push to remote",
+      "command": "./.gemini/git-wrapper.sh push",
+      "type": "terminal"
+    },
+    "git_pull": {
+      "description": "Pull from remote",
+      "command": "./.gemini/git-wrapper.sh pull",
+      "type": "terminal"
+    },
+    "git_quick_commit": {
+      "description": "Quick commit all changes",
+      "command": "./.gemini/git-wrapper.sh quick-commit",
+      "type": "terminal",
+      "requires_input": true
+    },
+    "git_add_commit_push": {
+      "description": "Add, commit, and push in one command",
+      "command": "./.gemini/git-wrapper.sh add-commit-push",
+      "type": "terminal",
+      "requires_input": true
+    },
+    "git_log": {
+      "description": "Show git log",
+      "command": "./.gemini/git-wrapper.sh log",
+      "type": "terminal"
+    }
+  },
+  "prompts": {
+    "git_workflow": "You are a Git assistant. You can help with git operations using the provided git-wrapper.sh script. Available commands: git_status, git_add, git_commit, git_push, git_pull, git_quick_commit, git_add_commit_push, git_log. Always ask for confirmation before executing push operations."
+  }
+}

@@ -205,7 +205,7 @@ export function NotificationCenter() {
           <div className="p-4 text-center text-muted-foreground">
             <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>No notifications</p>
-            <p className="text-xs">You're all caught up!</p>
+            <p className="text-xs">You’re all caught up!</p>
           </div>
         ) : (
           notifications.slice(0, 10).map((notification) => (

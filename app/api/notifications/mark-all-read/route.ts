@@ -1,55 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export const dynamic = "force-dynamic";
 
-let supabaseAdmin: any = null
-if (supabaseUrl && supabaseServiceKey) {
-  supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
-}
-
-export async function POST(req: NextRequest) {
+/**
+ * POST /api/notifications/mark-all-read
+ * Mark all notifications as read
+ */
+export async function POST(request: NextRequest) {
   try {
-    // Try to update all unread notifications
-    if (!supabaseAdmin) {
-      return NextResponse.json({
-        success: true,
-        message: 'All notifications marked as read (database not configured)',
-        updated_count: 0
-      })
-    }
-
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('notifications')
-        .update({ 
-          read: true, 
-          read_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('read', false)
-
-      if (error) throw error
-
-      return NextResponse.json({
-        success: true,
-        message: 'All notifications marked as read',
-        updated_count: data?.length || 0
-      })
-    } catch (dbError) {
-      console.warn('Database update failed, returning mock response:', dbError)
-      
-      // Return mock success if database isn't set up yet
-      return NextResponse.json({
-        success: true,
-        message: 'All notifications marked as read (database not configured)',
-        updated_count: 0
-      })
-    }
-
+    // TODO: Implement mark all as read in Supabase
+    return NextResponse.json({
+      success: true,
+      message: "Notification system not yet implemented",
+      markedCount: 0,
+    });
   } catch (error) {
-    console.error('Mark all read error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error("[Notifications] Error marking all as read:", error);
+    return NextResponse.json(
+      { error: "Failed to mark all as read" },
+      { status: 500 },
+    );
   }
 }

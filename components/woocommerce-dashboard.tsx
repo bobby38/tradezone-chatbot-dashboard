@@ -176,7 +176,7 @@ export function WooCommerceDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Order Status Breakdown</CardTitle>
-          <CardDescription>Today's orders by status</CardDescription>
+          <CardDescription>Today’s orders by status</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">

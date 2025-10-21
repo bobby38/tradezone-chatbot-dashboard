@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
 import fs from 'fs'
 
+export const dynamic = 'force-dynamic'
+
 function parseServiceAccountFromEnv(): any | null {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   if (!raw) return null

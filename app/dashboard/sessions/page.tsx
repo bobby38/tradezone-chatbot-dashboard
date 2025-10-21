@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
@@ -51,11 +51,7 @@ export default function SessionsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
-  useEffect(() => {
-    fetchSessions()
-  }, [currentPage, searchTerm])
-
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     setLoading(true)
     try {
       let query = supabase
@@ -79,7 +75,11 @@ export default function SessionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, searchTerm])
+
+  useEffect(() => {
+    fetchSessions()
+  }, [fetchSessions])
 
   const getStatusBadge = (status: string) => {
     switch (status) {

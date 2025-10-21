@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeZone Chat Widget Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 42px;
+            color: #1f2937;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #6b7280;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .feature {
+            text-align: center;
+            padding: 24px;
+            background: #f9fafb;
+            border-radius: 12px;
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .feature-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .cta {
+            text-align: center;
+            padding: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .cta h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .cta p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .code-section {
+            margin-top: 40px;
+            padding: 24px;
+            background: #1f2937;
+            border-radius: 12px;
+            color: white;
+        }
+
+        .code-section h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #10b981;
+        }
+
+        .code-section pre {
+            background: #111827;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .code-section code {
+            color: #e5e7eb;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 40px 24px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 TradeZone Chat Widget</h1>
+        <p class="subtitle">AI-powered customer support for your website</p>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <div class="feature-title">Instant Responses</div>
+                <div class="feature-desc">AI answers customer questions in real-time</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎨</div>
+                <div class="feature-title">Customizable</div>
+                <div class="feature-desc">Match your brand colors and style</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">Mobile Ready</div>
+                <div class="feature-desc">Works perfectly on all devices</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔌</div>
+                <div class="feature-title">Easy Integration</div>
+                <div class="feature-desc">One script tag, no dependencies</div>
+            </div>
+        </div>
+
+        <div class="cta">
+            <h2>Try it now!</h2>
+            <p>Click the chat button in the bottom-right corner to start a conversation</p>
+            <a href="#" class="cta-button" onclick="document.getElementById('tradezone-chat-button').click(); return false;">
+                Open Chat Widget
+            </a>
+        </div>
+
+        <div class="code-section">
+            <h3>Installation Code</h3>
+            <pre><code>&lt;!-- Add before closing &lt;/body&gt; tag --&gt;
+&lt;script 
+  src="https://your-domain.com/widget/chat-widget.js"
+  data-api-url="https://your-dashboard.com"
+  data-position="bottom-right"
+  data-primary-color="#2563eb"
+&gt;&lt;/script&gt;</code></pre>
+        </div>
+
+        <div class="code-section" style="margin-top: 20px;">
+            <h3>Manual Initialization</h3>
+            <pre><code>&lt;script src="https://your-domain.com/widget/chat-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  TradeZoneChat.init({
+    apiUrl: 'https://your-dashboard.com',
+    position: 'bottom-right',
+    primaryColor: '#2563eb',
+    greeting: 'Hi! How can I help you today?'
+  });
+&lt;/script&gt;</code></pre>
+        </div>
+    </div>
+
+    <!-- TradeZone Chat Widget -->
+    <script src="./chat-widget.js"></script>
+    <script>
+        TradeZoneChat.init({
+            apiUrl: 'http://localhost:3000', // Change to your dashboard URL
+            position: 'bottom-right',
+            primaryColor: '#2563eb',
+            greeting: 'Hi! Welcome to TradeZone. How can I help you today?',
+            botName: 'Izacc'
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Test - Sabai Sensations</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-info {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { color: #333; }
+    code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-info">
+    <h1>🧪 Widget Test Page</h1>
+    <p>This page tests the TradeZone chat widget with sabaisensations.com origin simulation.</p>
+
+    <div class="status">
+      <strong>Test Configuration:</strong>
+      <ul>
+        <li>API URL: <code>https://trade.rezult.co</code></li>
+        <li>API Key: <code>tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq</code></li>
+        <li>Origin: <code>https://sabaisensations.com</code></li>
+        <li>CORS: Should be allowed</li>
+      </ul>
+    </div>
+
+    <h2>Expected Results:</h2>
+    <ol>
+      <li>✅ Widget button appears in bottom-right</li>
+      <li>✅ Widget opens with Amara video</li>
+      <li>✅ Send icon (▶️) and attach icon (📎) visible</li>
+      <li>✅ Can send messages without errors</li>
+      <li>✅ Receives AI responses</li>
+    </ol>
+
+    <h2>Instructions:</h2>
+    <ol>
+      <li>Open browser Developer Tools (F12)</li>
+      <li>Click the widget button in bottom-right</li>
+      <li>Type a message and send</li>
+      <li>Check Network tab for any errors</li>
+      <li>Verify X-API-Key header is sent</li>
+    </ol>
+
+    <p><strong>Note:</strong> Icons use inline SVG. If icons don't show, check Console for errors.</p>
+  </div>
+
+  <!-- Enhanced Widget with Video + Voice + API Key -->
+  <script
+    src="https://trade.rezult.co/widget/chat-widget-enhanced.js"
+    data-api-url="https://trade.rezult.co"
+    data-api-key="tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq"
+    data-position="bottom-right"
+    data-primary-color="#2563eb"
+    data-video-url="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
+  ></script>
+</body>
+</html>

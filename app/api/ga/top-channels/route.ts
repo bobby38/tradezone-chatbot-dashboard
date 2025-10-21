@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
 
+export const dynamic = 'force-dynamic'
+
 function getGaClient() {
   const keyJson = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   if (keyJson) {
