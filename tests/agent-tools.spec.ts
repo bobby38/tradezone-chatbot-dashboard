@@ -90,11 +90,11 @@ test.describe("Prompt configuration", () => {
     );
     const prompt = readFileSync(promptPath, "utf-8");
 
-    expect(prompt).toContain("photos optional");
-    expect(prompt).toContain("Respond using this concise template:");
-    expect(prompt).toContain(
-      "Never share external links or redirect to email/phone unless the user explicitly asks.",
-    );
+    // Verify photo guidance exists and treats photos as optional
+    expect(prompt).toContain("Ask for photos BEFORE submission");
+    expect(prompt).toContain("Photos: {Provided | Not provided");
+    expect(prompt).toContain("If user says no/later:");
+    expect(prompt).toContain("Always respond in English");
   });
 
   test("trade-in system context aligns with optional photo guidance", async () => {
@@ -106,10 +106,9 @@ test.describe("Prompt configuration", () => {
     );
     const tradeInPrompt = readFileSync(tradeInPromptPath, "utf-8");
 
-    expect(tradeInPrompt).toContain(
-      "Never hand the customer off to email/phone or external links unless they explicitly request it.",
-    );
-    expect(tradeInPrompt).toContain("Always respond in English");
-    expect(tradeInPrompt).toContain("When device + contact info are complete");
+    // Verify English enforcement and core trade-in flow
+    expect(tradeInPrompt).toContain("Always respond in ENGLISH ONLY");
+    expect(tradeInPrompt).toContain("SAVE DATA IMMEDIATELY");
+    expect(tradeInPrompt).toContain("Step-by-Step");
   });
 });

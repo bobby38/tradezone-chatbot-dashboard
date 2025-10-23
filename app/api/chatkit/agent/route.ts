@@ -172,19 +172,32 @@ const DEVICE_PATTERNS: Array<{
 }> = [
   { regex: /legion go/i, brand: "Lenovo", model: "Legion Go Gen 1" },
   { regex: /rog ally/i, brand: "Asus", model: "ROG Ally" },
+  { regex: /steam deck oled/i, brand: "Valve", model: "Steam Deck OLED" },
   { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
   { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
   { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
-  { regex: /playstation 5|ps5/i, brand: "Sony", model: "PlayStation 5" },
-  { regex: /playstation 4|ps4/i, brand: "Sony", model: "PlayStation 4" },
-  { regex: /xbox series x/i, brand: "Microsoft", model: "Xbox Series X" },
-  { regex: /xbox series s/i, brand: "Microsoft", model: "Xbox Series S" },
+  { regex: /playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
+  { regex: /playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
+  {
+    regex: /xbox series x|\bxsx\b/i,
+    brand: "Microsoft",
+    model: "Xbox Series X",
+  },
+  {
+    regex: /xbox series s|\bxss\b/i,
+    brand: "Microsoft",
+    model: "Xbox Series S",
+  },
+  { regex: /xbox one/i, brand: "Microsoft", model: "Xbox One" },
+  { regex: /msi claw/i, brand: "MSI", model: "Claw" },
   {
     regex: /iphone\s*(\d+\s*(pro\s*max|pro)?)?/i,
     brand: "Apple",
     model: "iPhone",
   },
   { regex: /ipad/i, brand: "Apple", model: "iPad" },
+  { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
+  { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
   { regex: /meta quest/i, brand: "Meta", model: "Quest" },
   { regex: /dji osmo/i, brand: "DJI", model: "Osmo" },
 ];
@@ -350,13 +363,26 @@ async function runHybridSearch(
   query: string,
   context?: VectorSearchContext,
 ): Promise<HybridSearchResult> {
+  const searchStartTime = Date.now();
   let vectorResult = "";
   let vectorSource: HybridSearchSource = "vector_store";
+  let vectorLatency = 0;
+  let catalogLatency = 0;
+  let perplexityLatency = 0;
+
   try {
+    const vectorStart = Date.now();
     const response = await handleVectorSearch(query, context);
+    vectorLatency = Date.now() - vectorStart;
     vectorResult = response.text;
     vectorSource =
       response.store === "trade_in" ? "trade_in_vector_store" : "vector_store";
+
+    if (vectorLatency > 2000) {
+      console.warn(
+        `[ChatKit] Slow vector search: ${vectorLatency}ms for query: "${query.substring(0, 50)}"`,
+      );
+    }
   } catch (vectorError) {
     console.error("[ChatKit] Vector search error:", vectorError);
     vectorResult = "";
@@ -366,7 +392,15 @@ async function runHybridSearch(
   let catalogMatches: Awaited<ReturnType<typeof findCatalogMatches>> = [];
   if (vectorSource !== "trade_in_vector_store") {
     try {
+      const catalogStart = Date.now();
       catalogMatches = await findCatalogMatches(query, 3);
+      catalogLatency = Date.now() - catalogStart;
+
+      if (catalogLatency > 500) {
+        console.warn(
+          `[ChatKit] Slow catalog search: ${catalogLatency}ms for query: "${query.substring(0, 50)}"`,
+        );
+      }
     } catch (catalogError) {
       console.error("[ChatKit] Catalog fallback error:", catalogError);
       catalogMatches = [];
@@ -406,12 +440,31 @@ async function runHybridSearch(
   }
 
   if (catalogSection) {
+    const totalLatency = Date.now() - searchStartTime;
+    if (totalLatency > 3000) {
+      console.warn(
+        `[ChatKit] Slow hybrid search (catalog path): ${totalLatency}ms total`,
+      );
+    }
     return { result: catalogSection, source: "product_catalog" };
   }
 
   try {
+    const perplexityStart = Date.now();
     const fallback = await handlePerplexitySearch(query);
+    perplexityLatency = Date.now() - perplexityStart;
+
+    if (perplexityLatency > 3000) {
+      console.warn(
+        `[ChatKit] Slow Perplexity search: ${perplexityLatency}ms for query: "${query.substring(0, 50)}"`,
+      );
+    }
+
     if (fallback && fallback.trim().length > 0) {
+      const totalLatency = Date.now() - searchStartTime;
+      console.log(
+        `[ChatKit] Hybrid search completed: vector=${vectorLatency}ms, catalog=${catalogLatency}ms, perplexity=${perplexityLatency}ms, total=${totalLatency}ms`,
+      );
       return { result: fallback, source: "perplexity" };
     }
   } catch (fallbackError) {
@@ -422,6 +475,14 @@ async function runHybridSearch(
     vectorResult && vectorResult.trim().length > 0
       ? vectorResult
       : "I could not find a relevant product or article for that request. Please try rephrasing or give me more detail.";
+
+  const totalLatency = Date.now() - searchStartTime;
+  if (totalLatency > 3000) {
+    console.warn(
+      `[ChatKit] Slow hybrid search (fallback path): ${totalLatency}ms total`,
+    );
+  }
+
   return { result: fallbackMessage, source: vectorSource };
 }
 

@@ -42,7 +42,7 @@ export const vectorSearchTool = {
   function: {
     name: "searchProducts",
     description:
-      "Search TradeZone products and information using the Docling vector store with hybrid chunking",
+      "PRIMARY TOOL: Use this FIRST for ALL product queries (prices, stock, specs, availability). Searches product catalog + live WooCommerce data. Covers: gaming consoles, laptops, phones, accessories, peripherals, trade-in valuations.",
     parameters: {
       type: "object",
       properties: {
