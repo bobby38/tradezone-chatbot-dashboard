@@ -2037,6 +2037,51 @@
           const data = await response.json();
           result = data.result || "Email sent successfully";
           console.log("[Tool] Email result:", result);
+        } else if (name === "tradein_update_lead") {
+          console.log("[Tool] Updating trade-in lead:", parsedArgs);
+          const response = await fetch(
+            `${this.config.apiUrl}/api/tradein/update`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": this.config.apiKey || "",
+              },
+              body: JSON.stringify({
+                sessionId: this.sessionId,
+                ...parsedArgs,
+              }),
+            },
+          );
+          const data = await response.json();
+          result = data.success
+            ? "Lead updated successfully"
+            : `Error: ${data.error || "Failed to update trade-in lead"}`;
+          console.log("[Tool] Trade-in update result:", result);
+        } else if (name === "tradein_submit_lead") {
+          console.log("[Tool] Submitting trade-in lead:", parsedArgs);
+          const response = await fetch(
+            `${this.config.apiUrl}/api/tradein/submit`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": this.config.apiKey || "",
+              },
+              body: JSON.stringify({
+                sessionId: this.sessionId,
+                summary:
+                  parsedArgs.summary || "Trade-in request from voice chat",
+                notify: parsedArgs.notify !== false,
+                status: parsedArgs.status || "in_review",
+              }),
+            },
+          );
+          const data = await response.json();
+          result = data.success
+            ? "Trade-in submitted successfully. Our team will contact you within 24 hours."
+            : `Error: ${data.error || "Failed to submit trade-in lead"}`;
+          console.log("[Tool] Trade-in submit result:", result);
         }
 
         // Send tool result back to Realtime API
