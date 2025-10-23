@@ -548,9 +548,10 @@ lib/
 - ✅ **Supabase Schema**: Installed guarded migration (`20251018_trade_in_leads.sql`) creating `trade_in_leads`, `trade_in_media`, `trade_in_actions`, `trade_in_tags`, enums, trigger, indexes, RLS policies, and private `tradein-media` bucket (applied via Supabase CLI after resetting previous attempts).
 - ✅ **API Routes**: Implemented `/api/tradein/start`, `/update`, `/upload-url`, `/submit` with service-role Supabase client, validation, and action logging.
 - ✅ **Email Notification**: `submit` handler reuses `EmailService` (SMTP), logging success/failure in `trade_in_actions`; initial tests target `info@rezult.co`.
-- ✅ **Chat Agent Hooks**: `chatkit` now auto-creates leads, exposes `tradein_update_lead` + `tradein_submit_lead` tools, and injects trade-in system guidance (quote-first, two questions, persist via tool, submit at end).
-- ✅ **Prompt Refresh**: `CHATKIT_DEFAULT_PROMPT` updated to mirror the form flow (price range → two qualifiers → contact (photos optional)) and clarify when to use `sendemail` vs trade-in tools.
-- ✅ **Oct 19 Update**: Text and voice prompts now treat photos as optional, still acknowledge uploads when available, and always confirm submission with next steps and a final "Anything else?" check.
+- ✅ **Chat Agent Hooks**: `chatkit` now auto-creates leads, exposes `tradein_update_lead` + `tradein_submit_lead` tools, and injects the trade-in playbook across text and voice flows.
+- ✅ **Prompt Refresh**: `CHATKIT_DEFAULT_PROMPT` mirrors the form flow (price range → two qualifiers → contact), keeps photos optional with a quick reminder, and clarifies when to hand off to `sendemail`.
+- ✅ **Oct 19 Update**: Text and voice prompts both acknowledge optional photos, confirm submission with next steps + “Anything else?”, and stay under 2 sentences.
+- ✅ **Oct 23 Voice/Text Parity**: Voice widget now POSTs `tradein_update_lead`/`tradein_submit_lead` with sessionId, matching text chat persistence + email formatting; prompts enforce one detail per turn, recap, quick photo nudge, and confirmation before submitting.
 - ✅ **Dashboard UI**: Added `/dashboard/trade-in` tab (table, filters, detail dialog with attachments/timeline/notes) and navigation link.
 - ✅ **Chat UI Enhancements**: Introduced “Start Trade-In” CTA, trade-in lead bootstrapping, and in-chat photo uploads with signed URLs + Supabase storage logging.
 - ✅ **New APIs**: `/api/tradein/leads` (list/detail/update), `/api/tradein/media` (record uploads), and `/api/tradein/media/sign-url` (download) powered by shared service helpers.
