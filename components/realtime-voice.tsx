@@ -311,14 +311,21 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
       } else if (name === "sendemail") {
         // Call email send
         console.log("[Tool] Calling sendemail:", parsedArgs);
-        const response = await fetch("/api/tools/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsedArgs),
-        });
-        const data = await response.json();
-        result = data.result || "Email sent successfully";
-        console.log("[Tool] Email result:", result);
+
+        if (parsedArgs?.emailType === "trade_in") {
+          result =
+            "Trade-in submissions must go through tradein_update_lead followed by tradein_submit_lead. Do not use sendemail for trade-ins.";
+          console.warn("[Tool] Blocked trade-in attempt via sendemail.");
+        } else {
+          const response = await fetch("/api/tools/email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(parsedArgs),
+          });
+          const data = await response.json();
+          result = data.result || "Email sent successfully";
+          console.log("[Tool] Email result:", result);
+        }
       } else if (name === "tradein_update_lead") {
         // Update trade-in lead data
         console.log("[Tool] Updating trade-in lead:", parsedArgs);

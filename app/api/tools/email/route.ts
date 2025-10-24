@@ -56,9 +56,23 @@ export async function POST(request: NextRequest) {
       const staffEmail = process.env.STAFF_EMAIL || "contactus@tradezone.sg";
       const devEmail = process.env.DEV_EMAIL || "info@rezult.co"; // BCC for testing
       const emailType = body.emailType as
-        | "trade_in"
         | "info_request"
-        | "contact";
+        | "contact"
+        | "trade_in";
+
+      if (emailType === "trade_in") {
+        console.warn(
+          "[Email Tool] Trade-in payload attempted via sendemail. Blocking.",
+        );
+        return NextResponse.json(
+          {
+            result:
+              "Trade-in submissions must use tradein_update_lead followed by tradein_submit_lead. Do not use sendemail for trade-ins.",
+          },
+          { headers: corsHeaders },
+        );
+      }
+
       const customerName = body.name;
       let customerEmail = body.email;
       const customerPhone = body.phone_number || "Not provided";
@@ -104,20 +118,7 @@ export async function POST(request: NextRequest) {
       let subject = "";
       let html = "";
 
-      if (emailType === "trade_in") {
-        subject = `🔄 Trade-In Request from ${customerName}`;
-        html = `
-          <h2>New Trade-In Request (Voice Chat)</h2>
-          <p><strong>Customer:</strong> ${customerName}</p>
-          <p><strong>Email:</strong> ${customerEmail}</p>
-          <p><strong>Phone:</strong> ${customerPhone}</p>
-          <h3>Request Details:</h3>
-          <p>${customerMessage.replace(/\n/g, "<br>")}</p>
-          ${customerNote ? `<h3>Additional Notes:</h3><p>${customerNote.replace(/\n/g, "<br>")}</p>` : ""}
-          <hr>
-          <p><em>Sent via TradeZone Voice Assistant (Amara)</em></p>
-        `;
-      } else if (emailType === "info_request") {
+      if (emailType === "info_request") {
         subject = `ℹ️ Information Request from ${customerName}`;
         html = `
           <h2>Customer Information Request (Voice Chat)</h2>
@@ -219,14 +220,10 @@ export async function POST(request: NextRequest) {
       }
 
       // Return success message for ChatKit
-      let resultMessage = "";
-      if (emailType === "trade_in") {
-        resultMessage = `Thanks, ${customerName}! I've sent your trade-in request to our team. They'll email you at ${customerEmail} within 24 hours.`;
-      } else if (emailType === "info_request") {
-        resultMessage = `Thanks, ${customerName}! I've passed your question to our team. They'll email you at ${customerEmail} with the answer within 24 hours.`;
-      } else {
-        resultMessage = `Thanks, ${customerName}! I've sent your message to our team. They'll respond to ${customerEmail} shortly.`;
-      }
+      const resultMessage =
+        emailType === "info_request"
+          ? `Thanks, ${customerName}! I've passed your question to our team. They'll email you at ${customerEmail} with the answer within 24 hours.`
+          : `Thanks, ${customerName}! I've sent your message to our team. They'll respond to ${customerEmail} shortly.`;
 
       return NextResponse.json(
         { result: resultMessage },

@@ -614,19 +614,19 @@ const tools = [
     function: {
       name: "sendemail",
       description:
-        "Send email for trade-ins or inquiries (only when customer requests contact)",
+        "Escalate a support request to TradeZone staff when the customer explicitly asks for human follow-up and you cannot resolve the issue. Never use this for trade-in submissions.",
       parameters: {
         type: "object",
         properties: {
           emailType: {
             type: "string",
-            enum: ["trade_in", "info_request", "contact"],
+            enum: ["info_request", "contact"],
           },
           name: { type: "string" },
           email: { type: "string" },
           message: { type: "string" },
-          deviceModel: { type: "string" },
-          deviceCondition: { type: "string" },
+          phone: { type: "string" },
+          phone_number: { type: "string" },
         },
         required: ["emailType", "name", "email", "message"],
       },
@@ -1213,18 +1213,26 @@ export async function POST(request: NextRequest) {
             }
           } else if (functionName === "sendemail") {
             const toolStart = Date.now();
-            toolResult = await handleEmailSend(functionArgs);
+            const normalizedArgs = {
+              ...functionArgs,
+              phone:
+                functionArgs.phone ??
+                functionArgs.phone_number ??
+                functionArgs.phoneNumber ??
+                undefined,
+            };
+            toolResult = await handleEmailSend(normalizedArgs);
             const toolLatency = Date.now() - toolStart;
             toolSummaries.push({
               name: functionName,
-              args: functionArgs,
+              args: normalizedArgs,
               resultPreview: toolResult.slice(0, 200),
             });
             await logToolRun({
               request_id: requestId,
               session_id: sessionId,
               tool_name: functionName,
-              args: functionArgs,
+              args: normalizedArgs,
               result_preview: toolResult.slice(0, 280),
               success: true,
               latency_ms: toolLatency,

@@ -2023,20 +2023,26 @@
           );
         } else if (name === "sendemail") {
           // Call email send
-          const response = await fetch(
-            `${this.config.apiUrl}/api/tools/email`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-API-Key": this.config.apiKey || "",
+          if (parsedArgs && parsedArgs.emailType === "trade_in") {
+            result =
+              "Trade-in submissions must call tradein_update_lead and tradein_submit_lead. Do not route trade-ins through sendemail.";
+            console.warn("[Tool] Blocked trade-in attempt via sendemail.");
+          } else {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/email`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify(parsedArgs),
               },
-              body: JSON.stringify(parsedArgs),
-            },
-          );
-          const data = await response.json();
-          result = data.result || "Email sent successfully";
-          console.log("[Tool] Email result:", result);
+            );
+            const data = await response.json();
+            result = data.result || "Email sent successfully";
+            console.log("[Tool] Email result:", result);
+          }
         } else if (name === "tradein_update_lead") {
           console.log("[Tool] Updating trade-in lead:", parsedArgs);
           const response = await fetch(

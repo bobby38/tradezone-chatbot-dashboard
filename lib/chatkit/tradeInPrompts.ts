@@ -237,14 +237,15 @@ export const VOICE_TOOL_DEFINITIONS = [
     type: "function" as const,
     name: "sendemail",
     description:
-      "Send an email inquiry to TradeZone staff. Only use when customer explicitly requests to be contacted or wants staff to follow up. IMPORTANT: When collecting email, accept common formats like 'hotmail', 'gmail', 'outlook' and auto-complete to '@hotmail.com', '@gmail.com', '@outlook.com'. If user says just 'gmail' or 'hotmail', ask for the part before @ (e.g., 'What's the first part of your Gmail address?').",
+      "Send a support escalation to TradeZone staff. Use ONLY when the customer explicitly asks for human follow-up for non-trade-in issues or when you cannot answer after exhausting searchProducts/searchtool. Never use this for trade-in submissions—that must go through tradein_update_lead → tradein_submit_lead. IMPORTANT: When collecting email, accept common formats like 'hotmail', 'gmail', 'outlook' and auto-complete to '@hotmail.com', '@gmail.com', '@outlook.com'. If a user says just 'gmail' or 'hotmail', ask for the part before @ (e.g., 'What's the first part of your Gmail address?').",
     parameters: {
       type: "object",
       properties: {
         emailType: {
           type: "string",
-          enum: ["trade_in", "info_request", "contact"],
-          description: "Type of inquiry",
+          enum: ["info_request", "contact"],
+          description:
+            "Type of escalation (general info/support request). Trade-in submissions are NOT allowed here.",
         },
         name: {
           type: "string",

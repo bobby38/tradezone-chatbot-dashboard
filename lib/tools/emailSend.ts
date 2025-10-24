@@ -2,25 +2,20 @@ import { EmailService } from "@/lib/email-service";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
-/**
- * Email Send Tool
- * Handles trade-in requests and contact form submissions
- */
-
 export const emailSendTool = {
   type: "function" as const,
   function: {
     name: "sendemail",
     description:
-      "Send an email for trade-in requests or customer inquiries. Only use when customer explicitly requests to be contacted. IMPORTANT: Always verify customer is in Singapore first - we do not serve international customers.",
+      "Escalate a support request to TradeZone staff after you've confirmed the customer is in Singapore and you cannot resolve the issue yourself. Never use this to submit trade-in requests—those must go through the trade-in tools.",
     parameters: {
       type: "object",
       properties: {
         emailType: {
           type: "string",
-          enum: ["trade_in", "info_request", "contact"],
+          enum: ["info_request", "contact"],
           description:
-            "Type of email: trade_in for device trade-ins, info_request for product inquiries, contact for general contact",
+            "Type of escalation: info_request for unanswered questions, contact for general support follow-up.",
         },
         name: {
           type: "string",
@@ -35,19 +30,15 @@ export const emailSendTool = {
           description:
             "Customer phone number (with +65 country code for Singapore)",
         },
+        phone_number: {
+          type: "string",
+          description:
+            "Alias for phone number (used by some prompts). Include +65 when possible.",
+        },
         message: {
           type: "string",
           description:
             "Customer message or inquiry details. Include phone number in message if provided.",
-        },
-        deviceModel: {
-          type: "string",
-          description: "For trade-ins: device model (e.g., iPhone 14 Pro, PS5)",
-        },
-        deviceCondition: {
-          type: "string",
-          description:
-            "For trade-ins: device condition (e.g., Excellent, Good, Fair)",
         },
       },
       required: ["emailType", "name", "email", "message"],
@@ -60,16 +51,29 @@ export const emailSendTool = {
  * Creates submission record and sends notification email
  */
 export async function handleEmailSend(params: {
-  emailType: "trade_in" | "info_request" | "contact";
+  emailType: "info_request" | "contact" | "trade_in";
   name: string;
   email: string;
   phone?: string;
+  phone_number?: string;
   message: string;
   deviceModel?: string;
   deviceCondition?: string;
 }): Promise<string> {
   try {
-    console.log("[EmailSend] Sending support email:", params);
+    if (params.emailType === "trade_in") {
+      console.warn(
+        "[EmailSend] Trade-in payload attempted via sendemail. Blocking.",
+      );
+      return "Trade-in submissions must use tradein_update_lead and tradein_submit_lead, not sendemail.";
+    }
+
+    const phone = params.phone ?? params.phone_number;
+
+    console.log("[EmailSend] Sending support email:", {
+      ...params,
+      phone,
+    });
 
     // Create Supabase client
     const supabase = createClient(
@@ -95,12 +99,11 @@ export async function handleEmailSend(params: {
         status: "unread",
         ai_metadata: {
           email_type: params.emailType,
-          phone: params.phone,
-          device_model: params.deviceModel,
-          device_condition: params.deviceCondition,
+          phone,
           sender_email: params.email,
           sender_name: params.name,
           sent_via: "chatkit_agent",
+          context: params.message,
         },
       });
 
@@ -115,14 +118,13 @@ export async function handleEmailSend(params: {
 
     // Send email notification
     const emailSent = await EmailService.sendFormNotification({
-      type: params.emailType === "trade_in" ? "trade-in" : "contact",
+      type: "contact",
       submissionId,
       formData: {
         name: params.name,
         email: params.email,
         message: params.message,
-        device_model: params.deviceModel,
-        device_condition: params.deviceCondition,
+        phone: phone || "Not provided",
       },
       submittedAt: new Date().toISOString(),
     });
@@ -130,11 +132,7 @@ export async function handleEmailSend(params: {
     console.log("[EmailSend] Email sent:", emailSent);
 
     // Return confirmation message
-    if (params.emailType === "trade_in") {
-      return `Thanks, ${params.name}! I've sent your trade-in request for the ${params.deviceModel} to our team. They'll email you at ${params.email} with a quote within 24 hours.`;
-    } else {
-      return `Thanks, ${params.name}! I've passed your inquiry to our team. They'll respond to ${params.email} shortly.`;
-    }
+    return `Thanks, ${params.name}! I've passed your inquiry to our team. They'll respond to ${params.email} shortly.`;
   } catch (error) {
     console.error("[EmailSend] Error:", error);
     return "I encountered an error submitting your request. Please try contacting us directly at contactus@tradezone.sg.";
