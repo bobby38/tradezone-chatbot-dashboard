@@ -68,6 +68,19 @@ export async function handleEmailSend(params: {
       return "Trade-in submissions must use tradein_update_lead and tradein_submit_lead, not sendemail.";
     }
 
+    const normalizedMessage =
+      `${params.message} ${params.deviceModel || ""}`.toLowerCase();
+    if (
+      normalizedMessage.includes("trade in") ||
+      normalizedMessage.includes("trade-in") ||
+      normalizedMessage.includes("tradein")
+    ) {
+      console.warn(
+        "[EmailSend] Trade-in language detected in contact request. Blocking.",
+      );
+      return "I already saved this as a trade-in. Please confirm so I can submit it via tradein_submit_lead.";
+    }
+
     const phone = params.phone ?? params.phone_number;
 
     console.log("[EmailSend] Sending support email:", {

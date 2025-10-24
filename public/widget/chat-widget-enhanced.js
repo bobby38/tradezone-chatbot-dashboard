@@ -2102,10 +2102,21 @@
           );
         } else if (name === "sendemail") {
           // Call email send
+          const messageText =
+            `${parsedArgs?.message || ""} ${parsedArgs?.note || ""}`.toLowerCase();
+
           if (parsedArgs && parsedArgs.emailType === "trade_in") {
             result =
               "Trade-in submissions must call tradein_update_lead and tradein_submit_lead. Do not route trade-ins through sendemail.";
             console.warn("[Tool] Blocked trade-in attempt via sendemail.");
+          } else if (
+            messageText.includes("trade in") ||
+            messageText.includes("trade-in") ||
+            messageText.includes("tradein")
+          ) {
+            result =
+              "This sounds like a trade-in request. Please finish it with tradein_update_lead and tradein_submit_lead instead of sendemail.";
+            console.warn("[Tool] Blocked trade-in language via sendemail.");
           } else {
             const response = await fetch(
               `${this.config.apiUrl}/api/tools/email`,

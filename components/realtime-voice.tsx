@@ -312,10 +312,21 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         // Call email send
         console.log("[Tool] Calling sendemail:", parsedArgs);
 
+        const messageText =
+          `${parsedArgs?.message || ""} ${parsedArgs?.note || ""}`.toLowerCase();
+
         if (parsedArgs?.emailType === "trade_in") {
           result =
             "Trade-in submissions must go through tradein_update_lead followed by tradein_submit_lead. Do not use sendemail for trade-ins.";
           console.warn("[Tool] Blocked trade-in attempt via sendemail.");
+        } else if (
+          messageText.includes("trade in") ||
+          messageText.includes("trade-in") ||
+          messageText.includes("tradein")
+        ) {
+          result =
+            "This sounds like a trade-in request. Please submit it with tradein_update_lead and tradein_submit_lead instead of sendemail.";
+          console.warn("[Tool] Blocked trade-in language via sendemail.");
         } else {
           const response = await fetch("/api/tools/email", {
             method: "POST",

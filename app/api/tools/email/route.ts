@@ -79,6 +79,25 @@ export async function POST(request: NextRequest) {
       const customerMessage = body.message;
       const customerNote = body.note || null;
 
+      const normalizedMessage =
+        `${customerMessage} ${customerNote || ""}`.toLowerCase();
+      if (
+        normalizedMessage.includes("trade in") ||
+        normalizedMessage.includes("trade-in") ||
+        normalizedMessage.includes("tradein")
+      ) {
+        console.warn(
+          "[Email Tool] Trade-in keywords detected in sendemail payload. Blocking.",
+        );
+        return NextResponse.json(
+          {
+            result:
+              "It looks like this is a trade-in request. Please submit it with tradein_update_lead followed by tradein_submit_lead so our team gets the full form and photos.",
+          },
+          { headers: corsHeaders },
+        );
+      }
+
       // Email validation and correction
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
