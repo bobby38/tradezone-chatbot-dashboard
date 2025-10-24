@@ -185,13 +185,51 @@ export class EmailService {
     // Extract common fields
     const name = formData.name || formData.full_name || "Not provided";
     const email = formData.email || "Not provided";
-    const phone = formData.phone || formData.phone_number || "Not provided";
-    const message = formData.message || formData.comments || "Not provided";
+    const phone =
+      formData.phone ||
+      formData.phone_number ||
+      formData.contact_phone ||
+      "Not provided";
+    const rawMessage =
+      formData.summary ||
+      formData.message ||
+      formData.comments ||
+      formData.notes ||
+      "Not provided";
 
     // Trade-in specific fields
     const deviceType = formData.device_type || "Not specified";
-    const consoleType = formData.console_type || "Not specified";
-    const bodyCondition = formData.body_condition || "Not specified";
+    const consoleType =
+      formData.console_type ||
+      [formData.brand, formData.model].filter(Boolean).join(" ") ||
+      "Not specified";
+    const storage = formData.storage || "Not specified";
+    const condition =
+      formData.condition || formData.body_condition || "Not specified";
+    const accessories = Array.isArray(formData.accessories)
+      ? formData.accessories.length > 0
+        ? formData.accessories.join(", ")
+        : "None"
+      : "Not specified";
+    const defects = Array.isArray(formData.defects)
+      ? formData.defects.length > 0
+        ? formData.defects.join(", ")
+        : "None"
+      : "Not specified";
+    const priceHint =
+      formData.price_hint || formData.price_range || "Not specified";
+    const payout = formData.preferred_payout || "Not specified";
+    const fulfilment = formData.preferred_fulfilment || "Not specified";
+    const media = Array.isArray(formData.media) ? formData.media : [];
+    const mediaLinks =
+      media.length > 0
+        ? media
+            .map(
+              (item: any, index: number) =>
+                `<a href="${item.url}" target="_blank" rel="noopener noreferrer">Photo ${index + 1}</a>`,
+            )
+            .join(" • ")
+        : "No photos provided";
 
     const isTradeIn = type === "trade-in";
 
@@ -313,8 +351,43 @@ export class EmailService {
               </div>
 
               <div class="field-group">
-                <div class="field-label">Body Condition:</div>
-                <div class="field-value">${bodyCondition}</div>
+                <div class="field-label">Storage:</div>
+                <div class="field-value">${storage}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Condition:</div>
+                <div class="field-value">${condition}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Accessories:</div>
+                <div class="field-value">${accessories}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Defects:</div>
+                <div class="field-value">${defects}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Price Hint / Range:</div>
+                <div class="field-value">${priceHint}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Preferred Payout:</div>
+                <div class="field-value">${payout}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Preferred Fulfilment:</div>
+                <div class="field-value">${fulfilment}</div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label">Photos:</div>
+                <div class="field-value">${mediaLinks}</div>
               </div>
             `
                 : ""
@@ -322,7 +395,7 @@ export class EmailService {
 
             <div class="field-group">
               <div class="field-label">${isTradeIn ? "Additional Comments:" : "Message:"}</div>
-              <div class="field-value">${message}</div>
+              <div class="field-value">${rawMessage}</div>
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
