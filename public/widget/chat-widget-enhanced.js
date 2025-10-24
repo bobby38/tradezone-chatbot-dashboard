@@ -748,6 +748,50 @@
           justify-content: center;
         }
 
+        .tz-voice-attachment {
+          margin-top: 12px;
+          display: none;
+          align-items: center;
+          gap: 12px;
+          background: rgba(12, 12, 24, 0.75);
+          border: 1px solid rgba(167, 139, 250, 0.35);
+          border-radius: 12px;
+          padding: 10px 12px;
+        }
+
+        .tz-voice-attachment img {
+          width: 56px;
+          height: 56px;
+          object-fit: cover;
+          border-radius: 8px;
+          border: 1px solid rgba(167, 139, 250, 0.35);
+        }
+
+        .tz-voice-attachment-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .tz-voice-attachment-label {
+          font-size: 12px;
+          color: #e5e7eb;
+        }
+
+        .tz-voice-remove-image {
+          background: transparent;
+          border: none;
+          color: #fca5a5;
+          font-size: 12px;
+          text-align: left;
+          padding: 0;
+          cursor: pointer;
+        }
+
+        .tz-voice-remove-image:hover {
+          text-decoration: underline;
+        }
+
          .tz-voice-actions {
           display: contents;
         }
@@ -1356,6 +1400,13 @@
                   />
                   <button class="tz-voice-note-send" id="tz-voice-note-send">Send note</button>
                 </div>
+                <div class="tz-voice-attachment" id="tz-voice-attachment">
+                  <img id="tz-voice-preview-img" alt="Attachment preview" />
+                  <div class="tz-voice-attachment-meta">
+                    <span class="tz-voice-attachment-label" id="tz-voice-attachment-label">Photo ready to send</span>
+                    <button class="tz-voice-remove-image" id="tz-voice-remove-image" type="button">Remove</button>
+                  </div>
+                </div>
               </div>
             </div>
             </div>
@@ -1444,6 +1495,10 @@
         voiceFileInput.addEventListener("change", (e) =>
           this.handleFileSelect(e),
         );
+      }
+      const voiceRemoveImage = document.getElementById("tz-voice-remove-image");
+      if (voiceRemoveImage) {
+        voiceRemoveImage.addEventListener("click", () => this.removeImage());
       }
 
       const voiceNoteSend = document.getElementById("tz-voice-note-send");
@@ -1626,6 +1681,7 @@
       const note = noteInput.value.trim();
       const textInput = document.getElementById("tz-input");
       if (!textInput) return;
+      const hadImage = !!this.currentImage;
 
       if (!note && !this.currentImage) {
         this.updateVoiceStatus("Add a note or attach a photo first.");
@@ -1634,14 +1690,37 @@
       }
 
       const previousValue = textInput.value;
+      const defaultPlaceholder =
+        noteInput.dataset.defaultPlaceholder || noteInput.placeholder;
+      noteInput.dataset.defaultPlaceholder = defaultPlaceholder;
       textInput.value = note;
 
       try {
         await this.sendMessage();
         noteInput.value = "";
         if (this.mode === "voice") {
-          this.updateVoiceStatus("Note sent to Amara.");
-          setTimeout(() => this.updateVoiceStatus("Ready to start"), 2000);
+          if (note) {
+            this.addTranscript(`📝 Note sent: ${note}`, "system");
+          } else {
+            this.addTranscript("📝 Note sent.", "system");
+          }
+          if (hadImage) {
+            this.addTranscript(
+              "📷 Photo received. We'll review it soon.",
+              "system",
+            );
+          }
+          const statusMessage = hadImage
+            ? note
+              ? "Note + photo sent to Amara."
+              : "Photo sent to Amara."
+            : "Note sent to Amara.";
+          this.updateVoiceStatus(statusMessage);
+          noteInput.placeholder = hadImage ? "Photo sent!" : "Note sent!";
+          setTimeout(() => {
+            this.updateVoiceStatus("Ready to start");
+            noteInput.placeholder = noteInput.dataset.defaultPlaceholder;
+          }, 2200);
         }
       } finally {
         textInput.value = previousValue;
@@ -2145,17 +2224,43 @@
       const div = document.createElement("div");
       div.style.marginBottom = "8px";
 
-      // Parse markdown for assistant messages, escape for user
+      let labelColor = "#8b5cf6";
+      let labelText = this.config.botName;
+      if (role === "user") {
+        labelColor = "#a78bfa";
+        labelText = "You";
+      } else if (role === "system") {
+        labelColor = "#fbbf24";
+        labelText = "Note";
+      }
+
       const formattedText =
         role === "assistant" ? this.parseMarkdown(text) : this.escapeHtml(text);
 
-      div.innerHTML = `<strong style="color: ${role === "user" ? "#a78bfa" : "#8b5cf6"};">${role === "user" ? "You" : this.config.botName}:</strong> <span style="color: #e5e7eb;">${formattedText}</span>`;
+      div.innerHTML = `<strong style="color: ${labelColor};">${labelText}:</strong> <span style="color: #e5e7eb;">${formattedText}</span>`;
       transcript.appendChild(div);
       transcript.scrollTop = transcript.scrollHeight;
     },
 
     updateVoiceStatus: function (status) {
       document.getElementById("tz-voice-status").textContent = status;
+    },
+
+    showVoiceAttachment: function (imageUrl) {
+      const wrapper = document.getElementById("tz-voice-attachment");
+      const img = document.getElementById("tz-voice-preview-img");
+      const label = document.getElementById("tz-voice-attachment-label");
+      if (img) {
+        img.src = imageUrl;
+      }
+      if (wrapper) {
+        wrapper.style.display = "flex";
+      }
+      if (label) {
+        label.textContent = "Photo ready to send";
+      }
+      this.addTranscript("📸 Photo attached (not sent yet).", "system");
+      this.updateVoiceStatus("Photo attached. Add a note to send it.");
     },
 
     updateVoiceButton: function () {
@@ -2199,9 +2304,12 @@
 
         if (imageUrl) {
           this.currentImage = imageUrl; // Store Appwrite URL instead of base64
-          // Show preview
-          document.getElementById("tz-preview-img").src = imageUrl;
-          document.getElementById("tz-image-preview").style.display = "block";
+          if (this.mode === "voice") {
+            this.showVoiceAttachment(imageUrl);
+          } else {
+            document.getElementById("tz-preview-img").src = imageUrl;
+            document.getElementById("tz-image-preview").style.display = "block";
+          }
           console.log("[File] Image uploaded to Appwrite:", imageUrl);
         } else {
           // Fallback to base64 if Appwrite fails
@@ -2209,8 +2317,13 @@
           const reader = new FileReader();
           reader.onload = (e) => {
             this.currentImage = e.target.result;
-            document.getElementById("tz-preview-img").src = this.currentImage;
-            document.getElementById("tz-image-preview").style.display = "block";
+            if (this.mode === "voice") {
+              this.showVoiceAttachment(this.currentImage);
+            } else {
+              document.getElementById("tz-preview-img").src = this.currentImage;
+              document.getElementById("tz-image-preview").style.display =
+                "block";
+            }
           };
           reader.readAsDataURL(file);
         }
