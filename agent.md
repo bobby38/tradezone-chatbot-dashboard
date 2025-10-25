@@ -39,9 +39,91 @@ Configure the following before running locally or deploying (see `plan.md` and `
 
 Keep service-role secrets server-side only; do **not** expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. Several API routes still instantiate Supabase with `NEXT_PUBLIC_SUPABASE_ANON_KEY`; harden them during fixes (see §6).
 
-## 3. Database & Migrations
+## 3. Submission Flows - Critical Separation ⚠️
+
+### Three Distinct Flows (DO NOT MIX)
+
+#### Flow 1: Fluent Form Trade-In (Website Form → Dashboard Display Only)
+```
+tradezone.sg/device-trade-in/ → WordPress Fluent Form
+  ↓
+POST /api/webhook/fluent-forms
+  ↓
+Supabase "submissions" table
+  - content_type: "Form Submission"
+  - ai_metadata: {checkbox_1, dropdown_6, input_radio_2, image-upload, etc.}
+  ↓
+Display: /dashboard/submissions → "Trade-in Forms" tab (BLUE ICON)
+  - Shows: device info, images, address, customer details
+  - Email: Already sent by WordPress (NO email from dashboard)
+  - Action: Staff review and reply manually
+```
+
+#### Flow 2: Agent Trade-In (AI Chatbot → Full Lead Management)
+```
+User chats with AI (text or voice)
+  ↓
+tradein_update_lead tool (collect: brand, model, condition, contact)
+  ↓
+Supabase "trade_in_leads" table
+  - status: draft → submitted → quoted → completed
+  ↓
+tradein_submit_lead tool
+  ↓
+Email sent via EmailService to contactus@tradezone.sg
+  ↓
+Display: /dashboard/trade-in (Dedicated Lead Management Dashboard)
+  - Shows: lead pipeline, status updates, notes, timeline, actions
+  - Email: Sent by dashboard EmailService
+  - Action: Staff manage leads, assign, quote, update status
+```
+
+#### Flow 3: Agent Contact (AI Chatbot → General Support)
+```
+User asks AI for help (NOT trade-in related)
+  ↓
+emailSend tool (BLOCKS any "trade-in" keywords)
+  ↓
+Supabase "submissions" table
+  - content_type: "Agent"
+  - ai_metadata: {sender_name, sender_email, context, phone}
+  ↓
+Email sent via EmailService to staff
+  ↓
+Display: /dashboard/submissions → "Agent" tab (PURPLE ICON)
+  - Shows: customer inquiry, contact details
+  - Email: Sent by dashboard EmailService
+  - Action: Staff review and respond
+```
+
+### Dashboard Locations
+
+| Source | Table | Dashboard Page | Tab/View | Icon Color |
+|--------|-------|----------------|----------|-----------|
+| **Fluent Form Trade-In** | `submissions` | `/dashboard/submissions` | Trade-in Forms | Blue (Monitor) |
+| **Agent Trade-In** | `trade_in_leads` | `/dashboard/trade-in` | Full page | - |
+| **Agent Contact** | `submissions` | `/dashboard/submissions` | Agent | Purple (MessageSquare) |
+| **Fluent Form Contact** | `submissions` | `/dashboard/submissions` | Contact Forms | Green (Mail) |
+
+### Protection Mechanisms
+
+1. **emailSend tool blocks trade-ins** (`lib/tools/emailSend.ts:64-79`):
+   - Rejects `emailType: "trade_in"`
+   - Detects "trade-in", "trade in", "tradein" in message
+   - Returns error directing to trade-in tools
+
+2. **Separate databases**:
+   - Trade-in leads → `trade_in_leads` table
+   - Other submissions → `submissions` table
+
+3. **Separate dashboards**:
+   - Trade-in management → `/dashboard/trade-in`
+   - Form submissions → `/dashboard/submissions`
+
+## 4. Database & Migrations
 Supabase schema lives in SQL files under `/supabase/migrations/` plus root helper scripts. Apply in production (Phase 2 checklist, `plan.md`). Core tables:
 - `chat_logs`, `chat_sessions`, `session_summaries` (from `enhance-chat-sessions.sql`) for conversation history.
+- `trade_in_leads`, `trade_in_media`, `trade_in_actions` (`20251018_trade_in_leads.sql`) for AI agent trade-in workflow.
 - `submissions`, `submission_drafts` (`create_submissions_table.sql`, `supabase/migrations/20250825_submission_drafts.sql`) for form + AI reply workflows.
 - `extracted_emails` (`supabase/migrations/20250825_extracted_emails.sql`) for email intelligence.
 - `settings` (`20250824_create_settings_table.sql`) for configurable integrations.
@@ -803,6 +885,11 @@ SELECT id, name, slug FROM organizations;
 ---
 
 ## Change Log
+
+### October 24, 2025 - Voice Trade-In Attachment Reset
+**Status**: 🔄 Verification pending (run voice-mode trade-in flow 2025-10-25)
+- ✅ Cleared voice attachment preview once note/photo submitted so "Photo ready to send" badge disappears (`public/widget/chat-widget-enhanced.js`).
+- 🔄 Confirm tomorrow that the badge stays hidden after Amara acknowledges the upload and that `Remove` still works mid-session.
 
 ### October 19, 2025 - Agent & API Stability Update
 **Fixes & Enhancements**:
