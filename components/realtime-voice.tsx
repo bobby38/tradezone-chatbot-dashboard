@@ -68,7 +68,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           output_audio_format: sessionConfig.output_audio_format || "pcm16",
           instructions:
             sessionConfig.instructions ||
-            "You are Amara, TradeZone.sg's voice assistant. Keep answers short (1-2 sentences) and pause to let the caller respond.",
+            "You are Amara, TradeZone.sg's voice assistant. As soon as the call starts, greet with 'Hi, Amara here. I’m listening.' then wait. Keep answers under 12 words and pause so the caller can interrupt.",
           tools: sessionConfig.tools || [],
           tool_choice: sessionConfig.tool_choice || "auto",
           input_audio_transcription:
