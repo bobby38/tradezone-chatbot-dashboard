@@ -424,6 +424,49 @@ export async function submitTradeInLead(
     status: lead.status,
   });
 
+  const missingFields: string[] = [];
+  const friendlyFieldNames: Record<string, string> = {
+    brand: "device brand",
+    model: "device model",
+    condition: "device condition",
+    contact_name: "contact name",
+    contact_phone: "contact phone number",
+    contact_email: "contact email",
+    preferred_payout: "preferred payout method",
+  };
+
+  if (!lead.brand?.trim()) {
+    missingFields.push("brand");
+  }
+  if (!lead.model?.trim()) {
+    missingFields.push("model");
+  }
+  if (!lead.condition?.trim()) {
+    missingFields.push("condition");
+  }
+  if (!lead.contact_name?.trim()) {
+    missingFields.push("contact_name");
+  }
+  if (!lead.contact_phone?.trim()) {
+    missingFields.push("contact_phone");
+  }
+  if (!lead.contact_email?.trim()) {
+    missingFields.push("contact_email");
+  }
+  if (!lead.preferred_payout?.trim()) {
+    missingFields.push("preferred_payout");
+  }
+
+  if (missingFields.length > 0) {
+    const missingList = missingFields
+      .map((field) => friendlyFieldNames[field] ?? field)
+      .join(", ");
+    throw new TradeInValidationError(
+      `Missing required trade-in details: ${missingList}. Please ask the customer for the missing information, save it with tradein_update_lead, then submit the lead.`,
+      missingFields,
+    );
+  }
+
   const patch: TradeInUpdateInput = {};
   if (input.summary) {
     patch.notes = input.summary;
