@@ -1698,6 +1698,12 @@
       try {
         await this.sendMessage();
         noteInput.value = "";
+
+        // Clear the image after sending
+        if (hadImage) {
+          this.removeImage();
+        }
+
         if (this.mode === "voice") {
           if (note) {
             this.addTranscript(`📝 Note sent: ${note}`, "system");
@@ -2382,9 +2388,41 @@
 
     removeImage: function () {
       this.currentImage = null;
-      document.getElementById("tz-image-preview").style.display = "none";
-      document.getElementById("tz-preview-img").src = "";
-      document.getElementById("tz-file-input").value = ""; // Reset file input
+
+      const textPreviewWrapper = document.getElementById("tz-image-preview");
+      if (textPreviewWrapper) {
+        textPreviewWrapper.style.display = "none";
+      }
+
+      const textPreviewImg = document.getElementById("tz-preview-img");
+      if (textPreviewImg) {
+        textPreviewImg.src = "";
+      }
+
+      const textFileInput = document.getElementById("tz-file-input");
+      if (textFileInput) {
+        textFileInput.value = ""; // Reset text-mode file input
+      }
+
+      const voiceWrapper = document.getElementById("tz-voice-attachment");
+      if (voiceWrapper) {
+        voiceWrapper.style.display = "none";
+      }
+
+      const voicePreviewImg = document.getElementById("tz-voice-preview-img");
+      if (voicePreviewImg) {
+        voicePreviewImg.src = "";
+      }
+
+      const voiceLabel = document.getElementById("tz-voice-attachment-label");
+      if (voiceLabel) {
+        voiceLabel.textContent = "Photo ready to send";
+      }
+
+      const voiceFileInput = document.getElementById("tz-voice-file-input");
+      if (voiceFileInput) {
+        voiceFileInput.value = "";
+      }
     },
 
     escapeHtml: function (text) {
