@@ -1047,10 +1047,16 @@ export async function POST(request: NextRequest) {
           ) {
             const toolStart = Date.now();
             const isTradeInIntent = detectTradeInIntent(functionArgs.query);
+            console.log(`[ChatKit] 🔍 Tool called: ${functionName}`, {
+              query: functionArgs.query,
+              isTradeInIntent,
+              sessionId,
+            });
             const vectorContext: VectorSearchContext | undefined =
               isTradeInIntent
                 ? { intent: "trade_in", toolUsed: functionName }
                 : { toolUsed: functionName };
+            console.log(`[ChatKit] Vector context:`, vectorContext);
             const { result, source } = await runHybridSearch(
               functionArgs.query,
               vectorContext,
