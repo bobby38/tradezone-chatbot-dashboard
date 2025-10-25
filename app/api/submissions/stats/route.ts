@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
     const { data: submissions, error } = await supabaseAdmin
       .from('submissions')
       .select('*')
-      .eq('content_type', 'Form Submission')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -68,7 +67,12 @@ export async function GET(req: NextRequest) {
       
       // Form type detection and stats
       const metadata = submission.ai_metadata || {}
-      const formType = metadata.device_type || metadata.console_type ? 'Trade-in Form' : 'Contact Form'
+
+      const formType = submission.content_type === 'Agent'
+        ? 'Agent'
+        : metadata.device_type || metadata.console_type
+          ? 'Trade-in Form'
+          : 'Contact Form'
       stats.byType[formType] = (stats.byType[formType] || 0) + 1
       
       // Email tracking (for repeat customers)

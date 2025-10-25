@@ -6,7 +6,6 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('submissions')
       .select('*')
-      .eq('content_type', 'Form Submission')
       .order('created_at', { ascending: false })
       .limit(100)
 
