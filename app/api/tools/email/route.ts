@@ -79,24 +79,8 @@ export async function POST(request: NextRequest) {
       const customerMessage = body.message;
       const customerNote = body.note || null;
 
-      const normalizedMessage =
-        `${customerMessage} ${customerNote || ""}`.toLowerCase();
-      if (
-        normalizedMessage.includes("trade in") ||
-        normalizedMessage.includes("trade-in") ||
-        normalizedMessage.includes("tradein")
-      ) {
-        console.warn(
-          "[Email Tool] Trade-in keywords detected in sendemail payload. Blocking.",
-        );
-        return NextResponse.json(
-          {
-            result:
-              "It looks like this is a trade-in request. Please submit it with tradein_update_lead followed by tradein_submit_lead so our team gets the full form and photos.",
-          },
-          { headers: corsHeaders },
-        );
-      }
+      // Don't block support questions that mention "trade in" - those are legitimate inquiries
+      // The agent should route actual trade-ins to tradein tools, not sendemail
 
       // Email validation and correction
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -138,30 +122,138 @@ export async function POST(request: NextRequest) {
       let html = "";
 
       if (emailType === "info_request") {
-        subject = `ℹ️ Information Request from ${customerName}`;
+        subject = `💬 Customer Inquiry from ${customerName}`;
         html = `
-          <h2>Customer Information Request (Voice Chat)</h2>
-          <p><strong>Customer:</strong> ${customerName}</p>
-          <p><strong>Email:</strong> ${customerEmail}</p>
-          <p><strong>Phone:</strong> ${customerPhone}</p>
-          <h3>Question:</h3>
-          <p>${customerMessage.replace(/\n/g, "<br>")}</p>
-          ${customerNote ? `<h3>Additional Context:</h3><p>${customerNote.replace(/\n/g, "<br>")}</p>` : ""}
-          <hr>
-          <p><em>Amara couldn't answer this question - customer needs staff follow-up.</em></p>
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+    .content { background: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none; }
+    .info-box { background: #f8fafc; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 4px; }
+    .info-row { margin: 10px 0; }
+    .label { font-weight: 600; color: #475569; display: inline-block; width: 80px; }
+    .value { color: #1e293b; }
+    .message-box { background: #fff; border: 1px solid #e2e8f0; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .message-box h3 { margin-top: 0; color: #475569; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .message-content { color: #334155; line-height: 1.8; }
+    .footer { background: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px; color: #64748b; border: 1px solid #e2e8f0; border-top: none; }
+    .badge { display: inline-block; background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>💬 Customer Inquiry</h1>
+    <p>New inquiry from TradeZone Voice Assistant</p>
+  </div>
+  <div class="content">
+    <div class="info-box">
+      <div class="info-row">
+        <span class="label">Name:</span>
+        <span class="value">${customerName}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Email:</span>
+        <span class="value"><a href="mailto:${customerEmail}">${customerEmail}</a></span>
+      </div>
+      <div class="info-row">
+        <span class="label">Phone:</span>
+        <span class="value"><a href="tel:${customerPhone}">${customerPhone}</a></span>
+      </div>
+    </div>
+
+    <div class="message-box">
+      <h3>Customer Question</h3>
+      <div class="message-content">${customerMessage.replace(/\n/g, "<br>")}</div>
+    </div>
+
+    ${
+      customerNote
+        ? `
+    <div class="message-box">
+      <h3>Additional Context</h3>
+      <div class="message-content">${customerNote.replace(/\n/g, "<br>")}</div>
+    </div>
+    `
+        : ""
+    }
+  </div>
+  <div class="footer">
+    <span class="badge">Voice Chat</span>
+    <p style="margin-top: 15px;">This inquiry was handled by Amara, our AI assistant. The customer needs staff follow-up.</p>
+  </div>
+</body>
+</html>
         `;
       } else {
-        subject = `📧 Contact Request from ${customerName}`;
+        subject = `📧 Support Request from ${customerName}`;
         html = `
-          <h2>Customer Contact Request (Voice Chat)</h2>
-          <p><strong>Customer:</strong> ${customerName}</p>
-          <p><strong>Email:</strong> ${customerEmail}</p>
-          <p><strong>Phone:</strong> ${customerPhone}</p>
-          <h3>Message:</h3>
-          <p>${customerMessage.replace(/\n/g, "<br>")}</p>
-          ${customerNote ? `<h3>Additional Notes:</h3><p>${customerNote.replace(/\n/g, "<br>")}</p>` : ""}
-          <hr>
-          <p><em>Sent via TradeZone Voice Assistant (Amara)</em></p>
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+    .content { background: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none; }
+    .info-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px; }
+    .info-row { margin: 10px 0; }
+    .label { font-weight: 600; color: #475569; display: inline-block; width: 80px; }
+    .value { color: #1e293b; }
+    .message-box { background: #fff; border: 1px solid #e2e8f0; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    .message-box h3 { margin-top: 0; color: #475569; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .message-content { color: #334155; line-height: 1.8; }
+    .footer { background: #f8fafc; padding: 20px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px; color: #64748b; border: 1px solid #e2e8f0; border-top: none; }
+    .badge { display: inline-block; background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📧 Support Request</h1>
+    <p>New contact request from TradeZone Voice Assistant</p>
+  </div>
+  <div class="content">
+    <div class="info-box">
+      <div class="info-row">
+        <span class="label">Name:</span>
+        <span class="value">${customerName}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Email:</span>
+        <span class="value"><a href="mailto:${customerEmail}">${customerEmail}</a></span>
+      </div>
+      <div class="info-row">
+        <span class="label">Phone:</span>
+        <span class="value"><a href="tel:${customerPhone}">${customerPhone}</a></span>
+      </div>
+    </div>
+
+    <div class="message-box">
+      <h3>Customer Message</h3>
+      <div class="message-content">${customerMessage.replace(/\n/g, "<br>")}</div>
+    </div>
+
+    ${
+      customerNote
+        ? `
+    <div class="message-box">
+      <h3>Additional Notes</h3>
+      <div class="message-content">${customerNote.replace(/\n/g, "<br>")}</div>
+    </div>
+    `
+        : ""
+    }
+  </div>
+  <div class="footer">
+    <span class="badge">Voice Chat</span>
+    <p style="margin-top: 15px;">Sent via Amara, TradeZone's AI Voice Assistant</p>
+  </div>
+</body>
+</html>
         `;
       }
 
