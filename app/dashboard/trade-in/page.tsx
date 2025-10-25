@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FileDown,
   Loader2,
@@ -202,6 +203,8 @@ export default function TradeInDashboardPage() {
     Record<string, string>
   >({});
   const [mediaLoading, setMediaLoading] = useState(false);
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -390,6 +393,64 @@ export default function TradeInDashboardPage() {
       toast.error(
         error instanceof Error ? error.message : "Unable to delete lead",
       );
+    }
+  };
+
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeads((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId);
+      } else {
+        newSet.add(leadId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeads.size === leads.length) {
+      setSelectedLeads(new Set());
+    } else {
+      setSelectedLeads(new Set(leads.map((lead) => lead.id)));
+    }
+  };
+
+  const bulkDeleteLeads = async () => {
+    if (selectedLeads.size === 0) return;
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedLeads.size} trade-in lead${selectedLeads.size === 1 ? "" : "s"}? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setBulkDeleting(true);
+    try {
+      const response = await fetch("/api/tradein/leads/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: Array.from(selectedLeads) }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete leads");
+      }
+
+      const data = await response.json();
+      toast.success(
+        `Successfully deleted ${data.deletedCount} lead${data.deletedCount === 1 ? "" : "s"}`,
+      );
+      setSelectedLeads(new Set());
+      await fetchLeads();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to delete leads",
+      );
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -627,6 +688,25 @@ export default function TradeInDashboardPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {selectedLeads.size > 0 && (
+            <Button
+              variant="destructive"
+              onClick={bulkDeleteLeads}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete ({selectedLeads.size})
+                </>
+              )}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => fetchLeads()}>
             Refresh
           </Button>
@@ -676,6 +756,15 @@ export default function TradeInDashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={
+                            leads.length > 0 &&
+                            selectedLeads.size === leads.length
+                          }
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead className="min-w-[140px]">Customer</TableHead>
                       <TableHead className="min-w-[200px]">Device</TableHead>
                       <TableHead>Condition</TableHead>
@@ -688,7 +777,7 @@ export default function TradeInDashboardPage() {
                   <TableBody>
                     {loading && (
                       <TableRow>
-                        <TableCell colSpan={7}>
+                        <TableCell colSpan={8}>
                           <div className="flex items-center justify-center py-8 text-muted-foreground">
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Loading trade-in leads…
@@ -698,7 +787,7 @@ export default function TradeInDashboardPage() {
                     )}
                     {!loading && leads.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7}>
+                        <TableCell colSpan={8}>
                           <div className="py-8 text-center text-muted-foreground">
                             No trade-in leads yet.
                           </div>
@@ -707,6 +796,12 @@ export default function TradeInDashboardPage() {
                     )}
                     {leads.map((lead) => (
                       <TableRow key={lead.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedLeads.has(lead.id)}
+                            onCheckedChange={() => toggleLeadSelection(lead.id)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">

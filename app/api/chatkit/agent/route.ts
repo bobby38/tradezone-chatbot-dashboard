@@ -422,6 +422,11 @@ async function runHybridSearch(
     /analyze .* uploaded/i,
     /summarize the uploaded/i,
     /within your uploaded/i,
+    /could you please clarify/i,
+    /let me know how i can assist/i,
+    /if you want information from your uploaded/i,
+    /please specify what details/i,
+    /looking for recommendations or reviews/i,
   ];
 
   // 🔴 CRITICAL: For trade-in queries, ALWAYS trust the vector store - never fall back to Perplexity
@@ -1371,7 +1376,7 @@ export async function POST(request: NextRequest) {
         messages.push({
           role: "system",
           content:
-            "🔴 REMINDER: Extract ONLY the key info from the tool results above (price, condition, etc.). Respond in MAX 2-3 SHORT sentences. DO NOT copy/paste or repeat verbose details. Be CONCISE and conversational.",
+            "🔴 REMINDER: Extract ONLY the key info from the tool results above (price, condition, etc.). Respond in MAX 2-3 SHORT sentences. DO NOT copy/paste or repeat verbose details. Be CONCISE and conversational. Avoid filler like “Let me check” or “One moment” — go straight to the answer.",
         });
       }
 
@@ -1408,7 +1413,11 @@ export async function POST(request: NextRequest) {
             (lastHybridSource === "product_catalog" && !hasLink)
           ) {
             finalResponse = fallback;
-          } else if (!hasLink && !isTradeInQuery) {
+          } else if (
+            !hasLink &&
+            !isTradeInQuery &&
+            lastHybridSource !== "vector_store"
+          ) {
             // Only append fallback for non-trade-in queries
             finalResponse = `${finalResponse}\n\n${fallback}`;
           }
