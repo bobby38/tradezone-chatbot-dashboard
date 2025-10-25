@@ -1024,7 +1024,9 @@ export async function POST(request: NextRequest) {
     // 🔴 CRITICAL FIX: Force searchProducts for trade-in pricing queries
     const isTradeInPricingQuery =
       detectTradeInIntent(message) &&
-      /price|worth|value|quote|offer|goes? for|typically|trade/i.test(message);
+      /\b(price|worth|value|quote|offer|how much|goes? for|typically|payout|cash out)\b/i.test(
+        message,
+      );
 
     const toolChoice = isTradeInPricingQuery
       ? { type: "function" as const, function: { name: "searchProducts" } }
@@ -1067,9 +1069,48 @@ export async function POST(request: NextRequest) {
             functionName === "searchtool"
           ) {
             const toolStart = Date.now();
-            const isTradeInIntent = detectTradeInIntent(functionArgs.query);
+            const rawQuery =
+              typeof functionArgs.query === "string"
+                ? functionArgs.query.trim()
+                : "";
+
+            if (!rawQuery) {
+              const warningMessage =
+                "I need the exact model name or more details to check pricing.";
+              console.warn(
+                `[ChatKit] ${functionName} called without a usable query`,
+                {
+                  args: functionArgs,
+                  sessionId,
+                },
+              );
+              toolResult = warningMessage;
+              toolSummaries.push({
+                name: functionName,
+                args: functionArgs,
+                resultPreview: warningMessage,
+              });
+              await logToolRun({
+                request_id: requestId,
+                session_id: sessionId,
+                tool_name: functionName,
+                args: functionArgs,
+                result_preview: warningMessage,
+                success: false,
+                latency_ms: Date.now() - toolStart,
+                error_message: "Missing search query",
+              });
+              messages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: warningMessage,
+              });
+              continue;
+            }
+
+            const isTradeInIntent = detectTradeInIntent(rawQuery);
             console.log(`[ChatKit] 🔍 Tool called: ${functionName}`, {
-              query: functionArgs.query,
+              query: rawQuery,
               isTradeInIntent,
               sessionId,
             });
@@ -1079,25 +1120,26 @@ export async function POST(request: NextRequest) {
                 : { toolUsed: functionName };
             console.log(`[ChatKit] Vector context:`, vectorContext);
             const { result, source } = await runHybridSearch(
-              functionArgs.query,
+              rawQuery,
               vectorContext,
             );
             toolResult = result;
             toolSource = source;
             lastHybridResult = result;
             lastHybridSource = source;
-            lastHybridQuery = functionArgs.query;
+            lastHybridQuery = rawQuery;
             const toolLatency = Date.now() - toolStart;
+            const loggedArgs = { ...functionArgs, query: rawQuery };
             toolSummaries.push({
               name: functionName,
-              args: { ...functionArgs, source },
+              args: { ...loggedArgs, source },
               resultPreview: result.slice(0, 200),
             });
             await logToolRun({
               request_id: requestId,
               session_id: sessionId,
               tool_name: functionName,
-              args: functionArgs,
+              args: loggedArgs,
               result_preview: result.slice(0, 280),
               source,
               success: true,
@@ -1294,14 +1336,18 @@ export async function POST(request: NextRequest) {
             toolResult.includes("No results found") ||
             toolResult.includes("not found"))
         ) {
-          const suggestion = await findClosestMatch(functionArgs.query);
+          const rawQuery =
+            typeof functionArgs.query === "string"
+              ? functionArgs.query.trim()
+              : "";
+          const suggestion = rawQuery ? await findClosestMatch(rawQuery) : null;
           if (suggestion) {
-            finalResponse = `I couldn't find anything for \"${functionArgs.query}\". Did you mean \"${suggestion}\"?`;
+            finalResponse = `I couldn't find anything for \"${rawQuery}\". Did you mean \"${suggestion}\"?`;
             await logToolRun({
               request_id: requestId,
               session_id: sessionId,
               tool_name: `${functionName}:suggestion`,
-              args: { query: functionArgs.query, suggestion },
+              args: { query: rawQuery, suggestion },
               success: true,
             });
             break; // Exit loop to return suggestion
@@ -1353,14 +1399,20 @@ export async function POST(request: NextRequest) {
             lastHybridSource,
           );
 
+          // 🔴 CRITICAL: For trade-in queries, NEVER append verbose fallback
+          // The LLM already has the concise response from the system reminder
+          const isTradeInQuery = lastHybridSource === "trade_in_vector_store";
+
           if (
             isGenericAssistantReply(finalResponse) ||
             (lastHybridSource === "product_catalog" && !hasLink)
           ) {
             finalResponse = fallback;
-          } else if (!hasLink) {
+          } else if (!hasLink && !isTradeInQuery) {
+            // Only append fallback for non-trade-in queries
             finalResponse = `${finalResponse}\n\n${fallback}`;
           }
+          // For trade-in queries: keep the concise LLM response, don't append fallback
         }
       }
     } else {
