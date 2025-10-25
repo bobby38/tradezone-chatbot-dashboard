@@ -25,10 +25,22 @@ function resolveVectorStore(
     (context?.intent && context.intent.toLowerCase() === "trade_in") ||
     (context?.toolUsed && context.toolUsed.startsWith("tradein_"));
 
+  // Log which store is being selected
+  console.log("[VectorSearch] Resolve:", {
+    prefersTradeIn,
+    hasTradeInId: !!tradeInId,
+    tradeInId: tradeInId?.substring(0, 15) + "..." || "NOT SET",
+    catalogId: catalogId.substring(0, 15) + "...",
+    contextIntent: context?.intent,
+    contextToolUsed: context?.toolUsed,
+  });
+
   if (prefersTradeIn && tradeInId) {
+    console.log("[VectorSearch] ✅ Using TRADE-IN vector store:", tradeInId);
     return { id: tradeInId, label: "trade_in" };
   }
 
+  console.log("[VectorSearch] Using CATALOG vector store:", catalogId);
   return { id: catalogId, label: "catalog" };
 }
 
