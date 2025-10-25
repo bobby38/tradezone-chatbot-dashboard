@@ -68,18 +68,9 @@ export async function handleEmailSend(params: {
       return "Trade-in submissions must use tradein_update_lead and tradein_submit_lead, not sendemail.";
     }
 
-    const normalizedMessage =
-      `${params.message} ${params.deviceModel || ""}`.toLowerCase();
-    if (
-      normalizedMessage.includes("trade in") ||
-      normalizedMessage.includes("trade-in") ||
-      normalizedMessage.includes("tradein")
-    ) {
-      console.warn(
-        "[EmailSend] Trade-in language detected in contact request. Blocking.",
-      );
-      return "I already saved this as a trade-in. Please confirm so I can submit it via tradein_submit_lead.";
-    }
+    // Block only if emailType is explicitly "trade_in" (already handled above)
+    // Don't block support questions that mention "trade in" - those are legitimate inquiries
+    // The agent should route actual trade-ins to tradein tools, not sendemail
 
     const phone = params.phone ?? params.phone_number;
 
