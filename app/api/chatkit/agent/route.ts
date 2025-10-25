@@ -203,6 +203,11 @@ const DEVICE_PATTERNS: Array<{
 ];
 
 function extractTradeInClues(message: string): TradeInUpdateInput {
+  const trimmed = message.trim();
+  if (trimmed.length < 4) {
+    return {};
+  }
+
   const patch: TradeInUpdateInput = {};
   const accessories = new Set<string>();
   const lower = message.toLowerCase();
@@ -276,7 +281,7 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     .replace(/\s+/g, " ")
     .trim();
 
-  if (!patch.contact_name && scrubbed.length > 0) {
+  if (!patch.contact_name && scrubbed.length >= 3) {
     const nameParts = scrubbed
       .split(/\s+/)
       .filter((token) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(token));
@@ -589,6 +594,25 @@ function formatHybridFallback(
     "",
     callToAction,
   ].join("\n");
+}
+
+function buildMissingTradeInFieldPrompt(detail: any): string | null {
+  if (!detail) return null;
+
+  const missing: string[] = [];
+
+  if (!detail.brand) missing.push("device brand/model");
+  if (!detail.model) missing.push("device brand/model");
+  if (!detail.condition) missing.push("condition");
+  if (!detail.contact_name) missing.push("contact name");
+  if (!detail.contact_phone) missing.push("contact phone");
+  if (!detail.contact_email) missing.push("contact email");
+  if (!detail.preferred_payout) missing.push("payout method");
+
+  if (missing.length === 0) return null;
+
+  const uniqueMissing = Array.from(new Set(missing));
+  return `🔴 MISSING DETAILS: ${uniqueMissing.join(", ")}. Ask ONE short question at a time (≤6 words) to collect these before submitting the trade-in.`;
 }
 
 function isImageDownloadError(error: unknown) {
@@ -924,6 +948,7 @@ export async function POST(request: NextRequest) {
   let tradeInLeadId: string | null = null;
   let tradeInLeadStatus: string | null = null;
   let tradeInIntent = false;
+  let tradeInLeadDetail: any = null;
 
   try {
     // Load settings and system prompt
@@ -1040,6 +1065,19 @@ export async function POST(request: NextRequest) {
                 : String(autoError),
           });
         }
+      }
+    }
+
+    if (tradeInIntent && tradeInLeadId) {
+      try {
+        tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
+      } catch (detailError) {
+        console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
+      }
+
+      const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
+      if (missingPrompt) {
+        messages.push({ role: "system", content: missingPrompt });
       }
     }
 
