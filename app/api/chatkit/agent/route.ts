@@ -591,6 +591,24 @@ function formatHybridFallback(
   ].join("\n");
 }
 
+function isImageDownloadError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const err = error as {
+    message?: string;
+    code?: string | null;
+    error?: { code?: string | null; message?: string };
+  };
+  const message =
+    err.message || err.error?.message || (error as Error)?.message || "";
+  const code = err.code || err.error?.code || "";
+
+  return (
+    (typeof message === "string" &&
+      /timeout while downloading/i.test(message)) ||
+    code === "invalid_image_url"
+  );
+}
+
 // Simple function definitions for OpenAI
 const tools = [
   {
@@ -1042,14 +1060,39 @@ export async function POST(request: NextRequest) {
       toolChoice: isTradeInPricingQuery ? "FORCED searchProducts" : "auto",
     });
 
-    const response = await openai.chat.completions.create({
-      model: textModel,
-      messages,
-      tools,
-      tool_choice: toolChoice,
-      temperature: 0.7,
-      max_tokens: 800, // Reduced from 2000 for cost control
-    });
+    const userMessageIndex = messages.length - 1;
+    let imageStrippedForTimeout = false;
+
+    const execChatCompletion = async () =>
+      openai.chat.completions.create({
+        model: textModel,
+        messages,
+        tools,
+        tool_choice: toolChoice,
+        temperature: 0.7,
+        max_tokens: 800, // Reduced from 2000 for cost control
+      });
+
+    let response;
+    try {
+      response = await execChatCompletion();
+    } catch (initialError) {
+      if (
+        image &&
+        !imageStrippedForTimeout &&
+        isImageDownloadError(initialError)
+      ) {
+        console.warn(
+          "[ChatKit] Image download failed for OpenAI. Retrying without image.",
+          { sessionId, image },
+        );
+        messages[userMessageIndex] = { role: "user", content: message };
+        imageStrippedForTimeout = true;
+        response = await execChatCompletion();
+      } else {
+        throw initialError;
+      }
+    }
 
     const assistantMessage = response.choices[0].message;
 
@@ -1382,12 +1425,34 @@ export async function POST(request: NextRequest) {
 
       if (!finalResponse) {
         // If no suggestion was made
-        const finalCompletion = await openai.chat.completions.create({
-          model: textModel,
-          messages,
-          temperature: 0.7,
-          max_tokens: 800, // Reduced from 2000 for cost control
-        });
+        const execFinalCompletion = async () =>
+          openai.chat.completions.create({
+            model: textModel,
+            messages,
+            temperature: 0.7,
+            max_tokens: 800, // Reduced from 2000 for cost control
+          });
+
+        let finalCompletion;
+        try {
+          finalCompletion = await execFinalCompletion();
+        } catch (finalError) {
+          if (
+            image &&
+            !imageStrippedForTimeout &&
+            isImageDownloadError(finalError)
+          ) {
+            console.warn(
+              "[ChatKit] Final response image fetch failed, retrying without image.",
+              { sessionId, image },
+            );
+            messages[userMessageIndex] = { role: "user", content: message };
+            imageStrippedForTimeout = true;
+            finalCompletion = await execFinalCompletion();
+          } else {
+            throw finalError;
+          }
+        }
         finalResponse = finalCompletion.choices[0].message.content || "";
 
         // Track second call token usage
