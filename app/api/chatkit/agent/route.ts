@@ -424,6 +424,9 @@ async function runHybridSearch(
     /within your uploaded/i,
   ];
 
+  // 🔴 CRITICAL: For trade-in queries, ALWAYS trust the vector store - never fall back to Perplexity
+  const isTradeInQuery = vectorSource === "trade_in_vector_store";
+
   const vectorUseful =
     vectorResult &&
     vectorResult.trim().length >= 160 &&
@@ -432,10 +435,14 @@ async function runHybridSearch(
     ) &&
     !disallowedVectorPatterns.some((pattern) => pattern.test(vectorResult));
 
-  if (vectorUseful) {
+  // For trade-in queries, use vector result even if short (pricing data is concise)
+  if (vectorUseful || (isTradeInQuery && vectorResult.trim().length > 0)) {
     const combined = catalogSection
       ? `${vectorResult}\n\n${catalogSection}`
       : vectorResult;
+    console.log(
+      `[ChatKit] Using ${isTradeInQuery ? "TRADE-IN" : "vector"} result (${vectorResult.length} chars)`,
+    );
     return { result: combined, source: vectorSource };
   }
 
@@ -1014,11 +1021,25 @@ export async function POST(request: NextRequest) {
     }
 
     // First call to OpenAI to determine if tools are needed
+    // 🔴 CRITICAL FIX: Force searchProducts for trade-in pricing queries
+    const isTradeInPricingQuery =
+      detectTradeInIntent(message) &&
+      /price|worth|value|quote|offer|goes? for|typically|trade/i.test(message);
+
+    const toolChoice = isTradeInPricingQuery
+      ? { type: "function" as const, function: { name: "searchProducts" } }
+      : ("auto" as const);
+
+    console.log("[ChatKit] Tool choice:", {
+      isTradeInPricingQuery,
+      toolChoice: isTradeInPricingQuery ? "FORCED searchProducts" : "auto",
+    });
+
     const response = await openai.chat.completions.create({
       model: textModel,
       messages,
       tools,
-      tool_choice: "auto",
+      tool_choice: toolChoice,
       temperature: 0.7,
       max_tokens: 800, // Reduced from 2000 for cost control
     });
@@ -1293,6 +1314,18 @@ export async function POST(request: NextRequest) {
           content: toolSource
             ? `${toolResult}\n\n[Source: ${toolSource}]`
             : toolResult,
+        });
+      }
+
+      // 🔴 CRITICAL: Add system reminder to enforce concise responses after tool calls
+      if (
+        assistantMessage.tool_calls &&
+        assistantMessage.tool_calls.length > 0
+      ) {
+        messages.push({
+          role: "system",
+          content:
+            "🔴 REMINDER: Extract ONLY the key info from the tool results above (price, condition, etc.). Respond in MAX 2-3 SHORT sentences. DO NOT copy/paste or repeat verbose details. Be CONCISE and conversational.",
         });
       }
 
