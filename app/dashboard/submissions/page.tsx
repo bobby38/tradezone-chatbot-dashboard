@@ -158,10 +158,22 @@ export default function SubmissionsPage() {
       return "Agent";
     }
 
-    // Check for trade-in indicators
+    // Check for trade-in indicators (both Agent and Fluent Form fields)
+    const metadata = submission.ai_metadata || {};
+
+    // Agent trade-in fields
+    if (metadata.device_type || metadata.console_type) {
+      return "Trade-in Form";
+    }
+
+    // Fluent Form trade-in fields
     if (
-      submission.ai_metadata?.device_type ||
-      submission.ai_metadata?.console_type
+      metadata.checkbox_1 || // Category field (Gaming Consoles, Gadgets, etc.)
+      metadata.dropdown_6 || // Brand field (PlayStation, Nintendo, etc.)
+      metadata.checkbox_2 || // Device type field
+      metadata.input_radio_2 || // Model field
+      metadata.dropdown_3 || // Condition field
+      metadata["image-upload"] // Trade-in images
     ) {
       return "Trade-in Form";
     }
@@ -343,15 +355,21 @@ export default function SubmissionsPage() {
     const message = formData.context || formData.message;
     const subject = formData.subject;
 
-    // Extract trade-in specific data
+    // Extract trade-in specific data (handle multiple dropdown fields)
     const tradeInData = {
       category: formData.checkbox_1?.[0],
       deviceType: formData.checkbox_2?.[0],
-      brand: formData.dropdown_6,
-      model: formData.input_radio_2,
-      storage: formData.dropdown_7,
-      condition: formData.dropdown_3,
+      brand: formData.dropdown_6 || formData.dropdown_1 || formData.dropdown_2,
+      model:
+        formData.input_radio_2 ||
+        formData.input_radio_1 ||
+        formData.input_radio,
+      storage:
+        formData.dropdown_7 || formData.dropdown_9 || formData.dropdown_8,
+      condition:
+        formData.dropdown_3 || formData.dropdown_4 || formData.dropdown_5,
       accessories: formData.dropdown_10,
+      size: formData.input_radio_3, // For clothing/accessories
       address: formData.address_1
         ? `${formData.address_1.address_line_1}, ${formData.address_1.city}, ${formData.address_1.state}, ${formData.address_1.zip}, ${formData.address_1.country}`
         : null,
@@ -425,48 +443,92 @@ export default function SubmissionsPage() {
                 </div>
               )}
               {isTradeIn && (
-                <div className="space-y-2 mt-4">
-                  {tradeInData.category && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{tradeInData.category}</Badge>
-                    </div>
-                  )}
-                  {tradeInData.deviceType && (
-                    <p className="text-sm">
-                      <span className="font-medium">Device Type:</span>{" "}
-                      {tradeInData.deviceType}
-                    </p>
-                  )}
-                  {tradeInData.brand && (
-                    <p className="text-sm">
-                      <span className="font-medium">Brand:</span>{" "}
-                      {tradeInData.brand}
-                    </p>
-                  )}
-                  {tradeInData.model && (
-                    <p className="text-sm">
-                      <span className="font-medium">Model:</span>{" "}
-                      {tradeInData.model}
-                    </p>
-                  )}
-                  {tradeInData.storage && (
-                    <p className="text-sm">
-                      <span className="font-medium">Storage:</span>{" "}
-                      {tradeInData.storage}
-                    </p>
-                  )}
-                  {tradeInData.condition && (
-                    <p className="text-sm">
-                      <span className="font-medium">Condition:</span>{" "}
-                      {tradeInData.condition}
-                    </p>
-                  )}
-                  {tradeInData.accessories && (
-                    <p className="text-sm">
-                      <span className="font-medium">Accessories:</span>{" "}
-                      {tradeInData.accessories}
-                    </p>
-                  )}
+                <div className="space-y-3 mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h5 className="font-semibold text-sm text-blue-900 dark:text-blue-100 uppercase tracking-wide flex items-center gap-2">
+                    <Monitor className="h-4 w-4" />
+                    Trade-In Device Details
+                  </h5>
+                  <div className="grid gap-2">
+                    {tradeInData.category && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Category:
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-100 dark:bg-blue-900"
+                        >
+                          {tradeInData.category}
+                        </Badge>
+                      </div>
+                    )}
+                    {tradeInData.deviceType && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Device Type:
+                        </span>
+                        <span className="text-sm">
+                          {tradeInData.deviceType}
+                        </span>
+                      </div>
+                    )}
+                    {tradeInData.brand && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Brand:
+                        </span>
+                        <span className="text-sm font-semibold">
+                          {tradeInData.brand}
+                        </span>
+                      </div>
+                    )}
+                    {tradeInData.model && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Model:
+                        </span>
+                        <span className="text-sm font-semibold">
+                          {tradeInData.model}
+                        </span>
+                      </div>
+                    )}
+                    {tradeInData.storage && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Storage:
+                        </span>
+                        <span className="text-sm">{tradeInData.storage}</span>
+                      </div>
+                    )}
+                    {tradeInData.condition && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Condition:
+                        </span>
+                        <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                          {tradeInData.condition}
+                        </span>
+                      </div>
+                    )}
+                    {tradeInData.accessories && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Accessories:
+                        </span>
+                        <span className="text-sm">
+                          {tradeInData.accessories}
+                        </span>
+                      </div>
+                    )}
+                    {tradeInData.size && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200 min-w-[100px]">
+                          Size:
+                        </span>
+                        <span className="text-sm">{tradeInData.size}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -811,13 +873,19 @@ export default function SubmissionsPage() {
                 <Card key={submission.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5 text-purple-500" />
-                        <CardTitle>
-                          {submission.ai_metadata?.sender_name ||
-                            submission.ai_metadata?.name ||
-                            "Anonymous"}
-                        </CardTitle>
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedSubmissions.has(submission.id)}
+                          onCheckedChange={() => toggleSelected(submission.id)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5 text-purple-500" />
+                          <CardTitle>
+                            {submission.ai_metadata?.sender_name ||
+                              submission.ai_metadata?.name ||
+                              "Anonymous"}
+                          </CardTitle>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
@@ -827,13 +895,31 @@ export default function SubmissionsPage() {
                           Agent
                         </Badge>
                         <Badge variant="secondary">{submission.status}</Badge>
+                        {submission.ai_metadata?.email && (
+                          <ReplyDialog
+                            submission={submission}
+                            onReplySent={() => fetchSubmissions()}
+                          />
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(submission.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          {expandedSubmissions.has(submission.id)
+                            ? "Hide"
+                            : "View"}
+                        </Button>
                       </div>
                     </div>
                     <CardDescription>
                       {formatDate(submission.created_at)}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>{renderFormData(submission)}</CardContent>
+                  {expandedSubmissions.has(submission.id) && (
+                    <CardContent>{renderFormData(submission)}</CardContent>
+                  )}
                 </Card>
               ))}
             {submissions.filter((s) => getFormType(s) === "Agent").length ===
@@ -857,19 +943,48 @@ export default function SubmissionsPage() {
                 <Card key={submission.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-5 w-5 text-green-500" />
-                        <CardTitle>
-                          {submission.ai_metadata?.name || "Anonymous"}
-                        </CardTitle>
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedSubmissions.has(submission.id)}
+                          onCheckedChange={() => toggleSelected(submission.id)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-5 w-5 text-green-500" />
+                          <CardTitle>
+                            {submission.ai_metadata?.name ||
+                              (submission.ai_metadata?.names
+                                ? `${submission.ai_metadata.names.first_name || ""} ${submission.ai_metadata.names.last_name || ""}`.trim()
+                                : "Anonymous")}
+                          </CardTitle>
+                        </div>
                       </div>
-                      <Badge variant="secondary">{submission.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{submission.status}</Badge>
+                        {submission.ai_metadata?.email && (
+                          <ReplyDialog
+                            submission={submission}
+                            onReplySent={() => fetchSubmissions()}
+                          />
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(submission.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          {expandedSubmissions.has(submission.id)
+                            ? "Hide"
+                            : "View"}
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription>
                       {formatDate(submission.created_at)}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>{renderFormData(submission)}</CardContent>
+                  {expandedSubmissions.has(submission.id) && (
+                    <CardContent>{renderFormData(submission)}</CardContent>
+                  )}
                 </Card>
               ))}
             {submissions.filter((s) => getFormType(s) === "Contact Form")
@@ -893,19 +1008,48 @@ export default function SubmissionsPage() {
                 <Card key={submission.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Monitor className="h-5 w-5 text-blue-500" />
-                        <CardTitle>
-                          {submission.ai_metadata?.name || "Anonymous"}
-                        </CardTitle>
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedSubmissions.has(submission.id)}
+                          onCheckedChange={() => toggleSelected(submission.id)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Monitor className="h-5 w-5 text-blue-500" />
+                          <CardTitle>
+                            {submission.ai_metadata?.name ||
+                              (submission.ai_metadata?.names
+                                ? `${submission.ai_metadata.names.first_name || ""} ${submission.ai_metadata.names.last_name || ""}`.trim()
+                                : "Anonymous")}
+                          </CardTitle>
+                        </div>
                       </div>
-                      <Badge variant="secondary">{submission.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{submission.status}</Badge>
+                        {submission.ai_metadata?.email && (
+                          <ReplyDialog
+                            submission={submission}
+                            onReplySent={() => fetchSubmissions()}
+                          />
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(submission.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          {expandedSubmissions.has(submission.id)
+                            ? "Hide"
+                            : "View"}
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription>
                       {formatDate(submission.created_at)}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>{renderFormData(submission)}</CardContent>
+                  {expandedSubmissions.has(submission.id) && (
+                    <CardContent>{renderFormData(submission)}</CardContent>
+                  )}
                 </Card>
               ))}
             {submissions.filter((s) => getFormType(s) === "Trade-in Form")
