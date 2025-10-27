@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const revalidate = 0
+export const dynamic = 'force-dynamic'
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -48,23 +51,23 @@ export async function GET(req: NextRequest) {
       const dateStr = submissionDate.toISOString().split('T')[0]
       const hour = submissionDate.getHours()
       const dayOfWeek = submissionDate.getDay()
-      
+
       // Date-based stats
       if (submissionDate >= today) stats.today++
       if (submissionDate >= yesterday && submissionDate < today) stats.yesterday++
       if (submissionDate >= weekAgo) stats.thisWeek++
       if (submissionDate >= monthAgo) stats.thisMonth++
-      
+
       // Daily distribution
       stats.byDate[dateStr] = (stats.byDate[dateStr] || 0) + 1
-      
+
       // Hourly and weekly distribution
       stats.hourlyDistribution[hour]++
       stats.weeklyDistribution[dayOfWeek]++
-      
+
       // Status stats
       stats.byStatus[submission.status] = (stats.byStatus[submission.status] || 0) + 1
-      
+
       // Form type detection and stats
       const metadata = submission.ai_metadata || {}
 
@@ -74,17 +77,17 @@ export async function GET(req: NextRequest) {
           ? 'Trade-in Form'
           : 'Contact Form'
       stats.byType[formType] = (stats.byType[formType] || 0) + 1
-      
+
       // Email tracking (for repeat customers)
       if (metadata.email) {
         stats.topEmails[metadata.email] = (stats.topEmails[metadata.email] || 0) + 1
       }
-      
+
       // Device stats (from webhook metadata)
       if (metadata.device_type) {
         stats.deviceStats[metadata.device_type] = (stats.deviceStats[metadata.device_type] || 0) + 1
       }
-      
+
       // Recent activity (last 10 submissions)
       if (stats.recentActivity.length < 10) {
         stats.recentActivity.push({
@@ -100,11 +103,11 @@ export async function GET(req: NextRequest) {
     })
 
     // Calculate growth rates
-    const todayGrowth = stats.yesterday > 0 
+    const todayGrowth = stats.yesterday > 0
       ? ((stats.today - stats.yesterday) / stats.yesterday * 100).toFixed(1)
       : stats.today > 0 ? 100 : 0
 
-    const weekGrowth = stats.thisMonth > stats.thisWeek 
+    const weekGrowth = stats.thisMonth > stats.thisWeek
       ? (((stats.thisWeek - (stats.thisMonth - stats.thisWeek)) / (stats.thisMonth - stats.thisWeek)) * 100).toFixed(1)
       : 0
 
@@ -123,7 +126,7 @@ export async function GET(req: NextRequest) {
           week: weekGrowth
         },
         averagePerDay: (stats.thisMonth / 30).toFixed(1),
-        conversionRate: stats.byStatus.completed 
+        conversionRate: stats.byStatus.completed
           ? ((stats.byStatus.completed / stats.total) * 100).toFixed(1)
           : 0
       }

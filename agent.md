@@ -2775,9 +2775,10 @@ https://trade.rezult.co/widget/chat-widget-enhanced.js
 
 ## Future Enhancements
 
-- **Prompt Management UI**: Expose chat/voice prompts in the dashboard settings so admins can edit, version, and preview changes without redeploying (sync with Supabase `organizations.settings.chatkit`).
-- **Messaging Integrations**: Add outbound WhatsApp and Telegram share/notification flows directly from trade-in leads (leveraging existing Supabase lead metadata).
-
+### Next Phase Focus
+- **Voice Transcript Logging**: Finalize the `RealtimeVoice` turn batching, post each completed user/assistant pair to a new `/api/chatkit/voice-log` route, and align Supabase session/turn counters so voice conversations appear in `chat_logs` beside text threads.
+- **Prompt Management Controls**: Deliver a settings surface that stores Amara’s text + voice system prompts in Supabase with versioning, preview, and safe rollout toggles—letting ops adjust tone and playbooks without a redeploy.
+- **WhatsApp & Telegram Connectors**: Stand up outbound integrations for trade-in leads (and future automations) covering authentication, rate limiting, delivery receipts, and staff notification preferences for both platforms.
 
 ### Upload Telemetry Debugging
 
@@ -2793,3 +2794,31 @@ https://trade.rezult.co/widget/chat-widget-enhanced.js
   ```
 - During widget investigations enable dev console: look for `[Upload Telemetry]` entries matching the requestId shown in the browser; correlate with Supabase `trade_in_media` entries.
 - If uploads still fail, the telemetry logs provide immediate insight (permission, payload, size). Fix env or Appwrite scopes accordingly, redeploy, re-run test.
+
+## QA Prep Notes — October 26, 2025
+
+### Flow Readiness
+- Text chat enforces hybrid search order (vector → catalog → Perplexity) with trade-in queries pinned to the dedicated store; concise replies are reinforced after every tool call. (lib/tools/vectorSearch.ts; app/api/chatkit/agent/route.ts)
+- Trade-in detection safeguards pricing lookups and persists every detail through `tradein_update_lead`, logging status/action trails for the dashboard pipeline. (app/api/chatkit/agent/route.ts; lib/trade-in/service.ts)
+- Voice runtime mirrors text rules: identical instructions, tool set, and guardrails block `sendemail` misuse and rely on the same HTTPS endpoints. (lib/chatkit/tradeInPrompts.ts; components/realtime-voice.tsx; app/api/chatkit/realtime/route.ts)
+- Support escalations create `submissions` rows tagged `Agent` and notify staff via the shared SMTP service; trade-in submits reuse the mailer with enriched payloads. (lib/tools/emailSend.ts; lib/email-service.ts)
+- Chat requests log prompts, responses, tool usage, and metrics so analytics and dashboards stay in sync. (app/api/chatkit/agent/route.ts)
+
+### Known Risks & Dependencies
+- Singapore-only gating is prompt-enforced; monitor transcripts for edge cases where the model ignores the rule.
+- Successful flows depend on configured secrets: OpenAI (text + realtime), Perplexity, Supabase service role, WooCommerce catalog path, and SMTP credentials. Missing keys cause 500s or silent fallbacks.
+- No automated regression suite exists beyond linting; functional tests require staging access with real API keys and Supabase connectivity.
+
+### Manual Test Checklist
+1. **Product Q&A:** Confirm succinct answers and `/api/tools/vector-search` usage with `store:"catalog"`.
+2. **No-result Handling:** Trigger clarification + suggestion path; ensure Perplexity only fires when vector/catalog fail.
+3. **Human Escalation:** Provide SG contact details, verify `/api/tools/email` success, dashboard “Agent” entry, and staff email delivery.
+4. **Trade-In (Text):** Walk through full pricing flow with image; check `/api/tradein/update`, `/api/tradein/submit`, Supabase `trade_in_leads`, and email notification.
+5. **Trade-In (Voice):** Repeat via voice widget, confirm short responses, tool parity, and matching Supabase/email outcomes.
+6. **Non-Singapore Guardrail:** Declare non-SG location in text and voice; ensure polite decline with no submissions logged.
+7. **Voice Email Validation:** Supply ambiguous email, confirm spell-back protocol before `sendemail` fires, and note accuracy for staff.
+
+### Suggested Pre-QA Prep
+- Verify all required environment variables in staging/production.
+- Run `npm run lint` to catch any obvious regressions before manual passes.
+- Arrange browser devtools + Supabase dashboard access during testing to monitor network calls and database updates live.
