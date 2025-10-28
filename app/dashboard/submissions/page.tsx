@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import {
   Card,
@@ -550,10 +551,13 @@ export default function SubmissionsPage() {
                   rel="noopener noreferrer"
                   className="block border rounded-lg overflow-hidden hover:opacity-75 transition-opacity"
                 >
-                  <img
+                  <Image
                     src={imageUrl}
                     alt={`Trade-in image ${index + 1}`}
+                    width={400}
+                    height={256}
                     className="w-full h-32 object-cover"
+                    sizes="(max-width: 768px) 50vw, 33vw"
                   />
                 </a>
               ))}

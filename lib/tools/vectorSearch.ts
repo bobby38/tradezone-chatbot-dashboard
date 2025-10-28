@@ -154,6 +154,21 @@ export async function handleVectorSearch(
     }
 
     if (enriched.trim().length === 0) {
+      if (label === "trade_in") {
+        const noMatchGuidance = [
+          "TRADE_IN_NO_MATCH",
+          "No trade-in pricing data found for this item in our catalog.",
+          "Next steps:",
+          "- Confirm the caller is in Singapore before continuing.",
+          '- Let them know we need a manual review: "We don\'t have this device in our system yet. Want me to have TradeZone staff review it?"',
+          "- Keep saving any trade-in details with tradein_update_lead.",
+          '- If they confirm, collect name, phone, and email, then call sendemail with emailType:"contact" and include a note like "Manual trade-in review needed" plus the device details.',
+          "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
+        ].join("\n");
+
+        return { text: noMatchGuidance, store: label };
+      }
+
       return {
         text: "No product information found. Please try rephrasing your query.",
         store: label,

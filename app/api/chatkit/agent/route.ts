@@ -949,6 +949,7 @@ export async function POST(request: NextRequest) {
   let tradeInLeadStatus: string | null = null;
   let tradeInIntent = false;
   let tradeInLeadDetail: any = null;
+  let autoExtractedClues: TradeInUpdateInput | null = null;
 
   try {
     // Load settings and system prompt
@@ -1032,17 +1033,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (tradeInIntent && tradeInLeadId) {
-      const autoPatch = extractTradeInClues(message);
-      if (Object.keys(autoPatch).length > 0) {
+      autoExtractedClues = extractTradeInClues(message);
+      if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
         try {
-          const { lead } = await updateTradeInLead(tradeInLeadId, autoPatch);
+          const { lead } = await updateTradeInLead(
+            tradeInLeadId,
+            autoExtractedClues,
+          );
           tradeInLeadStatus = lead.status;
 
           await logToolRun({
             request_id: requestId,
             session_id: sessionId,
             tool_name: "tradein_update_lead_auto",
-            args: { ...autoPatch, leadId: tradeInLeadId },
+            args: { ...autoExtractedClues, leadId: tradeInLeadId },
             result_preview: "Auto-saved trade-in details from user message.",
             source: "trade_in_lead",
             success: true,
@@ -1054,7 +1058,7 @@ export async function POST(request: NextRequest) {
             request_id: requestId,
             session_id: sessionId,
             tool_name: "tradein_update_lead_auto",
-            args: { ...autoPatch, leadId: tradeInLeadId },
+            args: { ...autoExtractedClues, leadId: tradeInLeadId },
             result_preview: "Failed to auto-save trade-in details.",
             source: "trade_in_lead",
             success: false,
