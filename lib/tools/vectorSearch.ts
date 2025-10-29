@@ -1,4 +1,7 @@
-import { findCatalogMatches } from "@/lib/chatkit/productCatalog";
+import {
+  findCatalogMatches,
+  type CatalogMatch,
+} from "@/lib/chatkit/productCatalog";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -42,6 +45,41 @@ function resolveVectorStore(
 
   console.log("[VectorSearch] Using CATALOG vector store:", catalogId);
   return { id: catalogId, label: "catalog" };
+}
+
+function normalizeProductUrl(url: string): string {
+  return url.replace(/\/+$/, "").toLowerCase();
+}
+
+function enforceCatalogPermalinks(
+  text: string,
+  matches: CatalogMatch[],
+): string {
+  if (!text) return text;
+
+  const links = matches
+    .map((match) => match.permalink)
+    .filter((link): link is string => Boolean(link));
+
+  if (links.length === 0) {
+    return text;
+  }
+
+  const normalizedLinks = links.map(normalizeProductUrl);
+
+  return text.replace(
+    /https:\/\/tradezone\.sg\/product\/[a-z0-9\-]+\/?/gi,
+    (candidate) => {
+      const normalizedCandidate = normalizeProductUrl(candidate);
+      const exactIndex = normalizedLinks.findIndex(
+        (link) => link === normalizedCandidate,
+      );
+      if (exactIndex >= 0) {
+        return links[exactIndex]!;
+      }
+      return links[0]!;
+    },
+  );
 }
 
 /**
@@ -120,37 +158,48 @@ export async function handleVectorSearch(
         ?.filter(Boolean)
         ?.join("\n\n") || "";
 
-    let enriched = result;
+    let catalogMatches: Awaited<ReturnType<typeof findCatalogMatches>> = [];
     if (label === "catalog") {
-      const catalogMatches = await findCatalogMatches(query, 3);
-
-      if (catalogMatches.length > 0) {
-        const lines = catalogMatches.map((match) => {
-          const details: string[] = [];
-          details.push(
-            `- **${match.name}**${match.price ? ` — S$${match.price}` : ""}`,
-          );
-          if (match.stockStatus) {
-            const humanStock =
-              match.stockStatus === "instock"
-                ? "In stock"
-                : match.stockStatus === "outofstock"
-                  ? "Out of stock"
-                  : match.stockStatus;
-            details.push(`  - Availability: ${humanStock}`);
-          }
-          if (match.permalink) {
-            details.push(`  - [View Product](${match.permalink})`);
-          }
-          if (match.image) {
-            details.push(`  - ![Product Image](${match.image})`);
-          }
-          return details.join("\n");
-        });
-
-        const section = ["**Online Store Matches**", ...lines].join("\n");
-        enriched = enriched ? `${enriched}\n\n${section}` : section;
+      try {
+        catalogMatches = await findCatalogMatches(query, 3);
+      } catch (catalogError) {
+        console.error("[VectorSearch] Catalog fallback error:", catalogError);
+        catalogMatches = [];
       }
+    }
+
+    const sanitizedResult =
+      label === "catalog" && catalogMatches.length > 0
+        ? enforceCatalogPermalinks(result, catalogMatches)
+        : result;
+
+    let enriched = sanitizedResult;
+    if (label === "catalog" && catalogMatches.length > 0) {
+      const lines = catalogMatches.map((match) => {
+        const details: string[] = [];
+        details.push(
+          `- **${match.name}**${match.price ? ` — S$${match.price}` : ""}`,
+        );
+        if (match.stockStatus) {
+          const humanStock =
+            match.stockStatus === "instock"
+              ? "In stock"
+              : match.stockStatus === "outofstock"
+                ? "Out of stock"
+                : match.stockStatus;
+          details.push(`  - Availability: ${humanStock}`);
+        }
+        if (match.permalink) {
+          details.push(`  - [View Product](${match.permalink})`);
+        }
+        if (match.image) {
+          details.push(`  - ![Product Image](${match.image})`);
+        }
+        return details.join("\n");
+      });
+
+      const section = ["**Online Store Matches**", ...lines].join("\n");
+      enriched = enriched ? `${enriched}\n\n${section}` : section;
     }
 
     if (enriched.trim().length === 0) {

@@ -73,6 +73,48 @@ interface FormData {
   [key: string]: any;
 }
 
+const getSubmissionEmail = (submission: Submission): string => {
+  const metadata = submission.ai_metadata || {};
+  return (
+    metadata.sender_email ||
+    metadata.email ||
+    metadata.customer_email ||
+    metadata.contact_email ||
+    metadata.user_email ||
+    ""
+  );
+};
+
+const getSubmissionName = (submission: Submission): string => {
+  const metadata = submission.ai_metadata || {};
+  return (
+    metadata.sender_name ||
+    metadata.name ||
+    (metadata.names
+      ? `${metadata.names.first_name || ""} ${metadata.names.last_name || ""}`.trim()
+      : metadata.customer_name || metadata.contact_name || "Anonymous") ||
+    "Anonymous"
+  );
+};
+
+const normalizeSubmissionForReply = (submission: Submission): Submission => {
+  const email = getSubmissionEmail(submission);
+  const name = getSubmissionName(submission);
+
+  if (!email && name === "Anonymous") {
+    return submission;
+  }
+
+  return {
+    ...submission,
+    ai_metadata: {
+      ...submission.ai_metadata,
+      ...(email ? { email } : {}),
+      ...(name ? { name } : {}),
+    },
+  };
+};
+
 export default function SubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState<SubmissionStats | null>(null);
@@ -751,120 +793,136 @@ export default function SubmissionsPage() {
                 </CardContent>
               </Card>
             ) : (
-              submissions.map((submission) => (
-                <Card key={submission.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={selectedSubmissions.has(submission.id)}
-                          onCheckedChange={() => toggleSelected(submission.id)}
-                        />
-                        <div className="flex items-center gap-2">
-                          {getFormType(submission) === "Trade-in Form" ? (
-                            <Monitor className="h-5 w-5 text-blue-500" />
-                          ) : getFormType(submission) === "Agent" ? (
-                            <MessageSquare className="h-5 w-5 text-purple-500" />
-                          ) : (
-                            <Mail className="h-5 w-5 text-green-500" />
-                          )}
-                          <CardTitle className="text-lg">
-                            {submission.ai_metadata?.name ||
-                              submission.ai_metadata?.email ||
-                              "Anonymous"}
-                          </CardTitle>
-                        </div>
-                        <Badge variant="outline">
-                          {getFormType(submission)}
-                        </Badge>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <Badge
-                          variant={
-                            submission.status === "ready"
-                              ? "secondary"
-                              : "default"
-                          }
-                          className="flex items-center gap-1"
-                        >
-                          {submission.status === "ready" && (
-                            <CheckCircle className="h-3 w-3" />
-                          )}
-                          {submission.status}
-                        </Badge>
-                        {submission.ai_metadata?.email && (
-                          <ReplyDialog
-                            submission={submission}
-                            onReplySent={() => {
-                              // Refresh submissions or update status
-                              fetchSubmissions();
-                            }}
+              submissions.map((submission) => {
+                const submissionEmail = getSubmissionEmail(submission);
+                const displayName = getSubmissionName(submission);
+                const normalizedSubmission =
+                  normalizeSubmissionForReply(submission);
+
+                return (
+                  <Card key={submission.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedSubmissions.has(submission.id)}
+                            onCheckedChange={() =>
+                              toggleSelected(submission.id)
+                            }
                           />
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(submission.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          {expandedSubmissions.has(submission.id)
-                            ? "Hide"
-                            : "View"}
-                        </Button>
-                      </div>
-                    </div>
-                    <CardDescription className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(submission.created_at)}
-                      {submission.ai_metadata?.subject && (
-                        <>
-                          <span>•</span>
-                          <span className="font-medium">
-                            {submission.ai_metadata.subject}
-                          </span>
-                        </>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-
-                  {expandedSubmissions.has(submission.id) && (
-                    <CardContent>
-                      <div className="space-y-6">
-                        {renderFormData(submission)}
-
-                        {/* Technical Details - Collapsed by default */}
-                        <details className="space-y-2">
-                          <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
-                            Technical Details
-                          </summary>
-                          <div className="space-y-3 pl-4 border-l-2 border-muted">
-                            <div>
-                              <h5 className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                                Structured Data:
-                              </h5>
-                              <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
-                                {JSON.stringify(
-                                  submission.ai_metadata,
-                                  null,
-                                  2,
-                                )}
-                              </pre>
-                            </div>
-                            <div>
-                              <h5 className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                                Raw Webhook:
-                              </h5>
-                              <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
-                                {submission.content_input}
-                              </pre>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            {getFormType(submission) === "Trade-in Form" ? (
+                              <Monitor className="h-5 w-5 text-blue-500" />
+                            ) : getFormType(submission) === "Agent" ? (
+                              <MessageSquare className="h-5 w-5 text-purple-500" />
+                            ) : (
+                              <Mail className="h-5 w-5 text-green-500" />
+                            )}
+                            <CardTitle className="text-lg">
+                              {displayName}
+                            </CardTitle>
                           </div>
-                        </details>
+                          <Badge variant="outline">
+                            {getFormType(submission)}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <Badge
+                            variant={
+                              submission.status === "ready"
+                                ? "secondary"
+                                : "default"
+                            }
+                            className="flex items-center gap-1"
+                          >
+                            {submission.status === "ready" && (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                            {submission.status}
+                          </Badge>
+                          {(submissionEmail ||
+                            submission.ai_metadata?.email) && (
+                            <ReplyDialog
+                              submission={normalizedSubmission}
+                              onReplySent={() => {
+                                // Refresh submissions or update status
+                                fetchSubmissions();
+                              }}
+                            />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(submission.id)}
+                          >
+                            <Eye className="h-4 w-4" />
+                            {expandedSubmissions.has(submission.id)
+                              ? "Hide"
+                              : "View"}
+                          </Button>
+                        </div>
                       </div>
-                    </CardContent>
-                  )}
-                </Card>
-              ))
+                      <CardDescription className="flex flex-wrap items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(submission.created_at)}
+                        {submissionEmail && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono text-xs sm:text-sm">
+                              {submissionEmail}
+                            </span>
+                          </>
+                        )}
+                        {submission.ai_metadata?.subject && (
+                          <>
+                            <span>•</span>
+                            <span className="font-medium">
+                              {submission.ai_metadata.subject}
+                            </span>
+                          </>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+
+                    {expandedSubmissions.has(submission.id) && (
+                      <CardContent>
+                        <div className="space-y-6">
+                          {renderFormData(submission)}
+
+                          {/* Technical Details - Collapsed by default */}
+                          <details className="space-y-2">
+                            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                              Technical Details
+                            </summary>
+                            <div className="space-y-3 pl-4 border-l-2 border-muted">
+                              <div>
+                                <h5 className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                                  Structured Data:
+                                </h5>
+                                <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
+                                  {JSON.stringify(
+                                    submission.ai_metadata,
+                                    null,
+                                    2,
+                                  )}
+                                </pre>
+                              </div>
+                              <div>
+                                <h5 className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                                  Raw Webhook:
+                                </h5>
+                                <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
+                                  {submission.content_input}
+                                </pre>
+                              </div>
+                            </div>
+                          </details>
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })
             )}
           </div>
         </TabsContent>
@@ -873,59 +931,74 @@ export default function SubmissionsPage() {
           <div className="grid gap-4">
             {submissions
               .filter((s) => getFormType(s) === "Agent")
-              .map((submission) => (
-                <Card key={submission.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={selectedSubmissions.has(submission.id)}
-                          onCheckedChange={() => toggleSelected(submission.id)}
-                        />
+              .map((submission) => {
+                const submissionEmail = getSubmissionEmail(submission);
+                const displayName = getSubmissionName(submission);
+                const normalizedSubmission =
+                  normalizeSubmissionForReply(submission);
+
+                return (
+                  <Card key={submission.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedSubmissions.has(submission.id)}
+                            onCheckedChange={() =>
+                              toggleSelected(submission.id)
+                            }
+                          />
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5 text-purple-500" />
+                            <CardTitle>{displayName}</CardTitle>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <MessageSquare className="h-5 w-5 text-purple-500" />
-                          <CardTitle>
-                            {submission.ai_metadata?.sender_name ||
-                              submission.ai_metadata?.name ||
-                              "Anonymous"}
-                          </CardTitle>
+                          <Badge
+                            variant="outline"
+                            className="bg-purple-50 text-purple-700 border-purple-200"
+                          >
+                            Agent
+                          </Badge>
+                          <Badge variant="secondary">{submission.status}</Badge>
+                          {(submissionEmail ||
+                            submission.ai_metadata?.email) && (
+                            <ReplyDialog
+                              submission={normalizedSubmission}
+                              onReplySent={() => fetchSubmissions()}
+                            />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(submission.id)}
+                          >
+                            <Eye className="h-4 w-4" />
+                            {expandedSubmissions.has(submission.id)
+                              ? "Hide"
+                              : "View"}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="bg-purple-50 text-purple-700 border-purple-200"
-                        >
-                          Agent
-                        </Badge>
-                        <Badge variant="secondary">{submission.status}</Badge>
-                        {submission.ai_metadata?.email && (
-                          <ReplyDialog
-                            submission={submission}
-                            onReplySent={() => fetchSubmissions()}
-                          />
+                      <CardDescription className="flex flex-wrap items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(submission.created_at)}
+                        {submissionEmail && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono text-xs sm:text-sm">
+                              {submissionEmail}
+                            </span>
+                          </>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(submission.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          {expandedSubmissions.has(submission.id)
-                            ? "Hide"
-                            : "View"}
-                        </Button>
-                      </div>
-                    </div>
-                    <CardDescription>
-                      {formatDate(submission.created_at)}
-                    </CardDescription>
-                  </CardHeader>
-                  {expandedSubmissions.has(submission.id) && (
-                    <CardContent>{renderFormData(submission)}</CardContent>
-                  )}
-                </Card>
-              ))}
+                      </CardDescription>
+                    </CardHeader>
+                    {expandedSubmissions.has(submission.id) && (
+                      <CardContent>{renderFormData(submission)}</CardContent>
+                    )}
+                  </Card>
+                );
+              })}
             {submissions.filter((s) => getFormType(s) === "Agent").length ===
               0 && (
               <Card>
@@ -943,54 +1016,68 @@ export default function SubmissionsPage() {
           <div className="grid gap-4">
             {submissions
               .filter((s) => getFormType(s) === "Contact Form")
-              .map((submission) => (
-                <Card key={submission.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={selectedSubmissions.has(submission.id)}
-                          onCheckedChange={() => toggleSelected(submission.id)}
-                        />
+              .map((submission) => {
+                const submissionEmail = getSubmissionEmail(submission);
+                const displayName = getSubmissionName(submission);
+                const normalizedSubmission =
+                  normalizeSubmissionForReply(submission);
+
+                return (
+                  <Card key={submission.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedSubmissions.has(submission.id)}
+                            onCheckedChange={() =>
+                              toggleSelected(submission.id)
+                            }
+                          />
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-5 w-5 text-green-500" />
+                            <CardTitle>{displayName}</CardTitle>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <Mail className="h-5 w-5 text-green-500" />
-                          <CardTitle>
-                            {submission.ai_metadata?.name ||
-                              (submission.ai_metadata?.names
-                                ? `${submission.ai_metadata.names.first_name || ""} ${submission.ai_metadata.names.last_name || ""}`.trim()
-                                : "Anonymous")}
-                          </CardTitle>
+                          <Badge variant="secondary">{submission.status}</Badge>
+                          {(submissionEmail ||
+                            submission.ai_metadata?.email) && (
+                            <ReplyDialog
+                              submission={normalizedSubmission}
+                              onReplySent={() => fetchSubmissions()}
+                            />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(submission.id)}
+                          >
+                            <Eye className="h-4 w-4" />
+                            {expandedSubmissions.has(submission.id)
+                              ? "Hide"
+                              : "View"}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{submission.status}</Badge>
-                        {submission.ai_metadata?.email && (
-                          <ReplyDialog
-                            submission={submission}
-                            onReplySent={() => fetchSubmissions()}
-                          />
+                      <CardDescription className="flex flex-wrap items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(submission.created_at)}
+                        {submissionEmail && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono text-xs sm:text-sm">
+                              {submissionEmail}
+                            </span>
+                          </>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(submission.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          {expandedSubmissions.has(submission.id)
-                            ? "Hide"
-                            : "View"}
-                        </Button>
-                      </div>
-                    </div>
-                    <CardDescription>
-                      {formatDate(submission.created_at)}
-                    </CardDescription>
-                  </CardHeader>
-                  {expandedSubmissions.has(submission.id) && (
-                    <CardContent>{renderFormData(submission)}</CardContent>
-                  )}
-                </Card>
-              ))}
+                      </CardDescription>
+                    </CardHeader>
+                    {expandedSubmissions.has(submission.id) && (
+                      <CardContent>{renderFormData(submission)}</CardContent>
+                    )}
+                  </Card>
+                );
+              })}
             {submissions.filter((s) => getFormType(s) === "Contact Form")
               .length === 0 && (
               <Card>
@@ -1008,54 +1095,68 @@ export default function SubmissionsPage() {
           <div className="grid gap-4">
             {submissions
               .filter((s) => getFormType(s) === "Trade-in Form")
-              .map((submission) => (
-                <Card key={submission.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={selectedSubmissions.has(submission.id)}
-                          onCheckedChange={() => toggleSelected(submission.id)}
-                        />
+              .map((submission) => {
+                const submissionEmail = getSubmissionEmail(submission);
+                const displayName = getSubmissionName(submission);
+                const normalizedSubmission =
+                  normalizeSubmissionForReply(submission);
+
+                return (
+                  <Card key={submission.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedSubmissions.has(submission.id)}
+                            onCheckedChange={() =>
+                              toggleSelected(submission.id)
+                            }
+                          />
+                          <div className="flex items-center gap-2">
+                            <Monitor className="h-5 w-5 text-blue-500" />
+                            <CardTitle>{displayName}</CardTitle>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <Monitor className="h-5 w-5 text-blue-500" />
-                          <CardTitle>
-                            {submission.ai_metadata?.name ||
-                              (submission.ai_metadata?.names
-                                ? `${submission.ai_metadata.names.first_name || ""} ${submission.ai_metadata.names.last_name || ""}`.trim()
-                                : "Anonymous")}
-                          </CardTitle>
+                          <Badge variant="secondary">{submission.status}</Badge>
+                          {(submissionEmail ||
+                            submission.ai_metadata?.email) && (
+                            <ReplyDialog
+                              submission={normalizedSubmission}
+                              onReplySent={() => fetchSubmissions()}
+                            />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(submission.id)}
+                          >
+                            <Eye className="h-4 w-4" />
+                            {expandedSubmissions.has(submission.id)
+                              ? "Hide"
+                              : "View"}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{submission.status}</Badge>
-                        {submission.ai_metadata?.email && (
-                          <ReplyDialog
-                            submission={submission}
-                            onReplySent={() => fetchSubmissions()}
-                          />
+                      <CardDescription className="flex flex-wrap items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {formatDate(submission.created_at)}
+                        {submissionEmail && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono text-xs sm:text-sm">
+                              {submissionEmail}
+                            </span>
+                          </>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(submission.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          {expandedSubmissions.has(submission.id)
-                            ? "Hide"
-                            : "View"}
-                        </Button>
-                      </div>
-                    </div>
-                    <CardDescription>
-                      {formatDate(submission.created_at)}
-                    </CardDescription>
-                  </CardHeader>
-                  {expandedSubmissions.has(submission.id) && (
-                    <CardContent>{renderFormData(submission)}</CardContent>
-                  )}
-                </Card>
-              ))}
+                      </CardDescription>
+                    </CardHeader>
+                    {expandedSubmissions.has(submission.id) && (
+                      <CardContent>{renderFormData(submission)}</CardContent>
+                    )}
+                  </Card>
+                );
+              })}
             {submissions.filter((s) => getFormType(s) === "Trade-in Form")
               .length === 0 && (
               <Card>
