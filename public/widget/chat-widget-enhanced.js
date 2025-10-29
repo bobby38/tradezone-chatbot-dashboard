@@ -2085,23 +2085,115 @@
         console.log("[Tool] Executing:", name, "with args:", argsJson);
         const parsedArgs = JSON.parse(argsJson);
         let result = "";
+        let source = "unknown";
 
-        if (name === "searchProducts" || name === "searchtool") {
-          // Use hybrid search (vector→perplexity fallback) for both tools
-          const response = await fetch(
-            `${this.config.apiUrl}/api/tools/perplexity`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-API-Key": this.config.apiKey || "",
+        if (name === "searchProducts") {
+          // Hit vector search endpoint first for fastest response
+          let vectorOk = false;
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/vector`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify({
+                  query: parsedArgs.query,
+                  context: { intent: "catalog", toolUsed: name },
+                }),
               },
-              body: JSON.stringify({ query: parsedArgs.query }),
-            },
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              result = data.result || "";
+              source = data.store || "vector_store";
+              vectorOk = Boolean(result && result.trim().length > 0);
+            } else {
+              console.warn(
+                "[Tool] Vector search request failed:",
+                response.status,
+                response.statusText,
+              );
+            }
+          } catch (error) {
+            console.error("[Tool] Vector search error:", error);
+          }
+
+          // If vector result is empty/short, fall back to hybrid endpoint
+          if (!vectorOk || result.trim().length < 40) {
+            try {
+              const response = await fetch(
+                `${this.config.apiUrl}/api/tools/perplexity`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-API-Key": this.config.apiKey || "",
+                  },
+                  body: JSON.stringify({ query: parsedArgs.query }),
+                },
+              );
+              if (response.ok) {
+                const data = await response.json();
+                if (data.result) {
+                  result = data.result;
+                  source = data.source || "perplexity";
+                }
+              } else {
+                console.warn(
+                  "[Tool] Perplexity fallback failed:",
+                  response.status,
+                  response.statusText,
+                );
+              }
+            } catch (error) {
+              console.error("[Tool] Perplexity fallback error:", error);
+            }
+          }
+
+          if (!result) {
+            result = "No results found";
+          }
+
+          console.log(
+            `[Tool] ${name} result from ${source}:`,
+            result.substring(0, 200),
           );
-          const data = await response.json();
-          result = data.result || "No results found";
-          const source = data.source || "unknown";
+        } else if (name === "searchtool") {
+          // Non-product queries still use hybrid endpoint
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/perplexity`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify({ query: parsedArgs.query }),
+              },
+            );
+            if (response.ok) {
+              const data = await response.json();
+              result = data.result || "No results found";
+              source = data.source || "perplexity";
+            } else {
+              console.warn(
+                "[Tool] searchtool request failed:",
+                response.status,
+                response.statusText,
+              );
+              result =
+                "I ran into an issue searching our site. Try rephrasing?";
+            }
+          } catch (error) {
+            console.error("[Tool] searchtool error:", error);
+            result =
+              "I ran into an issue searching our site. Please try again in a moment.";
+          }
           console.log(
             `[Tool] ${name} result from ${source}:`,
             result.substring(0, 200),
