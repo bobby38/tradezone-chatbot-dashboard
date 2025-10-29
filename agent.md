@@ -891,6 +891,13 @@ SELECT id, name, slug FROM organizations;
 - ✅ Cleared voice attachment preview once note/photo submitted so "Photo ready to send" badge disappears (`public/widget/chat-widget-enhanced.js`).
 - 🔄 Confirm tomorrow that the badge stays hidden after Amara acknowledges the upload and that `Remove` still works mid-session.
 
+### October 29, 2025 - Voice Product Lookup Fast Path
+**Status**: ✅ Live (record follow-up voice regression on 2025-10-30)
+- ✅ Added `/api/tools/vector` to expose catalog/trade-in vector results directly for the widget (`app/api/tools/vector/route.ts`).
+- ✅ Voice widget now routes `searchProducts` through the vector endpoint first and only hits `/api/tools/perplexity` when the vector response is empty or generic (`public/widget/chat-widget-enhanced.js`).
+- ✅ Price lookups (e.g., "Gran Turismo 7 price") now return in-stock pricing within a single turn instead of falling back to “visit the store”.
+- 🔬 Monitor upcoming voice transcripts for unnecessary Perplexity fallbacks; tweak the “< 40 chars” threshold if concise catalog answers trigger a web search.
+
 ### October 19, 2025 - Agent & API Stability Update
 **Fixes & Enhancements**:
 - ✅ **Robust Settings API**: Refactored the `/api/settings-simple` endpoint to handle nested JSON updates safely. This prevents server errors when saving partial settings (like SMTP configuration) and ensures that email and other integration settings are persisted reliably.
