@@ -1,61 +1,75 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
-import { formatDate } from '@/lib/utils'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft, User, Bot, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { formatDate } from "@/lib/utils";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, User, Bot, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface ChatLog {
-  id: string
-  user_id: string
-  prompt: string
-  response: string
-  timestamp: string
-  status: string
-  created_at: string
-  turn_index?: number
+  id: string;
+  user_id: string;
+  prompt: string;
+  response: string;
+  timestamp: string;
+  status: string;
+  created_at: string;
+  turn_index?: number;
 }
 
 interface ChatBubbleProps {
-  who: 'user' | 'bot'
-  text: string
-  timestamp: string
-  status?: string
+  who: "user" | "bot";
+  text: string;
+  timestamp: string;
+  status?: string;
 }
 
 function ChatBubble({ who, text, timestamp, status }: ChatBubbleProps) {
-  const isUser = who === 'user'
-  
+  const isUser = who === "user";
+
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex items-start space-x-2 max-w-[70%] ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? 'bg-primary' : 'bg-secondary'
-        }`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
+      <div
+        className={`flex items-start space-x-2 max-w-[70%] ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}
+      >
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            isUser ? "bg-primary" : "bg-secondary"
+          }`}
+        >
           {isUser ? (
             <User className="w-4 h-4 text-primary-foreground" />
           ) : (
             <Bot className="w-4 h-4 text-secondary-foreground" />
           )}
         </div>
-        <div className={`rounded-lg p-3 ${
-          isUser 
-            ? 'bg-primary text-primary-foreground' 
-            : 'bg-card border border-border'
-        }`}>
+        <div
+          className={`rounded-lg p-3 ${
+            isUser
+              ? "bg-primary text-primary-foreground"
+              : "bg-card border border-border"
+          }`}
+        >
           <p className="text-sm">{text}</p>
           <div className="flex items-center justify-between mt-2 text-xs opacity-70">
             <span>{formatDate(timestamp)}</span>
             {!isUser && status && (
-              <span className={`ml-2 px-2 py-1 rounded-full ${
-                status === 'success' 
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-              }`}>
+              <span
+                className={`ml-2 px-2 py-1 rounded-full ${
+                  status === "success"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                }`}
+              >
                 {status}
               </span>
             )}
@@ -73,50 +87,50 @@ function ChatBubble({ who, text, timestamp, status }: ChatBubbleProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default function ConversationPage() {
-  const params = useParams()
-  const sessionId = params.id as string
-  const [logs, setLogs] = useState<ChatLog[]>([])
-  const [loading, setLoading] = useState(true)
+  const params = useParams();
+  const sessionId = params.id as string;
+  const [logs, setLogs] = useState<ChatLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchConversation = useCallback(async () => {
     try {
       // Try both user_id and direct session lookup
       let { data, error } = await supabase
-        .from('chat_logs')
-        .select('*')
-        .eq('user_id', sessionId)
-        .order('created_at', { ascending: true })
+        .from("chat_logs")
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("turn_index", { ascending: true });
 
       // If no data found with user_id, try with the full sessionId
       if (!data || data.length === 0) {
         const result = await supabase
-          .from('chat_logs')
-          .select('*')
-          .ilike('user_id', `%${sessionId}%`)
-          .order('created_at', { ascending: true })
-        
-        data = result.data
-        error = result.error
+          .from("chat_logs")
+          .select("*")
+          .or(`session_id.ilike.%${sessionId}%,user_id.ilike.%${sessionId}%`)
+          .order("created_at", { ascending: true });
+
+        data = result.data;
+        error = result.error;
       }
 
-      if (error) throw error
+      if (error) throw error;
 
-      console.log('Fetched conversation data:', data) // Debug log
-      setLogs(data || [])
+      console.log("Fetched conversation data:", data); // Debug log
+      setLogs(data || []);
     } catch (error) {
-      console.error('Error fetching conversation:', error)
+      console.error("Error fetching conversation:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [sessionId])
+  }, [sessionId]);
 
   useEffect(() => {
-    fetchConversation()
-  }, [fetchConversation])
+    fetchConversation();
+  }, [fetchConversation]);
 
   if (loading) {
     return (
@@ -135,7 +149,7 @@ export default function ConversationPage() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -172,7 +186,9 @@ export default function ConversationPage() {
         <CardContent>
           {logs.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No messages found for this session</p>
+              <p className="text-muted-foreground">
+                No messages found for this session
+              </p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -209,20 +225,22 @@ export default function ConversationPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {logs.filter(l => l.status === 'success').length}
+              {logs.filter((l) => l.status === "success").length}
             </div>
-            <p className="text-xs text-muted-foreground">Successful Responses</p>
+            <p className="text-xs text-muted-foreground">
+              Successful Responses
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {logs.length > 0 ? formatDate(logs[0].created_at) : 'N/A'}
+              {logs.length > 0 ? formatDate(logs[0].created_at) : "N/A"}
             </div>
             <p className="text-xs text-muted-foreground">Started</p>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

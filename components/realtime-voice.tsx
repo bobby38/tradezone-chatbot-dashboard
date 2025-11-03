@@ -22,6 +22,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const playbackNodeRef = useRef<ScriptProcessorNode | null>(null);
   const audioQueueRef = useRef<Float32Array[]>([]);
   const isRespondingRef = useRef(false);
+  const pendingUserTranscriptRef = useRef<string | null>(null);
+  const pendingAssistantTranscriptRef = useRef<string>("");
+  const turnStartRef = useRef<number>(0);
 
   const startVoiceSession = async () => {
     try {
@@ -110,6 +113,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           reason: event.reason,
           wasClean: event.wasClean,
         });
+        flushVoiceTurn("error");
         setIsConnected(false);
         setStatus("Disconnected");
         stopVoiceSession();
@@ -118,6 +122,44 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
       console.error("[Realtime] Failed to start:", error);
       setStatus("Failed to start");
     }
+  };
+
+  const flushVoiceTurn = (status: "success" | "error" = "success") => {
+    const userText = (pendingUserTranscriptRef.current || "").trim();
+    const assistantText = (pendingAssistantTranscriptRef.current || "").trim();
+
+    if (!userText || !assistantText) {
+      pendingUserTranscriptRef.current = null;
+      pendingAssistantTranscriptRef.current = "";
+      turnStartRef.current = 0;
+      return;
+    }
+
+    const startedAtIso =
+      turnStartRef.current > 0
+        ? new Date(turnStartRef.current).toISOString()
+        : undefined;
+    const latencyMs =
+      turnStartRef.current > 0 ? Date.now() - turnStartRef.current : undefined;
+
+    pendingUserTranscriptRef.current = null;
+    pendingAssistantTranscriptRef.current = "";
+    turnStartRef.current = 0;
+
+    fetch("/api/chatkit/voice-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        userTranscript: userText,
+        assistantTranscript: assistantText,
+        startedAt: startedAtIso,
+        latencyMs,
+        status,
+      }),
+    }).catch((error) => {
+      console.error("[Realtime] Voice log failed:", error);
+    });
   };
 
   const startAudioCapture = async (ws: WebSocket) => {
@@ -221,6 +263,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         // User speech transcribed
         const userText = event.transcript;
         console.log("[User]:", userText);
+        pendingUserTranscriptRef.current = userText || "";
+        pendingAssistantTranscriptRef.current = "";
+        turnStartRef.current = Date.now();
         onTranscript?.(userText, "user");
         setStatus(`You: ${userText.substring(0, 50)}...`);
         break;
@@ -228,6 +273,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
       case "response.audio_transcript.delta":
         // Assistant speaking (transcript)
         const assistantText = event.delta;
+        if (assistantText) {
+          pendingAssistantTranscriptRef.current += assistantText;
+        }
         onTranscript?.(assistantText, "assistant");
         break;
 
@@ -249,12 +297,14 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
       case "response.audio_transcript.done":
         // Full transcript available
         console.log("[Audio Transcript Done]:", event.transcript);
+        pendingAssistantTranscriptRef.current = event.transcript || "";
         break;
 
       case "response.done":
         // Response finished
         isRespondingRef.current = false;
         setStatus("Listening...");
+        flushVoiceTurn();
         break;
 
       case "response.function_call_arguments.done":
@@ -272,6 +322,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           message: event.error?.message,
           param: event.error?.param,
         });
+        flushVoiceTurn("error");
         if (event.error?.message) {
           setStatus(`Error: ${event.error.message}`);
         } else {
@@ -490,6 +541,9 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
 
   const stopVoiceSession = () => {
     setIsRecording(false);
+    pendingUserTranscriptRef.current = null;
+    pendingAssistantTranscriptRef.current = "";
+    turnStartRef.current = 0;
 
     if (processorRef.current) {
       processorRef.current.disconnect();

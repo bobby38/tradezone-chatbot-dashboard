@@ -26,6 +26,7 @@ import {
   recordAgentTelemetry,
   ToolUsageSummary,
 } from "@/lib/chatkit/telemetry";
+import { ensureSessionAndGetTurnIndex } from "@/lib/chatkit/sessionManager";
 
 // Security imports
 import {
@@ -128,6 +129,19 @@ function renderCatalogMatches(
     return `**${order}. ${title}**${price}${availability}${image}`;
   });
   return lines.join("\n\n");
+}
+
+function deriveSessionName(
+  history: Array<{ role?: string; content?: string }> | undefined,
+  latestMessage: string,
+): string | null {
+  const candidateFromHistory = history?.find(
+    (entry) => entry?.role === "user" && typeof entry?.content === "string",
+  )?.content;
+
+  const candidate = (candidateFromHistory || latestMessage || "").trim();
+  if (!candidate) return null;
+  return candidate.slice(0, 120);
 }
 
 const TRADE_IN_KEYWORD_PATTERNS = [
@@ -905,6 +919,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { message, sessionId, history, image } = validation.sanitized!;
+  const sessionName = deriveSessionName(history, message);
 
   // Session-based rate limiting
   const sessionRateLimit = applyRateLimit(
@@ -1567,6 +1582,7 @@ export async function POST(request: NextRequest) {
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
     }
 
+    const nowIso = new Date().toISOString();
     const latencyMs = Date.now() - startedAt;
     const totalTokens = promptTokens + completionTokens;
     const estimatedCost = calculateCost(
@@ -1589,7 +1605,7 @@ export async function POST(request: NextRequest) {
       success: !errorMessage,
       errorMessage,
       clientIp,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso,
     });
 
     // Alert on high usage
@@ -1627,7 +1643,7 @@ export async function POST(request: NextRequest) {
     }
 
     recordAgentTelemetry({
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso,
       sessionId,
       prompt: message,
       responsePreview: finalResponse.slice(0, 280),
@@ -1637,16 +1653,34 @@ export async function POST(request: NextRequest) {
     });
 
     try {
+      const { turnIndex, sessionName: ensuredName } =
+        await ensureSessionAndGetTurnIndex(supabase, {
+          sessionId,
+          userId: sessionId,
+          source: "chatkit",
+          sessionName,
+          clientIp,
+          userAgent: requestContext.user_agent,
+          metadata: { channel: "text" },
+        });
+
+      const sessionDisplayName =
+        ensuredName ||
+        sessionName ||
+        (message
+          ? message.substring(0, 120)
+          : `Session ${nowIso.substring(0, 10)}`);
+
       await supabase.from("chat_logs").insert({
         session_id: sessionId,
+        user_id: sessionId,
         prompt: message,
         response: finalResponse,
         source: "chatkit",
-        user_id: sessionId,
-        status: "success",
-        created_at: new Date().toISOString(),
-        session_name:
-          message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+        status: errorMessage ? "error" : "success",
+        turn_index: turnIndex,
+        created_at: nowIso,
+        session_name: sessionDisplayName,
       });
     } catch (logError) {
       console.error("[ChatKit] Supabase logging error:", logError);
