@@ -18,6 +18,7 @@ export {
   handlePerplexitySearch,
   handleEmailSend,
   type VectorSearchContext,
+  type VectorSearchResult,
 };
 
 /**

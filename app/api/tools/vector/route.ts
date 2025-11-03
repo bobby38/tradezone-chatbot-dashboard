@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       {
         result: vectorResponse.text,
         store: vectorResponse.store,
+        matches: vectorResponse.matches,
       },
       { headers: corsHeaders },
     );

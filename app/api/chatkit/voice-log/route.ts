@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       userId,
       userTranscript,
       assistantTranscript,
+      linksMarkdown,
       startedAt,
       latencyMs,
       status = "success",
@@ -82,6 +83,9 @@ export async function POST(req: NextRequest) {
       status === "error" || status === "success" ? status : "success";
     const nowIso = new Date().toISOString();
     const sessionName = userTranscript.slice(0, 120);
+    const finalAssistantResponse = linksMarkdown
+      ? `${assistantTranscript.trim()}\n\n${linksMarkdown}`.trim()
+      : assistantTranscript;
 
     try {
       const ensuredSession = await ensureSession(supabase, {
@@ -105,7 +109,7 @@ export async function POST(req: NextRequest) {
         session_id: sessionId,
         user_id: userId || sessionId,
         prompt: userTranscript,
-        response: assistantTranscript,
+        response: finalAssistantResponse,
         source: "chatkit_voice",
         status: normalizedStatus,
         turn_index: turnIndex,

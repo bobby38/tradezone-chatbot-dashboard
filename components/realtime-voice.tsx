@@ -9,6 +9,39 @@ interface RealtimeVoiceProps {
   onTranscript?: (text: string, role: "user" | "assistant") => void;
 }
 
+interface CatalogMatchEntry {
+  name: string;
+  permalink?: string;
+  price?: string;
+  stockStatus?: string;
+}
+
+function formatMatchesMarkdown(
+  matches?: CatalogMatchEntry[] | null,
+): string | null {
+  if (!matches || matches.length === 0) return null;
+
+  const lines = matches
+    .filter((match) => match?.name)
+    .map((match) => {
+      const price = match?.price ? ` — S$${match.price}` : "";
+      let stock = "";
+      if (match?.stockStatus) {
+        if (match.stockStatus === "instock") stock = " (In stock)";
+        else if (match.stockStatus === "outofstock") stock = " (Out of stock)";
+        else stock = ` (${match.stockStatus})`;
+      }
+      const link = match?.permalink
+        ? `[${match.name}](${match.permalink})`
+        : match?.name;
+      return `- ${link}${price}${stock}`;
+    })
+    .filter(Boolean);
+
+  if (!lines.length) return null;
+  return `**Quick Links**\n${lines.join("\n")}`;
+}
+
 export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -24,6 +57,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const isRespondingRef = useRef(false);
   const pendingUserTranscriptRef = useRef<string | null>(null);
   const pendingAssistantTranscriptRef = useRef<string>("");
+  const pendingAssistantLinksRef = useRef<string | null>(null);
   const turnStartRef = useRef<number>(0);
 
   const startVoiceSession = async () => {
@@ -127,10 +161,12 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const flushVoiceTurn = (status: "success" | "error" = "success") => {
     const userText = (pendingUserTranscriptRef.current || "").trim();
     const assistantText = (pendingAssistantTranscriptRef.current || "").trim();
+    const linksMarkdown = pendingAssistantLinksRef.current;
 
     if (!userText || !assistantText) {
       pendingUserTranscriptRef.current = null;
       pendingAssistantTranscriptRef.current = "";
+      pendingAssistantLinksRef.current = null;
       turnStartRef.current = 0;
       return;
     }
@@ -142,8 +178,26 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
     const latencyMs =
       turnStartRef.current > 0 ? Date.now() - turnStartRef.current : undefined;
 
+    const assistantWithLinks =
+      linksMarkdown && linksMarkdown.trim().length > 0
+        ? `${assistantText}${assistantText ? "\n\n" : ""}${linksMarkdown}`
+        : assistantText;
+
+    if (linksMarkdown) {
+      onTranscript?.(`\n\n${linksMarkdown}`, "assistant");
+    }
+
+    console.debug("[Realtime] Logging voice turn", {
+      sessionId,
+      userText,
+      assistantWithLinks,
+      latencyMs,
+      status,
+    });
+
     pendingUserTranscriptRef.current = null;
     pendingAssistantTranscriptRef.current = "";
+    pendingAssistantLinksRef.current = null;
     turnStartRef.current = 0;
 
     void (async () => {
@@ -154,7 +208,8 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           body: JSON.stringify({
             sessionId,
             userTranscript: userText,
-            assistantTranscript: assistantText,
+            assistantTranscript: assistantWithLinks,
+            linksMarkdown,
             startedAt: startedAtIso,
             latencyMs,
             status,
@@ -166,6 +221,8 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
             .json()
             .catch(() => ({ error: response.statusText }));
           console.error("[Realtime] Voice log failed:", errorBody);
+        } else {
+          console.debug("[Realtime] Voice log saved");
         }
       } catch (error) {
         console.error("[Realtime] Voice log failed:", error);
@@ -251,6 +308,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         // User started speaking - interrupt any ongoing response
         console.log("[Interrupt] User started speaking");
         setStatus("Listening...");
+        pendingAssistantLinksRef.current = null;
 
         // Cancel ongoing response only if AI is currently responding
         if (
@@ -358,6 +416,11 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         });
         const data = await response.json();
         result = data.result || "No products found in catalog";
+        const linksMarkdown = formatMatchesMarkdown(data.matches);
+        if (linksMarkdown) {
+          pendingAssistantLinksRef.current = linksMarkdown;
+          console.log("[Tool] Captured product links for transcript");
+        }
         console.log("[Tool] Vector search result:", result.substring(0, 200));
       } else if (name === "searchtool") {
         // Call Perplexity search (fallback/web search)
@@ -369,6 +432,10 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         });
         const data = await response.json();
         result = data.result || "No results found";
+        const linksMarkdown = formatMatchesMarkdown(data.matches);
+        if (linksMarkdown) {
+          pendingAssistantLinksRef.current = linksMarkdown;
+        }
         console.log("[Tool] Perplexity result:", result.substring(0, 200));
       } else if (name === "sendemail") {
         // Call email send

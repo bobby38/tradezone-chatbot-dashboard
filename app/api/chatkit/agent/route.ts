@@ -389,6 +389,8 @@ async function runHybridSearch(
   let catalogLatency = 0;
   let perplexityLatency = 0;
 
+  let responseMatches: Awaited<ReturnType<typeof findCatalogMatches>> = [];
+
   try {
     const vectorStart = Date.now();
     const response = await handleVectorSearch(query, context);
@@ -396,6 +398,7 @@ async function runHybridSearch(
     vectorResult = response.text;
     vectorSource =
       response.store === "trade_in" ? "trade_in_vector_store" : "vector_store";
+    responseMatches = response.matches || [];
 
     if (vectorLatency > 2000) {
       console.warn(
@@ -408,8 +411,8 @@ async function runHybridSearch(
     vectorSource = "vector_store";
   }
 
-  let catalogMatches: Awaited<ReturnType<typeof findCatalogMatches>> = [];
-  if (vectorSource !== "trade_in_vector_store") {
+  let catalogMatches = responseMatches;
+  if (vectorSource !== "trade_in_vector_store" && catalogMatches.length === 0) {
     try {
       const catalogStart = Date.now();
       catalogMatches = await findCatalogMatches(query, 3);

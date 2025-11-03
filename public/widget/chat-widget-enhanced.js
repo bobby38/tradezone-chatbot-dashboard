@@ -71,6 +71,10 @@
       audioQueue: [],
       isResponding: false,
     },
+    voicePendingUserTranscript: null,
+    voicePendingAssistantTranscript: "",
+    voicePendingLinksMarkdown: null,
+    voiceTurnStartedAt: 0,
 
     init: function (options) {
       this.config = { ...this.config, ...options };
@@ -2012,6 +2016,10 @@
       switch (event.type) {
         case "conversation.item.input_audio_transcription.completed":
           console.log("[Voice] User said:", event.transcript);
+          this.voicePendingUserTranscript = event.transcript || "";
+          this.voicePendingAssistantTranscript = "";
+          this.voicePendingLinksMarkdown = null;
+          this.voiceTurnStartedAt = Date.now();
           this.addTranscript(event.transcript, "user");
           break;
 
@@ -2021,12 +2029,14 @@
             this.currentTranscript = "";
           }
           this.currentTranscript += event.delta;
+          this.voicePendingAssistantTranscript += event.delta || "";
           break;
 
         case "response.audio_transcript.done":
           // Add complete transcript when done
           if (this.currentTranscript) {
             this.addTranscript(this.currentTranscript, "assistant");
+            this.voicePendingAssistantTranscript = this.currentTranscript;
             this.currentTranscript = "";
           }
           break;
@@ -2043,6 +2053,7 @@
         case "response.done":
           console.log("[Voice] Response complete");
           this.updateVoiceStatus("Listening...");
+          this.flushVoiceTurn("success");
           break;
 
         case "response.function_call_arguments.done":
@@ -2065,6 +2076,7 @@
             this.voiceState.isResponding = false;
             this.updateVoiceStatus("Listening…");
           }
+          this.voicePendingLinksMarkdown = null;
           break;
 
         case "input_audio_buffer.speech_stopped":
@@ -2076,6 +2088,7 @@
           this.updateVoiceStatus(
             "Error: " + (event.error?.message || "Unknown error"),
           );
+          this.flushVoiceTurn("error");
           break;
       }
     },
@@ -2110,6 +2123,11 @@
               const data = await response.json();
               result = data.result || "";
               source = data.store || "vector_store";
+              const linksMarkdown = this.formatMatchesMarkdown(data.matches);
+              if (linksMarkdown) {
+                this.voicePendingLinksMarkdown = linksMarkdown;
+                console.log("[Tool] Captured product links for transcript");
+              }
               vectorOk = Boolean(result && result.trim().length > 0);
             } else {
               console.warn(
@@ -2141,6 +2159,10 @@
                 if (data.result) {
                   result = data.result;
                   source = data.source || "perplexity";
+                }
+                const linksMarkdown = this.formatMatchesMarkdown(data.matches);
+                if (linksMarkdown) {
+                  this.voicePendingLinksMarkdown = linksMarkdown;
                 }
               } else {
                 console.warn(
@@ -2180,6 +2202,10 @@
               const data = await response.json();
               result = data.result || "No results found";
               source = data.source || "perplexity";
+              const linksMarkdown = this.formatMatchesMarkdown(data.matches);
+              if (linksMarkdown) {
+                this.voicePendingLinksMarkdown = linksMarkdown;
+              }
             } else {
               console.warn(
                 "[Tool] searchtool request failed:",
@@ -2326,6 +2352,76 @@
         f32.length,
       );
       console.log("[Voice] AudioContext state:", this.playbackContext?.state);
+    },
+
+    flushVoiceTurn: function (status = "success") {
+      const userText = (this.voicePendingUserTranscript || "").trim();
+      const assistantText = (this.voicePendingAssistantTranscript || "").trim();
+      const linksMarkdown = this.voicePendingLinksMarkdown;
+      const startedAt = this.voiceTurnStartedAt;
+      const startedAtIso = startedAt
+        ? new Date(startedAt).toISOString()
+        : undefined;
+      const latencyMs = startedAt ? Date.now() - startedAt : undefined;
+
+      if (!userText || !assistantText) {
+        this.voicePendingUserTranscript = null;
+        this.voicePendingAssistantTranscript = "";
+        this.voicePendingLinksMarkdown = null;
+        this.voiceTurnStartedAt = 0;
+        return;
+      }
+
+      const assistantWithLinks = linksMarkdown
+        ? `${assistantText}${assistantText ? "\n\n" : ""}${linksMarkdown}`
+        : assistantText;
+
+      if (linksMarkdown) {
+        this.addTranscript(linksMarkdown, "assistant");
+      }
+
+      console.log("[Voice] Logging turn", {
+        sessionId: this.sessionId,
+        latencyMs,
+        status,
+      });
+
+      this.voicePendingUserTranscript = null;
+      this.voicePendingAssistantTranscript = "";
+      this.voicePendingLinksMarkdown = null;
+      this.voiceTurnStartedAt = 0;
+
+      fetch(`${this.config.apiUrl}/api/chatkit/voice-log`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": this.config.apiKey || "",
+        },
+        body: JSON.stringify({
+          sessionId: this.sessionId,
+          userId: this.clientId,
+          userTranscript: userText,
+          assistantTranscript: assistantWithLinks,
+          linksMarkdown,
+          startedAt: startedAtIso,
+          latencyMs,
+          status,
+        }),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            return res
+              .json()
+              .catch(() => ({}))
+              .then((body) => {
+                console.error("[Voice] Voice log failed", res.status, body);
+              });
+          }
+          console.log("[Voice] Voice log saved");
+        })
+        .catch((err) => {
+          console.error("[Voice] Voice log error", err);
+        });
     },
 
     addTranscript: function (text, role) {
@@ -2521,6 +2617,31 @@
       const div = document.createElement("div");
       div.textContent = text;
       return div.innerHTML;
+    },
+
+    formatMatchesMarkdown: function (matches) {
+      if (!matches || !matches.length) return null;
+
+      const lines = matches
+        .filter((match) => match && match.name)
+        .map((match) => {
+          const price = match && match.price ? ` — S$${match.price}` : "";
+          let stock = "";
+          if (match && match.stockStatus) {
+            if (match.stockStatus === "instock") stock = " (In stock)";
+            else if (match.stockStatus === "outofstock")
+              stock = " (Out of stock)";
+            else stock = ` (${match.stockStatus})`;
+          }
+          const link = match && match.permalink
+            ? `[${match.name}](${match.permalink})`
+            : match.name;
+          return `- ${link}${price}${stock}`;
+        })
+        .filter(Boolean);
+
+      if (!lines.length) return null;
+      return `**Quick Links**\n${lines.join("\n")}`;
     },
 
     parseMarkdown: function (text) {

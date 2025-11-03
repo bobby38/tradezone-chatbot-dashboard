@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       vectorResponse.store === "trade_in"
         ? "trade_in_vector_store"
         : "vector_store";
+    let matches = vectorResponse.matches;
 
     // Step 2: If vector search returns a generic or short response, fall back to web search
     if (!result || result.length < 50 || result.includes("not found")) {
@@ -72,7 +73,10 @@ export async function POST(request: NextRequest) {
       source = "perplexity";
     }
 
-    return NextResponse.json({ result, source }, { headers: corsHeaders });
+    return NextResponse.json(
+      { result, source, matches },
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[Hybrid Search API] Error:", error);
     return NextResponse.json(

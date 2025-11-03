@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[Vector Search API] Query:", query);
 
-    const { text: result, store } = await handleVectorSearch(query);
+    const { text: result, store, matches } = await handleVectorSearch(query);
 
     console.log(
       "[Vector Search API] Result length:",
@@ -66,7 +66,10 @@ export async function POST(request: NextRequest) {
       store,
     );
 
-    return NextResponse.json({ result, store }, { headers: corsHeaders });
+    return NextResponse.json(
+      { result, store, matches },
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[Vector Search API] Error:", error);
     return NextResponse.json(

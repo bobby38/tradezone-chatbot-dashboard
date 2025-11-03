@@ -111,10 +111,16 @@ export const vectorSearchTool = {
  * Handler function for vector search
  * Calls OpenAI Responses API with file_search tool
  */
+export interface VectorSearchResult {
+  text: string;
+  store: VectorStoreLabel;
+  matches?: CatalogMatch[];
+}
+
 export async function handleVectorSearch(
   query: string,
   context?: VectorSearchContext,
-): Promise<{ text: string; store: VectorStoreLabel }> {
+): Promise<VectorSearchResult> {
   const resolvedStore = resolveVectorStore(context);
   try {
     const { id: vectorStoreId, label } = resolvedStore;
@@ -202,7 +208,9 @@ export async function handleVectorSearch(
       enriched = enriched ? `${enriched}\n\n${section}` : section;
     }
 
-    if (enriched.trim().length === 0) {
+    const trimmedEnriched = enriched.trim();
+
+    if (trimmedEnriched.length === 0) {
       if (label === "trade_in") {
         const noMatchGuidance = [
           "TRADE_IN_NO_MATCH",
@@ -215,21 +223,27 @@ export async function handleVectorSearch(
           "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
         ].join("\n");
 
-        return { text: noMatchGuidance, store: label };
+        return { text: noMatchGuidance, store: label, matches: [] };
       }
 
       return {
         text: "No product information found. Please try rephrasing your query.",
         store: label,
+        matches: label === "catalog" ? [] : undefined,
       };
     }
 
-    return { text: enriched, store: label };
+    return {
+      text: trimmedEnriched,
+      store: label,
+      matches: label === "catalog" ? catalogMatches : undefined,
+    };
   } catch (error) {
     console.error("Error in vector search:", error);
     return {
       text: "I encountered an error searching our product database. Please try again or contact support.",
       store: resolvedStore.label,
+      matches: resolvedStore.label === "catalog" ? [] : undefined,
     };
   }
 }
