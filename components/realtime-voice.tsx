@@ -146,20 +146,31 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
     pendingAssistantTranscriptRef.current = "";
     turnStartRef.current = 0;
 
-    fetch("/api/chatkit/voice-log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId,
-        userTranscript: userText,
-        assistantTranscript: assistantText,
-        startedAt: startedAtIso,
-        latencyMs,
-        status,
-      }),
-    }).catch((error) => {
-      console.error("[Realtime] Voice log failed:", error);
-    });
+    void (async () => {
+      try {
+        const response = await fetch("/api/chatkit/voice-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            userTranscript: userText,
+            assistantTranscript: assistantText,
+            startedAt: startedAtIso,
+            latencyMs,
+            status,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorBody = await response
+            .json()
+            .catch(() => ({ error: response.statusText }));
+          console.error("[Realtime] Voice log failed:", errorBody);
+        }
+      } catch (error) {
+        console.error("[Realtime] Voice log failed:", error);
+      }
+    })();
   };
 
   const startAudioCapture = async (ws: WebSocket) => {

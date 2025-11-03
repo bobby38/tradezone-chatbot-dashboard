@@ -10,8 +10,7 @@ export interface SessionContext {
   metadata?: Record<string, any> | null;
 }
 
-export interface SessionResult {
-  turnIndex: number;
+export interface EnsureSessionResult {
   sessionName: string | null;
 }
 
@@ -25,10 +24,13 @@ function mergeMetadata(
   return { ...existing, ...incoming };
 }
 
-export async function ensureSessionAndGetTurnIndex(
+/**
+ * Ensures a chat session row exists (or updates metadata if already present).
+ */
+export async function ensureSession(
   client: SupabaseClient,
   context: SessionContext,
-): Promise<SessionResult> {
+): Promise<EnsureSessionResult> {
   const now = new Date().toISOString();
   const sessionNameCandidate = context.sessionName
     ? context.sessionName.slice(0, 120)
@@ -36,9 +38,7 @@ export async function ensureSessionAndGetTurnIndex(
 
   const { data: existingSession, error: fetchError } = await client
     .from("chat_sessions")
-    .select(
-      "id, session_name, total_messages, metadata, user_ip, user_agent",
-    )
+    .select("session_name, metadata, user_ip, user_agent")
     .eq("session_id", context.sessionId)
     .maybeSingle();
 
@@ -61,7 +61,6 @@ export async function ensureSessionAndGetTurnIndex(
     });
 
     return {
-      turnIndex: 1,
       sessionName: sessionNameCandidate,
     };
   }
@@ -99,11 +98,25 @@ export async function ensureSessionAndGetTurnIndex(
     .eq("session_id", context.sessionId);
 
   return {
-    turnIndex: (existingSession.total_messages ?? 0) + 1,
-    sessionName:
-      existingSession.session_name ??
-      sessionNameCandidate ??
-      existingSession.session_name ??
-      null,
+    sessionName: existingSession.session_name ?? sessionNameCandidate ?? null,
   };
+}
+
+/**
+ * Returns the next turn index for the given session.
+ */
+export async function getNextTurnIndex(
+  client: SupabaseClient,
+  sessionId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("chat_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (count ?? 0) + 1;
 }

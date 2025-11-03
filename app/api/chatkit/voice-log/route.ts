@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getClientIdentifier } from "@/lib/security/rateLimit";
-import { ensureSessionAndGetTurnIndex } from "@/lib/chatkit/sessionManager";
+import { ensureSession, getNextTurnIndex } from "@/lib/chatkit/sessionManager";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -84,19 +84,22 @@ export async function POST(req: NextRequest) {
     const sessionName = userTranscript.slice(0, 120);
 
     try {
-      const { turnIndex, sessionName: ensuredName } =
-        await ensureSessionAndGetTurnIndex(supabase, {
-          sessionId,
-          userId: userId || sessionId,
-          source: "chatkit",
-          sessionName,
-          clientIp,
-          userAgent: req.headers.get("user-agent"),
-          metadata: { channel: "voice" },
-        });
+      const ensuredSession = await ensureSession(supabase, {
+        sessionId,
+        userId: userId || sessionId,
+        source: "chatkit",
+        sessionName,
+        clientIp,
+        userAgent: req.headers.get("user-agent"),
+        metadata: { channel: "voice" },
+      });
+
+      const turnIndex = await getNextTurnIndex(supabase, sessionId);
 
       const sessionDisplayName =
-        ensuredName || sessionName || `Voice session ${nowIso.substring(0, 10)}`;
+        ensuredSession.sessionName ||
+        sessionName ||
+        `Voice session ${nowIso.substring(0, 10)}`;
 
       await supabase.from("chat_logs").insert({
         session_id: sessionId,

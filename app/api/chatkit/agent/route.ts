@@ -26,7 +26,7 @@ import {
   recordAgentTelemetry,
   ToolUsageSummary,
 } from "@/lib/chatkit/telemetry";
-import { ensureSessionAndGetTurnIndex } from "@/lib/chatkit/sessionManager";
+import { ensureSession, getNextTurnIndex } from "@/lib/chatkit/sessionManager";
 
 // Security imports
 import {
@@ -1653,19 +1653,20 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      const { turnIndex, sessionName: ensuredName } =
-        await ensureSessionAndGetTurnIndex(supabase, {
-          sessionId,
-          userId: sessionId,
-          source: "chatkit",
-          sessionName,
-          clientIp,
-          userAgent: requestContext.user_agent,
-          metadata: { channel: "text" },
-        });
+      const ensuredSession = await ensureSession(supabase, {
+        sessionId,
+        userId: sessionId,
+        source: "chatkit",
+        sessionName,
+        clientIp,
+        userAgent: requestContext.user_agent,
+        metadata: { channel: "text" },
+      });
+
+      const turnIndex = await getNextTurnIndex(supabase, sessionId);
 
       const sessionDisplayName =
-        ensuredName ||
+        ensuredSession.sessionName ||
         sessionName ||
         (message
           ? message.substring(0, 120)
