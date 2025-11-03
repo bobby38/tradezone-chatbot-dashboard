@@ -336,11 +336,18 @@ export default function ChatLogsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
-                        {log.source === "chatkit_voice"
-                          ? "Voice"
-                          : log.source === "n8n"
-                            ? "Webhook"
-                            : "Text"}
+                        {(() => {
+                          const source = (log.source || "").toLowerCase();
+                          if (source.includes("voice")) return "Voice";
+                          if (
+                            source.includes("n8n") ||
+                            source.includes("webhook")
+                          )
+                            return "Webhook";
+                          if (source.includes("tradein")) return "Trade-In";
+                          if (source.includes("chatkit")) return "Text";
+                          return log.source ? log.source : "Text";
+                        })()}
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">

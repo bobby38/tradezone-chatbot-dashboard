@@ -24,6 +24,8 @@ interface ChatLog {
   status: string;
   created_at: string;
   turn_index?: number;
+  source?: string | null;
+  metadata?: Record<string, any> | null;
 }
 
 interface ChatBubbleProps {
