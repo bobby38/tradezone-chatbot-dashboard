@@ -179,6 +179,55 @@ function detectTradeInIntent(query: string): boolean {
   );
 }
 
+const TRADE_IN_PRICE_OVERRIDES: Array<{
+  patterns: RegExp[];
+  range: string;
+  header: string;
+}> = [
+  {
+    patterns: [/osmo pocket 3/i, /creator combo/i],
+    range: "S$350 – S$400",
+    header:
+      "Approximate trade-in value for the DJI Osmo Pocket 3 Creator Combo: S$350 – S$400 (subject to inspection).",
+  },
+];
+
+function applyTradeInPriceOverrides(
+  text: string,
+  query: string,
+  source: HybridSearchSource,
+): string {
+  if (source !== "trade_in_vector_store") {
+    return text;
+  }
+
+  const corpus = `${query}\n${text}`.toLowerCase();
+
+  for (const override of TRADE_IN_PRICE_OVERRIDES) {
+    const matchesAll = override.patterns.every((pattern) =>
+      pattern.test(corpus),
+    );
+    if (!matchesAll) continue;
+
+    const priceRegex = /S\$[\d.,]+(?:\s*[–-]\s*S\$[\d.,]+)?/;
+    let updated = text;
+
+    if (priceRegex.test(updated)) {
+      updated = updated.replace(priceRegex, override.range);
+    } else if (!updated.toLowerCase().includes(override.range.toLowerCase())) {
+      updated = `${override.header}\n\n${updated}`;
+    }
+
+    if (!updated.toLowerCase().includes("subject to inspection")) {
+      updated = `${override.header}\n\n${updated}`;
+    }
+
+    return updated;
+  }
+
+  return text;
+}
+
 const DEVICE_PATTERNS: Array<{
   regex: RegExp;
   brand: string;
@@ -467,10 +516,11 @@ async function runHybridSearch(
     const combined = catalogSection
       ? `${vectorResult}\n\n${catalogSection}`
       : vectorResult;
+    const adjusted = applyTradeInPriceOverrides(combined, query, vectorSource);
     console.log(
       `[ChatKit] Using ${isTradeInQuery ? "TRADE-IN" : "vector"} result (${vectorResult.length} chars)`,
     );
-    return { result: combined, source: vectorSource };
+    return { result: adjusted, source: vectorSource };
   }
 
   if (catalogSection) {
@@ -629,44 +679,62 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
     ? detail.trade_in_media.length > 0
     : false;
 
-  const checklist: string[] = [];
+  const directives: string[] = [];
 
   if (!hasDevice) {
-    checklist.push("Get the exact brand/model before anything else.");
+    directives.push(
+      "NEXT: Ask for the exact brand & model before anything else. Keep it ≤5 words.",
+    );
   }
 
   if (!hasCondition) {
-    checklist.push("Confirm the condition (mint/good/fair/faulty).");
+    directives.push(
+      "Confirm the condition (mint/good/fair/faulty) right after the device.",
+    );
   }
 
   if (!accessoriesCaptured) {
-    checklist.push("Ask about accessories/box BEFORE payout: e.g. 'Accessories included?' ");
+    directives.push(
+      "Ask about accessories/box BEFORE payout. Example: “Accessories included?”",
+    );
   }
 
-  if (!hasContactPhone || !hasContactEmail || !hasContactName) {
-    checklist.push(
-      "Collect name, phone, then email (provider first, then username). Read it back short.",
+  if (!hasContactName) {
+    directives.push("Collect the contact name now (“Name?”).");
+  }
+
+  if (!hasContactPhone) {
+    directives.push("Ask for the Singapore phone number (“Best number?”).");
+  }
+
+  if (!hasContactEmail) {
+    directives.push(
+      "Collect email BEFORE payout: ask provider first (“Gmail, Hotmail, Outlook?”), then the username, read it back, wait for a yes.",
     );
   }
 
   if (!hasAnyPhoto) {
-    checklist.push(
-      "Before submission ask once: 'Got photos? Helps us quote faster.' Accept 'no' but ask.",
+    directives.push(
+      "After contact details, ask once: “Got photos? Helps us quote faster.” Accept “no” but ask.",
     );
   }
 
   if (!hasPayout) {
-    checklist.push(
-      "Only after accessories + contact are saved, ask payout (cash/PayNow/bank) and store it.",
+    directives.push(
+      "Only after accessories + contact + email are saved, ask payout (cash/PayNow/bank) and save it.",
+    );
+  } else if (!hasAnyPhoto) {
+    directives.push(
+      "Payout captured—still need the photo question before you submit.",
     );
   }
 
-  if (checklist.length === 0) return null;
+  if (directives.length === 0) return null;
 
   return [
     "🔴 Trade-in checklist:",
-    ...checklist.map((line) => `• ${line}`),
-    "Keep replies ≤12 words, wait in silence after each question.",
+    ...directives.map((line) => `• ${line}`),
+    "Keep replies ≤12 words and pause after every question.",
   ].join("\n");
 }
 
