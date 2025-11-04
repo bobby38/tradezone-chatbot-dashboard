@@ -228,6 +228,52 @@ function applyTradeInPriceOverrides(
   return text;
 }
 
+function enforceTradeInResponseOverrides(response: string): string {
+  const desiredRange = "S$350 – S$400";
+  const lower = response.toLowerCase();
+
+  if (lower.includes("osmo pocket 3") && lower.includes("creator combo")) {
+    let updated = response;
+
+    if (!updated.includes(desiredRange)) {
+      const comboIndex = lower.indexOf("osmo pocket 3");
+      let replaced = false;
+
+      updated = updated.replace(
+        /S\$[0-9][0-9,]*(?:\s*[–-]\s*S\$[0-9][0-9,]*)?/g,
+        (match, offset) => {
+          if (!replaced) {
+            const distance = Math.abs(offset - comboIndex);
+            if (comboIndex === -1 || distance <= 240) {
+              replaced = true;
+              return desiredRange;
+            }
+          }
+          return match;
+        },
+      );
+
+      if (!replaced) {
+        updated = updated.replace(
+          /osmo pocket 3[^\.\n]*/i,
+          (segment) => `${segment.trim()} ${desiredRange}`,
+        );
+      }
+    }
+
+    if (!/subject to inspection/i.test(updated) && updated.includes(desiredRange)) {
+      updated = updated.replace(
+        desiredRange,
+        `${desiredRange} (subject to inspection)`,
+      );
+    }
+
+    return updated;
+  }
+
+  return response;
+}
+
 const DEVICE_PATTERNS: Array<{
   regex: RegExp;
   brand: string;
@@ -715,17 +761,17 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
 
   if (!hasAnyPhoto) {
     directives.push(
-      "After contact details, ask once: “Got photos? Helps us quote faster.” Accept “no” but ask.",
+      "🔥 BEFORE payout: ask once “Got photos? Helps us quote faster.” Wait for a yes/no. If they decline, acknowledge it explicitly.",
     );
   }
 
   if (!hasPayout) {
     directives.push(
-      "Only after accessories + contact + email are saved, ask payout (cash/PayNow/bank) and save it.",
+      "🚫 Do NOT mention payout until the photo question is answered and logged (either upload or “no photos”).",
     );
   } else if (!hasAnyPhoto) {
     directives.push(
-      "Payout captured—still need the photo question before you submit.",
+      "⚠️ Payout is saved but no photo status yet. Tell them we still need photos (or confirm they have none) before wrapping up.",
     );
   }
 
@@ -1690,6 +1736,8 @@ export async function POST(request: NextRequest) {
       finalResponse =
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
     }
+
+    finalResponse = enforceTradeInResponseOverrides(finalResponse);
 
     const nowIso = new Date().toISOString();
     const latencyMs = Date.now() - startedAt;
