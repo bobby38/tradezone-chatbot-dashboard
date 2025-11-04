@@ -51,6 +51,46 @@ const supabaseAdmin: SupabaseClient = createClient(
   },
 );
 
+const CONTACT_PLACEHOLDER_VALUES = new Set([
+  "customer",
+  "customer name",
+  "customer email",
+  "customer phone number",
+  "unknown",
+  "not provided",
+  "n/a",
+  "pending",
+]);
+
+function hasMeaningfulValue(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  return !CONTACT_PLACEHOLDER_VALUES.has(normalized);
+}
+
+function isValidEmail(value: string | null | undefined): boolean {
+  if (!hasMeaningfulValue(value)) return false;
+  const email = (value || "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPhone(value: string | null | undefined): boolean {
+  if (!hasMeaningfulValue(value)) return false;
+  const digits = (value || "").replace(/\D+/g, "");
+  return digits.length >= 8;
+}
+
+function sanitizeContactValue(
+  value: string | null | undefined,
+  fallback = "Not provided",
+): string {
+  if (!hasMeaningfulValue(value)) {
+    return fallback;
+  }
+  return (value as string).trim();
+}
+
 export class TradeInValidationError extends Error {
   fields?: string[];
   constructor(message: string, fields?: string[]) {
@@ -298,7 +338,7 @@ export async function updateTradeInLead(
 
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("trade_in_leads")
-    .select("status")
+    .select("status, contact_name, contact_phone, contact_email")
     .eq("id", leadId)
     .single();
 
@@ -309,6 +349,32 @@ export async function updateTradeInLead(
   }
 
   const previousStatus = existing.status;
+
+  if (Object.prototype.hasOwnProperty.call(updatePayload, "preferred_payout")) {
+    const nameCandidate =
+      typeof updatePayload.contact_name === "string"
+        ? updatePayload.contact_name
+        : (existing.contact_name as string | null | undefined);
+    const phoneCandidate =
+      typeof updatePayload.contact_phone === "string"
+        ? updatePayload.contact_phone
+        : (existing.contact_phone as string | null | undefined);
+    const emailCandidate =
+      typeof updatePayload.contact_email === "string"
+        ? updatePayload.contact_email
+        : (existing.contact_email as string | null | undefined);
+
+    if (
+      !hasMeaningfulValue(nameCandidate) ||
+      !isValidPhone(phoneCandidate) ||
+      !isValidEmail(emailCandidate)
+    ) {
+      throw new TradeInValidationError(
+        "Collect name, phone, and a valid email before recording payout preference.",
+        ["preferred_payout"],
+      );
+    }
+  }
 
   const { data: updatedLead, error: updateError } = await supabaseAdmin
     .from("trade_in_leads")
@@ -430,8 +496,8 @@ export async function submitTradeInLead(
     model: "device model",
     condition: "device condition",
     contact_name: "contact name",
-    contact_phone: "contact phone number",
-    contact_email: "contact email",
+    contact_phone: "contact phone number (at least 8 digits)",
+    contact_email: "contact email (valid format)",
     preferred_payout: "preferred payout method",
   };
 
@@ -444,13 +510,13 @@ export async function submitTradeInLead(
   if (!lead.condition?.trim()) {
     missingFields.push("condition");
   }
-  if (!lead.contact_name?.trim()) {
+  if (!hasMeaningfulValue(lead.contact_name)) {
     missingFields.push("contact_name");
   }
-  if (!lead.contact_phone?.trim()) {
+  if (!isValidPhone(lead.contact_phone)) {
     missingFields.push("contact_phone");
   }
-  if (!lead.contact_email?.trim()) {
+  if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
   if (!lead.preferred_payout?.trim()) {
@@ -491,10 +557,14 @@ export async function submitTradeInLead(
 
     console.log("[TradeIn] Media found:", media?.length || 0, "files");
 
+    const contactName = sanitizeContactValue(lead.contact_name);
+    const contactEmail = sanitizeContactValue(lead.contact_email);
+    const contactPhone = sanitizeContactValue(lead.contact_phone);
+
     const formData = {
-      name: lead.contact_name || "Not provided",
-      email: lead.contact_email || "Not provided",
-      phone: lead.contact_phone || "Not provided",
+      name: contactName,
+      email: contactEmail,
+      phone: contactPhone,
       telegram: lead.telegram_handle || "Not provided",
       device_type: lead.category || "Not specified",
       console_type:

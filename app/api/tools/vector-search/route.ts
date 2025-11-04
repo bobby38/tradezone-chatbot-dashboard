@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
 
   try {
-    const { query } = await request.json();
+    const { query, context } = await request.json();
 
     if (!query) {
       return NextResponse.json(
@@ -57,7 +57,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[Vector Search API] Query:", query);
 
-    const { text: result, store, matches } = await handleVectorSearch(query);
+    const {
+      text: result,
+      store,
+      matches,
+    } = await handleVectorSearch(
+      query,
+      context && typeof context === "object" ? context : undefined,
+    );
 
     console.log(
       "[Vector Search API] Result length:",

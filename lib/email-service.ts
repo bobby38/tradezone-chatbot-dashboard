@@ -7,6 +7,7 @@ export interface EmailNotificationData {
   submissionId: string;
   formData: any;
   submittedAt: string;
+  referenceCode?: string;
 }
 
 export class EmailService {
@@ -137,10 +138,12 @@ export class EmailService {
 
       // Generate email content
       const emailContent = this.generateFormNotificationTemplate(data);
+      const shortId =
+        data.referenceCode || data.submissionId.slice(-8).toUpperCase();
       const subject =
         data.type === "trade-in"
-          ? `🎮 New Trade-In Request - ${data.submissionId.slice(-8)}`
-          : `📧 New Contact Form - ${data.submissionId.slice(-8)}`;
+          ? `🎮 New Trade-In Request - ${shortId}`
+          : `📧 New Contact Form - ${shortId}`;
 
       // Send to TradeZone staff email with BCC to developer
       const recipientEmail = "contactus@tradezone.sg";
@@ -196,6 +199,8 @@ export class EmailService {
       formData.comments ||
       formData.notes ||
       "Not provided";
+
+    const referenceLabel = data.referenceCode || submissionId.slice(-8).toUpperCase();
 
     // Trade-in specific fields
     const deviceType = formData.device_type || "Not specified";
@@ -318,6 +323,7 @@ export class EmailService {
           <div class="content">
             <div class="submission-info">
               <strong>Submission ID:</strong> ${submissionId}<br>
+              <strong>Reference ID:</strong> ${referenceLabel}<br>
               <strong>Type:</strong> ${isTradeIn ? "Trade-In Request" : "Contact Form"}<br>
               <strong>Submitted:</strong> ${new Date(submittedAt).toLocaleString()}
             </div>

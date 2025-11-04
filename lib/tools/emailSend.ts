@@ -60,6 +60,7 @@ export async function handleEmailSend(params: {
   deviceModel?: string;
   deviceCondition?: string;
 }): Promise<string> {
+  let referenceCode: string | null = null;
   try {
     if (params.emailType === "trade_in") {
       console.warn(
@@ -92,6 +93,8 @@ export async function handleEmailSend(params: {
     );
 
     const submissionId = randomUUID();
+    referenceCode = submissionId.split("-")[0]?.toUpperCase() ||
+      submissionId.slice(0, 8).toUpperCase();
 
     // Create submission record
     const { error: submissionError } = await supabase
@@ -108,6 +111,7 @@ export async function handleEmailSend(params: {
           sender_name: params.name,
           sent_via: "chatkit_agent",
           context: params.message,
+          reference_code: referenceCode,
         },
       });
 
@@ -129,16 +133,21 @@ export async function handleEmailSend(params: {
         email: params.email,
         message: params.message,
         phone: phone || "Not provided",
+        reference_code: referenceCode,
       },
       submittedAt: new Date().toISOString(),
+      referenceCode: referenceCode ?? undefined,
     });
 
     console.log("[EmailSend] Email sent:", emailSent);
 
     // Return confirmation message
-    return `Thanks, ${params.name}! I've passed your inquiry to our team. They'll respond to ${params.email} shortly.`;
+    return `Thanks, ${params.name}! I've passed your inquiry to our team. Reference ID: ${referenceCode}. They'll respond to ${params.email} shortly.`;
   } catch (error) {
     console.error("[EmailSend] Error:", error);
+    if (referenceCode) {
+      return `I hit a snag submitting your request, but I saved it under reference ${referenceCode}. Please email contactus@tradezone.sg and mention that code so we can follow up.`;
+    }
     return "I encountered an error submitting your request. Please try contacting us directly at contactus@tradezone.sg.";
   }
 }

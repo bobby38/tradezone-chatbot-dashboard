@@ -75,6 +75,32 @@
     voicePendingAssistantTranscript: "",
     voicePendingLinksMarkdown: null,
     voiceTurnStartedAt: 0,
+    tradeInKeywordPatterns: [
+      /\btrade[- ]?in\b/i,
+      /\bbuy[- ]?back\b/i,
+      /\btrade[- ]?up\b/i,
+      /\bupgrade\b/i,
+      /\bquote\b/i,
+      /\boffer\b/i,
+      /\bvaluation\b/i,
+      /\bpayout\b/i,
+      /\bsell (my|the|this)\b/i,
+      /\binstant cash\b/i,
+    ],
+    tradeInDeviceHints:
+      /\b(ps ?5|ps ?4|playstation|xbox|switch|steam deck|rog ally|legion go|msi claw|meta quest|quest 3|iphone|ipad|samsung|mobile phone|console|handheld)\b/i,
+    tradeInActionHints:
+      /\b(trade|tra[iy]n|sell|worth|value|price|quote|offer|payout|buy[- ]?back)\b/i,
+    tradeInNoMatchGuidance: [
+      "TRADE_IN_NO_MATCH",
+      "No trade-in pricing data found for this item in our catalog.",
+      "Next steps:",
+      "- Confirm the caller is in Singapore before continuing.",
+      '- Let them know we need a manual review: "We don\'t have this device in our system yet. Want me to have TradeZone staff review it?"',
+      "- Keep saving any trade-in details with tradein_update_lead.",
+      '- If they confirm, collect name, phone, and email, then call sendemail with emailType:"contact" and include a note like "Manual trade-in review needed" plus the device details.',
+      "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
+    ].join("\n"),
 
     init: function (options) {
       this.config = { ...this.config, ...options };
@@ -93,6 +119,22 @@
       console.log(
         "[TradeZone Chat Enhanced] Widget initialized",
         this.sessionId,
+      );
+    },
+
+    detectTradeInIntent: function (query) {
+      const normalized = (query || "").trim();
+      if (!normalized) return false;
+
+      if (
+        this.tradeInKeywordPatterns.some((pattern) => pattern.test(normalized))
+      ) {
+        return true;
+      }
+
+      return (
+        this.tradeInDeviceHints.test(normalized) &&
+        this.tradeInActionHints.test(normalized)
       );
     },
 
@@ -2032,6 +2074,11 @@
           this.voicePendingAssistantTranscript += event.delta || "";
           break;
 
+        case "response.created":
+          this.voiceState.isResponding = true;
+          this.updateVoiceStatus("Thinking...");
+          break;
+
         case "response.audio_transcript.done":
           // Add complete transcript when done
           if (this.currentTranscript) {
@@ -2046,12 +2093,14 @@
             "[Voice] Received audio delta, length:",
             event.delta?.length || 0,
           );
+          this.voiceState.isResponding = true;
           this.playAudio(event.delta);
           this.updateVoiceStatus("Speaking...");
           break;
 
         case "response.done":
           console.log("[Voice] Response complete");
+          this.voiceState.isResponding = false;
           this.updateVoiceStatus("Listening...");
           this.flushVoiceTurn("success");
           break;
@@ -2066,6 +2115,11 @@
           );
           this.handleToolCall(event.call_id, event.name, event.arguments);
           this.updateVoiceStatus(`Using tool: ${event.name}...`);
+          if (event.name === "searchProducts") {
+            this.addTranscript("🔎 Checking pricing…", "system");
+          } else if (event.name === "searchtool") {
+            this.addTranscript("🔍 Looking that up…", "system");
+          }
           break;
 
         case "input_audio_buffer.speech_started":
@@ -2085,6 +2139,7 @@
 
         case "error":
           console.error("[Voice] Error:", event.error);
+          this.voiceState.isResponding = false;
           this.updateVoiceStatus(
             "Error: " + (event.error?.message || "Unknown error"),
           );
@@ -2101,89 +2156,130 @@
         let source = "unknown";
 
         if (name === "searchProducts") {
-          // Hit vector search endpoint first for fastest response
-          let vectorOk = false;
-          try {
-            const response = await fetch(
-              `${this.config.apiUrl}/api/tools/vector`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-API-Key": this.config.apiKey || "",
-                },
-                body: JSON.stringify({
-                  query: parsedArgs.query,
-                  context: { intent: "catalog", toolUsed: name },
-                }),
-              },
+          const queryText =
+            typeof parsedArgs.query === "string"
+              ? parsedArgs.query.trim()
+              : String(parsedArgs.query ?? "");
+
+          if (!queryText) {
+            result = "Need the exact device model to check pricing.";
+            source = "validation";
+            console.warn(
+              "[Tool] searchProducts called without usable query",
+              parsedArgs,
             );
+          } else {
+            const isTradeInIntent = this.detectTradeInIntent(queryText);
+            this.voicePendingLinksMarkdown = null;
+            let vectorOk = false;
 
-            if (response.ok) {
-              const data = await response.json();
-              result = data.result || "";
-              source = data.store || "vector_store";
-              const linksMarkdown = this.formatMatchesMarkdown(data.matches);
-              if (linksMarkdown) {
-                this.voicePendingLinksMarkdown = linksMarkdown;
-                console.log("[Tool] Captured product links for transcript");
-              }
-              vectorOk = Boolean(result && result.trim().length > 0);
-            } else {
-              console.warn(
-                "[Tool] Vector search request failed:",
-                response.status,
-                response.statusText,
-              );
-            }
-          } catch (error) {
-            console.error("[Tool] Vector search error:", error);
-          }
-
-          // If vector result is empty/short, fall back to hybrid endpoint
-          if (!vectorOk || result.trim().length < 40) {
             try {
               const response = await fetch(
-                `${this.config.apiUrl}/api/tools/perplexity`,
+                `${this.config.apiUrl}/api/tools/vector`,
                 {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
                     "X-API-Key": this.config.apiKey || "",
                   },
-                  body: JSON.stringify({ query: parsedArgs.query }),
+                  body: JSON.stringify({
+                    query: queryText,
+                    context: isTradeInIntent
+                      ? { intent: "trade_in", toolUsed: name }
+                      : { toolUsed: name },
+                  }),
                 },
               );
+
               if (response.ok) {
                 const data = await response.json();
-                if (data.result) {
-                  result = data.result;
-                  source = data.source || "perplexity";
+                result = typeof data.result === "string" ? data.result : "";
+                source =
+                  typeof data.store === "string" ? data.store : "vector_store";
+
+                if (source === "catalog") {
+                  const linksMarkdown = this.formatMatchesMarkdown(
+                    data.matches,
+                  );
+                  if (linksMarkdown) {
+                    this.voicePendingLinksMarkdown = linksMarkdown;
+                    console.log("[Tool] Captured product links for transcript");
+                  }
                 }
-                const linksMarkdown = this.formatMatchesMarkdown(data.matches);
-                if (linksMarkdown) {
-                  this.voicePendingLinksMarkdown = linksMarkdown;
-                }
+
+                vectorOk = Boolean(result && result.trim().length > 0);
               } else {
                 console.warn(
-                  "[Tool] Perplexity fallback failed:",
+                  "[Tool] Vector search request failed:",
                   response.status,
                   response.statusText,
                 );
               }
             } catch (error) {
-              console.error("[Tool] Perplexity fallback error:", error);
+              console.error("[Tool] Vector search error:", error);
             }
-          }
 
-          if (!result) {
-            result = "No results found";
-          }
+            const shouldFallback =
+              !isTradeInIntent &&
+              (!vectorOk || (result || "").trim().length < 40);
 
-          console.log(
-            `[Tool] ${name} result from ${source}:`,
-            result.substring(0, 200),
-          );
+            if (shouldFallback) {
+              try {
+                const response = await fetch(
+                  `${this.config.apiUrl}/api/tools/perplexity`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "X-API-Key": this.config.apiKey || "",
+                    },
+                    body: JSON.stringify({ query: queryText }),
+                  },
+                );
+                if (response.ok) {
+                  const data = await response.json();
+                  if (data.result) {
+                    result = data.result;
+                    source = data.source || "perplexity";
+                  }
+                  const linksMarkdown = this.formatMatchesMarkdown(
+                    data.matches,
+                  );
+                  if (linksMarkdown) {
+                    this.voicePendingLinksMarkdown = linksMarkdown;
+                  }
+                } else {
+                  console.warn(
+                    "[Tool] Perplexity fallback failed:",
+                    response.status,
+                    response.statusText,
+                  );
+                }
+              } catch (error) {
+                console.error("[Tool] Perplexity fallback error:", error);
+              }
+            }
+
+            if (!result || !result.trim()) {
+              result = isTradeInIntent
+                ? this.tradeInNoMatchGuidance
+                : "No results found";
+            }
+
+            console.log(
+              "[Tool] searchProducts result",
+              JSON.stringify(
+                {
+                  store: source,
+                  length: result.length,
+                  isTradeInIntent,
+                  hasLinks: Boolean(this.voicePendingLinksMarkdown),
+                },
+                null,
+                2,
+              ),
+            );
+          }
         } else if (name === "searchtool") {
           // Non-product queries still use hybrid endpoint
           try {
@@ -2633,9 +2729,10 @@
               stock = " (Out of stock)";
             else stock = ` (${match.stockStatus})`;
           }
-          const link = match && match.permalink
-            ? `[${match.name}](${match.permalink})`
-            : match.name;
+          const link =
+            match && match.permalink
+              ? `[${match.name}](${match.permalink})`
+              : match.name;
           return `- ${link}${price}${stock}`;
         })
         .filter(Boolean);

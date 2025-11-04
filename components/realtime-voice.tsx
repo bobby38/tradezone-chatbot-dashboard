@@ -42,6 +42,50 @@ function formatMatchesMarkdown(
   return `**Quick Links**\n${lines.join("\n")}`;
 }
 
+const TRADE_IN_KEYWORD_PATTERNS = [
+  /\btrade[- ]?in\b/i,
+  /\bbuy[- ]?back\b/i,
+  /\btrade[- ]?up\b/i,
+  /\bupgrade\b/i,
+  /\bquote\b/i,
+  /\boffer\b/i,
+  /\bvaluation\b/i,
+  /\bpayout\b/i,
+  /\bsell (my|the|this)\b/i,
+  /\binstant cash\b/i,
+];
+
+const TRADE_IN_DEVICE_HINTS =
+  /\b(ps ?5|ps ?4|playstation|xbox|switch|steam deck|rog ally|legion go|msi claw|meta quest|quest 3|iphone|ipad|samsung|mobile phone|console|handheld)\b/i;
+
+const TRADE_IN_ACTION_HINTS =
+  /\b(trade|tra[iy]n|sell|worth|value|price|quote|offer|payout|buy[- ]?back)\b/i;
+
+function detectTradeInIntent(query: string): boolean {
+  const normalized = (query || "").trim();
+  if (!normalized) return false;
+
+  if (TRADE_IN_KEYWORD_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return true;
+  }
+
+  return (
+    TRADE_IN_DEVICE_HINTS.test(normalized) &&
+    TRADE_IN_ACTION_HINTS.test(normalized)
+  );
+}
+
+const TRADE_IN_NO_MATCH_GUIDANCE = [
+  "TRADE_IN_NO_MATCH",
+  "No trade-in pricing data found for this item in our catalog.",
+  "Next steps:",
+  "- Confirm the caller is in Singapore before continuing.",
+  '- Let them know we need a manual review: "We don\'t have this device in our system yet. Want me to have TradeZone staff review it?"',
+  "- Keep saving any trade-in details with tradein_update_lead.",
+  '- If they confirm, collect name, phone, and email, then call sendemail with emailType:\"contact\" and include a note like \"Manual trade-in review needed\" plus the device details.',
+  "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
+].join("\n");
+
 export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -360,7 +404,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           event.delta?.length,
         );
         playAudioChunk(event.delta);
-        setStatus("Izacc speaking...");
+        setStatus("Amara speaking...");
         break;
 
       case "response.audio_transcript.done":
@@ -407,21 +451,67 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
       let result = "";
 
       if (name === "searchProducts") {
-        // Call vector search (primary product search)
-        console.log("[Tool] Calling vector search:", parsedArgs.query);
-        const response = await fetch("/api/tools/vector-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: parsedArgs.query }),
-        });
-        const data = await response.json();
-        result = data.result || "No products found in catalog";
-        const linksMarkdown = formatMatchesMarkdown(data.matches);
-        if (linksMarkdown) {
-          pendingAssistantLinksRef.current = linksMarkdown;
-          console.log("[Tool] Captured product links for transcript");
+        pendingAssistantLinksRef.current = null;
+        const queryText =
+          typeof parsedArgs.query === "string"
+            ? parsedArgs.query.trim()
+            : String(parsedArgs.query ?? "");
+
+        if (!queryText) {
+          result = "Need the exact device model to check pricing.";
+          console.warn("[Tool] searchProducts called without query text", {
+            args: parsedArgs,
+          });
+        } else {
+          const isTradeInIntent = detectTradeInIntent(queryText);
+          console.log("[Tool] Calling vector search:", {
+            query: queryText,
+            isTradeInIntent,
+          });
+
+          const response = await fetch("/api/tools/vector-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: queryText,
+              context: isTradeInIntent
+                ? { intent: "trade_in", toolUsed: name }
+                : { toolUsed: name },
+            }),
+          });
+          const data = await response.json();
+
+          result =
+            typeof data.result === "string" && data.result.trim().length > 0
+              ? data.result
+              : "";
+
+          const storeLabel =
+            typeof data.store === "string" ? data.store : "unknown";
+
+          if (storeLabel === "catalog") {
+            const linksMarkdown = formatMatchesMarkdown(data.matches);
+            if (linksMarkdown) {
+              pendingAssistantLinksRef.current = linksMarkdown;
+              console.log("[Tool] Captured product links for transcript");
+            } else {
+              pendingAssistantLinksRef.current = null;
+            }
+          } else {
+            pendingAssistantLinksRef.current = null;
+          }
+
+          if (!result) {
+            result = isTradeInIntent
+              ? TRADE_IN_NO_MATCH_GUIDANCE
+              : "No products found in catalog";
+          }
+
+          console.log("[Tool] Vector search result:", {
+            store: storeLabel,
+            preview: result.substring(0, 200),
+          });
         }
-        console.log("[Tool] Vector search result:", result.substring(0, 200));
       } else if (name === "searchtool") {
         // Call Perplexity search (fallback/web search)
         console.log("[Tool] Calling Perplexity search:", parsedArgs.query);
