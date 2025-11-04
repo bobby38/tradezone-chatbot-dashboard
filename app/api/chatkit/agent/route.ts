@@ -616,20 +616,58 @@ function formatHybridFallback(
 function buildMissingTradeInFieldPrompt(detail: any): string | null {
   if (!detail) return null;
 
-  const missing: string[] = [];
+  const hasDevice = Boolean(detail.brand && detail.model);
+  const hasCondition = Boolean(detail.condition);
+  const accessoriesCaptured = Array.isArray(detail.accessories)
+    ? detail.accessories.length > 0
+    : Boolean(detail.accessories);
+  const hasContactName = Boolean(detail.contact_name);
+  const hasContactPhone = Boolean(detail.contact_phone);
+  const hasContactEmail = Boolean(detail.contact_email);
+  const hasPayout = Boolean(detail.preferred_payout);
+  const hasAnyPhoto = Array.isArray(detail.trade_in_media)
+    ? detail.trade_in_media.length > 0
+    : false;
 
-  if (!detail.brand) missing.push("device brand/model");
-  if (!detail.model) missing.push("device brand/model");
-  if (!detail.condition) missing.push("condition");
-  if (!detail.contact_name) missing.push("contact name");
-  if (!detail.contact_phone) missing.push("contact phone");
-  if (!detail.contact_email) missing.push("contact email");
-  if (!detail.preferred_payout) missing.push("payout method");
+  const checklist: string[] = [];
 
-  if (missing.length === 0) return null;
+  if (!hasDevice) {
+    checklist.push("Get the exact brand/model before anything else.");
+  }
 
-  const uniqueMissing = Array.from(new Set(missing));
-  return `🔴 MISSING DETAILS: ${uniqueMissing.join(", ")}. Ask ONE short question at a time (≤6 words) to collect these before submitting the trade-in.`;
+  if (!hasCondition) {
+    checklist.push("Confirm the condition (mint/good/fair/faulty).");
+  }
+
+  if (!accessoriesCaptured) {
+    checklist.push("Ask about accessories/box BEFORE payout: e.g. 'Accessories included?' ");
+  }
+
+  if (!hasContactPhone || !hasContactEmail || !hasContactName) {
+    checklist.push(
+      "Collect name, phone, then email (provider first, then username). Read it back short.",
+    );
+  }
+
+  if (!hasAnyPhoto) {
+    checklist.push(
+      "Before submission ask once: 'Got photos? Helps us quote faster.' Accept 'no' but ask.",
+    );
+  }
+
+  if (!hasPayout) {
+    checklist.push(
+      "Only after accessories + contact are saved, ask payout (cash/PayNow/bank) and store it.",
+    );
+  }
+
+  if (checklist.length === 0) return null;
+
+  return [
+    "🔴 Trade-in checklist:",
+    ...checklist.map((line) => `• ${line}`),
+    "Keep replies ≤12 words, wait in silence after each question.",
+  ].join("\n");
 }
 
 function isImageDownloadError(error: unknown) {
