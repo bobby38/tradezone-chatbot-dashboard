@@ -507,6 +507,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       : false;
 
     const hasDevice = Boolean(detail.brand && detail.model);
+    const hasStorage = Boolean(detail.storage);
     const hasContact = Boolean(detail.contact_name && detail.contact_phone);
     const hasEmail = Boolean(detail.contact_email);
     const hasPayout = Boolean(detail.preferred_payout);
@@ -521,6 +522,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     if (
       alreadyNotified ||
       !hasDevice ||
+      !hasStorage ||
       !hasContact ||
       !hasEmail ||
       !hasPayout ||
@@ -817,6 +819,7 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
   if (!detail) return null;
 
   const hasDevice = Boolean(detail.brand && detail.model);
+  const hasStorage = Boolean(detail.storage);
   const hasCondition = Boolean(detail.condition);
   const accessoriesCaptured = Array.isArray(detail.accessories)
     ? detail.accessories.length > 0
@@ -842,6 +845,11 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
         'Ask: "What device are we trading? Brand and model?" Save brand/model before moving on.',
     },
     {
+      missing: !hasStorage,
+      message:
+        'Ask: "What storage size is it—like 128GB or 1TB?" and save the storage field.',
+    },
+    {
       missing: !hasCondition,
       message: 'Ask: "Condition? (mint, good, fair, faulty?)" then save it.',
     },
@@ -855,12 +863,13 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
     },
     {
       missing: !hasContactPhone,
-      message: 'Ask: "Best phone number?" and save contact_phone.',
+      message:
+        'Ask: "Best phone number?" Repeat the digits back once to confirm, then save contact_phone.',
     },
     {
       missing: !hasContactEmail,
       message:
-        'Ask for the email address: provider first ("Gmail, Hotmail, Outlook?") then the part before @. Read it back and save contact_email.',
+        "Ask for the full email address (not just the provider), repeat the entire address back, wait for a clear yes, then save contact_email.",
     },
     {
       missing: !photoAcknowledged,

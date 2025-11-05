@@ -78,10 +78,11 @@ Display: /dashboard/trade-in (Dedicated Lead Management Dashboard)
   - Action: Staff manage leads, assign, quote, update status
 ```
 **Must-have checkpoints before submit**
-- Capture brand + model + storage + condition + accessories (auto fillers assist but confirm verbally).
+- Capture brand + model + storage + condition + accessories (auto fillers assist but confirm verbally). Spell-outs like “one terabyte” are now parsed automatically, but the agent still rechecks storage aloud.
 - Lock real contact name, phone (≥8 digits), valid email; placeholders like “here/see you/later” are ignored.
+- Read the phone number and entire email address back to the customer and wait for a clear “yes” before saving. If the customer tweaks either value, wipe the old entry and confirm again.
 - Ask payout preference (cash/PayNow/bank) only after contact info is confirmed.
-- Always prompt for photos; if the user declines, the agent logs `Photos: Not provided — customer has none on hand.` so the checklist passes. Uploads auto-clear the step.
+- Always prompt for photos before the recap; if the user declines, the agent logs `Photos: Not provided — customer has none on hand.` so the checklist passes. Uploads auto-clear the step.
 - Submission auto-fails (and emails stay silent) unless the photo step is acknowledged, so keep the checklist green before summarising.
 
 #### Flow 3: Agent Contact (AI Chatbot → General Support)
@@ -892,6 +893,14 @@ SELECT id, name, slug FROM organizations;
 
 ## Change Log
 
+### November 5, 2025 - Alpha Voice/Text Alignment
+**Status**: ✅ Live (monitor transcripts through 2025-11-19)
+- Text + voice prompts now force a storage follow-up even when customers speak in words (“one terabyte”), and we persist the value before submission.
+- Mandatory read-back added for phone and email; agents must hear a clear confirmation before locking contact details or sending support escalations.
+- Photo request is enforced ahead of every recap; declining customers are recorded as `Photos: Not provided — customer has none on hand.` so QA passes while still nudging for uploads.
+- Auto-submit guard rails in `/api/chatkit/agent` now require storage and photo acknowledgement before emailing staff.
+- Documentation updated (this file + prompt configs) so ops, QA, and training scripts stay in sync for the alpha rollout.
+
 ### October 24, 2025 - Voice Trade-In Attachment Reset
 **Status**: 🔄 Verification pending (run voice-mode trade-in flow 2025-10-25)
 - ✅ Cleared voice attachment preview once note/photo submitted so "Photo ready to send" badge disappears (`public/widget/chat-widget-enhanced.js`).
@@ -1521,11 +1530,11 @@ if (!emailRegex.test(customerEmail)) {
 ```
 
 **Email Collection Protocol (Updated in Voice Prompts):**
-1. Ask for email provider first: "Do you use Gmail, Hotmail, or Outlook?"
-2. Get username separately: "What's the part before @ sign?"
-3. **REPEAT IT BACK:** "So that's bobby_dennie@hotmail.com, correct?"
-4. **WAIT FOR CONFIRMATION** before sending
-5. If invalid format detected, ask customer to re-confirm or type manually
+1. Ask for the full email address right away: "What's the full email for the quote?"
+2. If they only share the provider ("Hotmail", "Gmail"), follow up with: "What's the part before the @ sign?"
+3. **REPEAT THE ENTIRE ADDRESS BACK:** "So that's bobby_dennie@hotmail.com, correct?"
+4. **WAIT FOR A CLEAR YES** before sending
+5. If anything sounds off, have them spell it out or type it manually
 
 **Files Modified:**
 - `app/api/tools/email/route.ts` - Validation logic
