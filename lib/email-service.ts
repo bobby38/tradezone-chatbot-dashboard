@@ -2,6 +2,20 @@ import nodemailer from "nodemailer";
 import { SettingsManager } from "./settings";
 import { ServerSettingsManager } from "./server-settings";
 
+function buildEnvSmtpConfig() {
+  return {
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "587"),
+    secure: process.env.SMTP_PORT === "465",
+    auth: {
+      user: process.env.SMTP_USER || "",
+      pass: process.env.SMTP_PASS || "",
+    },
+    fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || "",
+    fromName: process.env.SMTP_FROM_NAME || "TradeZone Notifications",
+  };
+}
+
 export interface EmailNotificationData {
   type: "contact" | "trade-in";
   submissionId: string;
@@ -12,13 +26,28 @@ export interface EmailNotificationData {
 
 export class EmailService {
   static async getSmtpConfig() {
+    if (process.env.SMTP_CONFIG_SOURCE === "env") {
+      return buildEnvSmtpConfig();
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.warn(
+        "[EmailService] Supabase credentials missing for SMTP lookup, falling back to env vars",
+        {
+          hasUrl: Boolean(supabaseUrl),
+          hasServiceKey: Boolean(supabaseServiceKey),
+        },
+      );
+      return buildEnvSmtpConfig();
+    }
+
     try {
       // Load from Supabase database
       const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      );
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
       const FALLBACK_ORG_ID = "765e1172-b666-471f-9b42-f80c9b5006de";
       const envOrgId = process.env.NEXT_PUBLIC_DEFAULT_ORG_ID;
@@ -81,17 +110,7 @@ export class EmailService {
     }
 
     // Fallback to environment variables
-    return {
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_PORT === "465",
-      auth: {
-        user: process.env.SMTP_USER || "",
-        pass: process.env.SMTP_PASS || "",
-      },
-      fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || "",
-      fromName: process.env.SMTP_FROM_NAME || "TradeZone Notifications",
-    };
+    return buildEnvSmtpConfig();
   }
 
   static async sendFormNotification(
@@ -200,7 +219,8 @@ export class EmailService {
       formData.notes ||
       "Not provided";
 
-    const referenceLabel = data.referenceCode || submissionId.slice(-8).toUpperCase();
+    const referenceLabel =
+      data.referenceCode || submissionId.slice(-8).toUpperCase();
 
     // Trade-in specific fields
     const deviceType = formData.device_type || "Not specified";

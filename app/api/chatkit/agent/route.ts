@@ -165,6 +165,50 @@ const TRADE_IN_DEVICE_HINTS =
 const TRADE_IN_ACTION_HINTS =
   /\b(trade|tra[iy]n|sell|worth|value|price|quote|offer|top[- ]?up)\b/i;
 
+const PLACEHOLDER_NAME_TOKENS = new Set([
+  "here",
+  "there",
+  "see",
+  "you",
+  "see you",
+  "thanks",
+  "thank",
+  "thankyou",
+  "thank you",
+  "bye",
+  "good",
+  "later",
+  "photo",
+  "photos",
+  "pic",
+  "pics",
+  "cash",
+  "paynow",
+  "bank",
+  "ok",
+  "okay",
+  "none",
+  "na",
+  "n/a",
+  "no",
+  "sure",
+  "yup",
+  "yeah",
+  "yep",
+  "alright",
+  "alrighty",
+  "thanks!",
+]);
+
+function isPlaceholderName(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return true;
+  if (normalized.length <= 2) return true;
+  if (PLACEHOLDER_NAME_TOKENS.has(normalized)) return true;
+  return false;
+}
+
 function detectTradeInIntent(query: string): boolean {
   const normalized = query.trim();
   if (!normalized) return false;
@@ -235,38 +279,37 @@ function enforceTradeInResponseOverrides(response: string): string {
   if (lower.includes("osmo pocket 3") && lower.includes("creator combo")) {
     let updated = response;
 
-    if (!updated.includes(desiredRange)) {
-      const comboIndex = lower.indexOf("osmo pocket 3");
-      let replaced = false;
-
-      updated = updated.replace(
-        /S\$[0-9][0-9,]*(?:\s*[–-]\s*S\$[0-9][0-9,]*)?/g,
-        (match, offset) => {
-          if (!replaced) {
-            const distance = Math.abs(offset - comboIndex);
-            if (comboIndex === -1 || distance <= 240) {
-              replaced = true;
-              return desiredRange;
-            }
-          }
-          return match;
-        },
-      );
-
-      if (!replaced) {
-        updated = updated.replace(
-          /osmo pocket 3[^\.\n]*/i,
-          (segment) => `${segment.trim()} ${desiredRange}`,
-        );
+    const tradeInSentenceRegex =
+      /(trade[- ]?in[^.!?\n]{0,120})S\$[0-9][0-9,]*(?:\s*[–-]\s*S\$[0-9][0-9,]*)?/gi;
+    updated = updated.replace(tradeInSentenceRegex, (match) => {
+      if (match.includes(desiredRange)) {
+        return match.includes("subject to inspection")
+          ? match
+          : match.replace(
+              desiredRange,
+              `${desiredRange} (subject to inspection)`,
+            );
       }
-    }
-
-    if (!/subject to inspection/i.test(updated) && updated.includes(desiredRange)) {
-      updated = updated.replace(
-        desiredRange,
+      return match.replace(
+        /S\$[0-9][0-9,]*(?:\s*[–-]\s*S\$[0-9][0-9,]*)?/g,
         `${desiredRange} (subject to inspection)`,
       );
+    });
+
+    if (!updated.includes(desiredRange)) {
+      updated = updated.replace(/osmo pocket 3[^.!?\n]*/i, (segment) => {
+        if (segment.includes(desiredRange)) return segment;
+        return `${segment.trim()} (trade-in range ${desiredRange} subject to inspection)`;
+      });
     }
+
+    updated = updated.replace(
+      /(-\s*Device:\s*DJI Osmo Pocket 3 Creator Combo[^\n]*)/i,
+      (line) =>
+        line
+          .replace(/S\$350 – S\$400 \(subject to inspection\)/i, "")
+          .trimEnd(),
+    );
 
     return updated;
   }
@@ -313,13 +356,32 @@ const DEVICE_PATTERNS: Array<{
 
 function extractTradeInClues(message: string): TradeInUpdateInput {
   const trimmed = message.trim();
-  if (trimmed.length < 4) {
+  if (!trimmed) {
     return {};
   }
 
-  const patch: TradeInUpdateInput = {};
-  const accessories = new Set<string>();
   const lower = message.toLowerCase();
+  const normalizedSimple = lower
+    .replace(/[\r\n]+/g, " ")
+    .replace(/'/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const shortPhotoDecline =
+    /^(?:no|nope|none|nah|not yet|later|maybe later|not now|can't now|cant now)$/i.test(
+      trimmed,
+    );
+
+  const patch: TradeInUpdateInput = {};
+  if (shortPhotoDecline) {
+    patch.notes = "Photos: Not provided — customer has none on hand.";
+  }
+
+  if (trimmed.length < 4) {
+    return patch;
+  }
+
+  const accessories = new Set<string>();
 
   for (const pattern of DEVICE_PATTERNS) {
     if (pattern.regex.test(message)) {
@@ -380,6 +442,24 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.contact_phone = phoneMatch[0].replace(/\s+/g, " ").trim();
   }
 
+  const declinedWithContext =
+    /\b(?:no|not|dont|do not|cant|cannot|havent|without)\b(?:\s+\w+){0,2}\s+(?:photo|photos|picture|pictures|pic|pics|image|images|media)\b/.test(
+      normalizedSimple,
+    ) ||
+    /\b(?:photo|photos|picture|pictures|pic|pics|image|images|media)\b\s+(?:not|n't)\s+(?:available|provided|ready|with\s+me|on\s+hand|yet)\b/.test(
+      normalizedSimple,
+    ) ||
+    /\b(?:send|share)\b\s+(?:them\s+)?(?:photo|photos|picture|pictures|pic|pics|image|images|media)\b\s+(?:later|tomorrow|another time|next time)\b/.test(
+      normalizedSimple,
+    ) ||
+    /\b(?:cant|can't|cannot|unable)\b(?:\s+to)?\s+(?:send|share)\b(?:\s+\w+){0,2}\s+(?:photo|photos|picture|pictures|pic|pics|image|images|media)\b/.test(
+      normalizedSimple,
+    );
+
+  if (!patch.notes && (declinedWithContext || shortPhotoDecline)) {
+    patch.notes = "Photos: Not provided — customer has none on hand.";
+  }
+
   const scrubbed = message
     .replace(emailMatch ? emailMatch[0] : "", " ")
     .replace(phoneMatch ? phoneMatch[0] : "", " ")
@@ -390,12 +470,21 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     .replace(/\s+/g, " ")
     .trim();
 
-  if (!patch.contact_name && scrubbed.length >= 3) {
-    const nameParts = scrubbed
+  if (!patch.contact_name && scrubbed.length >= 2) {
+    const candidateTokens = scrubbed
       .split(/\s+/)
-      .filter((token) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(token));
-    if (nameParts.length > 0) {
-      patch.contact_name = nameParts.slice(0, 3).join(" ");
+      .map((token) => token.trim())
+      .filter((token) => {
+        if (!token) return false;
+        if (!/^[A-Za-z][A-Za-z'\-]{1,}$/.test(token)) return false;
+        return !PLACEHOLDER_NAME_TOKENS.has(token.toLowerCase());
+      });
+
+    if (candidateTokens.length > 0) {
+      const candidateName = candidateTokens.slice(0, 3).join(" ");
+      if (!isPlaceholderName(candidateName)) {
+        patch.contact_name = candidateName;
+      }
     }
   }
 
@@ -420,8 +509,23 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasDevice = Boolean(detail.brand && detail.model);
     const hasContact = Boolean(detail.contact_name && detail.contact_phone);
     const hasEmail = Boolean(detail.contact_email);
+    const hasPayout = Boolean(detail.preferred_payout);
+    const photoAcknowledged =
+      (Array.isArray(detail.trade_in_media) &&
+        detail.trade_in_media.length > 0) ||
+      (typeof detail.notes === "string" &&
+        /photos?:\s*not provided/i.test(detail.notes)) ||
+      (typeof detail.source_message_summary === "string" &&
+        /photos?:\s*not provided/i.test(detail.source_message_summary));
 
-    if (alreadyNotified || !hasDevice || !hasContact || !hasEmail) {
+    if (
+      alreadyNotified ||
+      !hasDevice ||
+      !hasContact ||
+      !hasEmail ||
+      !hasPayout ||
+      !photoAcknowledged
+    ) {
       return null;
     }
 
@@ -724,63 +828,58 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
   const hasAnyPhoto = Array.isArray(detail.trade_in_media)
     ? detail.trade_in_media.length > 0
     : false;
+  const photoAcknowledged =
+    hasAnyPhoto ||
+    (typeof detail.notes === "string" &&
+      /photos?:\s*not provided/i.test(detail.notes)) ||
+    (typeof detail.source_message_summary === "string" &&
+      /photos?:\s*not provided/i.test(detail.source_message_summary));
 
-  const directives: string[] = [];
+  const steps: Array<{ missing: boolean; message: string }> = [
+    {
+      missing: !hasDevice,
+      message:
+        'Ask: "What device are we trading? Brand and model?" Save brand/model before moving on.',
+    },
+    {
+      missing: !hasCondition,
+      message: 'Ask: "Condition? (mint, good, fair, faulty?)" then save it.',
+    },
+    {
+      missing: !accessoriesCaptured,
+      message: 'Ask: "Accessories or box included?" and save accessories.',
+    },
+    {
+      missing: !hasContactName,
+      message: 'Ask: "What name should I note down?" and save contact_name.',
+    },
+    {
+      missing: !hasContactPhone,
+      message: 'Ask: "Best phone number?" and save contact_phone.',
+    },
+    {
+      missing: !hasContactEmail,
+      message:
+        'Ask for the email address: provider first ("Gmail, Hotmail, Outlook?") then the part before @. Read it back and save contact_email.',
+    },
+    {
+      missing: !photoAcknowledged,
+      message:
+        'Ask: "Got photos? Helps us quote faster." If they say no, respond "Photos noted as not provided" and save it.',
+    },
+    {
+      missing: !hasPayout,
+      message:
+        'Ask: "Cash, PayNow, or bank?" and save preferred payout before submitting.',
+    },
+  ];
 
-  if (!hasDevice) {
-    directives.push(
-      "NEXT: Ask for the exact brand & model before anything else. Keep it ≤5 words.",
-    );
-  }
-
-  if (!hasCondition) {
-    directives.push(
-      "Confirm the condition (mint/good/fair/faulty) right after the device.",
-    );
-  }
-
-  if (!accessoriesCaptured) {
-    directives.push(
-      "Ask about accessories/box BEFORE payout. Example: “Accessories included?”",
-    );
-  }
-
-  if (!hasContactName) {
-    directives.push("Collect the contact name now (“Name?”).");
-  }
-
-  if (!hasContactPhone) {
-    directives.push("Ask for the Singapore phone number (“Best number?”).");
-  }
-
-  if (!hasContactEmail) {
-    directives.push(
-      "Collect email BEFORE payout: ask provider first (“Gmail, Hotmail, Outlook?”), then the username, read it back, wait for a yes.",
-    );
-  }
-
-  if (!hasAnyPhoto) {
-    directives.push(
-      "🔥 BEFORE payout: ask once “Got photos? Helps us quote faster.” Wait for a yes/no. If they decline, acknowledge it explicitly.",
-    );
-  }
-
-  if (!hasPayout) {
-    directives.push(
-      "🚫 Do NOT mention payout until the photo question is answered and logged (either upload or “no photos”).",
-    );
-  } else if (!hasAnyPhoto) {
-    directives.push(
-      "⚠️ Payout is saved but no photo status yet. Tell them we still need photos (or confirm they have none) before wrapping up.",
-    );
-  }
-
-  if (directives.length === 0) return null;
+  const nextStep = steps.find((step) => step.missing);
+  if (!nextStep) return null;
 
   return [
-    "🔴 Trade-in checklist:",
-    ...directives.map((line) => `• ${line}`),
-    "Keep replies ≤12 words and pause after every question.",
+    `🔴 Trade-in task: ${nextStep.message}`,
+    "Keep reply ≤12 words, wait for the answer, then acknowledge briefly.",
   ].join("\n");
 }
 
@@ -1368,7 +1467,10 @@ export async function POST(request: NextRequest) {
               continue;
             }
 
-            const isTradeInIntent = detectTradeInIntent(rawQuery);
+            const isTradeInIntent =
+              detectTradeInIntent(rawQuery) ||
+              tradeInIntent ||
+              Boolean(tradeInLeadId);
             console.log(`[ChatKit] 🔍 Tool called: ${functionName}`, {
               query: rawQuery,
               isTradeInIntent,

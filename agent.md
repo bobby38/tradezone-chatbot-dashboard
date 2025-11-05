@@ -77,6 +77,12 @@ Display: /dashboard/trade-in (Dedicated Lead Management Dashboard)
   - Email: Sent by dashboard EmailService
   - Action: Staff manage leads, assign, quote, update status
 ```
+**Must-have checkpoints before submit**
+- Capture brand + model + storage + condition + accessories (auto fillers assist but confirm verbally).
+- Lock real contact name, phone (≥8 digits), valid email; placeholders like “here/see you/later” are ignored.
+- Ask payout preference (cash/PayNow/bank) only after contact info is confirmed.
+- Always prompt for photos; if the user declines, the agent logs `Photos: Not provided — customer has none on hand.` so the checklist passes. Uploads auto-clear the step.
+- Submission auto-fails (and emails stay silent) unless the photo step is acknowledged, so keep the checklist green before summarising.
 
 #### Flow 3: Agent Contact (AI Chatbot → General Support)
 ```

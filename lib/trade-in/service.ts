@@ -60,6 +60,24 @@ const CONTACT_PLACEHOLDER_VALUES = new Set([
   "not provided",
   "n/a",
   "pending",
+  "here",
+  "there",
+  "see",
+  "see you",
+  "thanks",
+  "thank",
+  "thank you",
+  "ok",
+  "okay",
+  "bye",
+  "later",
+  "photo",
+  "photos",
+  "cash",
+  "paynow",
+  "bank",
+  "none",
+  "no",
 ]);
 
 function hasMeaningfulValue(value: string | null | undefined): boolean {
@@ -338,7 +356,7 @@ export async function updateTradeInLead(
 
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("trade_in_leads")
-    .select("status, contact_name, contact_phone, contact_email")
+    .select("status, contact_name, contact_phone, contact_email, preferred_payout")
     .eq("id", leadId)
     .single();
 
@@ -373,6 +391,30 @@ export async function updateTradeInLead(
         "Collect name, phone, and a valid email before recording payout preference.",
         ["preferred_payout"],
       );
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updatePayload, "contact_name")) {
+    const newNameRaw = updatePayload.contact_name;
+    const newName =
+      typeof newNameRaw === "string" ? newNameRaw.trim() : undefined;
+    const previousName =
+      typeof existing.contact_name === "string"
+        ? existing.contact_name.trim()
+        : null;
+
+    const newIsMeaningful = hasMeaningfulValue(newName);
+    const previousIsMeaningful = hasMeaningfulValue(previousName);
+
+    if (!newName || !newIsMeaningful) {
+      delete updatePayload.contact_name;
+    } else if (previousName && previousIsMeaningful) {
+      if (previousName.toLowerCase() === newName.toLowerCase()) {
+        delete updatePayload.contact_name;
+      } else {
+        // Keep the previously confirmed meaningful name; ignore later chatter
+        delete updatePayload.contact_name;
+      }
     }
   }
 
