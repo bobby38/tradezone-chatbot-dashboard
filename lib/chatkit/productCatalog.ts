@@ -251,6 +251,8 @@ export async function findCatalogMatches(
   });
 
   const tokensToUse = filteredTokens.length ? filteredTokens : rawTokens;
+  const primaryKeyword =
+    tokensToUse.find((token) => !STOP_WORDS.has(token)) || tokensToUse[0];
 
   const ranked = catalog
     .map((product) => {
@@ -280,7 +282,18 @@ export async function findCatalogMatches(
       return b.score - a.score;
     });
 
-  return ranked.slice(0, limit).map(({ product }) => ({
+  let sliced = ranked.slice(0, limit);
+  if (primaryKeyword) {
+    const keyword = primaryKeyword.toLowerCase();
+    const strictMatches = ranked.filter(({ product }) =>
+      (product.name || "").toLowerCase().includes(keyword),
+    );
+    if (strictMatches.length > 0) {
+      sliced = strictMatches.slice(0, limit);
+    }
+  }
+
+  return sliced.map(({ product }) => ({
     name: product.name || "TradeZone Product",
     permalink: product.permalink,
     price:
