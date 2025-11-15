@@ -648,6 +648,20 @@ lib/
 - ✅ **Shared Prompt Module**: Consolidated text/voice trade-in playbooks in `lib/chatkit/tradeInPrompts.ts` for reuse across ChatKit Agent and Realtime voice.
 - ⚠️ **To Do**: Extend automated coverage (trade-in smoke tests), enable attachment previews/downloads from dashboard via signed URLs in UI, and wire Telegram/WhatsApp notifications once baseline stabilises. Keep the voice flow in parity with these prompts (photos optional, confirm submission) and add Appwrite bucket sync once ready.
 
+### November 15, 2025 - Trade-In Deterministic Toolkit
+
+- ✅ **Canonical Grid Assets**:
+  - `Tradezone Price Grid Nov 12 2025.csv` (master sheet)
+  - `tradezone_price_grid_for_openai_vector.md` (snapshot uploaded to `vs_68f3ab92f57c8191846cb6d643e4cb85`)
+  - `data/tradein_synonyms.json` (local synonym/NER map)
+- ✅ **Utility Script**: `scripts/tradein_price_tool.py`
+  - `quote` command returns deterministic JSON (`reply_text`, slot values, math steps, provenance, flags) using the CSV.
+  - `to-jsonl` command converts the CSV into `data/tradezone_price_grid.jsonl` for OpenAI vector-store uploads.
+  - Usage examples documented at the top of the script.
+- ✅ **Prompt/Retriever Notes**: `docs/tradein_prompt_flow.md` captures vector IDs, JSON schema, price-first conversational flow, and update steps.
+- ✅ **Vector Store Upload Flow**: run `python scripts/tradein_price_tool.py to-jsonl --csv 'Tradezone Price Grid Nov 12 2025.csv' --out data/tradezone_price_grid.jsonl --price-grid-version YYYY-MM-DD`, then upload the JSONL + `data/tradein_synonyms.json` to `vs_68f3ab92f57c8191846cb6d643e4cb85`.
+- ⚠️ **Next**: integrate the `quote` command into ChatKit so every trade-in reply includes the JSON payload in logs, and automate vector uploads (CI or scheduled job) when the CSV changes.
+
 ### Phase 1 (Oct 27 – Nov 08) — Trade-In Platform Enhancements
 
 **Objectives:** build the internal lead pipeline, notifications, and dashboard groundwork without regressing Phase 1 product features.
@@ -2839,6 +2853,12 @@ https://trade.rezult.co/widget/chat-widget-enhanced.js
 5. **Trade-In (Voice):** Repeat via voice widget, confirm short responses, tool parity, and matching Supabase/email outcomes.
 6. **Non-Singapore Guardrail:** Declare non-SG location in text and voice; ensure polite decline with no submissions logged.
 7. **Voice Email Validation:** Supply ambiguous email, confirm spell-back protocol before `sendemail` fires, and note accuracy for staff.
+
+### 2025-11-14 Updates (Trade-In Flow)
+- Prompts (text + voice) now force an intent pick at greeting time (product info, cash trade, upgrade/exchange, or staff) before any tool call; each reply must restate the choice, share one fact/question, then pause.
+- Catalog/price lookups only show short title bullets (max three) plus “Want details?”; the agent expands details only when the customer explicitly says yes.
+- Trade-in script reinforces deterministic math, honest “don’t know” fallbacks, calm pacing, and fast human handoff when the grid lacks data.
+- Store hours corrected everywhere to **12 pm – 8 pm** (affects both the standard prompt and trade-in context templates).
 
 ### Suggested Pre-QA Prep
 - Verify all required environment variables in staging/production.

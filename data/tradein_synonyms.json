@@ -1,0 +1,17 @@
+{
+  "ps5": ["playstation 5", "ps5 fat", "ps5 disc", "ps5 digital"],
+  "ps5 pro": ["ps5 pro digital", "ps5 pro 2tb", "ps5 pro slim"],
+  "ps5 slim": ["ps5 slim disc", "ps5 slim digital"],
+  "ps4": ["playstation 4", "ps4 fat", "ps4 slim", "ps4 pro"],
+  "rog ally": ["ally", "ally handheld"],
+  "rog ally x": ["ally x", "ally x 1tb", "ally x 2tb"],
+  "steam deck lcd": ["steam deck", "deck lcd"],
+  "steam deck oled": ["deck oled", "steamdeck oled"],
+  "switch oled": ["nintendo switch oled", "switch v2"],
+  "switch 2": ["switch next", "super switch"],
+  "switch lite": ["switch mini", "nintendo lite"],
+  "series x": ["xbox series x", "xsx"],
+  "series s": ["xbox series s", "xss"],
+  "ps portal": ["playstation portal", "portal remote"],
+  "ps vr2": ["playstation vr2", "psvr 2"]
+}
