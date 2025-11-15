@@ -1,5 +1,2258 @@
 [
   {
+    "id": 7867,
+    "name": "Burnout Paradise Remastered",
+    "permalink": "https://tradezone.sg/product/burnout-paradise-remastered/",
+    "sku": "",
+    "type": "variable",
+    "price": "19.90",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-05-08T02:59:19",
+    "date_modified": "2025-11-14T11:46:39",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 137,
+        "name": "Brand New Games",
+        "slug": "brand-new-games-nintendo"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      },
+      {
+        "id": 165,
+        "name": "Pre-Owned Games",
+        "slug": "pre-owned-games-nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 13420,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Burnout-Paradise-Remastered.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Condition",
+        "slug": "Condition",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New",
+          "Pre-Owned"
+        ]
+      }
+    ],
+    "variations": [
+      27538,
+      27537
+    ]
+  },
+  {
+    "id": 27883,
+    "name": "Thermalright TL-M10 Vision Black MATX PC Case",
+    "permalink": "https://tradezone.sg/product/thermalright-tl-m10-vision-black-matx-pc-case/",
+    "sku": "",
+    "type": "simple",
+    "price": "119",
+    "regular_price": "119",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-14T08:54:40",
+    "date_modified": "2025-11-14T08:54:44",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 103,
+        "name": "Cases",
+        "slug": "cases"
+      },
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27884,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/Nintendo-Switch-Georifters-3.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 27881,
+    "name": "Deepcool LM240 White 240MM AIO",
+    "permalink": "https://tradezone.sg/product/deepcool-lm240-white-240mm-aio/",
+    "sku": "",
+    "type": "simple",
+    "price": "105",
+    "regular_price": "105",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-14T08:53:28",
+    "date_modified": "2025-11-14T08:53:31",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 174,
+        "name": "CPU Cooler",
+        "slug": "cpu-cooler"
+      },
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27882,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/Nintendo-Switch-Bomberman-R-2-2.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 27879,
+    "name": "ID Cooling HA-08 (ARGB + FAN HUB)",
+    "permalink": "https://tradezone.sg/product/id-cooling-ha-08-argb-fan-hub/",
+    "sku": "",
+    "type": "simple",
+    "price": "19",
+    "regular_price": "19",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-14T08:52:07",
+    "date_modified": "2025-11-14T08:52:11",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 191,
+        "name": "PC Accessories",
+        "slug": "pc-accessories"
+      },
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27880,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/Nintendo-Switch-Georifters-4.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 22269,
+    "name": "Thermalright SFX 650W / 850W Gold Modular ATX3.1+Gen5.1 Power Supply Unit",
+    "permalink": "https://tradezone.sg/product/thermalright-sfx-650w-850w-gold-modular-atx3-1gen5-1-power-supply-unit/",
+    "sku": "",
+    "type": "variable",
+    "price": "139",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-02-18T09:18:22",
+    "date_modified": "2025-11-14T08:50:31",
+    "short_description": "<ul class=\"a-unordered-list a-vertical a-spacing-mini\">\n<li class=\"a-spacing-mini\"><span class=\"a-list-item\">Modular Design: This 850W power supply unit (PSU) features a fully modular cable design for improved airflow and a cleaner build.</span></li>\n<li class=\"a-spacing-mini\"><span class=\"a-list-item\">High Efficiency: With an 80 Plus Gold certification, it operates at up to 90% efficiency, minimising power loss and reducing electricity costs.</span></li>\n</ul>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      },
+      {
+        "id": 102,
+        "name": "Power Supply Unit",
+        "slug": "power-supply-unit"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 22270,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/02/B860-DS3H-WIFI6E-1.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "White"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "Wattage",
+        "slug": "Wattage",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "650W",
+          "850W"
+        ]
+      }
+    ],
+    "variations": [
+      22271,
+      22272,
+      22273,
+      22274
+    ]
+  },
+  {
+    "id": 26498,
+    "name": "Thermalright KG 650W/850W 80+ Gold Modular (ATX3.1) - Black",
+    "permalink": "https://tradezone.sg/product/thermalright-kg-650w-850w-80-gold-modular-atx3-1-black/",
+    "sku": "",
+    "type": "variable",
+    "price": "89",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-09-06T07:15:55",
+    "date_modified": "2025-11-14T08:49:39",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      },
+      {
+        "id": 102,
+        "name": "Power Supply Unit",
+        "slug": "power-supply-unit"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 26499,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/09/R-4.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Wattage",
+        "slug": "Wattage",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "650W",
+          "850W"
+        ]
+      }
+    ],
+    "variations": [
+      26500,
+      26501
+    ]
+  },
+  {
+    "id": 26494,
+    "name": "Thermalright SP 1000W  80+ Platinum Modular",
+    "permalink": "https://tradezone.sg/product/thermalright-sp-1000w-80-platinum-modular/",
+    "sku": "",
+    "type": "variable",
+    "price": "169",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-09-06T07:13:01",
+    "date_modified": "2025-11-14T08:47:11",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      },
+      {
+        "id": 102,
+        "name": "Power Supply Unit",
+        "slug": "power-supply-unit"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 26495,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/09/R-3.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "White"
+        ]
+      }
+    ],
+    "variations": [
+      26496,
+      26497
+    ]
+  },
+  {
+    "id": 24375,
+    "name": "XPG Lancer RGB DDR5 6400 CL32 2x32GB XMP/EXPO - White Desktop Memory RAM",
+    "permalink": "https://tradezone.sg/product/xpg-lancer-rgb-ddr5-6400-cl32-2x32gb-xmp-expo-white-desktop-memory-ram/",
+    "sku": "",
+    "type": "simple",
+    "price": "799",
+    "regular_price": "799",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-05-13T11:02:10",
+    "date_modified": "2025-11-14T06:32:27",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      },
+      {
+        "id": 178,
+        "name": "RAM",
+        "slug": "ram"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 24376,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/05/game-3.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 24370,
+    "name": "KLEVV Cras V RGB DDR5 6000 CL28 (2x16GB) 6000 Ram Black/White",
+    "permalink": "https://tradezone.sg/product/klevv-cras-v-rgb-ddr5-6000-cl30-2x16gb-6000-mt-s-ram/",
+    "sku": "",
+    "type": "variable",
+    "price": "449",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-05-13T11:00:00",
+    "date_modified": "2025-11-14T06:30:20",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      },
+      {
+        "id": 178,
+        "name": "RAM",
+        "slug": "ram"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27095,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/05/game-1-2.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "White"
+        ]
+      }
+    ],
+    "variations": [
+      27097,
+      27098
+    ]
+  },
+  {
+    "id": 24617,
+    "name": "Tecware FLEX RGB 24p+GPU (Black/White)",
+    "permalink": "https://tradezone.sg/product/tecware-flex-rgb-24pgpu-black-white/",
+    "sku": "",
+    "type": "variable",
+    "price": "39",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-05-23T10:34:23",
+    "date_modified": "2025-11-14T05:53:41",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 191,
+        "name": "PC Accessories",
+        "slug": "pc-accessories"
+      },
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 24618,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/05/Screen-Protector-Premium-Tempered-Glass-High-Quality-for-Nintendo-Switch-Oled-Gen-1-2-Lite.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "White"
+        ]
+      }
+    ],
+    "variations": [
+      24619,
+      24620
+    ]
+  },
+  {
+    "id": 13445,
+    "name": "Lexar NM790",
+    "permalink": "https://tradezone.sg/product/lexar-nm790-1tb/",
+    "sku": "",
+    "type": "variable",
+    "price": "169",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-06-01T06:59:45",
+    "date_modified": "2025-11-14T05:46:42",
+    "short_description": "",
+    "description": "<p><!-- wp:paragraph --></p>\n<p><!-- /wp:paragraph --></p>\n<p><!-- wp:list --></p>\n<ul><!-- wp:list-item --></p>\n<li></li>\n<p><!-- /wp:list-item --></ul>\n<p><!-- /wp:list --></p>\n",
+    "categories": [
+      {
+        "id": 179,
+        "name": "Storage",
+        "slug": "storage"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 13446,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Untitled-design-47.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 6,
+        "name": "Storage Size",
+        "slug": "pa_storage-size",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1TB",
+          "2TB",
+          "4TB"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "Accessories",
+        "slug": "Accessories",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Heatsink",
+          "No Heatsink"
+        ]
+      }
+    ],
+    "variations": [
+      13459,
+      13458,
+      13461
+    ]
+  },
+  {
+    "id": 26550,
+    "name": "Moza R3 Racing Wheel and Pedals Bundle for Xbox/PC and PC Only",
+    "permalink": "https://tradezone.sg/product/moza-r3-racing-wheel-and-pedals-bundle-for-xbox-pc-or-pc-only/",
+    "sku": "",
+    "type": "simple",
+    "price": "589",
+    "regular_price": "589",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-09-08T06:41:52",
+    "date_modified": "2025-11-12T11:15:25",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 59,
+        "name": "Xbox",
+        "slug": "xbox"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 26551,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/09/R-1-1.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 7601,
+    "name": "Luigi's Mansion 2 HD",
+    "permalink": "https://tradezone.sg/product/luigis-mansion-2-hd/",
+    "sku": "",
+    "type": "variable",
+    "price": "49.90",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "outofstock",
+    "date_created": "2024-05-08T02:51:31",
+    "date_modified": "2025-11-12T09:01:24",
+    "short_description": "",
+    "description": "<p><!-- wp:paragraph --></p>\n<p><!-- /wp:paragraph --></p>\n",
+    "categories": [
+      {
+        "id": 137,
+        "name": "Brand New Games",
+        "slug": "brand-new-games-nintendo"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      },
+      {
+        "id": 165,
+        "name": "Pre-Owned Games",
+        "slug": "pre-owned-games-nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 7636,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Luigis-Mansion-2-HD.png",
+        "alt": ""
+      },
+      {
+        "id": 7637,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/652f333aaab298f3de83048fcf791e9d131706567aecb671fa1929279917c07a.png",
+        "alt": ""
+      },
+      {
+        "id": 7638,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/a6220defbe9e76bbf48ca7251f79c58848d857a42589c111669583cc097be25e.png",
+        "alt": ""
+      },
+      {
+        "id": 7639,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/ab133185dbf82879f51ce779118baf6fab63367475d85d952e9b2276fe3045e3.png",
+        "alt": ""
+      },
+      {
+        "id": 7640,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/8d8dba5d2121a9094f44a08edfdb9191c7e1a7f6149e6dc9dd605c81f3e45410.png",
+        "alt": ""
+      },
+      {
+        "id": 7641,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/multiplayer_lugi.png",
+        "alt": ""
+      },
+      {
+        "id": 7642,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/maxresdefault-1.jpg",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Condition",
+        "slug": "Condition",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New",
+          "Pre-Owned"
+        ]
+      }
+    ],
+    "variations": [
+      27586,
+      27587
+    ]
+  },
+  {
+    "id": 13878,
+    "name": "Luigi's Mansion 3",
+    "permalink": "https://tradezone.sg/product/luigis-mansion-3-2/",
+    "sku": "",
+    "type": "variable",
+    "price": "39.90",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "outofstock",
+    "date_created": "2024-06-05T10:31:54",
+    "date_modified": "2025-11-12T08:59:19",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 137,
+        "name": "Brand New Games",
+        "slug": "brand-new-games-nintendo"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      },
+      {
+        "id": 165,
+        "name": "Pre-Owned Games",
+        "slug": "pre-owned-games-nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 14234,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Luigis-Mansion-3.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Condition",
+        "slug": "Condition",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New",
+          "Pre-Owned"
+        ]
+      }
+    ],
+    "variations": [
+      27588,
+      27589
+    ]
+  },
+  {
+    "id": 7335,
+    "name": "Hades",
+    "permalink": "https://tradezone.sg/product/hades/",
+    "sku": "",
+    "type": "simple",
+    "price": "39.90",
+    "regular_price": "39.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-05-08T02:21:19",
+    "date_modified": "2025-11-12T08:58:51",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 109,
+        "name": "Brand New Games",
+        "slug": "brand-new-games"
+      },
+      {
+        "id": 51,
+        "name": "Playstation",
+        "slug": "playstation"
+      },
+      {
+        "id": 52,
+        "name": "Playstation 5",
+        "slug": "playstation-5"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 7390,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Hades.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 27249,
+    "name": "MSI MAG B850 Tomahawk MAX WiFi Motherboard",
+    "permalink": "https://tradezone.sg/product/msi-mag-b850-tomahawk-max-wifi-motherboard/",
+    "sku": "",
+    "type": "simple",
+    "price": "469",
+    "regular_price": "469",
+    "sale_price": "",
+    "stock_status": "outofstock",
+    "date_created": "2025-10-12T06:18:00",
+    "date_modified": "2025-11-12T06:08:07",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 173,
+        "name": "Motherboard",
+        "slug": "motherboard"
+      },
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27250,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/game-2-2.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 23316,
+    "name": "Gigabyte Monitor MO27Q28G/ MO32U / M27U / M27QA / GS25F2 1080 /2K /4K OLED / IPS Gaming Monitor",
+    "permalink": "https://tradezone.sg/product/gigabyte-gs25f2-24-5-200hz-fhd-ips-1ms-gaming-monitor/",
+    "sku": "",
+    "type": "variable",
+    "price": "159",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-03-25T09:08:27",
+    "date_modified": "2025-11-12T06:06:46",
+    "short_description": "<p>Brand New Sealed</p>\n<p>Gigabyte MO32U (3840 x 2160) 31.5&#8243; 165Hz OLED Gaming Monitor<br />\nSelling: $1155 (Brand New)<br />\nInstalment: $1218.52 (5.5%)</p>\n<p>GIGABYTE MO27Q28G OLED 2K 280Hz 27 Inch Gaming Monitor<br />\nSelling : $829 (Brand New)<br />\nInstalment: $874.59 (5.5%)</p>\n<p>Gigabyte M27U (3840 x 2160) 27&#8243; 160Hz Gaming Monitor<br />\nSelling: $475 (Brand New)<br />\nInstalment: $501.12 (5.5%)</p>\n<p>Gigabyte M27QA (2560&#215;1440) 27&#8243; 180Hz Gaming Monitor<br />\nSelling: $309 (Brand New)<br />\nInstalment: $325.99 (5.5%)</p>\n<p>GIGABYTE GS25F2 24.5&#8243; 200HZ FHD Gaming Monitor<br />\nSelling: $159 (Brand New)<br />\nInstalment: $167.74 (5.5%)</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 278,
+        "name": "Monitor",
+        "slug": "monitor"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27085,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/game-5.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Model",
+        "slug": "Model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "MO32U",
+          "M27U",
+          "M27QA",
+          "GS25F2",
+          "MO27Q28G"
+        ]
+      }
+    ],
+    "variations": [
+      27083,
+      25454,
+      25455,
+      25456,
+      25457
+    ]
+  },
+  {
+    "id": 25668,
+    "name": "SONY WH-1000XM6 / WH-1000XM5 Black/Midnight Blue /Silver Headphone",
+    "permalink": "https://tradezone.sg/product/sony-wh-1000xm6-wh-1000xm5-black-silver-headphone/",
+    "sku": "",
+    "type": "variable",
+    "price": "449",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-07-29T09:48:34",
+    "date_modified": "2025-11-12T05:32:48",
+    "short_description": "<p>[Brand New]</p>\n<p>1️⃣SONY WH-1000XM6 Black / Midnight Blue<br />\nNEW: $549 (instalment $579.19)<br />\n🟡 Atome 3 months: $193.06/mth<br />\n🟡 Atome 6 months: $96.53/mth<br />\n🟢 Grabpay later 4 months: $144.79/mth</p>\n<p>2️⃣WH-1000XM5 Black /Silver<br />\nNEW: $449 (instalment $473.69)<br />\n🟡Atome 3 months: $157.89/mth<br />\n🟡Atome 6 months: $78.94/mth<br />\n🟢Grabpay later 4 months: $118.42/mth</p>\n<p>Sony WH-1000XM6: Premium Wireless Noise-Cancelling Headphones</p>\n<p>The Sony WH-1000XM6 delivers industry-leading noise cancellation, enhanced sound quality, and unparalleled comfort. Designed for audiophiles and casual listeners alike, these headphones combine cutting-edge technology with an elegant and lightweight design. Whether you’re commuting, working, or relaxing, the WH-1000XM6 ensures an immersive audio experience tailored to your needs.</p>\n<p>Industry-Leading Noise Cancellation<br />\nAdvanced Adaptive Noise Cancellation with multiple microphones and enhanced algorithmic tuning ensures a distraction-free listening experience, even in the noisiest environments.</p>\n<p>Exceptional Sound Quality<br />\nFeatures custom-designed 40mm drivers, supporting Hi-Res Audio and Hi-Res Audio Wireless. The DSEE Extreme upscaling restores detail to compressed audio files, delivering lifelike sound.</p>\n<p>Intelligent Listening Experience<br />\nAdaptive Sound Control automatically adjusts settings based on your surroundings and activities. The Speak-to-Chat function pauses playback when you start speaking.</p>\n<p>Long Battery Life with Fast Charging<br />\nUp to 30 hours of battery life with noise cancellation active. A quick 10-minute charge provides up to 5 hours of playback.</p>\n<p>Premium Build and Comfort<br />\nUltra-lightweight, foldable design with soft leatherette ear cushions and an adjustable headband for all-day comfort.</p>\n<p>Seamless Connectivity<br />\nBluetooth 5.3 and multipoint connection allow simultaneous pairing with two devices. Compatible with SBC, AAC, and LDAC codecs for versatile performance.</p>\n<p>Intuitive Touch Controls and Voice Assistant<br />\nSwipe and tap gestures on the earcup for playback, calls, and volume control. Integrated with Google Assistant and Alexa for hands-free commands.</p>\n<p>Environmental Awareness<br />\nAmbient Sound Mode and Quick Attention Mode let you hear your surroundings without removing the headphones, enhancing safety and convenience.</p>\n<p>High-Quality Calls<br />\nPrecise Voice Pickup Technology with beamforming microphones ensures crystal-clear calls in any environment.</p>\n<p>Sustainability Focus<br />\nMade with recycled materials and delivered in plastic-free packaging to reduce environmental impact.</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 197,
+        "name": "Headset",
+        "slug": "headset"
+      },
+      {
+        "id": 192,
+        "name": "Peripherals",
+        "slug": "peripherals"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 25669,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/07/game-3.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Model",
+        "slug": "Model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "WH-1000XM6",
+          "WH-1000XM5"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "Silver",
+          "Midnight Blue"
+        ]
+      }
+    ],
+    "variations": [
+      27821,
+      25673,
+      25674,
+      25675
+    ]
+  },
+  {
+    "id": 16896,
+    "name": "PICO 4 / Ultra / 128GB / 256GB ",
+    "permalink": "https://tradezone.sg/product/pico-4-ultra%f0%9f%87%b8%f0%9f%87%ac-128gb-256gb-128gb/",
+    "sku": "",
+    "type": "variable",
+    "price": "299",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-09-02T06:47:09",
+    "date_modified": "2025-11-11T12:26:18",
+    "short_description": "<p>⭐️PiCO 4 Ultra⭐️</p>\n<p>1️⃣PiCO 4 Ultra 256GB 🇸🇬SG (1 yr local warranty)<br />\nNEW: $749 (instalment $790.19)<br />\nPREOWNED: $599 (instalment $631.94)<br />\n🟡Atome 3 months: $263.39/mth or $210.64/mth<br />\n🟠SPay later 6 months: $131.69/mth or $105.32/mth<br />\n🟢Grabpay later 4 months: $197.53/mth or $157.98/mth</p>\n<p>⭐️PiCO 4⭐️</p>\n<p>2️⃣PiCO 4 256GB 🇸🇬SG (1 yr local warranty)<br />\nNEW: $549 (instalment $579.19)<br />\nPREOWNED: $399 (instalment $420.94)<br />\n🟡Atome 3 months: $193.06/mth or $140.31/mth<br />\n🟠SPay later 6 months: $96.53/mth or $70.15/mth<br />\n🟢Grabpay later 4 months: $144.79/mth or $105.22/mth</p>\n<p>3️⃣PiCO 4 128GB 🇸🇬SG (1 yr local warranty)<br />\nNEW: $449 (instalment $476.95)<br />\nPREOWNED: $299 (instalment $315.44)<br />\n🟡Atome 3 months: $158.98/mth or $105.14/mth<br />\n🟠SPay later 6 months: $79.49/mth or $52.57/mth<br />\n🟢Grabpay later 4 months: $119.23/mth or $78.85/mth</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 187,
+        "name": "Virtual Reality Headset",
+        "slug": "virtual-reality-headset"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 19046,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/19.png",
+        "alt": ""
+      },
+      {
+        "id": 22381,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/49.png",
+        "alt": ""
+      },
+      {
+        "id": 19048,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/21.png",
+        "alt": ""
+      },
+      {
+        "id": 19060,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/game-55.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 7,
+        "name": "Model",
+        "slug": "pa_model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Pico 4 128GB",
+          "Pico 4 256GB",
+          "Pico 4 Ultra 256GB"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Condition",
+        "slug": "pa_condition",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New",
+          "Pre-Owned"
+        ]
+      }
+    ],
+    "variations": [
+      25106,
+      25107,
+      25108,
+      25109,
+      25110,
+      25111
+    ]
+  },
+  {
+    "id": 24465,
+    "name": "ASROCK B850I LIGHTNING WIFI ITX Motherboard",
+    "permalink": "https://tradezone.sg/product/asrock-b850i-lightning-wifi-itx-motherboard/",
+    "sku": "",
+    "type": "simple",
+    "price": "379",
+    "regular_price": "379",
+    "sale_price": "",
+    "stock_status": "outofstock",
+    "date_created": "2025-05-16T10:17:22",
+    "date_modified": "2025-11-11T11:31:43",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 173,
+        "name": "Motherboard",
+        "slug": "motherboard"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 24466,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/05/R-1-2.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 27801,
+    "name": "JSAUX Shockproof Storage Case for Nintendo Switch 2",
+    "permalink": "https://tradezone.sg/product/jsaux-shockproof-storage-case-for-nintendo-switch-2/",
+    "sku": "",
+    "type": "simple",
+    "price": "39.90",
+    "regular_price": "39.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-09T05:22:17",
+    "date_modified": "2025-11-11T09:47:42",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 277,
+        "name": "Casing",
+        "slug": "casing"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27825,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/game-1.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 26971,
+    "name": "DJI Osmo Nano - 128GB / 64GB",
+    "permalink": "https://tradezone.sg/product/dji-osmo-nano-128gb-64gb/",
+    "sku": "",
+    "type": "variable",
+    "price": "449",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-10-01T06:35:42",
+    "date_modified": "2025-11-11T04:56:56",
+    "short_description": "<p>[Brand New]<br />\n1️⃣DJI Osmo Nano 128GB (12 months 🇸🇬 DJI warranty)<br />\nNEW: $499 (instalment $526.44)<br />\n🟡 Atome 3 months: $175.48/mth<br />\n🟡 Atome 6 months: $87.74/mth<br />\n🟢 Grabpay later 4 months: $131.61/mth</p>\n<p>2️⃣DJI Osmo Nano &#8211; 64GB (12 months 🇸🇬 DJI warranty)<br />\nNEW: $449 (instalment $473.69)<br />\n🟡Atome 3 months: $157.89/mth<br />\n🟡Atome 6 months: $78.94/mth<br />\n🟢Grabpay later 4 months: $118.42/mth</p>\n<p>SD Card = 512GB Samsung Evo Plus 160MB/S A2 V30 $69.90</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 188,
+        "name": "Cameras",
+        "slug": "cameras"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 26972,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/Camera-1.png",
+        "alt": ""
+      },
+      {
+        "id": 26977,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/508fb2af0121db1eebb0e6d117626957@origin.jpg",
+        "alt": ""
+      },
+      {
+        "id": 26978,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/853b7cd29605008379b8beaf456f8f83@origin.jpg",
+        "alt": ""
+      },
+      {
+        "id": 26973,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/93f07f5f03c7e72ba1b25714b2eddb66@origin.jpg",
+        "alt": ""
+      },
+      {
+        "id": 26974,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/86cb256aee44eceb214e6487d68d1fe3@origin.jpg",
+        "alt": ""
+      },
+      {
+        "id": 26975,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/fb7d6775c9470a0c0d4171b21b358ffa@origin.jpg",
+        "alt": ""
+      },
+      {
+        "id": 26976,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/0d24d0a47b6cdcfa110c6c6df3efbbe1@origin.jpg",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Storage Size",
+        "slug": "Storage Size",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "64GB",
+          "128GB"
+        ]
+      }
+    ],
+    "variations": [
+      26979,
+      26980
+    ]
+  },
+  {
+    "id": 7163,
+    "name": "Steam Deck  OLED / Limited Edition Transparent / LCD 512GB/1TB/2TB",
+    "permalink": "https://tradezone.sg/product/steam-deck-oled/",
+    "sku": "",
+    "type": "variable",
+    "price": "549",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-05-08T02:16:02",
+    "date_modified": "2025-11-10T10:36:35",
+    "short_description": "<p>TradeZone is the No 1. Most trusted Steam deck OLED / LCD seller on carousell🏆!! 🔥 1800++ positive reviews 🔥 No need to be afraid of scams!☺️</p>\n<p>⭐️11.11 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n– 1 🆓screen protector matte / clear worth $19.90</p>\n<p>⭐️OLED Model⭐️<br />\n1️⃣ Steam Deck OLED 2TB Limited Edition Transparent 🇺🇸 (change from 1tb model)<br />\nNEW : SOLD OUT<br />\nPREOWNED: $1399 (instalment $1475.94)<br />\n🟡 Atome 3 months: $491.981/mth<br />\n🟡 Atome 6 months: $245.99/mth<br />\n🟢 Grabpay later 4 months: $368.98/mth</p>\n<p>⭐️OLED Model⭐️<br />\n2️⃣Steam Deck OLED 1TB Limited Edition Transparent 🇺🇸<br />\nNEW: SOLD OUT<br />\nPREOWNED: $1299 (instalment $1370.44)<br />\n🟡 Atome 3 months: $456.81/mth<br />\n🟡 Atome 6 months: $228.40/mth<br />\n🟢 Grabpay later 4 months: $342.61/mth</p>\n<p>⭐️OLED Model⭐️<br />\n3️⃣Steam Deck OLED 2TB 🇺🇸 (change from 512gb model)<br />\nNEW: $1149 (instalment $1212.19)<br />\nPREOWNED: $999 (instalment $1053.94)<br />\n🟡Atome 3 months: $404.06/mth or $351.31/mth<br />\n🟠SPay Later 6 months: $202.03/mth or $175.65/mth<br />\n🟢Grabpay later 4 months: $303.04/mth or $263.48/mth</p>\n<p>⭐️OLED Model⭐️<br />\n4️⃣Steam Deck OLED 1TB 🇺🇸<br />\nNEW: $1049 (instalment $1106.69)<br />\nPREOWNED: $899 (instalment $948.44)<br />\n🟡Atome 3 months: $368.89/mth or $316.14/mth<br />\n🟠SPay Later 6 months: $184.44/mth or $158.07/mth<br />\n🟢Grabpay later 4 months: $276.67/mth or $1237.11/mth</p>\n<p>⭐️OLED Model⭐️<br />\n5️⃣Steam Deck OLED 512GB 🇺🇸<br />\nNEW: $899 (instalment $948.45)<br />\nPREOWNED: $749 (instalment $790.19)<br />\n🟡Atome 3 months: $316.15/mth or $263.39/mth<br />\n🟠SPay Later 6 months: $158.08/mth or $131.69/mth<br />\n🟢Grabpay later 4 months: $237.11/mth or $197.54/mth</p>\n<p>⭐️LCD Model⭐️<br />\n6️⃣Steam Deck LCD 2TB 🇺🇸 (change from 256gb model)<br />\nNEW: $849 (instalment $895.70)<br />\nPREOWNED: $749 (instalment $790.20)<br />\n🟡Atome 3 months: $298.57/mth or $263.40/mth<br />\n🟠SPay Later 6 months: $149.28/mth or $131.70/mth<br />\n🟢Grabpay later 4 months: $223.93/mth or $197.55/mth</p>\n<p>⭐️LCD Model⭐️<br />\n7️⃣Steam Deck LCD 1TB 🇺🇸 (change from 256gb model)<br />\nNEW: $749 (instalment $790.20)<br />\nPREOWNED: $649 (instalment $684.70)<br />\n🟡Atome 3 months: $263.40/mth or $228.23/mth<br />\n🟠SPay Later 6 months: $131.70/mth or $114.12/mth<br />\n🟢Grabpay later 4 months: $197.55/mth or $171.18/mth</p>\n<p>⭐️LCD Model⭐️<br />\n8️⃣Steam Deck LCD 512GB 🇺🇸 (change from 256gb model)<br />\nNEW: $649 (instalment $684.70)<br />\nPREOWNED: $549 (instalment $579.20)<br />\n🟡Atome 3 months: $228.23/mth or $193.07/mth<br />\n🟠SPay Later 6 months: $114.12/mth or $96.53/mth<br />\n🟢Grabpay later 4 months: $171.18/mth or $144.80/mth</p>\n<p>If need warranty is add one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; Steam Deck LCD/OLED pouch @$29.90<br />\n&#8211; Steam Deck LCD/OLED case@$29.90</p>\n<p>Brand new: 1 year valve warranty<br />\nPreowned: 1 month store warranty (remaining warranty still exists with valve)</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 193,
+        "name": "Best Selling Products",
+        "slug": "best-selling-products"
+      },
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 186,
+        "name": "Handheld Consoles",
+        "slug": "consoles"
+      }
+    ],
+    "tags": [
+      {
+        "id": 55,
+        "name": "Steam Deck",
+        "slug": "steam-deck"
+      }
+    ],
+    "images": [
+      {
+        "id": 26226,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-2-1.png",
+        "alt": ""
+      },
+      {
+        "id": 26226,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-2-1.png",
+        "alt": ""
+      },
+      {
+        "id": 26227,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-3-1.png",
+        "alt": ""
+      },
+      {
+        "id": 19587,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/458.png",
+        "alt": ""
+      },
+      {
+        "id": 19580,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/453.png",
+        "alt": ""
+      },
+      {
+        "id": 19581,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/454.png",
+        "alt": ""
+      },
+      {
+        "id": 19582,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/455.png",
+        "alt": ""
+      },
+      {
+        "id": 19585,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/456.png",
+        "alt": ""
+      },
+      {
+        "id": 19586,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/457.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Model",
+        "slug": "Model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Steam Deck OLED",
+          "Steam Deck LCD",
+          "Steam Deck OLED Limited Edition Transparent"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Condition",
+        "slug": "pa_condition",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New | 12 Months Valve Warranty | US",
+          "Pre Owned | 1 Month Store Warranty"
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Storage Size",
+        "slug": "pa_storage-size",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1TB",
+          "2TB",
+          "512GB"
+        ]
+      }
+    ],
+    "variations": [
+      19589,
+      19590,
+      16041,
+      18827,
+      18828,
+      18829,
+      18830,
+      18831,
+      18832,
+      18833,
+      18834,
+      18835,
+      7165,
+      7164
+    ]
+  },
+  {
+    "id": 7452,
+    "name": "MSI Claw A8 / 8 AI+ / A1M 512GB/1TB/2TB Z2 Extreme / UT7 / UT5",
+    "permalink": "https://tradezone.sg/product/msi-claw/",
+    "sku": "",
+    "type": "variable",
+    "price": "699",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-05-08T02:25:26",
+    "date_modified": "2025-11-10T10:36:28",
+    "short_description": "<p>⭐️11.11 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n– 1 🆓screen protector matte / clear worth $19.90</p>\n<p>⭐️[Ultra 7 258V]⭐️<br />\n1️⃣MSI Claw 8 AI+ UT7 2TB 🇸🇬 (Polar tempest)<br />\nNEW: $1549 (instalment $1634.19)<br />\nPREOWNED: $1399 (instalment $1475.94)<br />\n🟡Atome 3 months: $544.73/mth or $491.98/mth<br />\n🟠SPay Later 6 months: $272.36/mth or $245.99/mth<br />\n🟢Grabpay later 4 months: $448.11/mth or $368.98/mth</p>\n<p>⭐️[Ultra 7 258V]⭐️<br />\n2️⃣MSI Claw 8 AI+ UT7 1TB 🇸🇬SG<br />\nNEW: $1449 (instalment $1528.69)<br />\nPREOWNED: $1299 (instalment $1370.44)<br />\n🟡Atome 3 months: $509.56/mth or $456.81/mth<br />\n🟠SPay Later 6 months: $254.78/mth or $228.40/mth<br />\n🟢Grabpay later 4 months: $382.17/mth or $342.61/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n3️⃣MSI Claw A8 BZ2EM Z2 Extreme 1TB 🇸🇬SG (Neon Green)<br />\nNEW: $1349 (instalment $1423.19)<br />\nPREOWNED: $1199 (instalment $1264.94)<br />\n🟡Atome 3 months: $474.39/mth or $439.23/mth<br />\n🟠SPay Later 6 months: $237.19/mth or $210.82/mth<br />\n🟢Grabpay later 4 months: $355.79/mth or $316.23/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n4️⃣MSI Claw A8 BZ2EM Z2 Extreme 1TB 🇸🇬SG (Polar tempest)<br />\nNEW: $1349 (instalment $1423.19)<br />\nPREOWNED: $1199 (instalment $1264.94)<br />\n🟡Atome 3 months: $474.39/mth or $439.23/mth<br />\n🟠SPay Later 6 months: $237.19/mth or $210.82/mth<br />\n🟢Grabpay later 4 months: $355.79/mth or $316.23/mth</p>\n<p>⭐️[Ultra 7 155H]⭐️<br />\n5️⃣MSI Claw A1M-020SG UT7 16G 1TB 🇸🇬SG<br />\nNEW: $1099 (instalment $1159.44)<br />\nPREOWNED: $949 (instalment $1,001.19)<br />\n🟡Atome 3 months: $386.48/mth or $333.73/mth<br />\n🟠SPay Later 6 months: $193.24/mth or $166.86/mth<br />\n🟢Grabpay later 4 months: $289.86/mth or $250.29/mth</p>\n<p>⭐️[Ultra 5 135H]⭐️<br />\n6️⃣MSI Claw A1M-021SG UT5 512GB 🇸🇬SG<br />\nNEW: $849 (instalment $895.69)<br />\nPREOWNED: $699 (instalment $737.44)<br />\n🟡Atome 3 months: $298.56/mth or $245.81/mth<br />\n🟠SPay Later 6 months: $149.28/mth or $122.90/mth<br />\n🟢Grabpay later 4 months: $223.92/mth or $184.36/mth</p>\n<p>All brand new sets comes with 24 month msi warranty.<br />\nPreowned sets: 1 month store warranty</p>\n<p>Additional one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; MSI pouch @$29.90<br />\n&#8211; MSI case@$29.90</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 193,
+        "name": "Best Selling Products",
+        "slug": "best-selling-products"
+      },
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 186,
+        "name": "Handheld Consoles",
+        "slug": "consoles"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 26877,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-1-1.png",
+        "alt": ""
+      },
+      {
+        "id": 25841,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/312.png",
+        "alt": ""
+      },
+      {
+        "id": 25842,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/313.png",
+        "alt": ""
+      },
+      {
+        "id": 25844,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/314.png",
+        "alt": ""
+      },
+      {
+        "id": 25845,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/315.png",
+        "alt": ""
+      },
+      {
+        "id": 25846,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/316.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 6,
+        "name": "Storage Size",
+        "slug": "pa_storage-size",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1TB",
+          "2TB",
+          "512GB"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Condition",
+        "slug": "pa_condition",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New | 24 Months MSI Warranty",
+          "Pre Owned | 1 Month Store Warranty"
+        ]
+      },
+      {
+        "id": 7,
+        "name": "Model",
+        "slug": "pa_model",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "8 AI+ A2VM-025SG UT7 32G",
+          "8 AI+ UT7 White",
+          "8A Z2 Extreme 1TB",
+          "8A Z2 Extreme 1TB White",
+          "A1M-020SG UT7 16G",
+          "A1M-021SG UT5 16G"
+        ]
+      }
+    ],
+    "variations": [
+      25849,
+      25513,
+      25847,
+      22603,
+      17935,
+      8113,
+      8114,
+      8115
+    ]
+  },
+  {
+    "id": 13595,
+    "name": "Asus ROG AllyXBOX / Ally X / Ally 512GB/1TB/2TB/4TB",
+    "permalink": "https://tradezone.sg/product/pre-order-asus-rog-ally-x/",
+    "sku": "",
+    "type": "variable",
+    "price": "649",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-06-03T11:31:38",
+    "date_modified": "2025-11-10T10:36:26",
+    "short_description": "<p>Tradezone is the No 1. Most trusted Asus Rog Ally X / Xbox seller on carousell🏆!! 🔥 1800++ positive reviews 🔥 No need to be afraid of scams!☺️</p>\n<p>⭐️11.11 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n&#8211; 1 🆓screen protector matte / clear worth $19.90</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n1️⃣Asus Rog Ally X XBOX 4TB 🇸🇬SG<br />\nNEW: $1899 (instalment $2,003.44)<br />\nPREOWNED:<br />\n🟡Atome 3 months: $667.81/mth<br />\n🟠SPay later 6 months: $333.90/mth<br />\n🟢Grabpay later 4 months: $500.86/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n2️⃣Asus Rog Ally X XBOX 2TB 🇸🇬SG<br />\nNEW: $1699 (instalment $1,792.44)<br />\nPREOWNED:<br />\n🟡Atome 3 months: $597.48/mth<br />\n🟠SPay later 6 months: $298.74/mth<br />\n🟢Grabpay later 4 months: $448.11/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n3️⃣Asus Rog Ally X XBOX 1TB 🇸🇬SG<br />\nNEW: $1349 (instalment $1,423.19)<br />\nPREOWNED: &#8211;<br />\n🟡Atome 3 months: $474.39/mth<br />\n🟠SPay later 6 months: $237.19/mth<br />\n🟢Grabpay later 4 months: $355.79/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n4️⃣Asus Rog Ally X 4TB 🇸🇬SG<br />\nNEW: $1699 (instalment $1,792.44)<br />\nPREOWNED: $1499 (instalment $1,581.44)<br />\n🟡Atome 3 months: $597.48/mth or $527.14/mth<br />\n🟠SPay later 6 months: $298.74/mth or $263.57/mth<br />\n🟢Grabpay later 4 months: $448.11/mth or $395.36/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n5️⃣Asus Rog Ally X 2TB 🇸🇬SG<br />\nNEW: $1499 (instalment $1,581.44)<br />\nPREOWNED: $1299 (instalment $1,370.44)<br />\n🟡Atome 3 months: $527.14/mth or $456.81/mth<br />\n🟠SPay later 6 months: $263.57/mth or $228.40/mth<br />\n🟢Grabpay later 4 months: $395.36/mth or $342.61/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n6️⃣Asus Rog Ally X 1TB 🇸🇬SG<br />\nNEW: $1199 (instalment $1264.95)<br />\nPREOWNED: $999 (instalment $1053.94)<br />\n🟡Atome 3 months: $421.65/mth or $351.31/mth<br />\n🟠SPay later 6 months: $210.83/mth or $175.65/mth<br />\n🟢Grabpay later 4 months: $316.25/mth or 263.48/mth</p>\n<p>⭐️[Z2 Model]⭐️<br />\n7️⃣Asus Rog Ally XBOX 512GB 🇸🇬SG<br />\nNEW: $899 (instalment $948.44)<br />\nPREOWNED:<br />\n🟡Atome 3 months: $316.14/mth<br />\n🟠SPay Later 6 months: $158.07/mth<br />\n🟢Grabpay later 4 months: $237.11/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n8️⃣Asus Rog Ally 512GB 🇸🇬SG<br />\nNEW: $799 (instalment $842.94)<br />\nPREOWNED: $649 (instalment $684.70)<br />\n🟡Atome 3 months: $280.98/mth or $228.23/mth<br />\n🟠SPay later 6 months: $140.49/mth or $114.12/mth<br />\n🟢Grabpay later 4 months: $210.73/mth or $171.18/mth</p>\n<p>All brand new sets comes with 2 years Asus warranty.<br />\nPreowned sets: 1 month store warranty</p>\n<p>Additional one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; Rog ally pouch @$29.90<br />\n&#8211; Rog ally case@$29.90</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 186,
+        "name": "Handheld Consoles",
+        "slug": "consoles"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27002,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-1.png",
+        "alt": ""
+      },
+      {
+        "id": 27000,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-2.png",
+        "alt": ""
+      },
+      {
+        "id": 27001,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-3.png",
+        "alt": ""
+      },
+      {
+        "id": 26995,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-4.png",
+        "alt": ""
+      },
+      {
+        "id": 26996,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-5.png",
+        "alt": ""
+      },
+      {
+        "id": 27003,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-9.png",
+        "alt": ""
+      },
+      {
+        "id": 26998,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-7.png",
+        "alt": ""
+      },
+      {
+        "id": 26999,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-8.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Model",
+        "slug": "Model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "ASUS ROG ALLY X",
+          "ASUS ROG ALLY",
+          "ROG ALLY X XBOX",
+          "ROG ALLY XBOX"
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Storage Size",
+        "slug": "pa_storage-size",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1TB",
+          "2TB",
+          "4TB",
+          "512GB"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Condition",
+        "slug": "pa_condition",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New | 24 Months Asus Warranty | SG",
+          "Pre Owned | 1 Month Store Warranty"
+        ]
+      }
+    ],
+    "variations": [
+      26780,
+      26781,
+      18803,
+      18802,
+      18801,
+      18798,
+      18799,
+      18800,
+      13598,
+      13599,
+      16415,
+      16414
+    ]
+  },
+  {
+    "id": 17259,
+    "name": "PlayStation 5 Pro / Slim/ PS5 Disc &amp; Digital 1TB / 2TB 🇸🇬 🇯🇵",
+    "permalink": "https://tradezone.sg/product/ps5-pro-instock/",
+    "sku": "",
+    "type": "variable",
+    "price": "499",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-09-11T05:08:52",
+    "date_modified": "2025-11-10T10:34:28",
+    "short_description": "<p>⭐️11.11 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n– 1 PS5 random Game (under $50)<br />\nFor every purchase of a PS5 Pro Disc!!<br />\n– 1 Digital Genshin Gift Impact Voucher For every purchase of a PS5 Pro Digital!!</p>\n<p>🌟Disc<br />\n1️⃣PS5 Disc Pro 2TB 🇸🇬SG &#8211; install from digital set disc drive<br />\nNEW: $1299 (instalment $1370.44)<br />\nPREOWNED: $1199 (instalment $1264.94)<br />\n🟡Atome 3 months: $456.81/mth or $421.64/mth<br />\n🟠SPaylater 6 months: $228.40/mth or $210.82/mth<br />\n🟢Grabpay later 4 months: $342.61/mth or $316.23/mth</p>\n<p>2️⃣ PS5 Disc Pro 2TB 🇯🇵Japan &#8211; install from digital set disc drive<br />\nNEW: $1249 (instalment $1317.69)<br />\nPREOWNED: $1149 (instalment $1212.19)<br />\n🟡Atome 3 months: $439.23/mth or $404.06/mth<br />\n🟠SPaylater 6 months: $219.61/mth or $202.03/mth<br />\n🟢Grabpay later 4 months: $329.42/mth or $303.04/mth</p>\n<p>3️⃣ PS5 Disc Slim 1TB 🇸🇬SG<br />\nNEW: $799 (instalment $842.94)<br />\nPREOWNED: $649 (instalment $684.69)<br />\n🟡Atome 3 months: $280.98/mth or $228.23/mth<br />\n🟠SPaylater 6 months: $140.49/mth or $114.11/mth<br />\n🟢Grabpay later 4 months: $210.73/mth or $171.17/mth</p>\n<p>4️⃣ PS5 Disc Slim 1TB 🇯🇵Japan<br />\nNEW: $749 (instalment $790.19)<br />\nPREOWNED: $599 (instalment $631.94)<br />\n🟡Atome 3 months: $263.39/mth or $210.64/mth<br />\n🟠SPaylater 6 months: $131.69/mth or $105.32/mth<br />\n🟢Grabpay later 4 months: $197.54/mth or $157.98/mth</p>\n<p>5️⃣ PS5 Disc Fat 825GB🇸🇬SG<br />\nNEW: $699 (instalment $737.44)<br />\nPREOWNED: $549 (instalment $579.19)<br />\n🟡Atome 3 months: $245.81/mth or $193.06/mth<br />\n🟠SPaylater 6 months: $122.90/mth or $96.53/mth<br />\n🟢Grabpay later 4 months: $184.36/mth or $144.79/mth</p>\n<p>🌟Digital</p>\n<p>6️⃣PS5 Digital Pro 2TB 🇸🇬SG<br />\nNEW: $1099 (instalment $1159.44)<br />\nPREOWNED: $999 (instalment $1053.94)<br />\n🟡Atome 3 months: $386.48/mth or $351.31/mth<br />\n🟠SPaylater 6 months: $193.24/mth or $175.65/mth<br />\n🟢Grabpay later 4 months: $289.86/mth or $263.48/mth</p>\n<p>7️⃣ PS5 Digital Pro 2TB 🇯🇵Japan<br />\nNEW: $1049 (instalment $1106.69)<br />\nPREOWNED: $949 (instalment $1001.19)<br />\n🟡Atome 3 months: $368.89/mth or $333.73/mth<br />\n🟠SPaylater 6 months: $184.44/mth or $166.86/mth<br />\n🟢Grabpay later 4 months: $276.67/mth or $250.29/mth</p>\n<p>8️⃣ PS5 Digital Slim 1TB 🇸🇬SG<br />\nNEW: $699 (instalment $737.44)<br />\nPREOWNED: $549 (instalment $579.19)<br />\n🟡Atome 3 months: $245.81/mth or $193.06/mth<br />\n🟠SPaylater 6 months: $122.90/mth or $96.53/mth<br />\n🟢Grabpay later 4 months: $184.36/mth or $144.79/mth</p>\n<p>9️⃣ PS5 Digital Slim 1TB 🇯🇵Japan<br />\nNEW: $649 (instalment $684.69)<br />\nPREOWNED: $499 (instalment $526.44)<br />\n🟡Atome 3 months: $228.23/mth or $175.48/mth<br />\n🟠SPaylater 6 months: $114.11/mth or $87.74/mth<br />\n🟢Grabpay later 4 months: $171.17/mth or $131.61/mth</p>\n<p>1️⃣0️⃣ PS5 Digital Fat 825GB🇸🇬SG<br />\nNEW: $649 (instalment $684.69)<br />\nPREOWNED: $499 (instalment $526.44)<br />\n🟡Atome 3 months: $228.23/mth or $175.48/mth<br />\n🟠SPaylater 6 months: $114.11/mth or $87.74/mth<br />\n🟢Grabpay later 4 months: $171.17/mth or $131.61/mth</p>\n<p>🇯🇵Japan set: One year store warranty (warranty in Japan)<br />\n🇸🇬 Singapore set: One year Sony Singapore warranty<br />\n*Preowned sets* are $150/$100 OFF Brand new prices and shop covers 1 month warranty</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 53,
+        "name": "Console",
+        "slug": "console"
+      },
+      {
+        "id": 52,
+        "name": "Playstation 5",
+        "slug": "playstation-5"
+      }
+    ],
+    "tags": [
+      {
+        "id": 322,
+        "name": "ps5",
+        "slug": "ps5"
+      },
+      {
+        "id": 323,
+        "name": "ps5 pro",
+        "slug": "ps5-pro"
+      },
+      {
+        "id": 324,
+        "name": "slim",
+        "slug": "slim"
+      }
+    ],
+    "images": [
+      {
+        "id": 18752,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/404.png",
+        "alt": ""
+      },
+      {
+        "id": 18754,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/408.png",
+        "alt": ""
+      },
+      {
+        "id": 18755,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/297.png",
+        "alt": ""
+      },
+      {
+        "id": 18756,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/298.png",
+        "alt": ""
+      },
+      {
+        "id": 18757,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/301.png",
+        "alt": ""
+      },
+      {
+        "id": 18758,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/406.png",
+        "alt": ""
+      },
+      {
+        "id": 18759,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/410.png",
+        "alt": ""
+      },
+      {
+        "id": 18760,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/303.png",
+        "alt": ""
+      },
+      {
+        "id": 18761,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/305.png",
+        "alt": ""
+      },
+      {
+        "id": 18762,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/09/307.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "PS5 PRO",
+        "slug": "PS5 PRO",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "PS5 PRO Digital 2TB SG",
+          "PS5 PRO Disc 2TB SG",
+          "PS5 PRO Digital 2TB JP",
+          "PS5 PRO Disc 2TB JP",
+          "PS5 Disc Slim 1TB SG",
+          "PS5 Disc Slim 1TB JP",
+          "PS5 Disc Fat 825GB SG",
+          "PS5 Digital Slim 1TB SG",
+          "PS5 Digital Slim 1TB JP",
+          "PS5 Digital Fat 825GB SG",
+          "PS5 Fat Disc Spider-Man 2"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "Condition",
+        "slug": "Condition",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New 12 + 3 Months Local Sony Warranty",
+          "Pre-Owned 1 Month Store Warranty"
+        ]
+      }
+    ],
+    "variations": [
+      26049,
+      18783,
+      18791,
+      18792,
+      18793,
+      18794,
+      18795,
+      18655,
+      18658,
+      18659,
+      18660,
+      18764,
+      18765,
+      18766,
+      18767,
+      18768,
+      18769,
+      18772,
+      18774,
+      18775,
+      18776
+    ]
+  },
+  {
+    "id": 26867,
+    "name": "Lian Li O11 Dynamic Mini V2 Flow + 5F Black / White",
+    "permalink": "https://tradezone.sg/product/lian-li-o11-dynamic-mini-v2-5f-black-white/",
+    "sku": "",
+    "type": "variable",
+    "price": "189",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-09-26T07:39:55",
+    "date_modified": "2025-11-09T07:32:08",
+    "short_description": "<p>5 Non RGB Fans Included</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 103,
+        "name": "Cases",
+        "slug": "cases"
+      },
+      {
+        "id": 101,
+        "name": "PC Parts",
+        "slug": "pc-parts"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 26871,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/09/game-3.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "White"
+        ]
+      }
+    ],
+    "variations": [
+      26869,
+      26870
+    ]
+  },
+  {
+    "id": 27799,
+    "name": "Asus ROG Ally / X XBOX Travel Protective Case Pouch",
+    "permalink": "https://tradezone.sg/product/asus-rog-ally-x-xbox-travel-protective-case-pouch/",
+    "sku": "",
+    "type": "simple",
+    "price": "29.90",
+    "regular_price": "29.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-09T05:21:13",
+    "date_modified": "2025-11-09T05:21:18",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 161,
+        "name": "Accessories",
+        "slug": "accessories-gadgets"
+      },
+      {
+        "id": 277,
+        "name": "Casing",
+        "slug": "casing"
+      },
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27800,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/game-6.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 27797,
+    "name": "Lenovo Legion GO 2 ROX Shock Absorbing Case",
+    "permalink": "https://tradezone.sg/product/lenovo-legion-go-2-rox-shock-absorbing-case/",
+    "sku": "",
+    "type": "simple",
+    "price": "19.90",
+    "regular_price": "19.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-09T05:19:55",
+    "date_modified": "2025-11-09T05:20:02",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 161,
+        "name": "Accessories",
+        "slug": "accessories-gadgets"
+      },
+      {
+        "id": 277,
+        "name": "Casing",
+        "slug": "casing"
+      },
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27798,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/game-5.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 27795,
+    "name": "Lenovo Legion Go 2 Screen Protector Tempered Glass",
+    "permalink": "https://tradezone.sg/product/lenovo-legion-go-2-screen-protector-tempered-glass/",
+    "sku": "",
+    "type": "simple",
+    "price": "19.90",
+    "regular_price": "19.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-09T05:18:18",
+    "date_modified": "2025-11-09T05:18:23",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 161,
+        "name": "Accessories",
+        "slug": "accessories-gadgets"
+      },
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 222,
+        "name": "Screen Protector",
+        "slug": "screen-protector"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27796,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/game-4.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 13896,
+    "name": "Monster Hunter Rise",
+    "permalink": "https://tradezone.sg/product/monster-hunter-rise/",
+    "sku": "",
+    "type": "simple",
+    "price": "19.90",
+    "regular_price": "19.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-06-05T10:31:59",
+    "date_modified": "2025-11-08T08:42:51",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      },
+      {
+        "id": 165,
+        "name": "Pre-Owned Games",
+        "slug": "pre-owned-games-nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 14259,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Monster-Hunter-Rise.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
+    "id": 13895,
+    "name": "Monster Hunter Generations Ultimate",
+    "permalink": "https://tradezone.sg/product/monster-hunter-generations-ultimate/",
+    "sku": "",
+    "type": "variable",
+    "price": "39.90",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-06-05T10:31:59",
+    "date_modified": "2025-11-08T08:41:54",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 137,
+        "name": "Brand New Games",
+        "slug": "brand-new-games-nintendo"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      },
+      {
+        "id": 165,
+        "name": "Pre-Owned Games",
+        "slug": "pre-owned-games-nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 14258,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Monster-Hunter-Generations-Ultimate.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Condition",
+        "slug": "Condition",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New",
+          "Pre-Owned"
+        ]
+      }
+    ],
+    "variations": [
+      27785,
+      27786
+    ]
+  },
+  {
+    "id": 7909,
+    "name": "Grand Theft Auto: The Trilogy – The Definitive Edition",
+    "permalink": "https://tradezone.sg/product/grand-theft-auto-the-trilogy-the-definitive-edition/",
+    "sku": "",
+    "type": "variable",
+    "price": "39.90",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-05-08T03:00:08",
+    "date_modified": "2025-11-08T08:37:23",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 137,
+        "name": "Brand New Games",
+        "slug": "brand-new-games-nintendo"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      },
+      {
+        "id": 165,
+        "name": "Pre-Owned Games",
+        "slug": "pre-owned-games-nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 13482,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Grand-Theft-Auto-The-Trilogy-–-The-Definitive-Edition.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Condition",
+        "slug": "Condition",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New",
+          "Pre-Owned"
+        ]
+      }
+    ],
+    "variations": [
+      27782,
+      27783
+    ]
+  },
+  {
+    "id": 7172,
+    "name": "Nintendo Switch 2 + Mario Kart / Switch 2 / OLED/ Gen 2/ Gen 1/ Switch Lite",
+    "permalink": "https://tradezone.sg/product/nintendo-switch-oled/",
+    "sku": "",
+    "type": "variable",
+    "price": "169",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2024-05-08T02:16:02",
+    "date_modified": "2025-11-06T09:52:56",
+    "short_description": "<p>⭐️OLED Model⭐️<br />\n1️⃣Nintendo Switch 2 Console + Pokémon Legends: Z-A Bundle 🇯🇵<br />\nNEW: $779 (instalment $821.84)<br />\n🟡Atome 3 months: $273.94/mth<br />\n🟠SPay Later 6 months: $136.97/mth<br />\n🟢Grabpay later 4 months: $205.46/mthh</p>\n<p>⭐️OLED Model⭐️<br />\n2️⃣Nintendo Switch 2 Console + Mario Kart World Bundle 🇸🇬<br />\nNEW: $769 (instalment $811.29)<br />\n🟡Atome 3 months: $270.43/mth<br />\n🟠SPay Later 6 months: $135.21/mth<br />\n🟢Grabpay later 4 months: $202.82/mth</p>\n<p>⭐️OLED Model⭐️<br />\n3️⃣Nintendo Switch 2 Console 🇯🇵<br />\nNEW: $699 (instalment $737.44)<br />\nPREOWNED: $599 (instalment $631.94)<br />\n🟡Atome 3 months: $245.81/mth or $210.64/mth<br />\n🟠SPay Later 6 months: $122.90/mth $105.32/mth<br />\n🟢Grabpay later 4 months: $184.36/mth $157.98/mth</p>\n<p>⭐️OLED Model⭐️<br />\n4️⃣Nintendo Switch OLED (Neon Red Blue / White)🇸🇬<br />\nNEW: $369 (instalment $389.29)<br />\nPREOWNED: $269 (instalment $283.79)<br />\n🟡Atome 3 months: $129.76/mth or $94.59/mth<br />\n🟠SPay Later 6 months: $64.88/mth or $47.29/mth<br />\n🟢Grabpay later 4 months: $97.32/mth or $70.94/mth</p>\n<p>⭐️LCD Model⭐️<br />\n5️⃣Nintendo Switch Gen 2(Neon Red / Grey)🇸🇬<br />\nNEW: $319 (instalment $336.54)<br />\nPREOWNED: $219 (instalment $231.04)<br />\n🟡Atome 3 months: $112.18/mth or $77.01/mth<br />\n🟠SPay Later 6 months: $56.09/mth or $38.50/mth<br />\n🟢Grabpay later 4 months: $84.13/mth or $57.76/mth</p>\n<p>⭐️LCD Model⭐️<br />\n6️⃣Nintendo Switch Gen 1 (Neon Red / Grey)🇸🇬<br />\nNEW: —SOLD OUT—<br />\nPREOWNED: $189 (instalment $199.39)<br />\n🟡Atome 3 months: $66.46/mth<br />\n🟠SPay Later 6 months: $33.23/mth<br />\n🟢Grabpay later 4 months: $49.84/mth</p>\n<p>⭐️LCD Model⭐️<br />\n7️⃣Nintendo Switch Lite (all colours)🇸🇬<br />\nNEW: $219 (instalment $231.04)<br />\nPREOWNED: $169 (instalment $209.94)<br />\n🟡Atome 3 months: $77.01/mth or $59.43/mth<br />\n🟠SPay Later 6 months: $38.50/mth or $29.71/mth<br />\n🟢Grabpay later 4 months: $57.76/mth or $44.57/mth</p>\n<p>Brand new sets: 1 year store warranty<br />\nPreowned sets: Comes with one month store warranty</p>\n<p>Additional one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; switch pouch @$29.90<br />\n&#8211; switch case@$29.90</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 193,
+        "name": "Best Selling Products",
+        "slug": "best-selling-products"
+      },
+      {
+        "id": 58,
+        "name": "Console",
+        "slug": "console-nintendo"
+      },
+      {
+        "id": 54,
+        "name": "Gadgets",
+        "slug": "gadgets"
+      },
+      {
+        "id": 186,
+        "name": "Handheld Consoles",
+        "slug": "consoles"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27138,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/16-3.png",
+        "alt": ""
+      },
+      {
+        "id": 27139,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/18-2.png",
+        "alt": ""
+      },
+      {
+        "id": 27141,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/22-1.png",
+        "alt": ""
+      },
+      {
+        "id": 27142,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/26.png",
+        "alt": ""
+      },
+      {
+        "id": 27143,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/30.png",
+        "alt": ""
+      },
+      {
+        "id": 27144,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/35.png",
+        "alt": ""
+      },
+      {
+        "id": 27145,
+        "src": "https://tradezone.sg/wp-content/uploads/2024/05/36.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Model",
+        "slug": "Model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Nintendo Switch OLED",
+          "Nintendo Switch Gen 2",
+          "Nintendo Switch Gen 1",
+          "Nintendo Switch Lite",
+          "Nintendo Switch Oled Limited Edition",
+          "Nintendo Switch 2",
+          "Nintendo Switch 2 Console + Mario Kart World Bundle",
+          "Nintendo Switch 2 Console + Pokémon Legends Z-A Bundle"
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Edition",
+        "slug": "pa_edition",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Grey",
+          "Mario Red",
+          "Neon Red &amp; Blue",
+          "Pokemon",
+          "Random Color",
+          "Splatoon 3",
+          "Switch 2",
+          "White",
+          "Zelda"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Condition",
+        "slug": "pa_condition",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Brand New | 12 Months Store Warranty",
+          "Pre-Owned | 1 Month Store Warranty"
+        ]
+      }
+    ],
+    "variations": [
+      27147,
+      26070,
+      26042,
+      25650,
+      19295,
+      19296,
+      18814,
+      18815,
+      7173,
+      7176,
+      7174,
+      8125,
+      7177,
+      8124,
+      8122,
+      8123
+    ]
+  },
+  {
+    "id": 23084,
+    "name": "Logitech G Pro X Superlight 2 / DEX Gaming Mouse",
+    "permalink": "https://tradezone.sg/product/logitech-g-pro-x-superlight-2-dex-gaming-mouse/",
+    "sku": "",
+    "type": "variable",
+    "price": "179",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-03-17T10:55:01",
+    "date_modified": "2025-11-06T08:40:20",
+    "short_description": "<p>1 week store warranty<br />\nColour Available = White / Black / Pink</p>\n<p>1️⃣Logitech G Pro X Superlight 2 = $179 (instalment $188.84)<br />\n🟡Atome 3 months: $62.94/mth<br />\n🟠Spay Later 6 months: $31.47/mth<br />\n🟢Grabpay later 4 months: $47.20/mth</p>\n<p>2️⃣Logitech G Pro X Superlight 2 DEX = $179 (instalment $188.84)<br />\n🟡Atome 3 months: $62.94/mth<br />\n🟠Spay Later 6 months: $31.47/mth<br />\n🟢Grabpay later 4 months: $47.20/mth</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 194,
+        "name": "Mouse",
+        "slug": "mouse"
+      },
+      {
+        "id": 192,
+        "name": "Peripherals",
+        "slug": "peripherals"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 23085,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/03/R-1-1.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "Model",
+        "slug": "Model",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Logitech G Pro X Superlight 2",
+          "Logitech G Pro X Superlight 2 DEX"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "Colour",
+        "slug": "Colour",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "Black",
+          "White",
+          "Pink"
+        ]
+      }
+    ],
+    "variations": [
+      23086,
+      23087,
+      23088,
+      23089,
+      23090
+    ]
+  },
+  {
     "id": 21554,
     "name": "11.11 SALE - RTX 5070 Ryzen 7 7800X3D 32GB 1TB DeepCool CG530 4F Black",
     "permalink": "https://tradezone.sg/product/gf-sale-rtx-4070-super-ryzen-9-9900x-32gb-1tb-deepcool-cg530-4f-black/",
@@ -48,43 +2301,6 @@
       21560,
       21557
     ]
-  },
-  {
-    "id": 24375,
-    "name": "XPG Lancer RGB DDR5 6400 CL32 2x32GB XMP/EXPO - White Desktop Memory RAM",
-    "permalink": "https://tradezone.sg/product/xpg-lancer-rgb-ddr5-6400-cl32-2x32gb-xmp-expo-white-desktop-memory-ram/",
-    "sku": "",
-    "type": "simple",
-    "price": "519",
-    "regular_price": "519",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-05-13T11:02:10",
-    "date_modified": "2025-11-04T12:04:32",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 101,
-        "name": "PC Parts",
-        "slug": "pc-parts"
-      },
-      {
-        "id": 178,
-        "name": "RAM",
-        "slug": "ram"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 24376,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/05/game-3.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
   },
   {
     "id": 22392,
@@ -1980,59 +4196,6 @@
     ]
   },
   {
-    "id": 24370,
-    "name": "KLEVV Cras V RGB DDR5 6000 CL28 (2x16GB) 6000 MT/s Black/White Ram",
-    "permalink": "https://tradezone.sg/product/klevv-cras-v-rgb-ddr5-6000-cl30-2x16gb-6000-mt-s-ram/",
-    "sku": "",
-    "type": "variable",
-    "price": "275",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-05-13T11:00:00",
-    "date_modified": "2025-11-02T06:34:57",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 101,
-        "name": "PC Parts",
-        "slug": "pc-parts"
-      },
-      {
-        "id": 178,
-        "name": "RAM",
-        "slug": "ram"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27095,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/05/game-1-2.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "White"
-        ]
-      }
-    ],
-    "variations": [
-      27097,
-      27098
-    ]
-  },
-  {
     "id": 7858,
     "name": "Animal Crossing New Horizons",
     "permalink": "https://tradezone.sg/product/animal-crossing-new-horizons/",
@@ -2292,94 +4455,6 @@
       26509,
       26510,
       26511
-    ]
-  },
-  {
-    "id": 7601,
-    "name": "Luigi's Mansion 2 HD",
-    "permalink": "https://tradezone.sg/product/luigis-mansion-2-hd/",
-    "sku": "",
-    "type": "variable",
-    "price": "49.90",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T02:51:31",
-    "date_modified": "2025-10-29T04:26:34",
-    "short_description": "",
-    "description": "<p><!-- wp:paragraph --></p>\n<p><!-- /wp:paragraph --></p>\n",
-    "categories": [
-      {
-        "id": 137,
-        "name": "Brand New Games",
-        "slug": "brand-new-games-nintendo"
-      },
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      },
-      {
-        "id": 165,
-        "name": "Pre-Owned Games",
-        "slug": "pre-owned-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 7636,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Luigis-Mansion-2-HD.png",
-        "alt": ""
-      },
-      {
-        "id": 7637,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/652f333aaab298f3de83048fcf791e9d131706567aecb671fa1929279917c07a.png",
-        "alt": ""
-      },
-      {
-        "id": 7638,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/a6220defbe9e76bbf48ca7251f79c58848d857a42589c111669583cc097be25e.png",
-        "alt": ""
-      },
-      {
-        "id": 7639,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/ab133185dbf82879f51ce779118baf6fab63367475d85d952e9b2276fe3045e3.png",
-        "alt": ""
-      },
-      {
-        "id": 7640,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/8d8dba5d2121a9094f44a08edfdb9191c7e1a7f6149e6dc9dd605c81f3e45410.png",
-        "alt": ""
-      },
-      {
-        "id": 7641,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/multiplayer_lugi.png",
-        "alt": ""
-      },
-      {
-        "id": 7642,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/maxresdefault-1.jpg",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Condition",
-        "slug": "Condition",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New",
-          "Pre-Owned"
-        ]
-      }
-    ],
-    "variations": [
-      27586,
-      27587
     ]
   },
   {
@@ -2668,64 +4743,6 @@
     "variations": []
   },
   {
-    "id": 13878,
-    "name": "Luigi's Mansion 3",
-    "permalink": "https://tradezone.sg/product/luigis-mansion-3-2/",
-    "sku": "",
-    "type": "variable",
-    "price": "39.90",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-06-05T10:31:54",
-    "date_modified": "2025-10-28T10:13:56",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 137,
-        "name": "Brand New Games",
-        "slug": "brand-new-games-nintendo"
-      },
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      },
-      {
-        "id": 165,
-        "name": "Pre-Owned Games",
-        "slug": "pre-owned-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 14234,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Luigis-Mansion-3.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Condition",
-        "slug": "Condition",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New",
-          "Pre-Owned"
-        ]
-      }
-    ],
-    "variations": [
-      27588,
-      27589
-    ]
-  },
-  {
     "id": 7920,
     "name": "Lego DC Super-Villian",
     "permalink": "https://tradezone.sg/product/lego-dc-super-villian/",
@@ -2974,43 +4991,6 @@
     "variations": []
   },
   {
-    "id": 7909,
-    "name": "Grand Theft Auto: The Trilogy – The Definitive Edition",
-    "permalink": "https://tradezone.sg/product/grand-theft-auto-the-trilogy-the-definitive-edition/",
-    "sku": "",
-    "type": "simple",
-    "price": "44.90",
-    "regular_price": "44.90",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T03:00:08",
-    "date_modified": "2025-10-28T09:53:25",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 137,
-        "name": "Brand New Games",
-        "slug": "brand-new-games-nintendo"
-      },
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 13482,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Grand-Theft-Auto-The-Trilogy-–-The-Definitive-Edition.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
     "id": 17113,
     "name": "Nintendo Switch/PS4/PS5 EA SPORTS FC 25 Standard Edition",
     "permalink": "https://tradezone.sg/product/pre-order-nintendo-switch-ps4-ps5-ea-sports-fc-25-standard-edition/",
@@ -3241,132 +5221,6 @@
     ]
   },
   {
-    "id": 13595,
-    "name": "Asus ROG AllyXBOX / Ally X / Ally 512GB/1TB/2TB/4TB",
-    "permalink": "https://tradezone.sg/product/pre-order-asus-rog-ally-x/",
-    "sku": "",
-    "type": "variable",
-    "price": "649",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-06-03T11:31:38",
-    "date_modified": "2025-10-28T07:02:46",
-    "short_description": "<p>Tradezone is the No 1. Most trusted Asus Rog Ally X / Xbox seller on carousell🏆!! 🔥 1800++ positive reviews 🔥 No need to be afraid of scams!☺️</p>\n<p>⭐️10.10 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n&#8211; 1 🆓screen protector matte / clear worth $19.90</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n1️⃣Asus Rog Ally X XBOX 4TB 🇸🇬SG<br />\nNEW: $1899 (instalment $2,003.44)<br />\nPREOWNED:<br />\n🟡Atome 3 months: $667.81/mth<br />\n🟠SPay later 6 months: $333.90/mth<br />\n🟢Grabpay later 4 months: $500.86/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n2️⃣Asus Rog Ally X XBOX 2TB 🇸🇬SG<br />\nNEW: $1699 (instalment $1,792.44)<br />\nPREOWNED:<br />\n🟡Atome 3 months: $597.48/mth<br />\n🟠SPay later 6 months: $298.74/mth<br />\n🟢Grabpay later 4 months: $448.11/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n3️⃣Asus Rog Ally X XBOX 1TB 🇸🇬SG<br />\nNEW: $1349 (instalment $1,423.19)<br />\nPREOWNED: &#8211;<br />\n🟡Atome 3 months: $474.39/mth<br />\n🟠SPay later 6 months: $237.19/mth<br />\n🟢Grabpay later 4 months: $355.79/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n4️⃣Asus Rog Ally X 4TB 🇸🇬SG<br />\nNEW: $1699 (instalment $1,792.44)<br />\nPREOWNED: $1499 (instalment $1,581.44)<br />\n🟡Atome 3 months: $597.48/mth or $527.14/mth<br />\n🟠SPay later 6 months: $298.74/mth or $263.57/mth<br />\n🟢Grabpay later 4 months: $448.11/mth or $395.36/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n5️⃣Asus Rog Ally X 2TB 🇸🇬SG<br />\nNEW: $1499 (instalment $1,581.44)<br />\nPREOWNED: $1299 (instalment $1,370.44)<br />\n🟡Atome 3 months: $527.14/mth or $456.81/mth<br />\n🟠SPay later 6 months: $263.57/mth or $228.40/mth<br />\n🟢Grabpay later 4 months: $395.36/mth or $342.61/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n6️⃣Asus Rog Ally X 1TB 🇸🇬SG<br />\nNEW: $1199 (instalment $1264.95)<br />\nPREOWNED: $999 (instalment $1053.94)<br />\n🟡Atome 3 months: $421.65/mth or $351.31/mth<br />\n🟠SPay later 6 months: $210.83/mth or $175.65/mth<br />\n🟢Grabpay later 4 months: $316.25/mth or 263.48/mth</p>\n<p>⭐️[Z2 Model]⭐️<br />\n7️⃣Asus Rog Ally XBOX 512GB 🇸🇬SG<br />\nNEW: $899 (instalment $948.44)<br />\nPREOWNED:<br />\n🟡Atome 3 months: $316.14/mth<br />\n🟠SPay Later 6 months: $158.07/mth<br />\n🟢Grabpay later 4 months: $237.11/mth</p>\n<p>⭐️[Z1 Extreme]⭐️<br />\n8️⃣Asus Rog Ally 512GB 🇸🇬SG<br />\nNEW: $799 (instalment $842.94)<br />\nPREOWNED: $649 (instalment $684.70)<br />\n🟡Atome 3 months: $280.98/mth or $228.23/mth<br />\n🟠SPay later 6 months: $140.49/mth or $114.12/mth<br />\n🟢Grabpay later 4 months: $210.73/mth or $171.18/mth</p>\n<p>All brand new sets comes with 2 years Asus warranty.<br />\nPreowned sets: 1 month store warranty</p>\n<p>Additional one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; Rog ally pouch @$29.90<br />\n&#8211; Rog ally case@$29.90</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 54,
-        "name": "Gadgets",
-        "slug": "gadgets"
-      },
-      {
-        "id": 186,
-        "name": "Handheld Consoles",
-        "slug": "consoles"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27002,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-1.png",
-        "alt": ""
-      },
-      {
-        "id": 27000,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-2.png",
-        "alt": ""
-      },
-      {
-        "id": 27001,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-3.png",
-        "alt": ""
-      },
-      {
-        "id": 26995,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-4.png",
-        "alt": ""
-      },
-      {
-        "id": 26996,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-5.png",
-        "alt": ""
-      },
-      {
-        "id": 27003,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-9.png",
-        "alt": ""
-      },
-      {
-        "id": 26998,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-7.png",
-        "alt": ""
-      },
-      {
-        "id": 26999,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/ALLY-X-XBOX-8.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Model",
-        "slug": "Model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "ASUS ROG ALLY X",
-          "ASUS ROG ALLY",
-          "ROG ALLY X XBOX",
-          "ROG ALLY XBOX"
-        ]
-      },
-      {
-        "id": 6,
-        "name": "Storage Size",
-        "slug": "pa_storage-size",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "1TB",
-          "2TB",
-          "4TB",
-          "512GB"
-        ]
-      },
-      {
-        "id": 5,
-        "name": "Condition",
-        "slug": "pa_condition",
-        "position": 2,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New | 24 Months Asus Warranty | SG",
-          "Pre Owned | 1 Month Store Warranty"
-        ]
-      }
-    ],
-    "variations": [
-      26780,
-      26781,
-      18803,
-      18802,
-      18801,
-      18798,
-      18799,
-      18800,
-      13598,
-      13599,
-      16415,
-      16414
-    ]
-  },
-  {
     "id": 27279,
     "name": "Little Nightmares III PS5 / Nintendo Switch 2 / Nintendo Switch",
     "permalink": "https://tradezone.sg/product/little-nightmares-iii-ps5-nintendo-switch/",
@@ -3429,68 +5283,6 @@
       27570,
       27281,
       27282
-    ]
-  },
-  {
-    "id": 13445,
-    "name": "Lexar NM790",
-    "permalink": "https://tradezone.sg/product/lexar-nm790-1tb/",
-    "sku": "",
-    "type": "variable",
-    "price": "155",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-06-01T06:59:45",
-    "date_modified": "2025-10-27T10:31:32",
-    "short_description": "",
-    "description": "<p><!-- wp:paragraph --></p>\n<p><!-- /wp:paragraph --></p>\n<p><!-- wp:list --></p>\n<ul><!-- wp:list-item --></p>\n<li></li>\n<p><!-- /wp:list-item --></ul>\n<p><!-- /wp:list --></p>\n",
-    "categories": [
-      {
-        "id": 179,
-        "name": "Storage",
-        "slug": "storage"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 13446,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Untitled-design-47.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 6,
-        "name": "Storage Size",
-        "slug": "pa_storage-size",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "1TB",
-          "2TB",
-          "4TB"
-        ]
-      },
-      {
-        "id": 0,
-        "name": "Accessories",
-        "slug": "Accessories",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Heatsink",
-          "No Heatsink"
-        ]
-      }
-    ],
-    "variations": [
-      13459,
-      13458,
-      13461
     ]
   },
   {
@@ -4027,64 +5819,6 @@
     "variations": []
   },
   {
-    "id": 7867,
-    "name": "Burnout Paradise Remastered",
-    "permalink": "https://tradezone.sg/product/burnout-paradise-remastered/",
-    "sku": "",
-    "type": "variable",
-    "price": "19.90",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T02:59:19",
-    "date_modified": "2025-10-27T08:45:52",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 137,
-        "name": "Brand New Games",
-        "slug": "brand-new-games-nintendo"
-      },
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      },
-      {
-        "id": 165,
-        "name": "Pre-Owned Games",
-        "slug": "pre-owned-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 13420,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Burnout-Paradise-Remastered.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Condition",
-        "slug": "Condition",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New",
-          "Pre-Owned"
-        ]
-      }
-    ],
-    "variations": [
-      27537,
-      27538
-    ]
-  },
-  {
     "id": 7868,
     "name": "Batman: Arkham Trilogy",
     "permalink": "https://tradezone.sg/product/batman-arkham-trilogy/",
@@ -4140,155 +5874,6 @@
     "variations": [
       27535,
       27536
-    ]
-  },
-  {
-    "id": 7172,
-    "name": "Nintendo Switch 2 + Mario Kart / Switch 2 / OLED/ Gen 2/ Gen 1/ Switch Lite",
-    "permalink": "https://tradezone.sg/product/nintendo-switch-oled/",
-    "sku": "",
-    "type": "variable",
-    "price": "169",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T02:16:02",
-    "date_modified": "2025-10-26T07:36:07",
-    "short_description": "<p>⭐️OLED Model⭐️<br />\n1️⃣Nintendo Switch 2 Console + Pokémon Legends: Z-A Bundle 🇯🇵<br />\nNEW: $779 (instalment $821.84)<br />\n🟡Atome 3 months: $273.94/mth<br />\n🟠SPay Later 6 months: $136.97/mth<br />\n🟢Grabpay later 4 months: $205.46/mthh</p>\n<p>⭐️OLED Model⭐️<br />\n2️⃣Nintendo Switch 2 Console + Mario Kart World Bundle 🇸🇬<br />\nNEW: $769 (instalment $811.29)<br />\n🟡Atome 3 months: $270.43/mth<br />\n🟠SPay Later 6 months: $135.21/mth<br />\n🟢Grabpay later 4 months: $202.82/mth</p>\n<p>⭐️OLED Model⭐️<br />\n3️⃣Nintendo Switch 2 Console 🇯🇵<br />\nNEW: $699 (instalment $737.44)<br />\nPREOWNED: $599 (instalment $631.94)<br />\n🟡Atome 3 months: $245.81/mth or $210.64/mth<br />\n🟠SPay Later 6 months: $122.90/mth $105.32/mth<br />\n🟢Grabpay later 4 months: $184.36/mth $157.98/mth</p>\n<p>⭐️OLED Model⭐️<br />\n4️⃣Nintendo Switch OLED (Neon Red Blue / White)🇸🇬<br />\nNEW: $369 (instalment $389.29)<br />\nPREOWNED: $269 (instalment $283.79)<br />\n🟡Atome 3 months: $129.76/mth or $94.59/mth<br />\n🟠SPay Later 6 months: $64.88/mth or $47.29/mth<br />\n🟢Grabpay later 4 months: $97.32/mth or $70.94/mth</p>\n<p>⭐️LCD Model⭐️<br />\n5️⃣Nintendo Switch Gen 2(Neon Red / Grey)🇸🇬<br />\nNEW: $319 (instalment $336.54)<br />\nPREOWNED: $219 (instalment $231.04)<br />\n🟡Atome 3 months: $112.18/mth or $77.01/mth<br />\n🟠SPay Later 6 months: $56.09/mth or $38.50/mth<br />\n🟢Grabpay later 4 months: $84.13/mth or $57.76/mth</p>\n<p>⭐️LCD Model⭐️<br />\n6️⃣Nintendo Switch Gen 1 (Neon Red / Grey)🇸🇬<br />\nNEW: —SOLD OUT—<br />\nPREOWNED: $189 (instalment $199.39)<br />\n🟡Atome 3 months: $66.46/mth<br />\n🟠SPay Later 6 months: $33.23/mth<br />\n🟢Grabpay later 4 months: $49.84/mth</p>\n<p>⭐️LCD Model⭐️<br />\n7️⃣Nintendo Switch Lite (all colours)🇸🇬<br />\nNEW: $219 (instalment $231.04)<br />\nPREOWNED: $169 (instalment $209.94)<br />\n🟡Atome 3 months: $77.01/mth or $59.43/mth<br />\n🟠SPay Later 6 months: $38.50/mth or $29.71/mth<br />\n🟢Grabpay later 4 months: $57.76/mth or $44.57/mth</p>\n<p>Brand new sets: 1 year store warranty<br />\nPreowned sets: Comes with one month store warranty</p>\n<p>Additional one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; switch pouch @$29.90<br />\n&#8211; switch case@$29.90</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 193,
-        "name": "Best Selling Products",
-        "slug": "best-selling-products"
-      },
-      {
-        "id": 58,
-        "name": "Console",
-        "slug": "console-nintendo"
-      },
-      {
-        "id": 54,
-        "name": "Gadgets",
-        "slug": "gadgets"
-      },
-      {
-        "id": 186,
-        "name": "Handheld Consoles",
-        "slug": "consoles"
-      },
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27138,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/16-3.png",
-        "alt": ""
-      },
-      {
-        "id": 27139,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/18-2.png",
-        "alt": ""
-      },
-      {
-        "id": 27141,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/22-1.png",
-        "alt": ""
-      },
-      {
-        "id": 27142,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/26.png",
-        "alt": ""
-      },
-      {
-        "id": 27143,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/30.png",
-        "alt": ""
-      },
-      {
-        "id": 27144,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/35.png",
-        "alt": ""
-      },
-      {
-        "id": 27145,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/36.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Model",
-        "slug": "Model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Nintendo Switch OLED",
-          "Nintendo Switch Gen 2",
-          "Nintendo Switch Gen 1",
-          "Nintendo Switch Lite",
-          "Nintendo Switch Oled Limited Edition",
-          "Nintendo Switch 2",
-          "Nintendo Switch 2 Console + Mario Kart World Bundle",
-          "Nintendo Switch 2 Console + Pokémon Legends Z-A Bundle"
-        ]
-      },
-      {
-        "id": 4,
-        "name": "Edition",
-        "slug": "pa_edition",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Grey",
-          "Mario Red",
-          "Neon Red &amp; Blue",
-          "Pokemon",
-          "Random Color",
-          "Splatoon 3",
-          "Switch 2",
-          "White",
-          "Zelda"
-        ]
-      },
-      {
-        "id": 5,
-        "name": "Condition",
-        "slug": "pa_condition",
-        "position": 2,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New | 12 Months Store Warranty",
-          "Pre-Owned | 1 Month Store Warranty"
-        ]
-      }
-    ],
-    "variations": [
-      27147,
-      26070,
-      26042,
-      25650,
-      19295,
-      19296,
-      18814,
-      18815,
-      7173,
-      7176,
-      7174,
-      8125,
-      7177,
-      8124,
-      8122,
-      8123
     ]
   },
   {
@@ -5453,148 +7038,6 @@
     ]
   },
   {
-    "id": 7163,
-    "name": "Steam Deck  OLED / Limited Edition Transparent / LCD 512GB/1TB/2TB",
-    "permalink": "https://tradezone.sg/product/steam-deck-oled/",
-    "sku": "",
-    "type": "variable",
-    "price": "549",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T02:16:02",
-    "date_modified": "2025-10-13T10:52:47",
-    "short_description": "<p>TradeZone is the No 1. Most trusted Steam deck OLED / LCD seller on carousell🏆!! 🔥 1800++ positive reviews 🔥 No need to be afraid of scams!☺️</p>\n<p>⭐️10.10 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n– 1 🆓screen protector matte / clear worth $19.90</p>\n<p>⭐️OLED Model⭐️<br />\n1️⃣ Steam Deck OLED 2TB Limited Edition Transparent 🇺🇸 (change from 1tb model)<br />\nNEW : SOLD OUT<br />\nPREOWNED: $1399 (instalment $1475.94)<br />\n🟡 Atome 3 months: $491.981/mth<br />\n🟡 Atome 6 months: $245.99/mth<br />\n🟢 Grabpay later 4 months: $368.98/mth</p>\n<p>⭐️OLED Model⭐️<br />\n2️⃣Steam Deck OLED 1TB Limited Edition Transparent 🇺🇸<br />\nNEW: SOLD OUT<br />\nPREOWNED: $1299 (instalment $1370.44)<br />\n🟡 Atome 3 months: $456.81/mth<br />\n🟡 Atome 6 months: $228.40/mth<br />\n🟢 Grabpay later 4 months: $342.61/mth</p>\n<p>⭐️OLED Model⭐️<br />\n3️⃣Steam Deck OLED 2TB 🇺🇸 (change from 512gb model)<br />\nNEW: $1149 (instalment $1212.19)<br />\nPREOWNED: $999 (instalment $1053.94)<br />\n🟡Atome 3 months: $404.06/mth or $351.31/mth<br />\n🟠SPay Later 6 months: $202.03/mth or $175.65/mth<br />\n🟢Grabpay later 4 months: $303.04/mth or $263.48/mth</p>\n<p>⭐️OLED Model⭐️<br />\n4️⃣Steam Deck OLED 1TB 🇺🇸<br />\nNEW: $1049 (instalment $1106.69)<br />\nPREOWNED: $899 (instalment $948.44)<br />\n🟡Atome 3 months: $368.89/mth or $316.14/mth<br />\n🟠SPay Later 6 months: $184.44/mth or $158.07/mth<br />\n🟢Grabpay later 4 months: $276.67/mth or $1237.11/mth</p>\n<p>⭐️OLED Model⭐️<br />\n5️⃣Steam Deck OLED 512GB 🇺🇸<br />\nNEW: $899 (instalment $948.45)<br />\nPREOWNED: $749 (instalment $790.19)<br />\n🟡Atome 3 months: $316.15/mth or $263.39/mth<br />\n🟠SPay Later 6 months: $158.08/mth or $131.69/mth<br />\n🟢Grabpay later 4 months: $237.11/mth or $197.54/mth</p>\n<p>⭐️LCD Model⭐️<br />\n6️⃣Steam Deck LCD 2TB 🇺🇸 (change from 256gb model)<br />\nNEW: $849 (instalment $895.70)<br />\nPREOWNED: $749 (instalment $790.20)<br />\n🟡Atome 3 months: $298.57/mth or $263.40/mth<br />\n🟠SPay Later 6 months: $149.28/mth or $131.70/mth<br />\n🟢Grabpay later 4 months: $223.93/mth or $197.55/mth</p>\n<p>⭐️LCD Model⭐️<br />\n7️⃣Steam Deck LCD 1TB 🇺🇸 (change from 256gb model)<br />\nNEW: $749 (instalment $790.20)<br />\nPREOWNED: $649 (instalment $684.70)<br />\n🟡Atome 3 months: $263.40/mth or $228.23/mth<br />\n🟠SPay Later 6 months: $131.70/mth or $114.12/mth<br />\n🟢Grabpay later 4 months: $197.55/mth or $171.18/mth</p>\n<p>⭐️LCD Model⭐️<br />\n8️⃣Steam Deck LCD 512GB 🇺🇸 (change from 256gb model)<br />\nNEW: $649 (instalment $684.70)<br />\nPREOWNED: $549 (instalment $579.20)<br />\n🟡Atome 3 months: $228.23/mth or $193.07/mth<br />\n🟠SPay Later 6 months: $114.12/mth or $96.53/mth<br />\n🟢Grabpay later 4 months: $171.18/mth or $144.80/mth</p>\n<p>If need warranty is add one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; Steam Deck LCD/OLED pouch @$29.90<br />\n&#8211; Steam Deck LCD/OLED case@$29.90</p>\n<p>Brand new: 1 year valve warranty<br />\nPreowned: 1 month store warranty (remaining warranty still exists with valve)</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 193,
-        "name": "Best Selling Products",
-        "slug": "best-selling-products"
-      },
-      {
-        "id": 54,
-        "name": "Gadgets",
-        "slug": "gadgets"
-      },
-      {
-        "id": 186,
-        "name": "Handheld Consoles",
-        "slug": "consoles"
-      }
-    ],
-    "tags": [
-      {
-        "id": 55,
-        "name": "Steam Deck",
-        "slug": "steam-deck"
-      }
-    ],
-    "images": [
-      {
-        "id": 26226,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-2-1.png",
-        "alt": ""
-      },
-      {
-        "id": 26226,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-2-1.png",
-        "alt": ""
-      },
-      {
-        "id": 26227,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-3-1.png",
-        "alt": ""
-      },
-      {
-        "id": 19587,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/458.png",
-        "alt": ""
-      },
-      {
-        "id": 19580,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/453.png",
-        "alt": ""
-      },
-      {
-        "id": 19581,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/454.png",
-        "alt": ""
-      },
-      {
-        "id": 19582,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/455.png",
-        "alt": ""
-      },
-      {
-        "id": 19585,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/456.png",
-        "alt": ""
-      },
-      {
-        "id": 19586,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/457.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Model",
-        "slug": "Model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Steam Deck OLED",
-          "Steam Deck LCD",
-          "Steam Deck OLED Limited Edition Transparent"
-        ]
-      },
-      {
-        "id": 5,
-        "name": "Condition",
-        "slug": "pa_condition",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New | 12 Months Valve Warranty | US",
-          "Pre Owned | 1 Month Store Warranty"
-        ]
-      },
-      {
-        "id": 6,
-        "name": "Storage Size",
-        "slug": "pa_storage-size",
-        "position": 2,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "1TB",
-          "2TB",
-          "512GB"
-        ]
-      }
-    ],
-    "variations": [
-      19589,
-      19590,
-      16041,
-      18827,
-      18828,
-      18829,
-      18830,
-      18831,
-      18832,
-      18833,
-      18834,
-      18835,
-      7165,
-      7164
-    ]
-  },
-  {
     "id": 27275,
     "name": "PS5 Ghost Of Yotei",
     "permalink": "https://tradezone.sg/product/ps5-ghost-of-yotei/",
@@ -5725,43 +7168,6 @@
       {
         "id": 27258,
         "src": "https://tradezone.sg/wp-content/uploads/2025/10/game-1-1.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
-    "id": 27249,
-    "name": "MSI MAG B850 Tomahawk MAX WiFi Motherboard",
-    "permalink": "https://tradezone.sg/product/msi-mag-b850-tomahawk-max-wifi-motherboard/",
-    "sku": "",
-    "type": "simple",
-    "price": "469",
-    "regular_price": "469",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-10-12T06:18:00",
-    "date_modified": "2025-10-12T06:18:04",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 173,
-        "name": "Motherboard",
-        "slug": "motherboard"
-      },
-      {
-        "id": 101,
-        "name": "PC Parts",
-        "slug": "pc-parts"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27250,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/game-2-2.png",
         "alt": ""
       }
     ],
@@ -6185,160 +7591,6 @@
     ]
   },
   {
-    "id": 17259,
-    "name": "PlayStation 5 Pro / Slim/ PS5 Disc &amp; Digital 1TB / 2TB 🇸🇬 🇯🇵",
-    "permalink": "https://tradezone.sg/product/ps5-pro-instock/",
-    "sku": "",
-    "type": "variable",
-    "price": "499",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-09-11T05:08:52",
-    "date_modified": "2025-10-07T10:46:04",
-    "short_description": "<p>⭐️10.10 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n– 1 PS5 random Game (under $50)<br />\nFor every purchase of a PS5 Pro Disc!!<br />\n– 1 Digital Genshin Gift Impact Voucher For every purchase of a PS5 Pro Digital!!</p>\n<p>🌟Disc<br />\n1️⃣PS5 Disc Pro 2TB 🇸🇬SG &#8211; install from digital set disc drive<br />\nNEW: $1299 (instalment $1370.44)<br />\nPREOWNED: $1199 (instalment $1264.94)<br />\n🟡Atome 3 months: $456.81/mth or $421.64/mth<br />\n🟠SPaylater 6 months: $228.40/mth or $210.82/mth<br />\n🟢Grabpay later 4 months: $342.61/mth or $316.23/mth</p>\n<p>2️⃣ PS5 Disc Pro 2TB 🇯🇵Japan &#8211; install from digital set disc drive<br />\nNEW: $1249 (instalment $1317.69)<br />\nPREOWNED: $1149 (instalment $1212.19)<br />\n🟡Atome 3 months: $439.23/mth or $404.06/mth<br />\n🟠SPaylater 6 months: $219.61/mth or $202.03/mth<br />\n🟢Grabpay later 4 months: $329.42/mth or $303.04/mth</p>\n<p>3️⃣ PS5 Disc Slim 1TB 🇸🇬SG<br />\nNEW: $799 (instalment $842.94)<br />\nPREOWNED: $649 (instalment $684.69)<br />\n🟡Atome 3 months: $280.98/mth or $228.23/mth<br />\n🟠SPaylater 6 months: $140.49/mth or $114.11/mth<br />\n🟢Grabpay later 4 months: $210.73/mth or $171.17/mth</p>\n<p>4️⃣ PS5 Disc Slim 1TB 🇯🇵Japan<br />\nNEW: $749 (instalment $790.19)<br />\nPREOWNED: $599 (instalment $631.94)<br />\n🟡Atome 3 months: $263.39/mth or $210.64/mth<br />\n🟠SPaylater 6 months: $131.69/mth or $105.32/mth<br />\n🟢Grabpay later 4 months: $197.54/mth or $157.98/mth</p>\n<p>5️⃣ PS5 Disc Fat 825GB🇸🇬SG<br />\nNEW: $699 (instalment $737.44)<br />\nPREOWNED: $549 (instalment $579.19)<br />\n🟡Atome 3 months: $245.81/mth or $193.06/mth<br />\n🟠SPaylater 6 months: $122.90/mth or $96.53/mth<br />\n🟢Grabpay later 4 months: $184.36/mth or $144.79/mth</p>\n<p>🌟Digital</p>\n<p>6️⃣PS5 Digital Pro 2TB 🇸🇬SG<br />\nNEW: $1099 (instalment $1159.44)<br />\nPREOWNED: $999 (instalment $1053.94)<br />\n🟡Atome 3 months: $386.48/mth or $351.31/mth<br />\n🟠SPaylater 6 months: $193.24/mth or $175.65/mth<br />\n🟢Grabpay later 4 months: $289.86/mth or $263.48/mth</p>\n<p>7️⃣ PS5 Digital Pro 2TB 🇯🇵Japan<br />\nNEW: $1049 (instalment $1106.69)<br />\nPREOWNED: $949 (instalment $1001.19)<br />\n🟡Atome 3 months: $368.89/mth or $333.73/mth<br />\n🟠SPaylater 6 months: $184.44/mth or $166.86/mth<br />\n🟢Grabpay later 4 months: $276.67/mth or $250.29/mth</p>\n<p>8️⃣ PS5 Digital Slim 1TB 🇸🇬SG<br />\nNEW: $699 (instalment $737.44)<br />\nPREOWNED: $549 (instalment $579.19)<br />\n🟡Atome 3 months: $245.81/mth or $193.06/mth<br />\n🟠SPaylater 6 months: $122.90/mth or $96.53/mth<br />\n🟢Grabpay later 4 months: $184.36/mth or $144.79/mth</p>\n<p>9️⃣ PS5 Digital Slim 1TB 🇯🇵Japan<br />\nNEW: $649 (instalment $684.69)<br />\nPREOWNED: $499 (instalment $526.44)<br />\n🟡Atome 3 months: $228.23/mth or $175.48/mth<br />\n🟠SPaylater 6 months: $114.11/mth or $87.74/mth<br />\n🟢Grabpay later 4 months: $171.17/mth or $131.61/mth</p>\n<p>1️⃣0️⃣ PS5 Digital Fat 825GB🇸🇬SG<br />\nNEW: $649 (instalment $684.69)<br />\nPREOWNED: $499 (instalment $526.44)<br />\n🟡Atome 3 months: $228.23/mth or $175.48/mth<br />\n🟠SPaylater 6 months: $114.11/mth or $87.74/mth<br />\n🟢Grabpay later 4 months: $171.17/mth or $131.61/mth</p>\n<p>🇯🇵Japan set: One year store warranty (warranty in Japan)<br />\n🇸🇬 Singapore set: One year Sony Singapore warranty<br />\n*Preowned sets* are $150/$100 OFF Brand new prices and shop covers 1 month warranty</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 53,
-        "name": "Console",
-        "slug": "console"
-      },
-      {
-        "id": 52,
-        "name": "Playstation 5",
-        "slug": "playstation-5"
-      }
-    ],
-    "tags": [
-      {
-        "id": 322,
-        "name": "ps5",
-        "slug": "ps5"
-      },
-      {
-        "id": 323,
-        "name": "ps5 pro",
-        "slug": "ps5-pro"
-      },
-      {
-        "id": 324,
-        "name": "slim",
-        "slug": "slim"
-      }
-    ],
-    "images": [
-      {
-        "id": 18752,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/404.png",
-        "alt": ""
-      },
-      {
-        "id": 18754,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/408.png",
-        "alt": ""
-      },
-      {
-        "id": 18755,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/297.png",
-        "alt": ""
-      },
-      {
-        "id": 18756,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/298.png",
-        "alt": ""
-      },
-      {
-        "id": 18757,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/301.png",
-        "alt": ""
-      },
-      {
-        "id": 18758,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/406.png",
-        "alt": ""
-      },
-      {
-        "id": 18759,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/410.png",
-        "alt": ""
-      },
-      {
-        "id": 18760,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/303.png",
-        "alt": ""
-      },
-      {
-        "id": 18761,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/305.png",
-        "alt": ""
-      },
-      {
-        "id": 18762,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/307.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "PS5 PRO",
-        "slug": "PS5 PRO",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "PS5 PRO Digital 2TB SG",
-          "PS5 PRO Disc 2TB SG",
-          "PS5 PRO Digital 2TB JP",
-          "PS5 PRO Disc 2TB JP",
-          "PS5 Disc Slim 1TB SG",
-          "PS5 Disc Slim 1TB JP",
-          "PS5 Disc Fat 825GB SG",
-          "PS5 Digital Slim 1TB SG",
-          "PS5 Digital Slim 1TB JP",
-          "PS5 Digital Fat 825GB SG",
-          "PS5 Fat Disc Spider-Man 2"
-        ]
-      },
-      {
-        "id": 0,
-        "name": "Condition",
-        "slug": "Condition",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New 12 + 3 Months Local Sony Warranty",
-          "Pre-Owned 1 Month Store Warranty"
-        ]
-      }
-    ],
-    "variations": [
-      26049,
-      18783,
-      18791,
-      18792,
-      18793,
-      18794,
-      18795,
-      18655,
-      18658,
-      18659,
-      18660,
-      18764,
-      18765,
-      18766,
-      18767,
-      18768,
-      18769,
-      18772,
-      18774,
-      18775,
-      18776
-    ]
-  },
-  {
     "id": 27152,
     "name": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
     "permalink": "https://tradezone.sg/product/tesla-cyberdock-for-iphone-17-16-15-14-pro-pro-max-3-in-1-wireless-charger/",
@@ -6435,124 +7687,6 @@
       27064,
       27065,
       27066
-    ]
-  },
-  {
-    "id": 7452,
-    "name": "MSI Claw A8 / 8 AI+ / A1M 512GB/1TB/2TB Z2 Extreme / UT7 / UT5",
-    "permalink": "https://tradezone.sg/product/msi-claw/",
-    "sku": "",
-    "type": "variable",
-    "price": "699",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T02:25:26",
-    "date_modified": "2025-10-07T06:27:56",
-    "short_description": "<p>⭐️10.10 STORE COLLECTION PROMOTION⭐️ 🆓 🆓 🆓<br />\n– 1 🆓screen protector matte / clear worth $19.90</p>\n<p>⭐️[Ultra 7 258V]⭐️<br />\n1️⃣MSI Claw 8 AI+ UT7 2TB 🇸🇬 (Polar tempest)<br />\nNEW: $1549 (instalment $1634.19)<br />\nPREOWNED: $1399 (instalment $1475.94)<br />\n🟡Atome 3 months: $544.73/mth or $491.98/mth<br />\n🟠SPay Later 6 months: $272.36/mth or $245.99/mth<br />\n🟢Grabpay later 4 months: $448.11/mth or $368.98/mth</p>\n<p>⭐️[Ultra 7 258V]⭐️<br />\n2️⃣MSI Claw 8 AI+ UT7 1TB 🇸🇬SG<br />\nNEW: $1449 (instalment $1528.69)<br />\nPREOWNED: $1299 (instalment $1370.44)<br />\n🟡Atome 3 months: $509.56/mth or $456.81/mth<br />\n🟠SPay Later 6 months: $254.78/mth or $228.40/mth<br />\n🟢Grabpay later 4 months: $382.17/mth or $342.61/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n3️⃣MSI Claw A8 BZ2EM Z2 Extreme 1TB 🇸🇬SG (Neon Green)<br />\nNEW: $1349 (instalment $1423.19)<br />\nPREOWNED: $1199 (instalment $1264.94)<br />\n🟡Atome 3 months: $474.39/mth or $439.23/mth<br />\n🟠SPay Later 6 months: $237.19/mth or $210.82/mth<br />\n🟢Grabpay later 4 months: $355.79/mth or $316.23/mth</p>\n<p>⭐️[Z2 Extreme]⭐️<br />\n4️⃣MSI Claw A8 BZ2EM Z2 Extreme 1TB 🇸🇬SG (Polar tempest)<br />\nNEW: $1349 (instalment $1423.19)<br />\nPREOWNED: $1199 (instalment $1264.94)<br />\n🟡Atome 3 months: $474.39/mth or $439.23/mth<br />\n🟠SPay Later 6 months: $237.19/mth or $210.82/mth<br />\n🟢Grabpay later 4 months: $355.79/mth or $316.23/mth</p>\n<p>⭐️[Ultra 7 155H]⭐️<br />\n5️⃣MSI Claw A1M-020SG UT7 16G 1TB 🇸🇬SG<br />\nNEW: $1099 (instalment $1159.44)<br />\nPREOWNED: $949 (instalment $1,001.19)<br />\n🟡Atome 3 months: $386.48/mth or $333.73/mth<br />\n🟠SPay Later 6 months: $193.24/mth or $166.86/mth<br />\n🟢Grabpay later 4 months: $289.86/mth or $250.29/mth</p>\n<p>⭐️[Ultra 5 135H]⭐️<br />\n6️⃣MSI Claw A1M-021SG UT5 512GB 🇸🇬SG<br />\nNEW: $849 (instalment $895.69)<br />\nPREOWNED: $699 (instalment $737.44)<br />\n🟡Atome 3 months: $298.56/mth or $245.81/mth<br />\n🟠SPay Later 6 months: $149.28/mth or $122.90/mth<br />\n🟢Grabpay later 4 months: $223.92/mth or $184.36/mth</p>\n<p>All brand new sets comes with 24 month msi warranty.<br />\nPreowned sets: 1 month store warranty</p>\n<p>Additional one year store warranty @$60<br />\n&#8211; tempered glass @$19.90 (matte/clear)<br />\n&#8211; MSI pouch @$29.90<br />\n&#8211; MSI case@$29.90</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 193,
-        "name": "Best Selling Products",
-        "slug": "best-selling-products"
-      },
-      {
-        "id": 54,
-        "name": "Gadgets",
-        "slug": "gadgets"
-      },
-      {
-        "id": 186,
-        "name": "Handheld Consoles",
-        "slug": "consoles"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 26877,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/R-1-1.png",
-        "alt": ""
-      },
-      {
-        "id": 25841,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/312.png",
-        "alt": ""
-      },
-      {
-        "id": 25842,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/313.png",
-        "alt": ""
-      },
-      {
-        "id": 25844,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/314.png",
-        "alt": ""
-      },
-      {
-        "id": 25845,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/315.png",
-        "alt": ""
-      },
-      {
-        "id": 25846,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/316.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 6,
-        "name": "Storage Size",
-        "slug": "pa_storage-size",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "1TB",
-          "2TB",
-          "512GB"
-        ]
-      },
-      {
-        "id": 5,
-        "name": "Condition",
-        "slug": "pa_condition",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New | 24 Months MSI Warranty",
-          "Pre Owned | 1 Month Store Warranty"
-        ]
-      },
-      {
-        "id": 7,
-        "name": "Model",
-        "slug": "pa_model",
-        "position": 2,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "8 AI+ A2VM-025SG UT7 32G",
-          "8 AI+ UT7 White",
-          "8A Z2 Extreme 1TB",
-          "8A Z2 Extreme 1TB White",
-          "A1M-020SG UT7 16G",
-          "A1M-021SG UT5 16G"
-        ]
-      }
-    ],
-    "variations": [
-      25849,
-      25513,
-      25847,
-      22603,
-      17935,
-      8113,
-      8114,
-      8115
     ]
   },
   {
@@ -6740,60 +7874,6 @@
       26728,
       26729,
       26730
-    ]
-  },
-  {
-    "id": 23316,
-    "name": "Gigabyte Monitor MO27Q28G/ MO32U / M27U / M27QA / GS25F2 1080 /2K /4K OLED / IPS Gaming Monitor",
-    "permalink": "https://tradezone.sg/product/gigabyte-gs25f2-24-5-200hz-fhd-ips-1ms-gaming-monitor/",
-    "sku": "",
-    "type": "variable",
-    "price": "159",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-03-25T09:08:27",
-    "date_modified": "2025-10-04T10:36:58",
-    "short_description": "<p>Brand New Sealed</p>\n<p>Gigabyte MO32U (3840 x 2160) 31.5&#8243; 165Hz OLED Gaming Monitor<br />\nSelling: $1155 (Brand New)<br />\nInstalment: $1218.52 (5.5%)</p>\n<p>GIGABYTE MO27Q28G OLED 2K 280Hz 27 Inch Gaming Monitor<br />\nSelling : $829 (Brand New)<br />\nInstalment: $874.59 (5.5%)</p>\n<p>Gigabyte M27U (3840 x 2160) 27&#8243; 160Hz Gaming Monitor<br />\nSelling: $475 (Brand New)<br />\nInstalment: $501.12 (5.5%)</p>\n<p>Gigabyte M27QA (2560&#215;1440) 27&#8243; 180Hz Gaming Monitor<br />\nSelling: $309 (Brand New)<br />\nInstalment: $325.99 (5.5%)</p>\n<p>GIGABYTE GS25F2 24.5&#8243; 200HZ FHD Gaming Monitor<br />\nSelling: $159 (Brand New)<br />\nInstalment: $167.74 (5.5%)</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 278,
-        "name": "Monitor",
-        "slug": "monitor"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27085,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/game-5.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Model",
-        "slug": "Model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "MO32U",
-          "M27U",
-          "M27QA",
-          "GS25F2",
-          "MO27Q28G"
-        ]
-      }
-    ],
-    "variations": [
-      27083,
-      25454,
-      25455,
-      25456,
-      25457
     ]
   },
   {
@@ -7041,137 +8121,6 @@
     ],
     "attributes": [],
     "variations": []
-  },
-  {
-    "id": 26971,
-    "name": "DJI Osmo Nano - 128GB / 64GB",
-    "permalink": "https://tradezone.sg/product/dji-osmo-nano-128gb-64gb/",
-    "sku": "",
-    "type": "variable",
-    "price": "399",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-10-01T06:35:42",
-    "date_modified": "2025-10-01T11:50:18",
-    "short_description": "<p>[Brand New]<br />\n1️⃣DJI Osmo Nano 128GB (12 months 🇸🇬 DJI warranty)*Preorder 2-3 Weeks<br />\nNEW: $459 (instalment $484.24)<br />\n🟡 Atome 3 months: $161.41/mth<br />\n🟡 Atome 6 months: $80.70/mth<br />\n🟢 Grabpay later 4 months: $121.06/mth</p>\n<p>2️⃣DJI Osmo Nano &#8211; 64GB (12 months 🇸🇬 DJI warranty)*Preorder 2-3 Weeks<br />\nNEW: $399 (instalment $420.94)<br />\n🟡Atome 3 months: $140.31/mth<br />\n🟡Atome 6 months: $70.15/mth<br />\n🟢Grabpay later 4 months: $105.23/mth</p>\n<p>SD Card = 512GB Samsung Evo Plus 160MB/S A2 V30 $69.90</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 188,
-        "name": "Cameras",
-        "slug": "cameras"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 26972,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/Camera-1.png",
-        "alt": ""
-      },
-      {
-        "id": 26977,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/508fb2af0121db1eebb0e6d117626957@origin.jpg",
-        "alt": ""
-      },
-      {
-        "id": 26978,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/853b7cd29605008379b8beaf456f8f83@origin.jpg",
-        "alt": ""
-      },
-      {
-        "id": 26973,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/93f07f5f03c7e72ba1b25714b2eddb66@origin.jpg",
-        "alt": ""
-      },
-      {
-        "id": 26974,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/86cb256aee44eceb214e6487d68d1fe3@origin.jpg",
-        "alt": ""
-      },
-      {
-        "id": 26975,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/fb7d6775c9470a0c0d4171b21b358ffa@origin.jpg",
-        "alt": ""
-      },
-      {
-        "id": 26976,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/0d24d0a47b6cdcfa110c6c6df3efbbe1@origin.jpg",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Storage Size",
-        "slug": "Storage Size",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "64GB",
-          "128GB"
-        ]
-      }
-    ],
-    "variations": [
-      26979,
-      26980
-    ]
-  },
-  {
-    "id": 26867,
-    "name": "Lian Li O11 Dynamic Mini V2 Flow + 5F Black / White",
-    "permalink": "https://tradezone.sg/product/lian-li-o11-dynamic-mini-v2-5f-black-white/",
-    "sku": "",
-    "type": "variable",
-    "price": "159",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-09-26T07:39:55",
-    "date_modified": "2025-10-01T11:37:13",
-    "short_description": "<p>5 Non RGB Fans Included</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 103,
-        "name": "Cases",
-        "slug": "cases"
-      },
-      {
-        "id": 101,
-        "name": "PC Parts",
-        "slug": "pc-parts"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 26871,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/09/game-3.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "White"
-        ]
-      }
-    ],
-    "variations": [
-      26869,
-      26870
-    ]
   },
   {
     "id": 18614,
@@ -7451,43 +8400,6 @@
       26701,
       26702
     ]
-  },
-  {
-    "id": 26550,
-    "name": "Moza R3 Racing Wheel and Pedals Bundle for Xbox/PC and PC Only",
-    "permalink": "https://tradezone.sg/product/moza-r3-racing-wheel-and-pedals-bundle-for-xbox-pc-or-pc-only/",
-    "sku": "",
-    "type": "simple",
-    "price": "589",
-    "regular_price": "589",
-    "sale_price": "",
-    "stock_status": "outofstock",
-    "date_created": "2025-09-08T06:41:52",
-    "date_modified": "2025-09-28T09:30:55",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 54,
-        "name": "Gadgets",
-        "slug": "gadgets"
-      },
-      {
-        "id": 59,
-        "name": "Xbox",
-        "slug": "xbox"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 26551,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/09/R-1-1.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
   },
   {
     "id": 18074,
@@ -8550,107 +9462,6 @@
     "variations": []
   },
   {
-    "id": 26498,
-    "name": "Thermalright KG 650W/850W 80+ Gold Modular (ATX3.1) - Black",
-    "permalink": "https://tradezone.sg/product/thermalright-kg-650w-850w-80-gold-modular-atx3-1-black/",
-    "sku": "",
-    "type": "variable",
-    "price": "89",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-09-06T07:15:55",
-    "date_modified": "2025-09-06T07:16:20",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 101,
-        "name": "PC Parts",
-        "slug": "pc-parts"
-      },
-      {
-        "id": 102,
-        "name": "Power Supply Unit",
-        "slug": "power-supply-unit"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 26499,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/09/R-4.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Wattage",
-        "slug": "Wattage",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "650W",
-          "850W"
-        ]
-      }
-    ],
-    "variations": [
-      26500,
-      26501
-    ]
-  },
-  {
-    "id": 26494,
-    "name": "Thermalright SP 1000W  80+ Platinum Modular",
-    "permalink": "https://tradezone.sg/product/thermalright-sp-1000w-80-platinum-modular/",
-    "sku": "",
-    "type": "variable",
-    "price": "179",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-09-06T07:13:01",
-    "date_modified": "2025-09-06T07:13:06",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 102,
-        "name": "Power Supply Unit",
-        "slug": "power-supply-unit"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 26495,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/09/R-3.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "White"
-        ]
-      }
-    ],
-    "variations": [
-      26496,
-      26497
-    ]
-  },
-  {
     "id": 14402,
     "name": "Crucial 32GB DDR5 UDIMM CL46 5600MHz Desktop RAM CT32G56C46U5",
     "permalink": "https://tradezone.sg/product/crucial-32gb-ddr5-udimm-cl46-5600mhz-desktop-ram-ct32g56c46u5/",
@@ -9441,91 +10252,6 @@
     ]
   },
   {
-    "id": 16896,
-    "name": "PICO 4 / Ultra / 128GB / 256GB ",
-    "permalink": "https://tradezone.sg/product/pico-4-ultra%f0%9f%87%b8%f0%9f%87%ac-128gb-256gb-128gb/",
-    "sku": "",
-    "type": "variable",
-    "price": "299",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-09-02T06:47:09",
-    "date_modified": "2025-08-14T07:45:41",
-    "short_description": "<p>⭐️PiCO 4 Ultra⭐️</p>\n<p>1️⃣PiCO 4 Ultra 256GB 🇸🇬SG (1 yr local warranty)<br />\nNEW: $749 (instalment $790.19)<br />\nPREOWNED: $599 (instalment $631.94)<br />\n🟡Atome 3 months: $263.39/mth or $210.64/mth<br />\n🟠SPay later 6 months: $131.69/mth or $105.32/mth<br />\n🟢Grabpay later 4 months: $197.53/mth or $157.98/mth</p>\n<p>⭐️PiCO 4⭐️</p>\n<p>2️⃣PiCO 4 256GB 🇸🇬SG (1 yr local warranty)<br />\nNEW: $549 (instalment $579.19)<br />\nPREOWNED: $399 (instalment $420.94)<br />\n🟡Atome 3 months: $193.06/mth or $140.31/mth<br />\n🟠SPay later 6 months: $96.53/mth or $70.15/mth<br />\n🟢Grabpay later 4 months: $144.79/mth or $105.22/mth</p>\n<p>3️⃣PiCO 4 128GB 🇸🇬SG (1 yr local warranty)<br />\nNEW: $449 (instalment $476.95)<br />\nPREOWNED: $299 (instalment $315.44)<br />\n🟡Atome 3 months: $158.98/mth or $105.14/mth<br />\n🟠SPay later 6 months: $79.49/mth or $52.57/mth<br />\n🟢Grabpay later 4 months: $119.23/mth or $78.85/mth</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 54,
-        "name": "Gadgets",
-        "slug": "gadgets"
-      },
-      {
-        "id": 187,
-        "name": "Virtual Reality Headset",
-        "slug": "virtual-reality-headset"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 19046,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/19.png",
-        "alt": ""
-      },
-      {
-        "id": 22381,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/49.png",
-        "alt": ""
-      },
-      {
-        "id": 19048,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/21.png",
-        "alt": ""
-      },
-      {
-        "id": 19060,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/game-55.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 7,
-        "name": "Model",
-        "slug": "pa_model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Pico 4 128GB",
-          "Pico 4 256GB",
-          "Pico 4 Ultra 256GB"
-        ]
-      },
-      {
-        "id": 5,
-        "name": "Condition",
-        "slug": "pa_condition",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Brand New",
-          "Pre-Owned"
-        ]
-      }
-    ],
-    "variations": [
-      25106,
-      25107,
-      25108,
-      25109,
-      25110,
-      25111
-    ]
-  },
-  {
     "id": 25920,
     "name": "DJI Osmo 360- Handheld / Adventure Combo",
     "permalink": "https://tradezone.sg/product/dji-osmo-360-handheld-adventure-combo/",
@@ -9796,75 +10522,6 @@
     "variations": []
   },
   {
-    "id": 23084,
-    "name": "Logitech G Pro X Superlight 2 / DEX Gaming Mouse",
-    "permalink": "https://tradezone.sg/product/logitech-g-pro-x-superlight-2-dex-gaming-mouse/",
-    "sku": "",
-    "type": "variable",
-    "price": "179",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-03-17T10:55:01",
-    "date_modified": "2025-08-04T10:38:28",
-    "short_description": "<p>1 week store warranty<br />\nColour Available = White / Black / Pink</p>\n<p>1️⃣Logitech G Pro X Superlight 2 = $179 (instalment $188.84)<br />\n🟡Atome 3 months: $62.94/mth<br />\n🟠Spay Later 6 months: $31.47/mth<br />\n🟢Grabpay later 4 months: $47.20/mth</p>\n<p>2️⃣Logitech G Pro X Superlight 2 DEX = $179 (instalment $188.84)<br />\n🟡Atome 3 months: $62.94/mth<br />\n🟠Spay Later 6 months: $31.47/mth<br />\n🟢Grabpay later 4 months: $47.20/mth</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 194,
-        "name": "Mouse",
-        "slug": "mouse"
-      },
-      {
-        "id": 192,
-        "name": "Peripherals",
-        "slug": "peripherals"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 23085,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/03/R-1-1.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Model",
-        "slug": "Model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Logitech G Pro X Superlight 2",
-          "Logitech G Pro X Superlight 2 DEX"
-        ]
-      },
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "White",
-          "Pink"
-        ]
-      }
-    ],
-    "variations": [
-      23086,
-      23087,
-      23088,
-      23089,
-      23090
-    ]
-  },
-  {
     "id": 24082,
     "name": "Razer Blade 15” Base (2021) RTX 3070 i7-10750H 16GB 512GB QHD 165Hz Gaming Laptop",
     "permalink": "https://tradezone.sg/product/razer-blade-15-base-2021-rtx-3070-i7-10750h-16gb-512gb-qhd-165hz-gaming-laptop/",
@@ -10006,72 +10663,6 @@
     ],
     "attributes": [],
     "variations": []
-  },
-  {
-    "id": 25668,
-    "name": "SONY WH-1000XM6 / WH-1000XM5 Black /Silver Headphone",
-    "permalink": "https://tradezone.sg/product/sony-wh-1000xm6-wh-1000xm5-black-silver-headphone/",
-    "sku": "",
-    "type": "variable",
-    "price": "393",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-07-29T09:48:34",
-    "date_modified": "2025-07-29T09:48:39",
-    "short_description": "<p>[Brand New]<br />\n1️⃣SONY WH-1000XM6 Black<br />\nNEW: $608 (instalment $641.44)<br />\n🟡 Atome 3 months: $213.81/mth<br />\n🟡 Atome 6 months: $106.90/mth<br />\n🟢 Grabpay later 4 months: $160.35/mth</p>\n<p>2️⃣WH-1000XM5 Black /Silver<br />\nNEW: $393(instalment $414.61)<br />\n🟡Atome 3 months: $138.20/mth<br />\n🟡Atome 6 months: $69.10/mth<br />\n🟢Grabpay later 4 months: $103.65/mth</p>\n<p>Sony WH-1000XM6: Premium Wireless Noise-Cancelling Headphones</p>\n<p>The Sony WH-1000XM6 delivers industry-leading noise cancellation, enhanced sound quality, and unparalleled comfort. Designed for audiophiles and casual listeners alike, these headphones combine cutting-edge technology with an elegant and lightweight design. Whether you’re commuting, working, or relaxing, the WH-1000XM6 ensures an immersive audio experience tailored to your needs.</p>\n<p>Industry-Leading Noise Cancellation<br />\nAdvanced Adaptive Noise Cancellation with multiple microphones and enhanced algorithmic tuning ensures a distraction-free listening experience, even in the noisiest environments.</p>\n<p>Exceptional Sound Quality<br />\nFeatures custom-designed 40mm drivers, supporting Hi-Res Audio and Hi-Res Audio Wireless. The DSEE Extreme upscaling restores detail to compressed audio files, delivering lifelike sound.</p>\n<p>Intelligent Listening Experience<br />\nAdaptive Sound Control automatically adjusts settings based on your surroundings and activities. The Speak-to-Chat function pauses playback when you start speaking.</p>\n<p>Long Battery Life with Fast Charging<br />\nUp to 30 hours of battery life with noise cancellation active. A quick 10-minute charge provides up to 5 hours of playback.</p>\n<p>Premium Build and Comfort<br />\nUltra-lightweight, foldable design with soft leatherette ear cushions and an adjustable headband for all-day comfort.</p>\n<p>Seamless Connectivity<br />\nBluetooth 5.3 and multipoint connection allow simultaneous pairing with two devices. Compatible with SBC, AAC, and LDAC codecs for versatile performance.</p>\n<p>Intuitive Touch Controls and Voice Assistant<br />\nSwipe and tap gestures on the earcup for playback, calls, and volume control. Integrated with Google Assistant and Alexa for hands-free commands.</p>\n<p>Environmental Awareness<br />\nAmbient Sound Mode and Quick Attention Mode let you hear your surroundings without removing the headphones, enhancing safety and convenience.</p>\n<p>High-Quality Calls<br />\nPrecise Voice Pickup Technology with beamforming microphones ensures crystal-clear calls in any environment.</p>\n<p>Sustainability Focus<br />\nMade with recycled materials and delivered in plastic-free packaging to reduce environmental impact.</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 197,
-        "name": "Headset",
-        "slug": "headset"
-      },
-      {
-        "id": 192,
-        "name": "Peripherals",
-        "slug": "peripherals"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 25669,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/07/game-3.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Model",
-        "slug": "Model",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "WH-1000XM6",
-          "WH-1000XM5"
-        ]
-      },
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "Silver"
-        ]
-      }
-    ],
-    "variations": [
-      25673,
-      25674,
-      25675
-    ]
   },
   {
     "id": 25665,
@@ -11300,59 +11891,6 @@
     "variations": []
   },
   {
-    "id": 24617,
-    "name": "Tecware FLEX RGB 24p+GPU (Black/White)",
-    "permalink": "https://tradezone.sg/product/tecware-flex-rgb-24pgpu-black-white/",
-    "sku": "",
-    "type": "variable",
-    "price": "59",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-05-23T10:34:23",
-    "date_modified": "2025-05-23T10:40:37",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 191,
-        "name": "PC Accessories",
-        "slug": "pc-accessories"
-      },
-      {
-        "id": 101,
-        "name": "PC Parts",
-        "slug": "pc-parts"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 24618,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/05/Screen-Protector-Premium-Tempered-Glass-High-Quality-for-Nintendo-Switch-Oled-Gen-1-2-Lite.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "White"
-        ]
-      }
-    ],
-    "variations": [
-      24619,
-      24620
-    ]
-  },
-  {
     "id": 17127,
     "name": "PS4 Playstation 4 Dualshock Wireless Controller",
     "permalink": "https://tradezone.sg/product/ps4-playstation-4-dualshock-wireless-controller/",
@@ -11473,38 +12011,6 @@
       {
         "id": 14439,
         "src": "https://tradezone.sg/wp-content/uploads/2024/06/Untitled-design-18.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
-    "id": 24465,
-    "name": "ASROCK B850I LIGHTNING WIFI ITX Motherboard",
-    "permalink": "https://tradezone.sg/product/asrock-b850i-lightning-wifi-itx-motherboard/",
-    "sku": "",
-    "type": "simple",
-    "price": "379",
-    "regular_price": "379",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-05-16T10:17:22",
-    "date_modified": "2025-05-16T10:17:46",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 173,
-        "name": "Motherboard",
-        "slug": "motherboard"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 24466,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/05/R-1-2.png",
         "alt": ""
       }
     ],
@@ -12969,68 +13475,6 @@
     ],
     "attributes": [],
     "variations": []
-  },
-  {
-    "id": 22269,
-    "name": "Thermalright SFX 650W / 850W Gold Modular ATX3.1+Gen5.1 Power Supply Unit",
-    "permalink": "https://tradezone.sg/product/thermalright-sfx-650w-850w-gold-modular-atx3-1gen5-1-power-supply-unit/",
-    "sku": "",
-    "type": "variable",
-    "price": "139",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-02-18T09:18:22",
-    "date_modified": "2025-03-30T07:16:58",
-    "short_description": "<ul class=\"a-unordered-list a-vertical a-spacing-mini\">\n<li class=\"a-spacing-mini\"><span class=\"a-list-item\">Modular Design: This 850W power supply unit (PSU) features a fully modular cable design for improved airflow and a cleaner build.</span></li>\n<li class=\"a-spacing-mini\"><span class=\"a-list-item\">High Efficiency: With an 80 Plus Gold certification, it operates at up to 90% efficiency, minimising power loss and reducing electricity costs.</span></li>\n</ul>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 102,
-        "name": "Power Supply Unit",
-        "slug": "power-supply-unit"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 22270,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/02/B860-DS3H-WIFI6E-1.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Colour",
-        "slug": "Colour",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Black",
-          "White"
-        ]
-      },
-      {
-        "id": 0,
-        "name": "Wattage",
-        "slug": "Wattage",
-        "position": 1,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "650W",
-          "850W"
-        ]
-      }
-    ],
-    "variations": [
-      22271,
-      22272,
-      22273,
-      22274
-    ]
   },
   {
     "id": 22446,
@@ -21478,43 +21922,6 @@
     "variations": []
   },
   {
-    "id": 13897,
-    "name": "Monster Hunter Rise Deluxe Edition",
-    "permalink": "https://tradezone.sg/product/monster-hunter-rise-deluxe-edition/",
-    "sku": "",
-    "type": "simple",
-    "price": "49.90",
-    "regular_price": "49.90",
-    "sale_price": "",
-    "stock_status": "outofstock",
-    "date_created": "2024-06-05T10:32:00",
-    "date_modified": "2024-09-05T08:08:31",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      },
-      {
-        "id": 165,
-        "name": "Pre-Owned Games",
-        "slug": "pre-owned-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 14260,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Monster-Hunter-Rise-Deluxe-Edition.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
     "id": 13892,
     "name": "Minecraft Dungeons Hero Edition",
     "permalink": "https://tradezone.sg/product/minecraft-dungeons-hero-edition/",
@@ -29822,80 +30229,6 @@
       {
         "id": 14263,
         "src": "https://tradezone.sg/wp-content/uploads/2024/06/Monster-Truck-Championship.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
-    "id": 13895,
-    "name": "Monster Hunter Generations Ultimate",
-    "permalink": "https://tradezone.sg/product/monster-hunter-generations-ultimate/",
-    "sku": "",
-    "type": "simple",
-    "price": "29.90",
-    "regular_price": "29.90",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-06-05T10:31:59",
-    "date_modified": "2024-06-05T12:20:07",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      },
-      {
-        "id": 165,
-        "name": "Pre-Owned Games",
-        "slug": "pre-owned-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 14258,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Monster-Hunter-Generations-Ultimate.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
-    "id": 13896,
-    "name": "Monster Hunter Rise",
-    "permalink": "https://tradezone.sg/product/monster-hunter-rise/",
-    "sku": "",
-    "type": "simple",
-    "price": "39.90",
-    "regular_price": "39.90",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-06-05T10:31:59",
-    "date_modified": "2024-06-05T12:20:07",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 57,
-        "name": "Nintendo",
-        "slug": "nintendo"
-      },
-      {
-        "id": 165,
-        "name": "Pre-Owned Games",
-        "slug": "pre-owned-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 14259,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/06/Monster-Hunter-Rise.png",
         "alt": ""
       }
     ],
@@ -41929,48 +42262,6 @@
       {
         "id": 7393,
         "src": "https://tradezone.sg/wp-content/uploads/2024/05/Humankind-Heritage-Edition.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
-    "id": 7335,
-    "name": "Hades",
-    "permalink": "https://tradezone.sg/product/hades/",
-    "sku": "",
-    "type": "simple",
-    "price": "39.90",
-    "regular_price": "39.90",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-05-08T02:21:19",
-    "date_modified": "2024-05-08T02:23:19",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 109,
-        "name": "Brand New Games",
-        "slug": "brand-new-games"
-      },
-      {
-        "id": 51,
-        "name": "Playstation",
-        "slug": "playstation"
-      },
-      {
-        "id": 52,
-        "name": "Playstation 5",
-        "slug": "playstation-5"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 7390,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/05/Hades.png",
         "alt": ""
       }
     ],
