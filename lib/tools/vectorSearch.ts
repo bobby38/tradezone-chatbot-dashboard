@@ -51,6 +51,12 @@ function normalizeProductUrl(url: string): string {
   return url.replace(/\/+$/, "").toLowerCase();
 }
 
+function parsePrice(value?: string | null): number | null {
+  if (!value) return null;
+  const numeric = parseFloat(value.replace(/[^\d.]/g, ""));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function enforceCatalogPermalinks(
   text: string,
   matches: CatalogMatch[],
@@ -180,6 +186,7 @@ export async function handleVectorSearch(
         : result;
 
     let enriched = sanitizedResult;
+    let priceSpreadNote = "";
     if (label === "catalog" && catalogMatches.length > 0) {
       const lines = catalogMatches.map((match) => {
         const details: string[] = [];
@@ -206,6 +213,19 @@ export async function handleVectorSearch(
 
       const section = ["**Online Store Matches**", ...lines].join("\n");
       enriched = enriched ? `${enriched}\n\n${section}` : section;
+
+      const numericPrices = catalogMatches
+        .map((match) => parsePrice(match.price))
+        .filter((price): price is number => price !== null);
+      if (numericPrices.length >= 2) {
+        const minPrice = Math.min(...numericPrices);
+        const maxPrice = Math.max(...numericPrices);
+        if (maxPrice - minPrice >= 200) {
+          priceSpreadNote = `Prices range widely (S$${minPrice.toFixed(0)}–S$${maxPrice.toFixed(
+            0,
+          )}). Which version or condition do you prefer?`;
+        }
+      }
     }
 
     const trimmedEnriched = enriched.trim();
@@ -233,8 +253,13 @@ export async function handleVectorSearch(
       };
     }
 
+    const finalText =
+      priceSpreadNote && label === "catalog"
+        ? `${trimmedEnriched}\n\n${priceSpreadNote}`
+        : trimmedEnriched;
+
     return {
-      text: trimmedEnriched,
+      text: finalText,
       store: label,
       matches: label === "catalog" ? catalogMatches : undefined,
     };
