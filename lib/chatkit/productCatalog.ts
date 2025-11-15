@@ -22,6 +22,15 @@ let catalogPromise: Promise<CatalogProduct[]> | null = null;
 
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour (catalog refreshes weekly)
 
+const EXACT_KEYWORD_OVERRIDES: Record<string, CatalogMatch> = {
+  "switch 2": {
+    name: "Nintendo Switch 2 (Brand New)",
+    price: "500.00",
+    stockStatus: "instock",
+    permalink: "https://tradezone.sg/product/nintendo-switch-2",
+  },
+};
+
 function resolveCatalogPath(): string {
   if (process.env.WOOCOMMERCE_PRODUCT_JSON_PATH) {
     return process.env.WOOCOMMERCE_PRODUCT_JSON_PATH;
@@ -226,6 +235,12 @@ export async function findCatalogMatches(
 ): Promise<CatalogMatch[]> {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return [];
+
+  for (const [keyword, match] of Object.entries(EXACT_KEYWORD_OVERRIDES)) {
+    if (trimmed.includes(keyword)) {
+      return [match];
+    }
+  }
 
   const catalog = await loadCatalog();
   const rawTokens = trimmed.split(/\s+/).filter(Boolean);
