@@ -27,6 +27,11 @@ import {
   ToolUsageSummary,
 } from "@/lib/chatkit/telemetry";
 import { ensureSession, getNextTurnIndex } from "@/lib/chatkit/sessionManager";
+import {
+  addZepMemoryTurn,
+  fetchZepContext,
+  queryZepGraphContext,
+} from "@/lib/zep";
 
 // Security imports
 import {
@@ -146,6 +151,11 @@ function formatRangeSummary(
   return `S$${min.toFixed(0)}–S$${max.toFixed(0)}`;
 }
 
+function truncateString(text: string, max = 280): string {
+  if (!text) return "";
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
 function deriveSessionName(
   history: Array<{ role?: string; content?: string }> | undefined,
   latestMessage: string,
@@ -178,7 +188,10 @@ const TRADE_IN_DEVICE_HINTS =
   /\b(ps ?5|ps ?4|playstation|xbox|switch|steam deck|rog ally|legion go|msi claw|meta quest|dji osmo|iphone|ipad|samsung|mobile phone|console|handheld)\b/i;
 
 const TRADE_IN_ACTION_HINTS =
-  /\b(trade|tra[iy]n|sell|worth|value|price|quote|offer|top[- ]?up)\b/i;
+  /\b(trade|tra[iy]n|sell|worth|value|quote|offer|top[- ]?up)\b/i;
+
+const CONVERSATION_EXIT_PATTERNS =
+  /\b(never\s?-?\s?mind|forget\s+it|no\s+need|cancel\s+that|stop\s+please|bye|goodbye|its\s+ok|it's\s+ok|leave\s+it|nvm)\b/i;
 
 const PLACEHOLDER_NAME_TOKENS = new Set([
   "here",
@@ -891,7 +904,7 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
   if (!detail) return null;
 
   const hasDevice = Boolean(detail.brand && detail.model);
-  const hasStorage = Boolean(detail.storage);
+  let hasStorage = Boolean(detail.storage);
   const hasCondition = Boolean(detail.condition);
   const accessoriesCaptured = Array.isArray(detail.accessories)
     ? detail.accessories.length > 0
@@ -909,6 +922,16 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
       /photos?:\s*not provided/i.test(detail.notes)) ||
     (typeof detail.source_message_summary === "string" &&
       /photos?:\s*not provided/i.test(detail.source_message_summary));
+
+  const storageLikelyFixed = (() => {
+    const label = `${detail.brand || ""} ${detail.model || ""}`.toLowerCase();
+    return /switch|ps5|ps4|playstation|xbox|portal|quest|steam deck|rog ally|legion go|msi claw/.test(
+      label,
+    );
+  })();
+  if (!hasStorage && storageLikelyFixed) {
+    hasStorage = true;
+  }
 
   const steps: Array<{ missing: boolean; message: string }> = [
     {
@@ -1009,6 +1032,24 @@ const tools = [
           query: { type: "string", description: "Search query" },
         },
         required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "tradezone_graph_query",
+      description:
+        "Query TradeZone's structured catalog/trade graph for bundles, upgrades, or price relationships when vector search needs richer context.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "Natural language question",
+          },
+        },
+        required: ["question"],
       },
     },
   },
@@ -1254,6 +1295,18 @@ export async function POST(request: NextRequest) {
   }
 
   const { message, sessionId, history, image } = validation.sanitized!;
+  if (CONVERSATION_EXIT_PATTERNS.test(message.toLowerCase())) {
+    const exitResponse =
+      "No problem—I'll stop here. Just message me again if you need help.";
+    return NextResponse.json(
+      {
+        response: exitResponse,
+        sessionId,
+        model: "gpt-4o-mini",
+      },
+      { status: 200, headers: getCorsHeaders(origin) },
+    );
+  }
   const sessionName = deriveSessionName(history, message);
 
   // Session-based rate limiting
@@ -1317,6 +1370,23 @@ export async function POST(request: NextRequest) {
       // Always include trade-in context so agent knows to use tools throughout conversation
       { role: "system", content: TRADE_IN_SYSTEM_CONTEXT },
     ];
+
+    const zepContext = await fetchZepContext(sessionId);
+    let contextInsertIndex = 1;
+    if (zepContext.userSummary) {
+      messages.splice(contextInsertIndex, 0, {
+        role: "system",
+        content: `Customer summary:\n${zepContext.userSummary}`,
+      });
+      contextInsertIndex += 1;
+    }
+    if (zepContext.context) {
+      messages.splice(contextInsertIndex, 0, {
+        role: "system",
+        content: `Context from memory:\n${zepContext.context}`,
+      });
+      contextInsertIndex += 1;
+    }
 
     if (history && history.length > 0) {
       history.forEach((msg: any) => {
@@ -1591,6 +1661,35 @@ export async function POST(request: NextRequest) {
               source,
               success: true,
               latency_ms: toolLatency,
+            });
+          } else if (functionName === "tradezone_graph_query") {
+            const question =
+              typeof functionArgs.question === "string"
+                ? functionArgs.question.trim()
+                : "";
+            if (!question) {
+              toolResult =
+                "I need a specific pricing or bundle question to query the TradeZone graph.";
+            } else {
+              toolResult = await queryZepGraphContext(question, sessionId);
+              toolSource = "product_catalog";
+            }
+
+            toolSummaries.push({
+              name: functionName,
+              args: functionArgs,
+              resultPreview: truncateString(toolResult, 280),
+              source: toolSource,
+            });
+            await logToolRun({
+              request_id: requestId,
+              session_id: sessionId,
+              tool_name: functionName,
+              args: functionArgs,
+              result_preview: toolResult.slice(0, 280),
+              source: toolSource,
+              success: true,
+              latency_ms: 0,
             });
           } else if (functionName === "tradein_update_lead") {
             const toolStart = Date.now();
@@ -1903,6 +2002,12 @@ export async function POST(request: NextRequest) {
       if (autoSubmitResult?.status) {
         tradeInLeadStatus = autoSubmitResult.status;
       }
+    }
+
+    try {
+      await addZepMemoryTurn(sessionId, message, finalResponse);
+    } catch (memoryError) {
+      console.warn("[ChatKit] Failed to persist Zep memory", memoryError);
     }
   } catch (error) {
     console.error("[ChatKit] Error in POST handler:", error);

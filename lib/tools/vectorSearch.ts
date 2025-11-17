@@ -207,6 +207,21 @@ export async function handleVectorSearch(
     let enriched = sanitizedResult;
     let priceSpreadNote = "";
     if (label === "catalog" && catalogMatches.length > 0) {
+      const mentionAtome = /\batome\b/i.test(query);
+      const mentionBnpl =
+        mentionAtome ||
+        /\b(bnpl|instal|installment|instalment|pay\s?later|grabpay|spay)\b/i.test(
+          query,
+        );
+      if (
+        sanitizedResult &&
+        /couldn'?t find|cannot find|no listing|no results/i.test(
+          sanitizedResult.toLowerCase(),
+        )
+      ) {
+        enriched = "";
+      }
+
       const lines = catalogMatches.map((match) => {
         const details: string[] = [];
         const flagshipPrice =
@@ -244,9 +259,16 @@ export async function handleVectorSearch(
           details.push(`  - Trade-in: ${tradeSummaries.join("; ")}`);
         }
 
-        if (match.flagshipCondition?.bnpl?.length) {
-          const bnplPreview = match.flagshipCondition.bnpl
-            .slice(0, 2)
+        const bnplPlans = match.flagshipCondition?.bnpl ?? [];
+        if (bnplPlans.length) {
+          const prioritizedPlans = mentionAtome
+            ? [
+                ...bnplPlans.filter((plan) => plan.providerId === "atome"),
+                ...bnplPlans.filter((plan) => plan.providerId !== "atome"),
+              ]
+            : bnplPlans;
+          const bnplPreview = prioritizedPlans
+            .slice(0, mentionBnpl ? 3 : 2)
             .map(
               (plan) =>
                 `${plan.providerName} ${plan.months}x ${formatCurrency(plan.monthly)}`,

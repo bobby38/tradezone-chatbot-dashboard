@@ -96,7 +96,6 @@ interface FlattenedModel {
   priceRange: PriceRange | null;
   familyRange: PriceRange | null;
   conditions: CatalogConditionSummary[];
-  flagshipCondition: CatalogConditionSummary | null;
 }
 
 interface CatalogContext {
@@ -165,7 +164,16 @@ function toPriceRange(
 
 function selectFlagshipCondition(
   summaries: CatalogConditionSummary[],
+  preferred?: ConditionKey,
 ): CatalogConditionSummary | null {
+  if (preferred) {
+    const preferredMatch = summaries.find(
+      (summary) =>
+        summary.condition === preferred && summary.basePrice !== null,
+    );
+    if (preferredMatch) return preferredMatch;
+  }
+
   for (const preference of CONDITION_PREFERENCE) {
     const candidate = summaries.find(
       (summary) =>
@@ -179,6 +187,112 @@ function selectFlagshipCondition(
 
 function normalizeQuery(query: string): string {
   return tokenize(query).join(" ");
+}
+
+interface QueryIntent {
+  preferCondition?: ConditionKey;
+  includesGen1: boolean;
+  includesGen2: boolean;
+  includesSwitch1: boolean;
+  includesSwitch2: boolean;
+  includesLite: boolean;
+  includesBundle: boolean;
+  includesOled: boolean;
+  includesLcd: boolean;
+}
+
+function deriveQueryIntent(rawQuery: string): QueryIntent {
+  const lower = rawQuery.toLowerCase();
+  const preferPreOwned =
+    /\b(pre[-\s]?owned|preowned|second[-\s]?hand|2nd[-\s]?hand|used|preloved)\b/.test(
+      lower,
+    );
+  const preferBrandNew = /\bbrand new\b|\bnew set\b/.test(lower);
+
+  return {
+    preferCondition: preferPreOwned
+      ? "pre_owned"
+      : preferBrandNew
+        ? "brand_new"
+        : undefined,
+    includesGen1:
+      /\bgen\s*1\b/.test(lower) ||
+      /\bv1\b/.test(lower) ||
+      /\bswitch\s*(?:1|one)\b/.test(lower),
+    includesGen2:
+      /\bgen\s*2\b/.test(lower) ||
+      /\bv2\b/.test(lower) ||
+      /switch\s*gen\s*2/.test(lower),
+    includesSwitch1:
+      /\bswitch\s*(?:1|one)\b/.test(lower) || /\bversion\s*1\b/.test(lower),
+    includesSwitch2: /\bswitch\s*(?:2|two)\b/.test(lower),
+    includesLite: /\blite\b/.test(lower),
+    includesBundle: /\bbundle\b|\bcombo\b|\bpack\b/.test(lower),
+    includesOled: /\boled\b/.test(lower),
+    includesLcd: /\blcd\b/.test(lower) || /\blcd model\b/.test(lower),
+  };
+}
+
+function calculateModelBoost(
+  model: FlattenedModel,
+  intent: QueryIntent,
+): number {
+  const title = model.title.toLowerCase();
+  let boost = 0;
+
+  if (intent.includesSwitch2) {
+    boost += title.includes("switch 2") ? 160 : 0;
+    if (
+      intent.includesSwitch2 &&
+      (title.includes("gen 1") || title.includes("switch gen 1"))
+    ) {
+      boost -= 60;
+    }
+  }
+  if (intent.includesSwitch1 || intent.includesGen1) {
+    if (
+      title.includes("gen 1") ||
+      title.includes("switch gen 1") ||
+      title.includes("switch 1")
+    ) {
+      boost += 160;
+    }
+    if (title.includes("switch 2")) {
+      boost -= 80;
+    }
+  }
+  if (intent.includesGen2) {
+    if (title.includes("gen 2") || title.includes("switch gen 2")) {
+      boost += 80;
+    }
+  }
+  if (intent.includesLite && title.includes("lite")) {
+    boost += 120;
+  }
+  if (intent.includesBundle) {
+    boost += title.includes("bundle") ? 120 : -40;
+  }
+  if (intent.includesOled) {
+    boost += title.includes("oled") ? 80 : -20;
+  }
+  if (intent.includesLcd) {
+    boost += title.includes("lcd") || title.includes("lite") ? 80 : -20;
+  }
+  if (intent.preferCondition === "pre_owned") {
+    if (
+      model.conditions.some((condition) => condition.condition === "pre_owned")
+    ) {
+      boost += 40;
+    }
+  } else if (intent.preferCondition === "brand_new") {
+    if (
+      model.conditions.some((condition) => condition.condition === "brand_new")
+    ) {
+      boost += 20;
+    }
+  }
+
+  return boost;
 }
 
 function buildFlattenedModels(master: ProductsMasterFile): FlattenedModel[] {
@@ -224,8 +338,6 @@ function buildFlattenedModels(master: ProductsMasterFile): FlattenedModel[] {
         conditions.map((condition) => condition.basePrice),
       );
 
-      const flagshipCondition = selectFlagshipCondition(conditions);
-
       const tokens = unique([
         ...tokenize(model.title),
         ...aliases.flatMap((alias) => tokenize(alias)),
@@ -244,7 +356,6 @@ function buildFlattenedModels(master: ProductsMasterFile): FlattenedModel[] {
         priceRange,
         familyRange: familyRanges.get(family.family_id) || null,
         conditions,
-        flagshipCondition,
       });
     });
   });
@@ -309,18 +420,25 @@ function formatPriceLabel(
   return `${condition.basePrice.toFixed(0)} (${condition.label})`;
 }
 
-function toCatalogMatch(model: FlattenedModel): CatalogMatch {
+function toCatalogMatch(
+  model: FlattenedModel,
+  preferredCondition?: ConditionKey,
+): CatalogMatch {
+  const flagshipCondition = selectFlagshipCondition(
+    model.conditions,
+    preferredCondition,
+  );
   return {
     modelId: model.modelId,
     familyId: model.familyId,
     familyTitle: model.familyTitle,
     name: model.title,
     permalink: model.permalink,
-    price: formatPriceLabel(model.flagshipCondition),
+    price: formatPriceLabel(flagshipCondition),
     priceRange: model.priceRange,
     familyRange: model.familyRange,
     conditions: model.conditions,
-    flagshipCondition: model.flagshipCondition,
+    flagshipCondition,
     warnings: model.warnings,
   };
 }
@@ -329,6 +447,7 @@ function scoreModel(
   model: FlattenedModel,
   normalizedQuery: string,
   queryTokens: string[],
+  intent: QueryIntent,
 ): number {
   if (!normalizedQuery) return 0;
 
@@ -362,7 +481,7 @@ function scoreModel(
   );
   score += Math.max(0, 40 - distance * 4);
 
-  return score;
+  return score + calculateModelBoost(model, intent);
 }
 
 export async function findCatalogMatches(
@@ -372,6 +491,7 @@ export async function findCatalogMatches(
   const normalizedQuery = normalizeQuery(query);
   if (!normalizedQuery) return [];
 
+  const intent = deriveQueryIntent(query);
   const queryTokens = tokenize(normalizedQuery);
   const { models, aliasMap } = await loadCatalogContext();
 
@@ -383,18 +503,27 @@ export async function findCatalogMatches(
     .map((model) => ({
       model,
       score: aliasCandidates
-        ? 250 + (model.flagshipCondition?.basePrice ?? 0) / 1000
-        : scoreModel(model, normalizedQuery, queryTokens),
+        ? 250 +
+          (selectFlagshipCondition(model.conditions, intent.preferCondition)
+            ?.basePrice ?? 0) /
+            1000
+        : scoreModel(model, normalizedQuery, queryTokens, intent),
     }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      const aPrice = a.model.flagshipCondition?.basePrice ?? 0;
-      const bPrice = b.model.flagshipCondition?.basePrice ?? 0;
+      const aPrice =
+        selectFlagshipCondition(a.model.conditions, intent.preferCondition)
+          ?.basePrice ?? 0;
+      const bPrice =
+        selectFlagshipCondition(b.model.conditions, intent.preferCondition)
+          ?.basePrice ?? 0;
       return bPrice - aPrice;
     });
 
-  return scored.slice(0, limit).map(({ model }) => toCatalogMatch(model));
+  return scored
+    .slice(0, limit)
+    .map(({ model }) => toCatalogMatch(model, intent.preferCondition));
 }
 
 export async function findClosestMatch(query: string): Promise<string | null> {

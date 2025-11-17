@@ -2893,6 +2893,10 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 - Outputs:
   - `products_master.json`: grouped by `family → model → condition`, includes computed instalment totals (factor 1.055 default), BNPL splits (Atome 3, SPay Later 6, GrabPay Later 4), alias list, bundle/storage/region metadata, and attached trade-in ranges when a match exists.
   - `alias_index.json`: lower-case alias to `model_id` map (includes brandless/descriptor-free + manual synonyms from `data/tradein_synonyms.json`) for routing chat queries.
-  - `validation_report.json`: per-family counts + price ranges, factor outlier list (currently 3: Switch Lite preowned, DJI Osmo 360 Adventure, Legion Go 2 1TB), unmatched trade grid rows (56) so ops can patch synonyms or catalog gaps.
+- `validation_report.json`: per-family counts + price ranges, factor outlier list (currently 3: Switch Lite preowned, DJI Osmo 360 Adventure, Legion Go 2 1TB), unmatched trade grid rows (56) so ops can patch synonyms or catalog gaps.
 - Script auto-flags instalment factors outside 1.04–1.07 and captures all warranty blurbs it finds inside product cards; warnings show up in `validation_report` and on each model entry.
 - Future data refresh: run `npm run refresh:catalog` first (updates WooCommerce snapshot) then `npm run catalog:build`. Commit refreshed `/data/catalog/*` alongside any plan notes so the agent + dashboards stay in sync with price cycles.
+- Zep memory integration:
+  - Set `ZEP_API_KEY` (project key) and `ZEP_CATALOG_GRAPH_ID` (target graph) in env.
+  - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`.
+  - `/api/chatkit/agent` automatically fetches `context` + `user_summary` from Zep, stores each turn via `addZepMemoryTurn`, and exposes the new `tradezone_graph_query` tool so GPT can pull structured bundle/trade relationships when vector search is noisy.
