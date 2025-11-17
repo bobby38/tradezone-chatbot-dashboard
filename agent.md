@@ -2898,5 +2898,6 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 - Future data refresh: run `npm run refresh:catalog` first (updates WooCommerce snapshot) then `npm run catalog:build`. Commit refreshed `/data/catalog/*` alongside any plan notes so the agent + dashboards stay in sync with price cycles.
 - Zep memory integration:
   - Set `ZEP_API_KEY` (project key) and `ZEP_CATALOG_GRAPH_ID` (target graph) in env.
-  - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`.
+  - If the catalog graph doesn’t exist yet, run `npx tsx scripts/create-zep-graph.ts` once; the script now prints the canonical ID even if the API returns `graphId` instead of `graph_id`. Copy the logged `ZEP_CATALOG_GRAPH_ID=...` into `.env.local` before syncing.
+  - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`. Successful runs log ten batches (182 records currently) with no 404s—rerun whenever catalog data changes.
   - `/api/chatkit/agent` automatically fetches `context` + `user_summary` from Zep, stores each turn via `addZepMemoryTurn`, and exposes the new `tradezone_graph_query` tool so GPT can pull structured bundle/trade relationships when vector search is noisy.
