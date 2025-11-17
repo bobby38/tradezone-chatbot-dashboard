@@ -2864,3 +2864,26 @@ https://trade.rezult.co/widget/chat-widget-enhanced.js
 - Verify all required environment variables in staging/production.
 - Run `npm run lint` to catch any obvious regressions before manual passes.
 - Arrange browser devtools + Supabase dashboard access during testing to monitor network calls and database updates live.
+
+## 10. Catalog & Pricing Normalization Plan — November 17, 2025
+
+### Goal
+Create a single, trustworthy pricing + trade grid so the chatbot, dashboards, and ops teams stop fighting WooCommerce export noise (cheapest-SKU bias, bundle ambiguity, BNPL typos) and can keep future price cycles sustainable.
+
+### Pillars
+1. **Authoritative Catalog Layer** – Introduce `products_master` (JSON or Supabase table) grouped by `product_family → model → condition`. Each leaf stores: base cash price, stock flag, warranty, edition/options, computed `instalment_total`, and optional `bundleMetadata` (game, accessory, export/local tag).
+2. **Alias & Synonym Index** – Maintain a dedicated lookup per family (e.g., `switch`, `ps5`, `xbox`, `handheld_pc`) with spellings, nicknames, SKU IDs, and WooCommerce variation IDs. Chat + dashboards hit this index first to resolve “Switch 2 bundle” vs “Switch Lite preowned”.
+3. **Trade-In Mapping** – Normalise `trade_in_prices.json` into the same IDs so the agent can answer “trade vs buy” questions with deterministic joins (fields: `trade_price_min`, `trade_price_max`, storage, accepted accessories, payout notes).
+4. **BNPL Logic Module** – Store a per-family `instalment_factor` (default 1.055). Calculate `instalment_total = round(base_price × factor, 2)` and derive monthly payments at runtime (`monthly = instalment_total / months`, final payment rounded). Providers (Atome, SPay Later, GrabPay Later) just declare supported month counts.
+5. **Pricing Selection Rules** – When the user asks “price of a Switch,” default to flagship new unit but also return `[min_price, max_price]` plus quick filters to narrow by bundle/condition. Persist logic in agent instructions so responses don’t float with WooCommerce ordering.
+6. **Outlier Detection & Review Loop** – During ingestion compute `factor = instalment_total / base_price`; auto-flag rows outside 1.04–1.07 (or missing aliases) and write them to a `data_quality_flags` table/report so ops can fix before training/publishing.
+7. **Installment FAQ Snippets** – Store BNPL eligibility + fees once per provider and reference them in answers, emails, and dashboards to keep compliance copy consistent.
+
+### Execution Steps
+1. **ETL** – Write a script (Node/Python) that ingests WooCommerce JSON, collapses variations into the `products_master` schema, and outputs both JSON + CSV for review. Include automated BNPL/outlier validation in the run log.
+2. **Mapping Merge** – Extend the ETL to pull `trade_in_prices.json`, map by alias list, and report any models that fail to match so ops can patch synonyms or add pricing.
+3. **Validation Report** – Emit per-family summaries: price range, instalment factor distribution, missing warranties/options, and alias coverage. Store recent runs in Supabase (or `/scripts/reports/`) for audit history.
+4. **API + Agent Update** – Point `/api/tools/vector-search` + catalog resolvers at the new master file/table, and update agent prompt instructions to mention the flagship + price-range response format.
+5. **Ops Interface (optional but recommended)** – Provide a simple sheet or dashboard to edit catalog entries, BNPL factors, and synonyms without touching raw JSON so price cycles remain sustainable.
+
+Document progress + deviations here whenever the plan evolves so every teammate sees the latest guardrails before touching pricing logic.
