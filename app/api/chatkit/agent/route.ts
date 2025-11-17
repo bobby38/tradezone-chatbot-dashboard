@@ -116,19 +116,17 @@ function renderCatalogMatches(
   matches: Awaited<ReturnType<typeof findCatalogMatches>>,
 ) {
   if (!matches.length) return "";
-  const lines = matches.map((match, index) => {
-    const order = index + 1;
-    const price = match.price ? ` — ${match.price}` : "";
-    const availability = match.stockStatus
-      ? ` (Availability: ${match.stockStatus})`
-      : "";
+  const lines = matches.slice(0, 3).map((match) => {
     const title = match.permalink
       ? `[${match.name}](${match.permalink})`
       : match.name;
-    const image = match.image ? `\n![${match.name}](${match.image})` : "";
-    return `**${order}. ${title}**${price}${availability}${image}`;
+    const price = match.price ? ` — ${match.price}` : "";
+    const availability = match.stockStatus
+      ? ` (${match.stockStatus === "instock" ? "In stock" : match.stockStatus})`
+      : "";
+    return `- ${title}${price}${availability}`;
   });
-  return lines.join("\n\n");
+  return lines.join("\n");
 }
 
 function deriveSessionName(
@@ -636,7 +634,7 @@ async function runHybridSearch(
 
   const catalogSection =
     catalogMatches.length > 0
-      ? `Here are items from the TradeZone catalog that match your request:\n\n${renderCatalogMatches(catalogMatches)}`
+      ? `Here are items from the TradeZone catalog that match your request:\n\n${renderCatalogMatches(catalogMatches)}\n\nWant me to read the details for any of these?`
       : "";
 
   const disallowedVectorPatterns = [
