@@ -1583,6 +1583,20 @@ export async function POST(request: NextRequest) {
         }
       });
     }
+
+    const isFirstTurn = !history || history.length === 0;
+    const userOpenedWithQuestion =
+      isFirstTurn &&
+      /\?|have\s+you|do\s+you|got\s+any|price|how much|what'?s|need\s|looking for|recommend|suggest/i.test(
+        message,
+      );
+    if (userOpenedWithQuestion) {
+      messages.push({
+        role: "system",
+        content:
+          "Skip the canned greeting. The user already asked a question, so reply directly to it.",
+      });
+    }
     const userMessage: OpenAI.Chat.ChatCompletionMessageParam = image
       ? {
           role: "user",
