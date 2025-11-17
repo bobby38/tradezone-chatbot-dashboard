@@ -1,0 +1,986 @@
+{
+  "generated_at": "2025-11-17T07:42:34.310Z",
+  "variant_count": 196,
+  "model_count": 88,
+  "families": {
+    "misc": {
+      "models": 3,
+      "priceRange": [
+        249,
+        449
+      ],
+      "warnings": [
+        "misc-pico_4_ultra_128gb_256gb_option: PiCO 4 256GB SG (1 yr local warranty)",
+        "misc-pico_4_ultra_128gb_256gb_option: PiCO 4 128GB SG (1 yr local warranty)",
+        "misc-xreal_one_pro_xreal_air_2_ultra_xreal_one_xreal_air_2_pro_xreal_beam_pro_option: Brand new sets comes with 2 weeks store warranty.",
+        "misc-xreal_one_pro_xreal_air_2_ultra_xreal_one_xreal_air_2_pro_xreal_beam_pro_option: Preowned sets comes with 1 week store warranty."
+      ]
+    },
+    "vr_wearables": {
+      "models": 13,
+      "priceRange": [
+        100,
+        899
+      ],
+      "warnings": [
+        "vr_wearables-dji_osmo_nano_128gb_12_months_dji_warranty: DJI Osmo Nano 128GB (12 months DJI warranty)",
+        "vr_wearables-dji_osmo_nano_64gb_12_months_dji_warranty: DJI Osmo Nano 64GB (12 months DJI warranty)",
+        "vr_wearables-dji_osmo_pocket_3_creator_combo_12_months_dji_warranty: DJI Osmo Pocket 3 Creator Combo (12 months DJI warranty)",
+        "vr_wearables-dji_osmo_pocket_3_12_months_dji_warranty: DJI Osmo Pocket 3 (12 months DJI warranty)",
+        "vr_wearables-dji_osmo_pocket_3_12_months_dji_warranty: Brand new: 1 year local Singapore DJI warranty",
+        "vr_wearables-dji_osmo_pocket_3_12_months_dji_warranty: Preowned: 1 week store warranty (remaining warranty depends on how much is left with Dji)",
+        "vr_wearables-meta_quest_3s_128gb: All brand new sets comes with 12 months meta warranty.",
+        "vr_wearables-meta_quest_3s_128gb: Preowned sets: 1 month store warranty",
+        "vr_wearables-dji_osmo_360_adventure_combo_12_months_dji_warranty: brand_new factor 1.081 deviates from 1.055",
+        "vr_wearables-dji_osmo_360_adventure_combo_12_months_dji_warranty: DJI Osmo 360 Adventure Combo (12 months DJI warranty)",
+        "vr_wearables-dji_osmo_360_12_months_dji_warranty: DJI Osmo 360 (12 months DJI warranty)",
+        "vr_wearables-ps5_psvr_2: Brand new sets: 12 months store warranty"
+      ]
+    },
+    "handheld_pc": {
+      "models": 37,
+      "priceRange": [
+        100,
+        1899
+      ],
+      "warnings": [
+        "handheld_pc-steam_deck_lcd_512gb_change_from_256gb_model: If need warranty is add one year store warranty @$60",
+        "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg: All brand new sets comes with 24 month msi warranty.",
+        "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg: Preowned sets: 1 month store warranty",
+        "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg: Additional one year store warranty @$60",
+        "handheld_pc-asus_rog_ally_512gb_sg: All brand new sets comes with 2 years Asus warranty.",
+        "handheld_pc-asus_rog_ally_512gb_sg: Preowned sets: 1 month store warranty",
+        "handheld_pc-asus_rog_ally_512gb_sg: Additional one year store warranty @$60",
+        "handheld_pc-lenovo_legion_go_2_1tb: brand_new factor 1.121 deviates from 1.055",
+        "handheld_pc-lenovo_legion_go_512gb_english_export_set: Brand new: 2 years Lenovo warranty",
+        "handheld_pc-lenovo_legion_go_512gb_english_export_set: *Preowned sets have 1 month store warranty (existing warranty still have supplier will still run)",
+        "handheld_pc-lenovo_legion_go_512gb_english_export_set: Additional one year store warranty @$60",
+        "handheld_pc-playstation_portal: Japan set: One year Store warranty (no Singapore Sony warranty)"
+      ]
+    },
+    "playstation_5": {
+      "models": 15,
+      "priceRange": [
+        79.9,
+        1299
+      ],
+      "warnings": [
+        "playstation_5-0_ps5_digital_fat_825gb_sg: Japan set: One year store warranty (warranty in Japan)",
+        "playstation_5-0_ps5_digital_fat_825gb_sg: Singapore set: One year Sony Singapore warranty",
+        "playstation_5-ps5_disc_slim_1tb_japan_ghost_of_yotei_gold_limited_edition: Japan set: One year store warranty (warranty in Japan)",
+        "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb: All brand new sets comes with 1 Year Sony Warranty",
+        "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb: Preowned sets: 1 month store warranty",
+        "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb: Additional one year store warranty @$60"
+      ]
+    },
+    "nintendo_switch": {
+      "models": 8,
+      "priceRange": [
+        39.9,
+        779
+      ],
+      "warnings": [
+        "nintendo_switch-nintendo_switch_lite_all_colours: pre_owned factor 1.242 deviates from 1.055",
+        "nintendo_switch-nintendo_switch_lite_all_colours: Brand new sets: 1 year store warranty",
+        "nintendo_switch-nintendo_switch_lite_all_colours: Preowned sets: Comes with one month store warranty",
+        "nintendo_switch-nintendo_switch_lite_all_colours: Additional one year store warranty @$60"
+      ]
+    },
+    "playstation_4": {
+      "models": 6,
+      "priceRange": [
+        189,
+        319
+      ],
+      "warnings": [
+        "playstation_4-ps4_fat_500gb_1_week_store_warranty: Able to extend additional one more year of store warranty @$60 ONLY!!"
+      ]
+    },
+    "xbox_series": {
+      "models": 6,
+      "priceRange": [
+        399,
+        899
+      ],
+      "warnings": [
+        "xbox_series-xbox_series_s_512gb: Able to extend additional one more year of store warranty @$60 ONLY!!"
+      ]
+    }
+  },
+  "factorOutliers": [
+    {
+      "modelId": "vr_wearables-dji_osmo_360_adventure_combo_12_months_dji_warranty",
+      "condition": "brand_new",
+      "observedFactor": 1.0806675224646984,
+      "message": "DJI Osmo 360 Adventure Combo (12 months DJI warranty) brand_new factor 1.081"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_2_1tb",
+      "condition": "brand_new",
+      "observedFactor": 1.1209756097560977,
+      "message": "Lenovo Legion Go 2 1TB brand_new factor 1.121"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_lite_all_colours",
+      "condition": "pre_owned",
+      "observedFactor": 1.242248520710059,
+      "message": "Nintendo Switch Lite (all colours) pre_owned factor 1.242"
+    }
+  ],
+  "unmatchedTradeEntries": [
+    {
+      "productFamily": "Steam Deck",
+      "productModel": "Steam Deck OLED",
+      "variant": "512GB",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 550,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Steam Deck",
+      "productModel": "Steam Deck OLED",
+      "variant": "1TB",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 700,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally",
+      "variant": "512GB",
+      "condition": "pre_owned",
+      "tradeMin": 300,
+      "tradeMax": 300,
+      "brandNewPrice": null,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 400,
+      "tradeMax": 400,
+      "brandNewPrice": null,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 600,
+      "tradeMax": 600,
+      "brandNewPrice": 800,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 700,
+      "tradeMax": 700,
+      "brandNewPrice": 900,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X Xbox",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 800,
+      "tradeMax": 800,
+      "brandNewPrice": 1000,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X Xbox",
+      "variant": "2TB",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 1000,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go Gen 1",
+      "variant": "512GB",
+      "condition": "pre_owned",
+      "tradeMin": 400,
+      "tradeMax": 400,
+      "brandNewPrice": 600,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go Gen 1",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 450,
+      "tradeMax": 450,
+      "brandNewPrice": 650,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go Gen 1",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 500,
+      "tradeMax": 500,
+      "brandNewPrice": 700,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion GO S Z1 Ext",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 700,
+      "tradeMax": 700,
+      "brandNewPrice": 900,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go 2",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 1100,
+      "tradeMax": 1100,
+      "brandNewPrice": 1300,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go 2",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 1300,
+      "tradeMax": 1300,
+      "brandNewPrice": 1400,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch Lite",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 60,
+      "tradeMax": 60,
+      "brandNewPrice": 110,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch Gen 1/2",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 70,
+      "tradeMax": 70,
+      "brandNewPrice": 150,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch OLED",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 100,
+      "tradeMax": 100,
+      "brandNewPrice": 250,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch 2",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 350,
+      "tradeMax": 350,
+      "brandNewPrice": 500,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "White",
+      "condition": "pre_owned",
+      "tradeMin": 100,
+      "tradeMax": 130,
+      "brandNewPrice": 200,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "Midnight Black",
+      "condition": "pre_owned",
+      "tradeMin": 110,
+      "tradeMax": 140,
+      "brandNewPrice": 220,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "White",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 200,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "Midnight Black",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 220,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS VR2",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 250,
+      "tradeMax": 250,
+      "brandNewPrice": 400,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS VR2",
+      "variant": "standard",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 400,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Creator Combo",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 350,
+      "tradeMax": 400,
+      "brandNewPrice": 650,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Handheld",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 300,
+      "tradeMax": 350,
+      "brandNewPrice": 500,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Creator Combo",
+      "variant": "standard",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 650,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Handheld",
+      "variant": "standard",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 500,
+      "source": "2025-11-12"
+    },
+    {
+      "productFamily": "Steam Deck",
+      "productModel": "Steam Deck OLED",
+      "variant": "512GB",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 550,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Steam Deck",
+      "productModel": "Steam Deck OLED",
+      "variant": "1TB",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 700,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally",
+      "variant": "512GB",
+      "condition": "pre_owned",
+      "tradeMin": 300,
+      "tradeMax": 300,
+      "brandNewPrice": null,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 400,
+      "tradeMax": 400,
+      "brandNewPrice": null,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 600,
+      "tradeMax": 600,
+      "brandNewPrice": 800,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 700,
+      "tradeMax": 700,
+      "brandNewPrice": 900,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X Xbox",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 800,
+      "tradeMax": 800,
+      "brandNewPrice": 1000,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Asus",
+      "productModel": "ROG Ally X Xbox",
+      "variant": "2TB",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 1000,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go Gen 1",
+      "variant": "512GB",
+      "condition": "pre_owned",
+      "tradeMin": 400,
+      "tradeMax": 400,
+      "brandNewPrice": 600,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go Gen 1",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 450,
+      "tradeMax": 450,
+      "brandNewPrice": 650,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go Gen 1",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 500,
+      "tradeMax": 500,
+      "brandNewPrice": 700,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion GO S Z1 Ext",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 700,
+      "tradeMax": 700,
+      "brandNewPrice": 900,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go 2",
+      "variant": "1TB",
+      "condition": "pre_owned",
+      "tradeMin": 1100,
+      "tradeMax": 1100,
+      "brandNewPrice": 1300,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Lenovo",
+      "productModel": "Legion Go 2",
+      "variant": "2TB",
+      "condition": "pre_owned",
+      "tradeMin": 1300,
+      "tradeMax": 1300,
+      "brandNewPrice": 1400,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch Lite",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 60,
+      "tradeMax": 60,
+      "brandNewPrice": 110,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch Gen 1/2",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 70,
+      "tradeMax": 70,
+      "brandNewPrice": 150,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch OLED",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 100,
+      "tradeMax": 100,
+      "brandNewPrice": 250,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "Nintendo",
+      "productModel": "Switch 2",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 350,
+      "tradeMax": 350,
+      "brandNewPrice": 500,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "White",
+      "condition": "pre_owned",
+      "tradeMin": 100,
+      "tradeMax": 130,
+      "brandNewPrice": 200,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "Midnight Black",
+      "condition": "pre_owned",
+      "tradeMin": 110,
+      "tradeMax": 140,
+      "brandNewPrice": 220,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "White",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 200,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS Portal",
+      "variant": "Midnight Black",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 220,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS VR2",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 250,
+      "tradeMax": 250,
+      "brandNewPrice": 400,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "PlayStation",
+      "productModel": "PS VR2",
+      "variant": "standard",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 400,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Creator Combo",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 350,
+      "tradeMax": 400,
+      "brandNewPrice": 650,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Handheld",
+      "variant": "standard",
+      "condition": "pre_owned",
+      "tradeMin": 300,
+      "tradeMax": 350,
+      "brandNewPrice": 500,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Creator Combo",
+      "variant": "standard",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 650,
+      "source": "user_provided_price_list_2025-11-12"
+    },
+    {
+      "productFamily": "DJI",
+      "productModel": "Osmo Pocket 3 Handheld",
+      "variant": "standard",
+      "condition": "brand_new",
+      "tradeMin": null,
+      "tradeMax": null,
+      "brandNewPrice": 500,
+      "source": "user_provided_price_list_2025-11-12"
+    }
+  ],
+  "modelsWithoutTrade": [
+    {
+      "modelId": "misc-sony_wh_1000xm6_wh_1000xm5_black_midnight_blue_silver_headphone_option",
+      "title": "SONY WH-1000XM6 / WH-1000XM5 Black/Midnight Blue /Silver Headphone Option"
+    },
+    {
+      "modelId": "vr_wearables-dji_osmo_nano_128gb_12_months_dji_warranty",
+      "title": "DJI Osmo Nano 128GB (12 months DJI warranty)"
+    },
+    {
+      "modelId": "vr_wearables-dji_osmo_nano_64gb_12_months_dji_warranty",
+      "title": "DJI Osmo Nano 64GB (12 months DJI warranty)"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_oled_1tb_limited_edition_transparent",
+      "title": "Steam Deck OLED 1TB Limited Edition Transparent"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_oled_2tb_change_from_512gb_model",
+      "title": "Steam Deck OLED 2TB (change from 512gb model)"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_oled_1tb",
+      "title": "Steam Deck OLED 1TB"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_oled_512gb",
+      "title": "Steam Deck OLED 512GB"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_lcd_2tb_change_from_256gb_model",
+      "title": "Steam Deck LCD 2TB (change from 256gb model)"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_lcd_1tb_change_from_256gb_model",
+      "title": "Steam Deck LCD 1TB (change from 256gb model)"
+    },
+    {
+      "modelId": "handheld_pc-steam_deck_lcd_512gb_change_from_256gb_model",
+      "title": "Steam Deck LCD 512GB (change from 256gb model)"
+    },
+    {
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_1tb_sg",
+      "title": "MSI Claw 8 AI+ UT7 1TB SG"
+    },
+    {
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_neon_green",
+      "title": "MSI Claw A8 BZ2EM Z2 Extreme 1TB SG (Neon Green)"
+    },
+    {
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_polar_tempest",
+      "title": "MSI Claw A8 BZ2EM Z2 Extreme 1TB SG (Polar tempest)"
+    },
+    {
+      "modelId": "handheld_pc-msi_claw_a1m_020sg_ut7_16g_1tb_sg",
+      "title": "MSI Claw A1M-020SG UT7 16G 1TB SG"
+    },
+    {
+      "modelId": "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg",
+      "title": "MSI Claw A1M-021SG UT5 512GB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "title": "Asus Rog Ally X XBOX 4TB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_2tb_sg",
+      "title": "Asus Rog Ally X XBOX 2TB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_1tb_sg",
+      "title": "Asus Rog Ally X XBOX 1TB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_x_4tb_sg",
+      "title": "Asus Rog Ally X 4TB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_x_2tb_sg",
+      "title": "Asus Rog Ally X 2TB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_x_1tb_sg",
+      "title": "Asus Rog Ally X 1TB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_xbox_512gb_sg",
+      "title": "Asus Rog Ally XBOX 512GB SG"
+    },
+    {
+      "modelId": "handheld_pc-asus_rog_ally_512gb_sg",
+      "title": "Asus Rog Ally 512GB SG"
+    },
+    {
+      "modelId": "playstation_5-ps5_disc_pro_2tb_japan_install_from_digital_set_disc_drive",
+      "title": "PS5 Disc Pro 2TB Japan install from digital set disc drive"
+    },
+    {
+      "modelId": "playstation_5-ps5_disc_slim_1tb_sg",
+      "title": "PS5 Disc Slim 1TB SG"
+    },
+    {
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan",
+      "title": "PS5 Disc Slim 1TB Japan"
+    },
+    {
+      "modelId": "playstation_5-ps5_digital_pro_2tb_sg",
+      "title": "PS5 Digital Pro 2TB SG"
+    },
+    {
+      "modelId": "playstation_5-ps5_digital_pro_2tb_japan",
+      "title": "PS5 Digital Pro 2TB Japan"
+    },
+    {
+      "modelId": "playstation_5-ps5_digital_slim_1tb_sg",
+      "title": "PS5 Digital Slim 1TB SG"
+    },
+    {
+      "modelId": "playstation_5-ps5_digital_slim_1tb_japan",
+      "title": "PS5 Digital Slim 1TB Japan"
+    },
+    {
+      "modelId": "playstation_5-0_ps5_digital_fat_825gb_sg",
+      "title": "0 PS5 Digital Fat 825GB SG"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_2_console_pokemon_legends_z_a_bundle",
+      "title": "Nintendo Switch 2 Console + Pokemon Legends: Z-A Bundle"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_2_console_mario_kart_world_bundle",
+      "title": "Nintendo Switch 2 Console + Mario Kart World Bundle"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "title": "Nintendo Switch 2 Console"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_oled_neon_red_blue_white",
+      "title": "Nintendo Switch OLED (Neon Red Blue / White)"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_gen_2_neon_red_grey",
+      "title": "Nintendo Switch Gen 2(Neon Red / Grey)"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_gen_1_neon_red_grey",
+      "title": "Nintendo Switch Gen 1 (Neon Red / Grey)"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_lite_all_colours",
+      "title": "Nintendo Switch Lite (all colours)"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_2_2tb_upgrade_from_1tb_model",
+      "title": "Lenovo Legion Go 2 2TB (upgrade from 1TB model)"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_2_1tb",
+      "title": "Lenovo Legion Go 2 1TB"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_s_1tb",
+      "title": "Lenovo Legion Go S 1TB"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_2tb_english_export_set_upgrade_from_512gb_set",
+      "title": "Lenovo Legion Go 2TB (English export set) upgrade from 512GB set"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_1tb_english_export_set_upgrade_from_512gb_set",
+      "title": "Lenovo Legion Go 1TB (English export set) upgrade from 512GB set"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "title": "Lenovo Legion Go 512GB (English export set)"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_s_512gb",
+      "title": "Lenovo Legion Go S 512GB"
+    },
+    {
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "title": "Lenovo Legion Go 512GB (English export set)"
+    },
+    {
+      "modelId": "playstation_5-ps5_dualsense_edge_30th_anniversary_standard_wireless_controllers_red_black_white_blue_camo_option",
+      "title": "PS5 Dualsense Edge / 30th Anniversary/ Standard Wireless Controllers (red/black/white/blue/camo) Option"
+    },
+    {
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition_29_90_pouch_19_90_case_19_90_screen_protector",
+      "title": "Playstation Portal 30th Anniversary Limited Edition + $29.90 Pouch + $19.90 Case + $19.90 Screen Protector"
+    },
+    {
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition",
+      "title": "Playstation Portal 30th Anniversary Limited Edition"
+    },
+    {
+      "modelId": "handheld_pc-playstation_portal_midnight_black_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "title": "Playstation Portal Midnight Black Bundle Discount + $29.90 Pouch + $19.90 Case + $19.90 Screen Protector"
+    },
+    {
+      "modelId": "handheld_pc-playstation_portal_midnight_black",
+      "title": "Playstation Portal Midnight Black"
+    },
+    {
+      "modelId": "handheld_pc-playstation_portal_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "title": "Playstation Portal Bundle Discount + $29.90 Pouch + $19.90 Case + $19.90 Screen Protector"
+    },
+    {
+      "modelId": "handheld_pc-playstation_portal",
+      "title": "Playstation Portal"
+    },
+    {
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan_ghost_of_yotei_gold_limited_edition",
+      "title": "PS5 Disc Slim 1TB Japan Ghost of Yotei Gold Limited Edition"
+    },
+    {
+      "modelId": "misc-xreal_one_pro_xreal_air_2_ultra_xreal_one_xreal_air_2_pro_xreal_beam_pro_option",
+      "title": "Xreal One Pro / Xreal Air 2 Ultra / Xreal One / Xreal Air 2 Pro / Xreal Beam Pro Option"
+    },
+    {
+      "modelId": "playstation_5-ps5_slim_disc_30th_anniversary_limited_edition_1tb",
+      "title": "PS5 Slim Disc 30th Anniversary Limited Edition 1TB"
+    },
+    {
+      "modelId": "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb",
+      "title": "PS5 Slim Digital 30th Anniversary Limited Edition 1TB"
+    },
+    {
+      "modelId": "vr_wearables-oakley_meta_hstn_smart_ai_glasses_option",
+      "title": "Oakley Meta HSTN Smart AI Glasses Option"
+    },
+    {
+      "modelId": "vr_wearables-rayban_meta_wayfarer_skyler_smart_glasses_l_meta_glasses_l_smart_glasses_option",
+      "title": "RayBan Meta Wayfarer/Skyler Smart Glasses l Meta Glasses l Smart Glasses Option"
+    },
+    {
+      "modelId": "vr_wearables-dji_osmo_pocket_3_creator_combo_12_months_dji_warranty",
+      "title": "DJI Osmo Pocket 3 Creator Combo (12 months DJI warranty)"
+    },
+    {
+      "modelId": "vr_wearables-dji_osmo_pocket_3_12_months_dji_warranty",
+      "title": "DJI Osmo Pocket 3 (12 months DJI warranty)"
+    },
+    {
+      "modelId": "vr_wearables-rokid_max_2_station_rokid_max_2_rokid_station_2_black_ar_glasses_option",
+      "title": "Rokid Max 2 + Station / Rokid Max 2 / Rokid Station 2 Black AR Glasses Option"
+    },
+    {
+      "modelId": "vr_wearables-meta_quest_3s_256gb",
+      "title": "Meta Quest 3S 256GB"
+    },
+    {
+      "modelId": "vr_wearables-meta_quest_3s_128gb",
+      "title": "Meta Quest 3S 128GB"
+    },
+    {
+      "modelId": "playstation_5-ps5_fat_spiderman",
+      "title": "PS5 Fat Spiderman"
+    },
+    {
+      "modelId": "xbox_series-xbox_series_s_512gb",
+      "title": "Xbox Series S 512GB"
+    },
+    {
+      "modelId": "vr_wearables-dji_osmo_360_adventure_combo_12_months_dji_warranty",
+      "title": "DJI Osmo 360 Adventure Combo (12 months DJI warranty)"
+    },
+    {
+      "modelId": "vr_wearables-dji_osmo_360_12_months_dji_warranty",
+      "title": "DJI Osmo 360 (12 months DJI warranty)"
+    },
+    {
+      "modelId": "xbox_series-xbox_series_x_white_digital_1tb",
+      "title": "Xbox Series X White Digital 1TB"
+    },
+    {
+      "modelId": "xbox_series-xbox_series_s_1tb",
+      "title": "Xbox Series S 1TB"
+    },
+    {
+      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
+      "title": "Ayaneo 3 A1 9 HX370/8840U 512GB/1TB/2TB Option"
+    },
+    {
+      "modelId": "vr_wearables-ps5_psvr_2",
+      "title": "PS5 PSVR 2"
+    },
+    {
+      "modelId": "nintendo_switch-nintendo_switch_pro_controller",
+      "title": "Nintendo Switch Pro Controller"
+    }
+  ]
+}

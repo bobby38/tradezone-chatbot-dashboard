@@ -2887,3 +2887,12 @@ Create a single, trustworthy pricing + trade grid so the chatbot, dashboards, an
 5. **Ops Interface (optional but recommended)** – Provide a simple sheet or dashboard to edit catalog entries, BNPL factors, and synonyms without touching raw JSON so price cycles remain sustainable.
 
 Document progress + deviations here whenever the plan evolves so every teammate sees the latest guardrails before touching pricing logic.
+
+### 2025-11-17 Implementation Update
+- Added `npm run catalog:build` (runs `scripts/build-products-master.ts`) to ingest `public/tradezone-WooCommerce-Products.json` + trade-in CSV/JSONL and emit normalized artifacts under `data/catalog/`.
+- Outputs:
+  - `products_master.json`: grouped by `family → model → condition`, includes computed instalment totals (factor 1.055 default), BNPL splits (Atome 3, SPay Later 6, GrabPay Later 4), alias list, bundle/storage/region metadata, and attached trade-in ranges when a match exists.
+  - `alias_index.json`: lower-case alias to `model_id` map (includes brandless/descriptor-free + manual synonyms from `data/tradein_synonyms.json`) for routing chat queries.
+  - `validation_report.json`: per-family counts + price ranges, factor outlier list (currently 3: Switch Lite preowned, DJI Osmo 360 Adventure, Legion Go 2 1TB), unmatched trade grid rows (56) so ops can patch synonyms or catalog gaps.
+- Script auto-flags instalment factors outside 1.04–1.07 and captures all warranty blurbs it finds inside product cards; warnings show up in `validation_report` and on each model entry.
+- Future data refresh: run `npm run refresh:catalog` first (updates WooCommerce snapshot) then `npm run catalog:build`. Commit refreshed `/data/catalog/*` alongside any plan notes so the agent + dashboards stay in sync with price cycles.

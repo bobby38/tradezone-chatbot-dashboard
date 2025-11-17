@@ -1,0 +1,1315 @@
+{
+  "generated_at": "2025-11-17T07:42:34.313Z",
+  "entries": [
+    {
+      "alias": "0 ps5 digital fat  sg",
+      "modelId": "playstation_5-0_ps5_digital_fat_825gb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "0 ps5 digital fat 825gb sg",
+      "modelId": "playstation_5-0_ps5_digital_fat_825gb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "3 512gb",
+      "modelId": "vr_wearables-meta_quest_3_512gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "3 a1 9 hx370/8840u 512gb/1tb/2tb option",
+      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "3s 128gb",
+      "modelId": "vr_wearables-meta_quest_3s_128gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "3s 256gb",
+      "modelId": "vr_wearables-meta_quest_3s_256gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "4 / ultra / 128gb / 256gb option",
+      "modelId": "misc-pico_4_ultra_128gb_256gb_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "ally",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ally handheld",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ally x",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ally x 1tb",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ally x 2tb",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally  sg",
+      "modelId": "handheld_pc-asus_rog_ally_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally 512gb sg",
+      "modelId": "handheld_pc-asus_rog_ally_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x  sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x  sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_2tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x  sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x 1tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x 2tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_2tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x 4tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x xbox  sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x xbox  sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_2tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x xbox  sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x xbox 1tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x xbox 2tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_2tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally x xbox 4tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally xbox  sg",
+      "modelId": "handheld_pc-asus_rog_ally_xbox_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "asus rog ally xbox 512gb sg",
+      "modelId": "handheld_pc-asus_rog_ally_xbox_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ayaneo 3 a1 9 hx370/8840u /1tb/2tb option",
+      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ayaneo 3 a1 9 hx370/8840u 512gb/1tb/2tb option",
+      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "claw 8 ai+ ut7 1tb sg",
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "claw 8 ai+ ut7 2tb (polar tempest)",
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_2tb_polar_tempest",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "claw a1m-020sg ut7 16g 1tb sg",
+      "modelId": "handheld_pc-msi_claw_a1m_020sg_ut7_16g_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "claw a1m-021sg ut5 512gb sg",
+      "modelId": "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "claw a8 bz2em z2 extreme 1tb sg (neon green)",
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_neon_green",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "claw a8 bz2em z2 extreme 1tb sg (polar tempest)",
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_polar_tempest",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck lcd",
+      "modelId": "handheld_pc-steam_deck_lcd_2tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck lcd 1tb (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_1tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck lcd 2tb (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_2tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck lcd 512gb (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_512gb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled",
+      "modelId": "handheld_pc-steam_deck_oled_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 1tb",
+      "modelId": "handheld_pc-steam_deck_oled_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 1tb limited edition transparent",
+      "modelId": "handheld_pc-steam_deck_oled_1tb_limited_edition_transparent",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 1tb limited transparent",
+      "modelId": "handheld_pc-steam_deck_oled_1tb_limited_edition_transparent",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 2tb (change from 512gb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_change_from_512gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 2tb limited edition transparent (change from 1tb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_limited_edition_transparent_change_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 2tb limited transparent (change from 1tb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_limited_edition_transparent_change_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "deck oled 512gb",
+      "modelId": "handheld_pc-steam_deck_oled_512gb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "dji osmo 360 (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_360_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo 360 adventure combo (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_360_adventure_combo_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo nano  (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_nano_128gb_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo nano  (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_nano_64gb_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo nano 128gb (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_nano_128gb_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo nano 64gb (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_nano_64gb_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo pocket 3 (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_pocket_3_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "dji osmo pocket 3 creator combo (12 months dji warranty)",
+      "modelId": "vr_wearables-dji_osmo_pocket_3_creator_combo_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "hstn smart ai glasses option",
+      "modelId": "vr_wearables-oakley_meta_hstn_smart_ai_glasses_option",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "legion go 1tb (english export ) upgrade from 512gb",
+      "modelId": "handheld_pc-lenovo_legion_go_1tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 1tb (english export set) upgrade from 512gb set",
+      "modelId": "handheld_pc-lenovo_legion_go_1tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 2 1tb",
+      "modelId": "handheld_pc-lenovo_legion_go_2_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 2 2tb (upgrade from 1tb model)",
+      "modelId": "handheld_pc-lenovo_legion_go_2_2tb_upgrade_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 2tb (english export ) upgrade from 512gb",
+      "modelId": "handheld_pc-lenovo_legion_go_2tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 2tb (english export set) upgrade from 512gb set",
+      "modelId": "handheld_pc-lenovo_legion_go_2tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 512gb (english export )",
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go 512gb (english export set)",
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go s 1tb",
+      "modelId": "handheld_pc-lenovo_legion_go_s_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "legion go s 512gb",
+      "modelId": "handheld_pc-lenovo_legion_go_s_512gb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go  (english export set)",
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go  (english export set) upgrade from 512gb set",
+      "modelId": "handheld_pc-lenovo_legion_go_2tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go  (english export set) upgrade from 512gb set",
+      "modelId": "handheld_pc-lenovo_legion_go_1tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 1tb (english export ) upgrade from 512gb",
+      "modelId": "handheld_pc-lenovo_legion_go_1tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 1tb (english export set) upgrade from 512gb set",
+      "modelId": "handheld_pc-lenovo_legion_go_1tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 2",
+      "modelId": "handheld_pc-lenovo_legion_go_2_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 2  (upgrade from 1tb model)",
+      "modelId": "handheld_pc-lenovo_legion_go_2_2tb_upgrade_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 2 1tb",
+      "modelId": "handheld_pc-lenovo_legion_go_2_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 2 2tb (upgrade from 1tb model)",
+      "modelId": "handheld_pc-lenovo_legion_go_2_2tb_upgrade_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 2tb (english export ) upgrade from 512gb",
+      "modelId": "handheld_pc-lenovo_legion_go_2tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 2tb (english export set) upgrade from 512gb set",
+      "modelId": "handheld_pc-lenovo_legion_go_2tb_english_export_set_upgrade_from_512gb_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 512gb (english export )",
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go 512gb (english export set)",
+      "modelId": "handheld_pc-lenovo_legion_go_512gb_english_export_set",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go s",
+      "modelId": "handheld_pc-lenovo_legion_go_s_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go s",
+      "modelId": "handheld_pc-lenovo_legion_go_s_512gb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go s 1tb",
+      "modelId": "handheld_pc-lenovo_legion_go_s_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "lenovo legion go s 512gb",
+      "modelId": "handheld_pc-lenovo_legion_go_s_512gb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "meta quest 3",
+      "modelId": "vr_wearables-meta_quest_3_512gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "meta quest 3 512gb",
+      "modelId": "vr_wearables-meta_quest_3_512gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "meta quest 3s",
+      "modelId": "vr_wearables-meta_quest_3s_256gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "meta quest 3s",
+      "modelId": "vr_wearables-meta_quest_3s_128gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "meta quest 3s 128gb",
+      "modelId": "vr_wearables-meta_quest_3s_128gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "meta quest 3s 256gb",
+      "modelId": "vr_wearables-meta_quest_3s_256gb",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "msi claw 8 ai+ ut7  (polar tempest)",
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_2tb_polar_tempest",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw 8 ai+ ut7  sg",
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw 8 ai+ ut7 1tb sg",
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw 8 ai+ ut7 2tb (polar tempest)",
+      "modelId": "handheld_pc-msi_claw_8_ai_ut7_2tb_polar_tempest",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a1m-020sg ut7 16g  sg",
+      "modelId": "handheld_pc-msi_claw_a1m_020sg_ut7_16g_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a1m-020sg ut7 16g 1tb sg",
+      "modelId": "handheld_pc-msi_claw_a1m_020sg_ut7_16g_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a1m-021sg ut5  sg",
+      "modelId": "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a1m-021sg ut5 512gb sg",
+      "modelId": "handheld_pc-msi_claw_a1m_021sg_ut5_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a8 bz2em z2 extreme  sg (neon green)",
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_neon_green",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a8 bz2em z2 extreme  sg (polar tempest)",
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_polar_tempest",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a8 bz2em z2 extreme 1tb sg (neon green)",
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_neon_green",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "msi claw a8 bz2em z2 extreme 1tb sg (polar tempest)",
+      "modelId": "handheld_pc-msi_claw_a8_bz2em_z2_extreme_1tb_sg_polar_tempest",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "nintendo lite",
+      "modelId": "nintendo_switch-nintendo_switch_lite_all_colours",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch 2",
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch 2 + mario kart world",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_mario_kart_world_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch 2 + pokemon legends: z-a",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_pokemon_legends_z_a_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch 2 console",
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch 2 console + mario kart world bundle",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_mario_kart_world_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch 2 console + pokemon legends: z-a bundle",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_pokemon_legends_z_a_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch gen 1 (neon red / grey)",
+      "modelId": "nintendo_switch-nintendo_switch_gen_1_neon_red_grey",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch gen 2(neon red / grey)",
+      "modelId": "nintendo_switch-nintendo_switch_gen_2_neon_red_grey",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch lite (all colours)",
+      "modelId": "nintendo_switch-nintendo_switch_lite_all_colours",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch oled",
+      "modelId": "nintendo_switch-nintendo_switch_oled_neon_red_blue_white",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch oled (neon red blue / white)",
+      "modelId": "nintendo_switch-nintendo_switch_oled_neon_red_blue_white",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "nintendo switch pro controller",
+      "modelId": "nintendo_switch-nintendo_switch_pro_controller",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "oakley meta hstn smart ai glasses option",
+      "modelId": "vr_wearables-oakley_meta_hstn_smart_ai_glasses_option",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "osmo 360 (12 months warranty)",
+      "modelId": "vr_wearables-dji_osmo_360_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "osmo 360 adventure combo (12 months warranty)",
+      "modelId": "vr_wearables-dji_osmo_360_adventure_combo_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "osmo nano 128gb (12 months warranty)",
+      "modelId": "vr_wearables-dji_osmo_nano_128gb_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "osmo nano 64gb (12 months warranty)",
+      "modelId": "vr_wearables-dji_osmo_nano_64gb_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "osmo pocket 3 (12 months warranty)",
+      "modelId": "vr_wearables-dji_osmo_pocket_3_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "osmo pocket 3 creator combo (12 months warranty)",
+      "modelId": "vr_wearables-dji_osmo_pocket_3_creator_combo_12_months_dji_warranty",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "pico 4 / ultra /  / 256gb option",
+      "modelId": "misc-pico_4_ultra_128gb_256gb_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "pico 4 / ultra / 128gb / 256gb option",
+      "modelId": "misc-pico_4_ultra_128gb_256gb_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "playstation 4",
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "playstation 5",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "playstation portal",
+      "modelId": "handheld_pc-playstation_portal",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal 30th anniversary limited",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal 30th anniversary limited + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal 30th anniversary limited edition",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal 30th anniversary limited edition + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal bundle discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal midnight black",
+      "modelId": "handheld_pc-playstation_portal_midnight_black",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal midnight black bundle discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_midnight_black_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "playstation portal midnight black discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_midnight_black_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal",
+      "modelId": "handheld_pc-playstation_portal",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal 30th anniversary limited",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal 30th anniversary limited + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal 30th anniversary limited edition",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal 30th anniversary limited edition + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_30th_anniversary_limited_edition_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal bundle discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal midnight black",
+      "modelId": "handheld_pc-playstation_portal_midnight_black",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal midnight black bundle discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_midnight_black_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "portal midnight black discount + $29.90 pouch + $19.90 case + $19.90 screen protector",
+      "modelId": "handheld_pc-playstation_portal_midnight_black_bundle_discount_29_90_pouch_19_90_case_19_90_screen_protector",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "ps4 fat",
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 fat  (1 week store warranty)",
+      "modelId": "playstation_4-ps4_fat_1tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 fat  (1 week store warranty)",
+      "modelId": "playstation_4-ps4_fat_500gb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 fat 1tb (1 week store warranty)",
+      "modelId": "playstation_4-ps4_fat_1tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 fat 500gb (1 week store warranty)",
+      "modelId": "playstation_4-ps4_fat_500gb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 pro",
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 pro  (1 week store warranty)",
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 pro  (1 week store warranty)",
+      "modelId": "playstation_4-ps4_pro_1tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 pro 1tb (1 week store warranty)",
+      "modelId": "playstation_4-ps4_pro_1tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 pro 2tb (1 week store warranty)",
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 slim",
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 slim  (1 week store warranty)",
+      "modelId": "playstation_4-ps4_slim_1tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 slim  (1 week store warranty)",
+      "modelId": "playstation_4-ps4_slim_500gb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 slim 1tb (1 week store warranty)",
+      "modelId": "playstation_4-ps4_slim_1tb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps4 slim 500gb (1 week store warranty)",
+      "modelId": "playstation_4-ps4_slim_500gb_1_week_store_warranty",
+      "familyId": "playstation_4"
+    },
+    {
+      "alias": "ps5 digital",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital pro  japan",
+      "modelId": "playstation_5-ps5_digital_pro_2tb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital pro  sg",
+      "modelId": "playstation_5-ps5_digital_pro_2tb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital pro 2tb japan",
+      "modelId": "playstation_5-ps5_digital_pro_2tb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital pro 2tb sg",
+      "modelId": "playstation_5-ps5_digital_pro_2tb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital slim  japan",
+      "modelId": "playstation_5-ps5_digital_slim_1tb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital slim  sg",
+      "modelId": "playstation_5-ps5_digital_slim_1tb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital slim 1tb japan",
+      "modelId": "playstation_5-ps5_digital_slim_1tb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 digital slim 1tb sg",
+      "modelId": "playstation_5-ps5_digital_slim_1tb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc fat  sg",
+      "modelId": "playstation_5-ps5_disc_fat_825gb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc fat 825gb sg",
+      "modelId": "playstation_5-ps5_disc_fat_825gb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc pro  japan install from digital set disc drive",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_japan_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc pro  sg install from digital set disc drive",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc pro 2tb japan install from digital disc drive",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_japan_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc pro 2tb japan install from digital set disc drive",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_japan_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc pro 2tb sg install from digital disc drive",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc pro 2tb sg install from digital set disc drive",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim  japan",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim  japan ghost of yotei gold limited edition",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan_ghost_of_yotei_gold_limited_edition",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim  sg",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim 1tb japan",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim 1tb japan ghost of yotei gold limited",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan_ghost_of_yotei_gold_limited_edition",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim 1tb japan ghost of yotei gold limited edition",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_japan_ghost_of_yotei_gold_limited_edition",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim 1tb sg",
+      "modelId": "playstation_5-ps5_disc_slim_1tb_sg",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 dualsense edge / 30th anniversary/ standard wireless controllers (red/black/white/blue/camo) option",
+      "modelId": "playstation_5-ps5_dualsense_edge_30th_anniversary_standard_wireless_controllers_red_black_white_blue_camo_option",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 fat",
+      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 fat spiderman",
+      "modelId": "playstation_5-ps5_fat_spiderman",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 psvr 2",
+      "modelId": "vr_wearables-ps5_psvr_2",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "ps5 slim digital",
+      "modelId": "playstation_5-ps5_slim_disc_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim digital 30th anniversary limited 1tb",
+      "modelId": "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim digital 30th anniversary limited edition",
+      "modelId": "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim digital 30th anniversary limited edition 1tb",
+      "modelId": "playstation_5-ps5_slim_digital_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim disc",
+      "modelId": "playstation_5-ps5_slim_disc_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim disc 30th anniversary limited 1tb",
+      "modelId": "playstation_5-ps5_slim_disc_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim disc 30th anniversary limited edition",
+      "modelId": "playstation_5-ps5_slim_disc_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 slim disc 30th anniversary limited edition 1tb",
+      "modelId": "playstation_5-ps5_slim_disc_30th_anniversary_limited_edition_1tb",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "rayban meta wayfarer/skyler smart glasses l meta glasses l smart glasses option",
+      "modelId": "vr_wearables-rayban_meta_wayfarer_skyler_smart_glasses_l_meta_glasses_l_smart_glasses_option",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "rog 512gb sg",
+      "modelId": "handheld_pc-asus_rog_ally_xbox_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog 512gb sg",
+      "modelId": "handheld_pc-asus_rog_ally_512gb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog x 1tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog x 1tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_1tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog x 2tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_2tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog x 2tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_2tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog x 4tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_xbox_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rog x 4tb sg",
+      "modelId": "handheld_pc-asus_rog_ally_x_4tb_sg",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "rokid max 2 + station / rokid max 2 / rokid station 2 black ar glasses option",
+      "modelId": "vr_wearables-rokid_max_2_station_rokid_max_2_rokid_station_2_black_ar_glasses_option",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "series s 1tb",
+      "modelId": "xbox_series-xbox_series_s_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "series s 512gb",
+      "modelId": "xbox_series-xbox_series_s_512gb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "series x black disc 1tb",
+      "modelId": "xbox_series-xbox_series_x_black_disc_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "series x white digital 1tb",
+      "modelId": "xbox_series-xbox_series_x_white_digital_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "sony wh-1000xm6 / wh-1000xm5 black/midnight blue /silver headphone option",
+      "modelId": "misc-sony_wh_1000xm6_wh_1000xm5_black_midnight_blue_silver_headphone_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "steam deck",
+      "modelId": "handheld_pc-steam_deck_lcd_2tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck lcd  (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_2tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck lcd  (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_1tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck lcd  (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_512gb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck lcd 1tb (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_1tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck lcd 2tb (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_2tb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck lcd 512gb (change from 256gb model)",
+      "modelId": "handheld_pc-steam_deck_lcd_512gb_change_from_256gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled",
+      "modelId": "handheld_pc-steam_deck_oled_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled",
+      "modelId": "handheld_pc-steam_deck_oled_512gb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled  (change from 512gb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_change_from_512gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled  limited edition transparent",
+      "modelId": "handheld_pc-steam_deck_oled_1tb_limited_edition_transparent",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled  limited edition transparent (change from 1tb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_limited_edition_transparent_change_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 1tb",
+      "modelId": "handheld_pc-steam_deck_oled_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 1tb limited edition transparent",
+      "modelId": "handheld_pc-steam_deck_oled_1tb_limited_edition_transparent",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 1tb limited transparent",
+      "modelId": "handheld_pc-steam_deck_oled_1tb_limited_edition_transparent",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 2tb (change from 512gb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_change_from_512gb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 2tb limited edition transparent (change from 1tb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_limited_edition_transparent_change_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 2tb limited transparent (change from 1tb model)",
+      "modelId": "handheld_pc-steam_deck_oled_2tb_limited_edition_transparent_change_from_1tb_model",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steam deck oled 512gb",
+      "modelId": "handheld_pc-steam_deck_oled_512gb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "steamdeck oled",
+      "modelId": "handheld_pc-steam_deck_oled_1tb",
+      "familyId": "handheld_pc"
+    },
+    {
+      "alias": "super switch",
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch 2",
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch 2 + mario kart world",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_mario_kart_world_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch 2 + pokemon legends: z-a",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_pokemon_legends_z_a_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch 2 console",
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch 2 console + mario kart world bundle",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_mario_kart_world_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch 2 console + pokemon legends: z-a bundle",
+      "modelId": "nintendo_switch-nintendo_switch_2_console_pokemon_legends_z_a_bundle",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch gen 1 (neon red / grey)",
+      "modelId": "nintendo_switch-nintendo_switch_gen_1_neon_red_grey",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch gen 2(neon red / grey)",
+      "modelId": "nintendo_switch-nintendo_switch_gen_2_neon_red_grey",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch lite (all colours)",
+      "modelId": "nintendo_switch-nintendo_switch_lite_all_colours",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch mini",
+      "modelId": "nintendo_switch-nintendo_switch_lite_all_colours",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch next",
+      "modelId": "nintendo_switch-nintendo_switch_2_console",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch oled (neon red blue / white)",
+      "modelId": "nintendo_switch-nintendo_switch_oled_neon_red_blue_white",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch pro controller",
+      "modelId": "nintendo_switch-nintendo_switch_pro_controller",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "switch v2",
+      "modelId": "nintendo_switch-nintendo_switch_oled_neon_red_blue_white",
+      "familyId": "nintendo_switch"
+    },
+    {
+      "alias": "wayfarer/skyler smart glasses l glasses l smart glasses option",
+      "modelId": "vr_wearables-rayban_meta_wayfarer_skyler_smart_glasses_l_meta_glasses_l_smart_glasses_option",
+      "familyId": "vr_wearables"
+    },
+    {
+      "alias": "wh-1000xm6 / wh-1000xm5 black/midnight blue /silver headphone option",
+      "modelId": "misc-sony_wh_1000xm6_wh_1000xm5_black_midnight_blue_silver_headphone_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "xbox series s",
+      "modelId": "xbox_series-xbox_series_s_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series s",
+      "modelId": "xbox_series-xbox_series_s_512gb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series s 1tb",
+      "modelId": "xbox_series-xbox_series_s_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series s 512gb",
+      "modelId": "xbox_series-xbox_series_s_512gb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series x",
+      "modelId": "xbox_series-xbox_series_x_black_disc_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series x black disc",
+      "modelId": "xbox_series-xbox_series_x_black_disc_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series x black disc 1tb",
+      "modelId": "xbox_series-xbox_series_x_black_disc_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series x white digital",
+      "modelId": "xbox_series-xbox_series_x_white_digital_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series x white digital 1tb",
+      "modelId": "xbox_series-xbox_series_x_white_digital_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xreal one pro / xreal air 2 ultra / xreal one / xreal air 2 pro / xreal beam pro option",
+      "modelId": "misc-xreal_one_pro_xreal_air_2_ultra_xreal_one_xreal_air_2_pro_xreal_beam_pro_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "xss",
+      "modelId": "xbox_series-xbox_series_s_1tb",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xsx",
+      "modelId": "xbox_series-xbox_series_x_black_disc_1tb",
+      "familyId": "xbox_series"
+    }
+  ]
+}

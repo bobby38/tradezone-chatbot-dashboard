@@ -1,5 +1,97 @@
 [
   {
+    "id": 27300,
+    "name": "11.11 SALE - RTX 5070 Ti Intel Ultra 7 265KF 32GB 1TB Lian Li O11 Mini V2 PC",
+    "permalink": "https://tradezone.sg/product/10-10-sale-rtx-5070-ti-intel-ultra-5-245k-32gb-1tb-lian-li-o11-mini-v2-pc/",
+    "sku": "",
+    "type": "variable",
+    "price": "3059",
+    "regular_price": "",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-10-14T07:26:01",
+    "date_modified": "2025-11-16T04:19:07",
+    "short_description": "<p>1️⃣$3059 BUDGET BASIC TIER GAMING PC (instalment $3227.25)<br />\n💛Atome 3 Months : $1075.75 (Per Month)<br />\n💚Grabpay later 4 Months : $806.81 (Per Month)<br />\n💛Atome 6 Months : $537.87 (Per Month)</p>\n<p>Gaming performance test for RTX 5070 Ti<br />\nhttps://www.youtube.com/watch?v=yXwbl0aeouM</p>\n<p>⚠️Comes with 3 Years Warranty</p>\n<p>🔴[CPU] Intel Core Ultra 7 265KF $499<br />\n🟠[CPU Cooler] Lian Li Hydroshift II LCD-C 360 (Fanless) Black $229<br />\n🟡[MOBO] Gigabyte Aorus Z890M Aorus Elite Wifi 7 Motherboard $409<br />\n🟢[Storage] Micron Gen 4 nvme 512gb x 2 (1TB) $110<br />\n🔵 [RAM] KLEVV Cras V 6000 CL28 RGB DDR5 (2x16GB) &#8211; Black $274<br />\n🟣[PSU] Thermalright KG 850W 80+ Gold Modular (ATX3.1) &#8211; Black $109<br />\n⚫️[Case] Lian Li O11 Mini V2 Black/White $159<br />\n⚪️[GPU] ZOTAC GAMING RTX 5070 Ti SOLID CORE OC 16GB $1189<br />\n🔵[FAN] Upsiren Argb Fan x6 $60<br />\n🟣[HUB] Deepcool SC790 $25<br />\n🔜[Windows] Windows 11 Pro Activated (FREE worth $130!!)<br />\n🔜[Building Cost] (FREE worth $50)<br />\n🔜[Delivery] Free Island Wide Delivery!!!!!!!!</p>\n<p>Game Low Settings Medium Settings High Settings<br />\nValorant ~ 650-750 FPS ~ 500-650 FPS ~ 400-500 FPS<br />\nCS:GO 2 ~ 500-650 FPS ~ 400-500 FPS ~ 300-400 FPS</p>\n<p>💥UPGRADE OPTIONS💥</p>\n<p>✅ GPU UPGRADE<br />\nGigabyte RTX5080 Windforce $2099<br />\nGigabyte RTX 5090 Windforce $4199</p>\n<p>✅ CPU UPGRADE<br />\nIntel Core Ultra 7 265KF CPU $549<br />\nIntel Core Ultra 7 265K CPU $599</p>\n<p>✅ POWER SUPPLY UPGRADE<br />\nNZXT C1000 Core PSU &#8211; 1000W, Platinum, Full Modular $209</p>\n<p>✅ ADD-ON: RGB CABLES<br />\nTecware Flex Sleeved RGB Cable Kit $59</p>\n<p>🖥️ Monitor Bundle Add-On Options<br />\n⭐ GIGABYTE M27QA-EK 2K 180Hz 27&#8243; $329<br />\n⭐ GIGABYTE M27Q2-QD 2K QHD 200Hz 27&#8243; $379<br />\n⭐ GIGABYTE M27UP-FHD 4K 160Hz 27&#8243; $509</p>\n<p>🖱️ Mouse Bundle Add-On Options<br />\n⭐ Logitech G Pro X Superlight 2 (White/Black) $179<br />\n⭐ Logitech G Pro X Superlight 2 DEX (White/Black)$179</p>\n<p>⌨️ Keyboard Bundle Add-On Options<br />\n⭐ Corsair K70 RGB MK.2 SE Rapid Fire Mechanical Gaming Wired Keyboard $219<br />\n⭐ ROG Strix Scope RX TKL Wireless Deluxe Gaming Keyboard $269</p>\n<p>🚚💨 🔥 BUILT &amp; DELIVERED SAME DAY 🔥<br />\n✅ FREE ISLAND-WIDE DOORSTEP DELIVERY<br />\n✅ YES SAME DAY ITSELF!!!<br />\n✅ Get your dream setup delivered fast and professionally no extra cost!</p>\n<p>📍 Self Collection: Hougang Green Shopping Mall #02-09 (S)538719</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 100,
+        "name": "PC Related",
+        "slug": "pc-related"
+      },
+      {
+        "id": 122,
+        "name": "Ready To Ship",
+        "slug": "ready-to-ship"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27301,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/10/1010_sale__rtx_5070_ti_intel_u_1760423790_3a54d7ee_progressive.jpg",
+        "alt": ""
+      }
+    ],
+    "attributes": [
+      {
+        "id": 0,
+        "name": "GPU",
+        "slug": "GPU",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "RTX 5070 Ti",
+          "RTX 5080",
+          "RTX 5090"
+        ]
+      }
+    ],
+    "variations": [
+      27302,
+      27303,
+      27304
+    ]
+  },
+  {
+    "id": 27891,
+    "name": "THE HOUSE OF THE DEAD 2: Remake",
+    "permalink": "https://tradezone.sg/product/the-house-of-the-dead-2-remake/",
+    "sku": "",
+    "type": "simple",
+    "price": "99.90",
+    "regular_price": "99.90",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-15T07:48:43",
+    "date_modified": "2025-11-15T07:51:43",
+    "short_description": "",
+    "description": "",
+    "categories": [
+      {
+        "id": 137,
+        "name": "Brand New Games",
+        "slug": "brand-new-games-nintendo"
+      },
+      {
+        "id": 57,
+        "name": "Nintendo",
+        "slug": "nintendo"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27892,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/game-2025-11-15T153616.855.png",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
     "id": 7867,
     "name": "Burnout Paradise Remastered",
     "permalink": "https://tradezone.sg/product/burnout-paradise-remastered/",
@@ -2567,48 +2659,6 @@
     ]
   },
   {
-    "id": 27222,
-    "name": "11.11 SALE - RX 6600 Ryzen 5 5600 16GB 1TB MATX Gaming Pc",
-    "permalink": "https://tradezone.sg/product/10-10-sale-rx-6600-ryzen-5-5600-16gb-1tb-matx-gaming-pc/",
-    "sku": "",
-    "type": "simple",
-    "price": "649",
-    "regular_price": "649",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-10-10T11:53:11",
-    "date_modified": "2025-11-04T06:35:59",
-    "short_description": "<p>⚠️ SELLING PRICE: $649 ONLY⚠️ (instalment $684.69)<br />\nCustomize option available!!!!<br />\n💛 Atome 3 Months : $228.23 ( Per Month )<br />\n💚 Grabpay later 4 Months : $171.17 ( Per Month )<br />\n💛 Atome 6 Months : $114.11 ( Per Month )</p>\n<p>&#8211; Gaming ⭐ ⭐<br />\n-Productivity ⭐ ⭐ ️<br />\n&#8211; Video Editing ⭐ ⭐<br />\n&#8211; Aesthetics ⭐ ⭐ ️</p>\n<p>Full Spec<br />\n[CPU] Ryzen 5 5600 $110<br />\n[CPU COOLER] Stock Cooler $4<br />\n[GPU] Gigabyte Eagle RX 6600 $250<br />\n[MOBO] ASRock A520M/ac $99<br />\n[STORAGE] Klevv Cras C910 Lite 1TB $69<br />\n[RAM] XPG Spectrix 3600Mhz DDR4 8GBx2 (16GB) Black $69<br />\n[CASE] Aftershock MATX Case $19<br />\n[PSU] Deepcool PF550 $29</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 100,
-        "name": "PC Related",
-        "slug": "pc-related"
-      },
-      {
-        "id": 122,
-        "name": "Ready To Ship",
-        "slug": "ready-to-ship"
-      },
-      {
-        "id": 261,
-        "name": "Refurbished",
-        "slug": "refurbished"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27223,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/game-3.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
     "id": 21594,
     "name": "11.11 SALE - RTX 4070 TI Ryzen 5 9600X 32GB 2TB Lian Li O11 Vision Black Gaming PC",
     "permalink": "https://tradezone.sg/product/gf-sale-rtx-4070-ti-ryzen-7-7700-32gb-2tb-lian-li-o11-vision-black-gaming-pc/",
@@ -2703,43 +2753,6 @@
       {
         "id": 26982,
         "src": "https://tradezone.sg/wp-content/uploads/2025/10/Tier-10.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
-    "id": 24315,
-    "name": "11.11 SALE - RTX 3070 Intel i5-10400 16GB 1TB CH270 MATX Gaming Pc",
-    "permalink": "https://tradezone.sg/product/06-06-sale-rtx-3070-intel-i7-11700kf-16gb-1tb-ch270-matx-gaming-pc/",
-    "sku": "",
-    "type": "simple",
-    "price": "1249",
-    "regular_price": "1249",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-05-10T08:23:04",
-    "date_modified": "2025-11-04T06:35:15",
-    "short_description": "<p>***Refurbished Set Like new***<br />\n**Some Parts Are New Have Warranty**</p>\n<p>Hi TradeZone is doing a promotion for the month!</p>\n<p>⚠️ SELLING PRICE: $1249 ONLY⚠️ (instalment $1317.69)<br />\nCustomize option available!!!!<br />\n💛 Atome 3 Months : $439.23 ( Per Month )<br />\n💚 Grabpay later 4 Months : $329.42 ( Per Month )<br />\n💛 Atome 6 Months : $219.61 ( Per Month )</p>\n<p>&#8211; Gaming ⭐ ⭐<br />\n-Productivity ⭐ ⭐ ️<br />\n&#8211; Video Editing ⭐ ⭐<br />\n&#8211; Aesthetics ⭐ ⭐ ️</p>\n<p>Full Specifications (some parts refurbished &#8211; all good like new)<br />\n[CPU] Intel i5-10400 $69 (refurbished)<br />\n[CPU COOLER] Deepcool Castle 360EX A-RGB $179 (NEW)<br />\n[GPU] Gigabyte GeForce RTX 3070 Gaming OC 8G Gaming Graphics Card $349 (Refurbished)<br />\n[MOBO] MSI B560M Mortar $139 **Valorant Ban (refurbished)<br />\n[STORAGE] Lexar NM620 1TB $79 (refurbished)<br />\n[RAM] XPG Spectrix DDR4 D35G 3600MHz 8GBx2 (16GB) $69 (NEW)<br />\n[CASE] Deepcool CH270 WH Digital $119 (NEW)<br />\n[PSU] Thermalright SG Gold 850W ATX 3.1 White $125 (NEW)<br />\n[FAN] UPSIREN x6 $60 (NEW)<br />\n[HUB] ID Cooling HA-08 $19 (NEW)<br />\n[WIFI] Intel AX200 Wifi 6 + BT 5.0 $42 (NEW)</p>\n<p>🔜 [Windows] Windows 11 Pro Activated (FREE worth $130!!)<br />\n🔜 [Building Cost] (FREE worth $50)<br />\n🔜 [Delivery] Free Island Wide Delivery!!!!!!!!</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 122,
-        "name": "Ready To Ship",
-        "slug": "ready-to-ship"
-      },
-      {
-        "id": 261,
-        "name": "Refurbished",
-        "slug": "refurbished"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 24316,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/05/R-2025-05-10T150800.026.png",
         "alt": ""
       }
     ],
@@ -3482,66 +3495,6 @@
       22727,
       21542,
       21539
-    ]
-  },
-  {
-    "id": 27300,
-    "name": "11.11 SALE - RTX 5070 Ti Intel Ultra 7 265KF 32GB 1TB Lian Li O11 Mini V2 PC",
-    "permalink": "https://tradezone.sg/product/10-10-sale-rtx-5070-ti-intel-ultra-5-245k-32gb-1tb-lian-li-o11-mini-v2-pc/",
-    "sku": "",
-    "type": "variable",
-    "price": "3059",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-10-14T07:26:01",
-    "date_modified": "2025-11-03T07:44:40",
-    "short_description": "<p>1️⃣$3059 BUDGET BASIC TIER GAMING PC (instalment $3227.25)<br />\n💛Atome 3 Months : $1075.75 (Per Month)<br />\n💚Grabpay later 4 Months : $806.81 (Per Month)<br />\n💛Atome 6 Months : $537.87 (Per Month)</p>\n<p>Gaming performance test for RTX 5070 Ti<br />\nhttps://www.youtube.com/watch?v=yXwbl0aeouM</p>\n<p>⚠️Comes with 3 Years Warranty</p>\n<p>🔴[CPU] Intel Core Ultra 7 265KF $499<br />\n🟠[CPU Cooler] Lian Li Hydroshift II LCD-C 360 (Fanless) Black $229<br />\n🟡[MOBO] Gigabyte Aorus Z890M Aorus Elite Wifi 7 Motherboard $409<br />\n🟢[Storage] Micron Gen 4 nvme 512gb x 2 (1TB) $110<br />\n🔵 [RAM] KLEVV Cras V 6000 CL28 RGB DDR5 (2x16GB) &#8211; Black $274<br />\n🟣[PSU] Thermalright KG 850W 80+ Gold Modular (ATX3.1) &#8211; Black $109<br />\n⚫️[Case] Lian Li O11 Mini V2 Black/White $159<br />\n⚪️[GPU] ZOTAC GAMING RTX 5070 Ti SOLID CORE OC 16GB $1189<br />\n🔵[FAN] Upsiren Argb Fan x6 $60<br />\n🟣[HUB] Deepcool SC790 $25<br />\n🔜[Windows] Windows 11 Pro Activated (FREE worth $130!!)<br />\n🔜[Building Cost] (FREE worth $50)<br />\n🔜[Delivery] Free Island Wide Delivery!!!!!!!!</p>\n<p>Game Low Settings Medium Settings High Settings<br />\nValorant ~ 650-750 FPS ~ 500-650 FPS ~ 400-500 FPS<br />\nCS:GO 2 ~ 500-650 FPS ~ 400-500 FPS ~ 300-400 FPS</p>\n<p>💥UPGRADE OPTIONS💥</p>\n<p>✅ GPU UPGRADE<br />\nGigabyte RTX5080 Windforce $2099<br />\nGigabyte RTX 5090 Windforce $4199</p>\n<p>✅ CPU UPGRADE<br />\nIntel Core Ultra 7 265KF CPU $549<br />\nIntel Core Ultra 7 265K CPU $599</p>\n<p>✅ POWER SUPPLY UPGRADE<br />\nNZXT C1000 Core PSU &#8211; 1000W, Platinum, Full Modular $209</p>\n<p>✅ ADD-ON: RGB CABLES<br />\nTecware Flex Sleeved RGB Cable Kit $59</p>\n<p>🖥️ Monitor Bundle Add-On Options<br />\n⭐ GIGABYTE M27QA-EK 2K 180Hz 27&#8243; $329<br />\n⭐ GIGABYTE M27Q2-QD 2K QHD 200Hz 27&#8243; $379<br />\n⭐ GIGABYTE M27UP-FHD 4K 160Hz 27&#8243; $509</p>\n<p>🖱️ Mouse Bundle Add-On Options<br />\n⭐ Logitech G Pro X Superlight 2 (White/Black) $179<br />\n⭐ Logitech G Pro X Superlight 2 DEX (White/Black)$179</p>\n<p>⌨️ Keyboard Bundle Add-On Options<br />\n⭐ Corsair K70 RGB MK.2 SE Rapid Fire Mechanical Gaming Wired Keyboard $219<br />\n⭐ ROG Strix Scope RX TKL Wireless Deluxe Gaming Keyboard $269</p>\n<p>🚚💨 🔥 BUILT &amp; DELIVERED SAME DAY 🔥<br />\n✅ FREE ISLAND-WIDE DOORSTEP DELIVERY<br />\n✅ YES SAME DAY ITSELF!!!<br />\n✅ Get your dream setup delivered fast and professionally no extra cost!</p>\n<p>📍 Self Collection: Hougang Green Shopping Mall #02-09 (S)538719</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 100,
-        "name": "PC Related",
-        "slug": "pc-related"
-      },
-      {
-        "id": 122,
-        "name": "Ready To Ship",
-        "slug": "ready-to-ship"
-      },
-      {
-        "id": 261,
-        "name": "Refurbished",
-        "slug": "refurbished"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 27301,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/10/1010_sale__rtx_5070_ti_intel_u_1760423790_3a54d7ee_progressive.jpg",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "GPU",
-        "slug": "GPU",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "RTX 5070 Ti",
-          "RTX 5080",
-          "RTX 5090"
-        ]
-      }
-    ],
-    "variations": [
-      27302,
-      27303,
-      27304
     ]
   },
   {

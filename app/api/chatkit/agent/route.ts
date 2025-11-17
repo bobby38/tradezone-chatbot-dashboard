@@ -120,13 +120,30 @@ function renderCatalogMatches(
     const title = match.permalink
       ? `[${match.name}](${match.permalink})`
       : match.name;
-    const price = match.price ? ` — ${match.price}` : "";
-    const availability = match.stockStatus
-      ? ` (${match.stockStatus === "instock" ? "In stock" : match.stockStatus})`
-      : "";
-    return `- ${title}${price}${availability}`;
+    const flagship =
+      match.flagshipCondition?.basePrice !== null &&
+      match.flagshipCondition?.basePrice !== undefined
+        ? ` — S$${match.flagshipCondition.basePrice.toFixed(0)} (${match.flagshipCondition.label})`
+        : match.price
+          ? ` — S$${match.price}`
+          : "";
+    const range =
+      match.priceRange && match.priceRange.min !== match.priceRange.max
+        ? ` (Variants ${formatRangeSummary(match.priceRange)})`
+        : "";
+    return `- ${title}${flagship}${range}`;
   });
   return lines.join("\n");
+}
+
+function formatRangeSummary(
+  range?: { min: number | null; max: number | null } | null,
+) {
+  if (!range) return "";
+  const { min, max } = range;
+  if (typeof min !== "number" || typeof max !== "number") return "";
+  if (min === max) return `S$${min.toFixed(0)}`;
+  return `S$${min.toFixed(0)}–S$${max.toFixed(0)}`;
 }
 
 function deriveSessionName(
@@ -219,6 +236,63 @@ function detectTradeInIntent(query: string): boolean {
     TRADE_IN_DEVICE_HINTS.test(normalized) &&
     TRADE_IN_ACTION_HINTS.test(normalized)
   );
+}
+
+const PRODUCT_KEYWORDS = [
+  "switch",
+  "ps5",
+  "ps4",
+  "playstation",
+  "xbox",
+  "series x",
+  "series s",
+  "steam deck",
+  "rog ally",
+  "ally",
+  "legion go",
+  "msi claw",
+  "quest",
+  "meta quest",
+  "portal",
+  "osmo",
+  "camera",
+  "gpu",
+  "console",
+  "bundle",
+  "game",
+  "controller",
+];
+
+const PRODUCT_NEED_PATTERNS: RegExp[] = [
+  /\bprice\b/i,
+  /\bprices\b/i,
+  /\bhow much\b/i,
+  /\bcost\b/i,
+  /\bavailable\b/i,
+  /\bavailability\b/i,
+  /\bstock\b/i,
+  /\bhave\b/i,
+  /\bdo you have\b/i,
+  /\bcan i buy\b/i,
+  /\bbundle\b/i,
+  /\binstal{1,2}ment\b/i,
+  /\bbnpl\b/i,
+  /\border\b/i,
+  /\bpre[- ]?order\b/i,
+  /\bget\b/i,
+];
+
+function detectProductInfoIntent(query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return false;
+  if (detectTradeInIntent(normalized)) return false;
+
+  const mentionsProduct = PRODUCT_KEYWORDS.some((keyword) =>
+    normalized.includes(keyword),
+  );
+  if (!mentionsProduct) return false;
+
+  return PRODUCT_NEED_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 const TRADE_IN_PRICE_OVERRIDES: Array<{
@@ -1369,13 +1443,17 @@ export async function POST(request: NextRequest) {
         message,
       );
 
-    const toolChoice = isTradeInPricingQuery
+    const isProductInfoQuery = detectProductInfoIntent(message);
+    const shouldForceCatalog = isTradeInPricingQuery || isProductInfoQuery;
+
+    const toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
     console.log("[ChatKit] Tool choice:", {
       isTradeInPricingQuery,
-      toolChoice: isTradeInPricingQuery ? "FORCED searchProducts" : "auto",
+      isProductInfoQuery,
+      toolChoice: shouldForceCatalog ? "FORCED searchProducts" : "auto",
     });
 
     const userMessageIndex = messages.length - 1;

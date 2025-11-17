@@ -57,6 +57,25 @@ function parsePrice(value?: string | null): number | null {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function formatCurrency(value?: number | null): string | null {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return null;
+  }
+  return `S$${value.toFixed(0)}`;
+}
+
+function formatRange(
+  range?: { min: number | null; max: number | null } | null,
+): string | null {
+  if (!range) return null;
+  const { min, max } = range;
+  if (typeof min !== "number" || typeof max !== "number") return null;
+  if (min === max) {
+    return `${formatCurrency(min)}`;
+  }
+  return `${formatCurrency(min)}–${formatCurrency(max)}`;
+}
+
 function enforceCatalogPermalinks(
   text: string,
   matches: CatalogMatch[],
@@ -190,23 +209,60 @@ export async function handleVectorSearch(
     if (label === "catalog" && catalogMatches.length > 0) {
       const lines = catalogMatches.map((match) => {
         const details: string[] = [];
+        const flagshipPrice =
+          match.flagshipCondition?.basePrice !== undefined &&
+          match.flagshipCondition?.basePrice !== null
+            ? `${formatCurrency(match.flagshipCondition?.basePrice)} (${match.flagshipCondition?.label})`
+            : match.price
+              ? `S$${match.price}`
+              : null;
         details.push(
-          `- **${match.name}**${match.price ? ` — S$${match.price}` : ""}`,
+          `- **${match.name}**${flagshipPrice ? ` — ${flagshipPrice}` : ""}`,
         );
-        if (match.stockStatus) {
-          const humanStock =
-            match.stockStatus === "instock"
-              ? "In stock"
-              : match.stockStatus === "outofstock"
-                ? "Out of stock"
-                : match.stockStatus;
-          details.push(`  - Availability: ${humanStock}`);
+
+        const variantRange = formatRange(match.priceRange);
+        if (variantRange) {
+          details.push(`  - Variants: ${variantRange}`);
         }
+
+        const tradeSummaries = match.conditions
+          .map((condition) => {
+            const trade = condition.tradeIn;
+            if (!trade) return null;
+            const min = trade.min ?? trade.max ?? null;
+            const max = trade.max ?? trade.min ?? null;
+            if (min === null && max === null) return null;
+            if (min !== null && max !== null && min !== max) {
+              return `${condition.label} ${formatCurrency(min)}–${formatCurrency(max)}`;
+            }
+            const value = min ?? max;
+            if (value === null) return null;
+            return `${condition.label} ${formatCurrency(value)}`;
+          })
+          .filter((note): note is string => Boolean(note));
+        if (tradeSummaries.length) {
+          details.push(`  - Trade-in: ${tradeSummaries.join("; ")}`);
+        }
+
+        if (match.flagshipCondition?.bnpl?.length) {
+          const bnplPreview = match.flagshipCondition.bnpl
+            .slice(0, 2)
+            .map(
+              (plan) =>
+                `${plan.providerName} ${plan.months}x ${formatCurrency(plan.monthly)}`,
+            )
+            .filter(Boolean)
+            .join(", ");
+          if (bnplPreview) {
+            details.push(`  - Instalments: ${bnplPreview}`);
+          }
+        }
+
         if (match.permalink) {
           details.push(`  - [View Product](${match.permalink})`);
         }
-        if (match.image) {
-          details.push(`  - ![Product Image](${match.image})`);
+        if ((match as any).image) {
+          details.push(`  - ![Product Image](${(match as any).image})`);
         }
         return details.join("\n");
       });
@@ -214,16 +270,29 @@ export async function handleVectorSearch(
       const section = ["**Online Store Matches**", ...lines].join("\n");
       enriched = enriched ? `${enriched}\n\n${section}` : section;
 
-      const numericPrices = catalogMatches
-        .map((match) => parsePrice(match.price))
-        .filter((price): price is number => price !== null);
-      if (numericPrices.length >= 2) {
-        const minPrice = Math.min(...numericPrices);
-        const maxPrice = Math.max(...numericPrices);
-        if (maxPrice - minPrice >= 200) {
-          priceSpreadNote = `Prices range widely (S$${minPrice.toFixed(0)}–S$${maxPrice.toFixed(
-            0,
-          )}). Which version or condition do you prefer?`;
+      const spreadSource =
+        catalogMatches.find(
+          (match) =>
+            match.familyRange &&
+            typeof match.familyRange.min === "number" &&
+            typeof match.familyRange.max === "number" &&
+            match.familyRange.max - match.familyRange.min >= 150,
+        ) || null;
+
+      if (spreadSource) {
+        priceSpreadNote = `This product family spans ${formatRange(spreadSource.familyRange)} depending on bundles or conditions. Let me know if you prefer brand-new, pre-owned, or a specific bundle.`;
+      } else {
+        const numericPrices = catalogMatches
+          .map((match) => parsePrice(match.price))
+          .filter((price): price is number => price !== null);
+        if (numericPrices.length >= 2) {
+          const minPrice = Math.min(...numericPrices);
+          const maxPrice = Math.max(...numericPrices);
+          if (maxPrice - minPrice >= 200) {
+            priceSpreadNote = `Prices range widely (${formatCurrency(minPrice)}–${formatCurrency(
+              maxPrice,
+            )}). Which version or condition do you prefer?`;
+          }
         }
       }
     }

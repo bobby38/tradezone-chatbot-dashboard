@@ -1,319 +1,447 @@
-import fsp from "node:fs/promises";
+import fs from "node:fs/promises";
 import path from "node:path";
 
-interface CatalogProduct {
-  id: number;
-  name?: string;
+export type ConditionKey = "brand_new" | "pre_owned";
+
+export interface BnplPlan {
+  providerId: string;
+  providerName: string;
+  months: number;
+  monthly: number;
+}
+
+export interface TradeRange {
+  min?: number | null;
+  max?: number | null;
+}
+
+interface ProductConditionRecord {
+  condition: ConditionKey;
+  basePrice?: number | null;
+  instalmentTotal?: number | null;
+  bnpl?: BnplPlan[];
+  tradeIn?: TradeRange | null;
+  soldOut?: boolean;
+}
+
+interface ProductModelRecord {
+  model_id: string;
+  title: string;
+  bundle?: string | null;
+  region?: string | null;
+  storage?: string | null;
+  aliases: string[];
+  source?: {
+    productId?: number;
+    productName?: string;
+    permalink?: string;
+  };
+  warnings?: string[];
+  conditions: ProductConditionRecord[];
+}
+
+interface ProductFamilyRecord {
+  family_id: string;
+  title: string;
+  instalment_factor?: number;
+  bnpl_providers?: Array<{
+    id: string;
+    name: string;
+    months: number[];
+  }>;
+  warranties?: Partial<Record<ConditionKey, string>>;
+  models: ProductModelRecord[];
+}
+
+interface ProductsMasterFile {
+  generated_at: string;
+  source_catalog_size: number;
+  family_count: number;
+  families: ProductFamilyRecord[];
+}
+
+interface AliasIndexFile {
+  generated_at: string;
+  entries: Array<{
+    alias: string;
+    modelId: string;
+    familyId: string;
+  }>;
+}
+
+export interface PriceRange {
+  min: number | null;
+  max: number | null;
+}
+
+export interface CatalogConditionSummary {
+  condition: ConditionKey;
+  label: string;
+  basePrice: number | null;
+  instalmentTotal: number | null;
+  bnpl: BnplPlan[];
+  tradeIn?: TradeRange | null;
+  soldOut?: boolean;
+}
+
+interface FlattenedModel {
+  modelId: string;
+  familyId: string;
+  familyTitle: string;
+  title: string;
+  aliases: string[];
+  tokens: string[];
+  permalink?: string;
+  warnings?: string[];
+  priceRange: PriceRange | null;
+  familyRange: PriceRange | null;
+  conditions: CatalogConditionSummary[];
+  flagshipCondition: CatalogConditionSummary | null;
+}
+
+interface CatalogContext {
+  models: FlattenedModel[];
+  aliasMap: Map<string, FlattenedModel[]>;
+  loadedAt: number;
+}
+
+export interface CatalogMatch {
+  modelId: string;
+  familyId: string;
+  familyTitle: string;
+  name: string;
   permalink?: string;
   price?: string;
-  regular_price?: string;
-  sale_price?: string;
-  stock_status?: string;
-  images?: Array<{ src?: string }>;
-  categories?: Array<{ name?: string }>;
-  tags?: Array<{ name?: string }>;
-  short_description?: string;
-  description?: string;
+  priceRange?: PriceRange | null;
+  familyRange?: PriceRange | null;
+  conditions: CatalogConditionSummary[];
+  flagshipCondition: CatalogConditionSummary | null;
+  warnings?: string[];
 }
 
-let catalogCache: CatalogProduct[] | null = null;
-let lastLoadedAt = 0;
-let catalogPromise: Promise<CatalogProduct[]> | null = null;
+const CACHE_TTL_MS = 1000 * 60 * 30;
+const CONDITION_PREFERENCE: ConditionKey[] = ["brand_new", "pre_owned"];
 
-const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour (catalog refreshes weekly)
+const PRODUCTS_MASTER_PATH =
+  process.env.PRODUCTS_MASTER_PATH ||
+  path.join(process.cwd(), "data", "catalog", "products_master.json");
+const ALIAS_INDEX_PATH =
+  process.env.CATALOG_ALIAS_INDEX_PATH ||
+  path.join(process.cwd(), "data", "catalog", "alias_index.json");
 
-const EXACT_KEYWORD_OVERRIDES: Record<string, CatalogMatch> = {
-  "switch 2": {
-    name: "Nintendo Switch 2 (Brand New)",
-    price: "500.00",
-    stockStatus: "instock",
-    permalink: "https://tradezone.sg/product/nintendo-switch-2",
-  },
-};
+let catalogContext: CatalogContext | null = null;
 
-function resolveCatalogPath(): string {
-  if (process.env.WOOCOMMERCE_PRODUCT_JSON_PATH) {
-    return process.env.WOOCOMMERCE_PRODUCT_JSON_PATH;
-  }
-
-  return path.resolve(
-    process.cwd(),
-    "../tradezone_md_pipeline/product-json/tradezone-WooCommerce-Products.json",
-  );
+function tokenize(input: string): string[] {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9+ ]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 }
 
-function isHttpPath(target: string): boolean {
-  return target.startsWith("http://") || target.startsWith("https://");
+function unique<T>(items: T[]): T[] {
+  return Array.from(new Set(items));
 }
 
-async function readCatalogFromSource(
-  filePath: string,
-): Promise<CatalogProduct[]> {
-  if (isHttpPath(filePath)) {
-    console.log(`[ProductCatalog] Fetching catalog from URL: ${filePath}`);
-    const response = await fetch(filePath);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} when fetching catalog`);
-    }
-    const parsed = await response.json();
-    if (!Array.isArray(parsed)) {
-      throw new Error("Catalog URL did not return an array payload");
-    }
-    return parsed as CatalogProduct[];
-  }
-
-  console.log(`[ProductCatalog] Reading catalog from file: ${filePath}`);
-  const fileContents = await fsp.readFile(filePath, "utf8");
-  const parsed = JSON.parse(fileContents);
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("Catalog file did not contain an array payload");
-  }
-
-  return parsed as CatalogProduct[];
+function conditionLabel(condition: ConditionKey): string {
+  return condition === "brand_new" ? "Brand New" : "Pre-Owned";
 }
 
-async function loadCatalog(): Promise<CatalogProduct[]> {
-  const now = Date.now();
-  if (catalogCache && now - lastLoadedAt < CACHE_TTL_MS) {
-    return catalogCache;
+function toPriceRange(
+  values: Array<number | null | undefined>,
+): PriceRange | null {
+  const numeric = values
+    .map((value) => (typeof value === "number" ? value : null))
+    .filter((value): value is number => value !== null);
+  if (!numeric.length) {
+    return null;
+  }
+  return {
+    min: Math.min(...numeric),
+    max: Math.max(...numeric),
+  };
+}
+
+function selectFlagshipCondition(
+  summaries: CatalogConditionSummary[],
+): CatalogConditionSummary | null {
+  for (const preference of CONDITION_PREFERENCE) {
+    const candidate = summaries.find(
+      (summary) =>
+        summary.condition === preference && summary.basePrice !== null,
+    );
+    if (candidate) return candidate;
   }
 
-  const filePath = resolveCatalogPath();
+  return summaries.find((summary) => summary.basePrice !== null) || null;
+}
 
-  if (!catalogPromise) {
-    catalogPromise = readCatalogFromSource(filePath)
-      .then((products) => {
-        catalogCache = products;
-        lastLoadedAt = Date.now();
-        console.log(
-          `[ProductCatalog] Catalog loaded with ${products.length} products.`,
-        );
-        return products;
-      })
-      .catch((error) => {
-        console.error(
-          `[ProductCatalog] Failed to load catalog from ${filePath}:`,
-          error,
-        );
-        catalogCache = [];
-        lastLoadedAt = Date.now();
-        return [];
-      })
-      .finally(() => {
-        catalogPromise = null;
+function normalizeQuery(query: string): string {
+  return tokenize(query).join(" ");
+}
+
+function buildFlattenedModels(master: ProductsMasterFile): FlattenedModel[] {
+  const familyRanges = new Map<string, PriceRange | null>();
+  master.families.forEach((family) => {
+    const range = toPriceRange(
+      family.models.flatMap((model) =>
+        model.conditions.map((condition) => condition.basePrice ?? null),
+      ),
+    );
+    familyRanges.set(family.family_id, range);
+  });
+
+  const flattened: FlattenedModel[] = [];
+
+  master.families.forEach((family) => {
+    family.models.forEach((model) => {
+      const aliases = unique(
+        model.aliases
+          .map((alias) => alias.toLowerCase().trim())
+          .filter(Boolean),
+      );
+
+      const conditions: CatalogConditionSummary[] = model.conditions.map(
+        (condition) => ({
+          condition: condition.condition,
+          label: conditionLabel(condition.condition),
+          basePrice:
+            typeof condition.basePrice === "number"
+              ? condition.basePrice
+              : null,
+          instalmentTotal:
+            typeof condition.instalmentTotal === "number"
+              ? condition.instalmentTotal
+              : null,
+          bnpl: condition.bnpl ?? [],
+          tradeIn: condition.tradeIn ?? null,
+          soldOut: condition.soldOut ?? false,
+        }),
+      );
+
+      const priceRange = toPriceRange(
+        conditions.map((condition) => condition.basePrice),
+      );
+
+      const flagshipCondition = selectFlagshipCondition(conditions);
+
+      const tokens = unique([
+        ...tokenize(model.title),
+        ...aliases.flatMap((alias) => tokenize(alias)),
+        ...tokenize(family.title),
+      ]);
+
+      flattened.push({
+        modelId: model.model_id,
+        familyId: family.family_id,
+        familyTitle: family.title,
+        title: model.title,
+        aliases,
+        tokens,
+        permalink: model.source?.permalink,
+        warnings: model.warnings || [],
+        priceRange,
+        familyRange: familyRanges.get(family.family_id) || null,
+        conditions,
+        flagshipCondition,
       });
-  }
+    });
+  });
 
-  return catalogPromise!;
+  return flattened;
 }
 
-function scoreProduct(product: CatalogProduct, query: string): number {
-  const name = product.name?.toLowerCase() ?? "";
-  const description = product.description?.toLowerCase() ?? "";
-  const shortDescription = product.short_description?.toLowerCase() ?? "";
+async function loadCatalogContext(): Promise<CatalogContext> {
+  if (catalogContext && Date.now() - catalogContext.loadedAt < CACHE_TTL_MS) {
+    return catalogContext;
+  }
 
-  if (!name && !description && !shortDescription) return 0;
+  const [masterRaw, aliasRaw] = await Promise.all([
+    fs.readFile(PRODUCTS_MASTER_PATH, "utf8"),
+    fs.readFile(ALIAS_INDEX_PATH, "utf8"),
+  ]);
 
-  const queryTokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (queryTokens.length === 0) return 0;
+  const master = JSON.parse(masterRaw) as ProductsMasterFile;
+  const aliasIndex = JSON.parse(aliasRaw) as AliasIndexFile;
+  const models = buildFlattenedModels(master);
+  const modelMap = new Map(models.map((model) => [model.modelId, model]));
 
-  let score = 0;
+  const aliasMap = new Map<string, FlattenedModel[]>();
 
-  queryTokens.forEach((token) => {
-    const nameWords = name.split(/\s+/);
-    let bestNameMatch = 0;
-
-    nameWords.forEach((word) => {
-      const distance = levenshteinDistance(token, word);
-      const similarity = 1 - distance / Math.max(token.length, word.length);
-      if (similarity > 0.7) {
-        // Threshold for a decent match
-        bestNameMatch = Math.max(bestNameMatch, similarity);
-      }
-    });
-
-    if (bestNameMatch > 0) {
-      score += 50 * bestNameMatch; // Main score from name matching
-    }
-
-    if (description.includes(token) || shortDescription.includes(token)) {
-      score += 10; // Bonus for appearing in description
+  aliasIndex.entries.forEach((entry) => {
+    const model = modelMap.get(entry.modelId);
+    if (!model) return;
+    const alias = entry.alias.trim().toLowerCase();
+    if (!alias) return;
+    const existing = aliasMap.get(alias) ?? [];
+    if (!existing.includes(model)) {
+      existing.push(model);
+      aliasMap.set(alias, existing);
     }
   });
 
-  // Bonus for all query tokens appearing in the name
-  if (queryTokens.every((token) => name.includes(token))) {
+  models.forEach((model) => {
+    model.aliases.forEach((alias) => {
+      const normalized = alias.trim();
+      if (!normalized) return;
+      const existing = aliasMap.get(normalized) ?? [];
+      if (!existing.includes(model)) {
+        existing.push(model);
+        aliasMap.set(normalized, existing);
+      }
+    });
+  });
+
+  catalogContext = {
+    models,
+    aliasMap,
+    loadedAt: Date.now(),
+  };
+
+  return catalogContext;
+}
+
+function formatPriceLabel(
+  condition: CatalogConditionSummary | null,
+): string | undefined {
+  if (!condition || condition.basePrice === null) return undefined;
+  return `${condition.basePrice.toFixed(0)} (${condition.label})`;
+}
+
+function toCatalogMatch(model: FlattenedModel): CatalogMatch {
+  return {
+    modelId: model.modelId,
+    familyId: model.familyId,
+    familyTitle: model.familyTitle,
+    name: model.title,
+    permalink: model.permalink,
+    price: formatPriceLabel(model.flagshipCondition),
+    priceRange: model.priceRange,
+    familyRange: model.familyRange,
+    conditions: model.conditions,
+    flagshipCondition: model.flagshipCondition,
+    warnings: model.warnings,
+  };
+}
+
+function scoreModel(
+  model: FlattenedModel,
+  normalizedQuery: string,
+  queryTokens: string[],
+): number {
+  if (!normalizedQuery) return 0;
+
+  if (model.aliases.includes(normalizedQuery)) {
+    return 200;
+  }
+
+  let score = 0;
+  const matchedTokens = queryTokens.filter((token) =>
+    model.tokens.includes(token),
+  );
+  if (matchedTokens.length) {
+    score += matchedTokens.length * 30;
+  }
+
+  if (model.title.toLowerCase().includes(normalizedQuery)) {
     score += 40;
   }
 
-  // Big bonus for exact match of the full query
-  if (name.includes(query)) {
-    score += 60;
+  const aliasContains = model.aliases.find(
+    (alias) =>
+      alias.includes(normalizedQuery) || normalizedQuery.includes(alias),
+  );
+  if (aliasContains) {
+    score += 35;
   }
+
+  const distance = levenshteinDistance(
+    normalizedQuery,
+    model.title.toLowerCase(),
+  );
+  score += Math.max(0, 40 - distance * 4);
 
   return score;
 }
 
-export interface CatalogMatch {
-  name: string;
-  permalink?: string;
-  price?: string;
-  stockStatus?: string;
-  image?: string;
+export async function findCatalogMatches(
+  query: string,
+  limit = 3,
+): Promise<CatalogMatch[]> {
+  const normalizedQuery = normalizeQuery(query);
+  if (!normalizedQuery) return [];
+
+  const queryTokens = tokenize(normalizedQuery);
+  const { models, aliasMap } = await loadCatalogContext();
+
+  const aliasCandidates = aliasMap.get(normalizedQuery);
+  const pool =
+    aliasCandidates && aliasCandidates.length > 0 ? aliasCandidates : models;
+
+  const scored = pool
+    .map((model) => ({
+      model,
+      score: aliasCandidates
+        ? 250 + (model.flagshipCondition?.basePrice ?? 0) / 1000
+        : scoreModel(model, normalizedQuery, queryTokens),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aPrice = a.model.flagshipCondition?.basePrice ?? 0;
+      const bPrice = b.model.flagshipCondition?.basePrice ?? 0;
+      return bPrice - aPrice;
+    });
+
+  return scored.slice(0, limit).map(({ model }) => toCatalogMatch(model));
+}
+
+export async function findClosestMatch(query: string): Promise<string | null> {
+  const normalized = normalizeQuery(query);
+  if (!normalized) return null;
+
+  const { models } = await loadCatalogContext();
+  let best: { model: FlattenedModel; distance: number } | null = null;
+
+  models.forEach((model) => {
+    const distances = [
+      levenshteinDistance(normalized, model.title.toLowerCase()),
+      ...model.aliases.map((alias) =>
+        levenshteinDistance(normalized, alias.toLowerCase()),
+      ),
+    ];
+    const minDistance = Math.min(...distances);
+    if (!best || minDistance < best.distance) {
+      best = { model, distance: minDistance };
+    }
+  });
+
+  return best ? best.model.title : null;
 }
 
 function levenshteinDistance(a: string, b: string): number {
-  const matrix = Array(b.length + 1)
-    .fill(null)
-    .map(() => Array(a.length + 1).fill(null));
+  const matrix = Array.from({ length: b.length + 1 }, () =>
+    Array(a.length + 1).fill(0),
+  );
+
   for (let i = 0; i <= a.length; i += 1) {
     matrix[0][i] = i;
   }
   for (let j = 0; j <= b.length; j += 1) {
     matrix[j][0] = j;
   }
+
   for (let j = 1; j <= b.length; j += 1) {
     for (let i = 1; i <= a.length; i += 1) {
       const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
       matrix[j][i] = Math.min(
-        matrix[j][i - 1] + 1, // deletion
-        matrix[j - 1][i] + 1, // insertion
-        matrix[j - 1][i - 1] + indicator, // substitution
+        matrix[j][i - 1] + 1,
+        matrix[j - 1][i] + 1,
+        matrix[j - 1][i - 1] + indicator,
       );
     }
   }
+
   return matrix[b.length][a.length];
-}
-
-export async function findClosestMatch(query: string): Promise<string | null> {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return null;
-
-  const catalog = await loadCatalog();
-  let closestMatch: string | null = null;
-  let minDistance = Infinity;
-
-  for (const product of catalog) {
-    const productName = product.name?.toLowerCase();
-    if (productName) {
-      const distance = levenshteinDistance(trimmed, productName);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestMatch = product.name;
-      }
-    }
-  }
-
-  // Only return a suggestion if the distance is reasonably small
-  if (closestMatch && minDistance <= 3) {
-    return closestMatch;
-  }
-
-  return null;
-}
-
-const STOP_WORDS = new Set([
-  "any",
-  "the",
-  "for",
-  "find",
-  "show",
-  "give",
-  "please",
-  "some",
-  "get",
-  "need",
-  "want",
-  "have",
-  "got",
-]);
-
-export async function findCatalogMatches(
-  query: string,
-  limit = 3,
-): Promise<CatalogMatch[]> {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return [];
-
-  for (const [keyword, match] of Object.entries(EXACT_KEYWORD_OVERRIDES)) {
-    if (trimmed.includes(keyword)) {
-      return [match];
-    }
-  }
-
-  const catalog = await loadCatalog();
-  const rawTokens = trimmed.split(/\s+/).filter(Boolean);
-
-  // Smart filtering: keep "game"/"games" if it's part of a meaningful query
-  const filteredTokens = rawTokens.filter((token) => {
-    if (token.length < 3) return false;
-    if (STOP_WORDS.has(token)) return false;
-    // Keep "game"/"games" unless it's ONLY that word with stop words
-    if (token === "game" || token === "games" || token === "gaming") {
-      // Keep if there are other meaningful tokens
-      return rawTokens.some(
-        (t) =>
-          t !== token &&
-          t.length >= 3 &&
-          !STOP_WORDS.has(t) &&
-          t !== "game" &&
-          t !== "games" &&
-          t !== "gaming",
-      );
-    }
-    return true;
-  });
-
-  const tokensToUse = filteredTokens.length ? filteredTokens : rawTokens;
-  const primaryKeyword =
-    tokensToUse.find((token) => !STOP_WORDS.has(token)) || tokensToUse[0];
-
-  const ranked = catalog
-    .map((product) => {
-      const name = (product.name || "").toLowerCase();
-      const categories = (product.categories || []).map(
-        (c) => c.name?.toLowerCase() || "",
-      );
-      const description = (
-        product.short_description ||
-        product.description ||
-        ""
-      ).toLowerCase();
-      const matchedTokens = tokensToUse.filter(
-        (token) =>
-          name.includes(token) ||
-          categories.some((cat) => cat.includes(token)) ||
-          description.includes(token),
-      );
-      const score = matchedTokens.length
-        ? scoreProduct(product, trimmed) + matchedTokens.length * 150
-        : 0;
-      return { product, score, matched: matchedTokens.length };
-    })
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => {
-      if (b.matched !== a.matched) return b.matched - a.matched;
-      return b.score - a.score;
-    });
-
-  let sliced = ranked.slice(0, limit);
-  if (primaryKeyword) {
-    const keyword = primaryKeyword.toLowerCase();
-    const strictMatches = ranked.filter(({ product }) =>
-      (product.name || "").toLowerCase().includes(keyword),
-    );
-    if (strictMatches.length > 0) {
-      sliced = strictMatches.slice(0, limit);
-    }
-  }
-
-  return sliced.map(({ product }) => ({
-    name: product.name || "TradeZone Product",
-    permalink: product.permalink,
-    price:
-      product.price || product.sale_price || product.regular_price || undefined,
-    stockStatus: product.stock_status,
-    image: product.images?.[0]?.src,
-  }));
 }
