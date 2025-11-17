@@ -21,6 +21,7 @@ import { TRADE_IN_SYSTEM_CONTEXT } from "@/lib/chatkit/tradeInPrompts";
 import {
   findCatalogMatches,
   findClosestMatch,
+  type CatalogMatch,
 } from "@/lib/chatkit/productCatalog";
 import {
   recordAgentTelemetry,
@@ -115,7 +116,11 @@ type HybridSearchSource =
 type HybridSearchResult = {
   result: string;
   source: HybridSearchSource;
+  matches: CatalogMatch[];
 };
+
+type CatalogMatches = Awaited<ReturnType<typeof findCatalogMatches>>;
+type PriceModifier = "high_end" | "budget";
 
 function renderCatalogMatches(
   matches: Awaited<ReturnType<typeof findCatalogMatches>>,
@@ -149,6 +154,93 @@ function formatRangeSummary(
   if (typeof min !== "number" || typeof max !== "number") return "";
   if (min === max) return `S$${min.toFixed(0)}`;
   return `S$${min.toFixed(0)}–S$${max.toFixed(0)}`;
+}
+
+function tokenizeQuery(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9+ ]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function analyzePriceModifier(query: string): {
+  modifier: PriceModifier | null;
+  cleanedQuery: string;
+} {
+  const tokens = tokenizeQuery(query);
+  let modifier: PriceModifier | null = null;
+  const filtered: string[] = [];
+
+  for (const rawToken of tokens) {
+    const token = rawToken.replace(/[^a-z0-9]/g, "");
+    if (!token) continue;
+
+    if (HIGH_END_KEYWORDS.has(token)) {
+      modifier = "high_end";
+      continue;
+    }
+    if (BUDGET_KEYWORDS.has(token)) {
+      modifier = "budget";
+      continue;
+    }
+    if (MODIFIER_FILLER_TOKENS.has(token)) {
+      continue;
+    }
+    filtered.push(rawToken);
+  }
+
+  return { modifier, cleanedQuery: filtered.join(" ") };
+}
+
+function summarizeMatchesByModifier(
+  matches: CatalogMatches,
+  modifier: PriceModifier,
+): string | null {
+  if (!matches.length) return null;
+
+  const pricedMatches = matches
+    .map((match) => {
+      const flagshipPrice = match.flagshipCondition?.basePrice;
+      const fallbackPrice = match.priceRange?.max ?? match.priceRange?.min;
+      const price =
+        typeof flagshipPrice === "number"
+          ? flagshipPrice
+          : typeof fallbackPrice === "number"
+            ? fallbackPrice
+            : null;
+      return { match, price };
+    })
+    .filter(({ price }) => typeof price === "number") as Array<{
+    match: CatalogMatch;
+    price: number;
+  }>;
+
+  if (!pricedMatches.length) return null;
+
+  const sorted = [...pricedMatches].sort((a, b) => a.price - b.price);
+  const sliceSize = Math.max(1, Math.ceil(sorted.length * 0.25));
+  const subset =
+    modifier === "high_end"
+      ? sorted.slice(-sliceSize).reverse()
+      : sorted.slice(0, sliceSize);
+
+  const heading =
+    modifier === "high_end"
+      ? "Higher-end picks"
+      : "Best value picks";
+
+  const lines = subset.map(({ match, price }) => {
+    const flagship = match.flagshipCondition;
+    const label = flagship?.label ? ` (${flagship.label})` : "";
+    const range = formatRangeSummary(match.priceRange);
+    const rangeSuffix = range ? ` (Variants ${range})` : "";
+    return `- ${match.name} — S$${price.toFixed(0)}${label}${rangeSuffix}`;
+  });
+
+  const section = `${heading} from the TradeZone catalog:\n\n${lines.join("\n")}`;
+  return `${section}\n\nNeed details on any of these?`;
 }
 
 function truncateString(text: string, max = 280): string {
@@ -226,6 +318,93 @@ const PLACEHOLDER_NAME_TOKENS = new Set([
   "alright",
   "alrighty",
   "thanks!",
+]);
+
+const MODIFIER_FILLER_TOKENS = new Set([
+  "yes",
+  "yeah",
+  "yep",
+  "ok",
+  "okay",
+  "pls",
+  "please",
+  "give",
+  "me",
+  "more",
+  "another",
+  "other",
+  "others",
+  "option",
+  "options",
+  "one",
+  "ones",
+  "some",
+  "something",
+  "anything",
+  "any",
+  "show",
+  "list",
+  "maybe",
+  "still",
+  "need",
+  "want",
+  "prefer",
+  "the",
+  "a",
+  "an",
+  "for",
+  "with",
+  "without",
+  "again",
+  "thank",
+  "thanks",
+  "bring",
+  "back",
+  "make",
+  "keep",
+  "showing",
+  "kind",
+  "sir",
+  "madam",
+  "on",
+  "in",
+  "to",
+  "per",
+  "percent",
+  "percentage",
+  "quarter",
+  "25",
+  "25%",
+  "50",
+  "50%",
+]);
+
+const HIGH_END_KEYWORDS = new Set([
+  "highend",
+  "high",
+  "premium",
+  "top",
+  "toptier",
+  "flagship",
+  "expensive",
+  "best",
+  "upper",
+  "elite",
+]);
+
+const BUDGET_KEYWORDS = new Set([
+  "cheap",
+  "cheaper",
+  "cheapest",
+  "budget",
+  "entry",
+  "entrylevel",
+  "low",
+  "lowend",
+  "affordable",
+  "value",
+  "bottom",
+  "economy",
 ]);
 
 function isPlaceholderName(value: string | null | undefined): boolean {
@@ -675,7 +854,7 @@ async function runHybridSearch(
   let catalogLatency = 0;
   let perplexityLatency = 0;
 
-  let responseMatches: Awaited<ReturnType<typeof findCatalogMatches>> = [];
+  let responseMatches: CatalogMatches = [];
 
   try {
     const vectorStart = Date.now();
@@ -757,7 +936,11 @@ async function runHybridSearch(
     console.log(
       `[ChatKit] Using ${isTradeInQuery ? "TRADE-IN" : "vector"} result (${vectorResult.length} chars)`,
     );
-    return { result: adjusted, source: vectorSource };
+    return {
+      result: adjusted,
+      source: vectorSource,
+      matches: vectorSource === "trade_in_vector_store" ? [] : catalogMatches,
+    };
   }
 
   if (catalogSection) {
@@ -767,7 +950,11 @@ async function runHybridSearch(
         `[ChatKit] Slow hybrid search (catalog path): ${totalLatency}ms total`,
       );
     }
-    return { result: catalogSection, source: "product_catalog" };
+    return {
+      result: catalogSection,
+      source: "product_catalog",
+      matches: catalogMatches,
+    };
   }
 
   try {
@@ -786,7 +973,7 @@ async function runHybridSearch(
       console.log(
         `[ChatKit] Hybrid search completed: vector=${vectorLatency}ms, catalog=${catalogLatency}ms, perplexity=${perplexityLatency}ms, total=${totalLatency}ms`,
       );
-      return { result: fallback, source: "perplexity" };
+      return { result: fallback, source: "perplexity", matches: [] };
     }
   } catch (fallbackError) {
     console.error("[ChatKit] Perplexity fallback error:", fallbackError);
@@ -804,7 +991,7 @@ async function runHybridSearch(
     );
   }
 
-  return { result: fallbackMessage, source: vectorSource };
+  return { result: fallbackMessage, source: vectorSource, matches: [] };
 }
 
 async function buildTradeInSummary(leadId: string) {
@@ -1345,6 +1532,7 @@ export async function POST(request: NextRequest) {
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
+  let lastHybridMatches: CatalogMatches = [];
   let errorMessage: string | null = null;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -1636,28 +1824,57 @@ export async function POST(request: NextRequest) {
                 ? { intent: "trade_in", toolUsed: functionName }
                 : { toolUsed: functionName };
             console.log(`[ChatKit] Vector context:`, vectorContext);
-            const { result, source } = await runHybridSearch(
-              rawQuery,
+
+            const { modifier, cleanedQuery } = analyzePriceModifier(rawQuery);
+            let searchQuery = cleanedQuery || rawQuery;
+            if (!cleanedQuery && modifier && lastHybridQuery) {
+              searchQuery = lastHybridQuery;
+            }
+
+            const { result, source, matches } = await runHybridSearch(
+              searchQuery,
               vectorContext,
             );
-            toolResult = result;
+
             toolSource = source;
-            lastHybridResult = result;
+            let resolvedResult = result;
+
+            if (
+              modifier &&
+              source !== "trade_in_vector_store" &&
+              matches.length > 0
+            ) {
+              const modifierSummary = summarizeMatchesByModifier(
+                matches,
+                modifier,
+              );
+              if (modifierSummary) {
+                resolvedResult = modifierSummary;
+              }
+            }
+
+            toolResult = resolvedResult;
+            lastHybridResult = resolvedResult;
             lastHybridSource = source;
-            lastHybridQuery = rawQuery;
+            lastHybridQuery = searchQuery;
+            lastHybridMatches = matches;
             const toolLatency = Date.now() - toolStart;
-            const loggedArgs = { ...functionArgs, query: rawQuery };
+            const loggedArgs = {
+              ...functionArgs,
+              query: rawQuery,
+              searchQuery,
+            };
             toolSummaries.push({
               name: functionName,
               args: { ...loggedArgs, source },
-              resultPreview: result.slice(0, 200),
+              resultPreview: resolvedResult.slice(0, 200),
             });
             await logToolRun({
               request_id: requestId,
               session_id: sessionId,
               tool_name: functionName,
               args: loggedArgs,
-              result_preview: result.slice(0, 280),
+              result_preview: resolvedResult.slice(0, 280),
               source,
               success: true,
               latency_ms: toolLatency,
