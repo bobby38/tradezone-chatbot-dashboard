@@ -84,7 +84,7 @@ export interface CatalogConditionSummary {
   soldOut?: boolean;
 }
 
-interface FlattenedModel {
+export interface FlattenedModel {
   modelId: string;
   familyId: string;
   familyTitle: string;
@@ -363,7 +363,7 @@ function buildFlattenedModels(master: ProductsMasterFile): FlattenedModel[] {
   return flattened;
 }
 
-async function loadCatalogContext(): Promise<CatalogContext> {
+export async function getCatalogContext(): Promise<CatalogContext> {
   if (catalogContext && Date.now() - catalogContext.loadedAt < CACHE_TTL_MS) {
     return catalogContext;
   }
@@ -411,6 +411,22 @@ async function loadCatalogContext(): Promise<CatalogContext> {
   };
 
   return catalogContext;
+}
+
+async function loadCatalogContext(): Promise<CatalogContext> {
+  return getCatalogContext();
+}
+
+export async function getCatalogModelById(
+  modelId: string,
+): Promise<FlattenedModel | null> {
+  const { models } = await getCatalogContext();
+  return models.find((model) => model.modelId === modelId) || null;
+}
+
+export async function listCatalogModels(): Promise<FlattenedModel[]> {
+  const { models } = await getCatalogContext();
+  return models;
 }
 
 function formatPriceLabel(

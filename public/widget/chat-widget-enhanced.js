@@ -2398,6 +2398,161 @@
             ? "Trade-in submitted successfully. Our team will contact you within 24 hours."
             : `Error: ${data.error || "Failed to submit trade-in lead"}`;
           console.log("[Tool] Trade-in submit result:", result);
+        } else if (name === "normalize_product") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/normalize-product`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify({
+                  query: parsedArgs.query,
+                  limit: parsedArgs.limit,
+                }),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify({ ...data, slot: parsedArgs.slot });
+          } catch (error) {
+            console.error("[Tool] normalize_product error", error);
+            result = "Failed to normalize product";
+          }
+        } else if (name === "price_lookup") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/price-lookup`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify(parsedArgs),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify({ ...data, subject: parsedArgs.subject });
+          } catch (error) {
+            console.error("[Tool] price_lookup error", error);
+            result = "Failed to look up pricing";
+          }
+        } else if (name === "calculate_top_up") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/calculate-top-up`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify(parsedArgs),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify(data);
+          } catch (error) {
+            console.error("[Tool] calculate_top_up error", error);
+            result = "Failed to calculate top-up";
+          }
+        } else if (name === "inventory_check") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/inventory-check`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify(parsedArgs),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify(data);
+          } catch (error) {
+            console.error("[Tool] inventory_check error", error);
+            result = "Failed to check inventory";
+          }
+        } else if (name === "order_create") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/order-create`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify({ ...parsedArgs, sessionId: this.sessionId }),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify(data);
+          } catch (error) {
+            console.error("[Tool] order_create error", error);
+            result = "Failed to create order";
+          }
+        } else if (name === "schedule_inspection") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/schedule-inspection`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify({ ...parsedArgs, sessionId: this.sessionId }),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify(data);
+          } catch (error) {
+            console.error("[Tool] schedule_inspection error", error);
+            result = "Failed to schedule inspection";
+          }
+        } else if (name === "ocr_and_extract") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/ocr-extract`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify(parsedArgs),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify(data);
+          } catch (error) {
+            console.error("[Tool] ocr_and_extract error", error);
+            result = "Failed to analyze photo";
+          }
+        } else if (name === "enqueue_human_review") {
+          try {
+            const response = await fetch(
+              `${this.config.apiUrl}/api/tools/enqueue-human-review`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": this.config.apiKey || "",
+                },
+                body: JSON.stringify(parsedArgs),
+              },
+            );
+            const data = await response.json();
+            result = JSON.stringify(data);
+          } catch (error) {
+            console.error("[Tool] enqueue_human_review error", error);
+            result = "Failed to enqueue review";
+          }
         }
 
         // Send tool result back to Realtime API

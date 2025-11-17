@@ -2901,3 +2901,35 @@ Document progress + deviations here whenever the plan evolves so every teammate 
   - If the catalog graph doesn’t exist yet, run `npx tsx scripts/create-zep-graph.ts` once; the script now prints the canonical ID even if the API returns `graphId` instead of `graph_id`. Copy the logged `ZEP_CATALOG_GRAPH_ID=...` into `.env.local` before syncing.
   - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`. Successful runs log ten batches (182 records currently) with no 404s—rerun whenever catalog data changes.
   - `/api/chatkit/agent` automatically fetches `context` + `user_summary` from Zep, stores each turn via `addZepMemoryTurn`, and exposes the new `tradezone_graph_query` tool so GPT can pull structured bundle/trade relationships when vector search is noisy.
+- **Upcoming agent hardening checkpoints (do not skip before rollout):**
+  1. **Expose deterministic tools** for every numeric fact: `normalize_product`, `price_lookup`, `calculate_top_up`, `inventory_check`, `schedule_inspection`, `ocr_and_extract`, `enqueue_human_review`. The LLM must never emit a number we didn’t fetch from these tools.
+  2. **Require a verification payload** with each numeric reply. Shape:
+
+     ```json
+     {
+       "reply_text": "...",
+       "slots_filled": {
+         "trade_in_brand": "",
+         "trade_in_model": "",
+         "trade_in_variant": "",
+         "trade_in_condition": "",
+         "trade_in_value_sgd": 0,
+         "target_brand": "",
+         "target_model": "",
+         "target_variant": "",
+         "target_price_sgd": 0,
+         "used_device_discount_sgd": 0
+       },
+       "top_up_sgd": 0,
+       "calculation_steps": ["target_price_sgd (899) minus trade_in_value_sgd (100) equals 799"],
+       "confidence": 0.0,
+       "provenance": [
+         {"field": "trade_in_value_sgd", "source": "price_grid_v2025-11-12.csv", "confidence": 0.95 },
+         {"field": "target_price_sgd", "source": "inventory_api", "confidence": 0.98 }
+       ],
+       "flags": {"requires_human_review": false, "is_provisional": false }
+     }
+     ```
+  3. **Confidence gating:** compute `confidence = 0.5*price_grid_conf + 0.3*normalize_match + 0.2*ocr_score`. Replies with confidence <0.6 must auto-call `enqueue_human_review`, 0.6–0.79 reply with provisional language + provenance, ≥0.8 reply normally.
+  4. **Conflict detector:** if user-provided price differs from canonical by >S$50 (or >10%), block auto-updates, log the discrepancy, and surface it in the dashboard checklist.
+  5. **Telemetry:** track extraction accuracy, arithmetic mismatch rate, percent auto-vs-provisional replies, human-review turnaround, and normalize_product false +/- rates. Add a Grafana or Supabase dashboard before production cutover.

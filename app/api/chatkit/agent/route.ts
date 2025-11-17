@@ -33,6 +33,17 @@ import {
   fetchZepContext,
   queryZepGraphContext,
 } from "@/lib/zep";
+import {
+  normalizeProduct,
+  priceLookup,
+  calculateTopUp,
+  inventoryCheck,
+  createOrder,
+  scheduleInspection,
+  enqueueHumanReview,
+  ocrAndExtract,
+  type TopUpResult,
+} from "@/lib/agent-tools";
 
 // Security imports
 import {
@@ -248,6 +259,29 @@ function truncateString(text: string, max = 280): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+function computeConfidence(
+  priceComponent: number | null,
+  normalizeComponent: number | null,
+  ocrComponent: number | null,
+): number | null {
+  const weighted: Array<{ value: number; weight: number }> = [];
+  if (typeof priceComponent === "number") {
+    weighted.push({ value: priceComponent, weight: 0.5 });
+  }
+  if (typeof normalizeComponent === "number") {
+    weighted.push({ value: normalizeComponent, weight: 0.3 });
+  }
+  if (typeof ocrComponent === "number") {
+    weighted.push({ value: ocrComponent, weight: 0.2 });
+  }
+  if (!weighted.length) return null;
+  const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+  const score =
+    weighted.reduce((sum, item) => sum + item.value * item.weight, 0) /
+    totalWeight;
+  return Math.max(0, Math.min(1, score));
+}
+
 function deriveSessionName(
   history: Array<{ role?: string; content?: string }> | undefined,
   latestMessage: string,
@@ -319,6 +353,55 @@ const PLACEHOLDER_NAME_TOKENS = new Set([
   "alrighty",
   "thanks!",
 ]);
+
+interface VerificationSlots {
+  trade_in_brand: string | null;
+  trade_in_model: string | null;
+  trade_in_variant: string | null;
+  trade_in_condition: string | null;
+  trade_in_value_sgd: number | null;
+  target_brand: string | null;
+  target_model: string | null;
+  target_variant: string | null;
+  target_price_sgd: number | null;
+  used_device_discount_sgd: number | null;
+}
+
+interface VerificationPayload {
+  reply_text: string;
+  slots_filled: VerificationSlots;
+  top_up_sgd: number | null;
+  calculation_steps: string[];
+  confidence: number;
+  provenance: Array<{ field: string; source: string; confidence: number }>;
+  flags: { requires_human_review: boolean; is_provisional: boolean };
+}
+
+function createVerificationPayload(): VerificationPayload {
+  return {
+    reply_text: "",
+    slots_filled: {
+      trade_in_brand: null,
+      trade_in_model: null,
+      trade_in_variant: null,
+      trade_in_condition: null,
+      trade_in_value_sgd: null,
+      target_brand: null,
+      target_model: null,
+      target_variant: null,
+      target_price_sgd: null,
+      used_device_discount_sgd: null,
+    },
+    top_up_sgd: null,
+    calculation_steps: [],
+    confidence: 0,
+    provenance: [],
+    flags: {
+      requires_human_review: false,
+      is_provisional: false,
+    },
+  };
+}
 
 const MODIFIER_FILLER_TOKENS = new Set([
   "yes",
@@ -1541,6 +1624,11 @@ export async function POST(request: NextRequest) {
   let tradeInIntent = false;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
+  let verificationData = createVerificationPayload();
+  let normalizeConfidence: number | null = null;
+  let priceConfidence: number | null = null;
+  let ocrConfidence: number | null = null;
+  let latestTopUp: TopUpResult | null = null;
 
   try {
     // Load settings and system prompt
@@ -2045,19 +2133,176 @@ export async function POST(request: NextRequest) {
               } else {
                 toolResult = "Failed to submit trade-in lead.";
               }
-              await logToolRun({
-                request_id: requestId,
-                session_id: sessionId,
-                tool_name: functionName,
-                args: functionArgs,
-                result_preview: toolResult.slice(0, 280),
-                source: "trade_in_lead",
-                success: false,
-                latency_ms: toolLatency,
-                error_message: err instanceof Error ? err.message : String(err),
-              });
+          await logToolRun({
+            request_id: requestId,
+            session_id: sessionId,
+            tool_name: functionName,
+            args: functionArgs,
+            result_preview: toolResult.slice(0, 280),
+            source: "trade_in_lead",
+            success: false,
+            latency_ms: toolLatency,
+            error_message: err instanceof Error ? err.message : String(err),
+          });
+        }
+      } else if (functionName === "normalize_product") {
+        const rawQuery =
+          typeof functionArgs.query === "string" ? functionArgs.query : "";
+        const slotParam =
+          functionArgs.slot === "trade_in" || functionArgs.slot === "target"
+            ? functionArgs.slot
+            : "target";
+        if (!rawQuery) {
+          toolResult = "I need a product description to normalize.";
+        } else {
+          const normalized = await normalizeProduct(rawQuery);
+          const payload: NormalizeProductResult & { slot: string } = {
+            ...normalized,
+            slot: slotParam,
+          };
+          toolResult = JSON.stringify(payload);
+          const topCandidate = normalized.candidates[0];
+          if (topCandidate) {
+            normalizeConfidence = topCandidate.confidence;
+            if (slotParam === "target") {
+              verificationData.slots_filled.target_model = topCandidate.name;
+              verificationData.slots_filled.target_variant =
+                topCandidate.familyId;
+            } else {
+              verificationData.slots_filled.trade_in_model = topCandidate.name;
+              verificationData.slots_filled.trade_in_variant =
+                topCandidate.familyId;
             }
-          } else if (functionName === "sendemail") {
+          }
+        }
+      } else if (functionName === "price_lookup") {
+        const productId =
+          typeof functionArgs.productId === "string"
+            ? functionArgs.productId
+            : "";
+        const priceType =
+          functionArgs.priceType === "retail" ||
+          functionArgs.priceType === "trade_in"
+            ? functionArgs.priceType
+            : "trade_in";
+        const subject =
+          functionArgs.subject === "target" ||
+          functionArgs.subject === "trade_in"
+            ? functionArgs.subject
+            : priceType === "trade_in"
+              ? "trade_in"
+              : "target";
+        if (!productId) {
+          toolResult = "productId is required.";
+        } else {
+          const lookup = await priceLookup({
+            productId,
+            condition:
+              typeof functionArgs.condition === "string"
+                ? functionArgs.condition
+                : undefined,
+            priceType,
+          });
+          priceConfidence = lookup.confidence;
+          verificationData.provenance.push({
+            field:
+              subject === "trade_in"
+                ? "trade_in_value_sgd"
+                : "target_price_sgd",
+            source: lookup.source,
+            confidence: lookup.confidence,
+          });
+          if (subject === "trade_in") {
+            verificationData.slots_filled.trade_in_value_sgd =
+              lookup.value_sgd;
+            verificationData.slots_filled.trade_in_condition = lookup.condition;
+          } else {
+            verificationData.slots_filled.target_price_sgd = lookup.value_sgd;
+          }
+          toolResult = JSON.stringify({ ...lookup, subject });
+        }
+      } else if (functionName === "calculate_top_up") {
+        const targetPrice = Number(functionArgs.targetPrice);
+        const tradeValue = Number(functionArgs.tradeInValue);
+        const discount = Number(functionArgs.usedDiscount || 0);
+        if (!Number.isFinite(targetPrice) || !Number.isFinite(tradeValue)) {
+          toolResult = "targetPrice and tradeInValue are required.";
+        } else {
+          const calc = calculateTopUp(targetPrice, tradeValue, discount);
+          latestTopUp = calc;
+          verificationData.top_up_sgd = calc.top_up_sgd;
+          verificationData.calculation_steps = calc.steps;
+          verificationData.slots_filled.used_device_discount_sgd = discount;
+          toolResult = JSON.stringify(calc);
+        }
+      } else if (functionName === "inventory_check") {
+        const productId =
+          typeof functionArgs.productId === "string"
+            ? functionArgs.productId
+            : "";
+        if (!productId) {
+          toolResult = "productId is required.";
+        } else {
+          const stock = await inventoryCheck(productId);
+          toolResult = JSON.stringify(stock);
+        }
+      } else if (functionName === "order_create") {
+        try {
+          const order = await createOrder({
+            sessionId,
+            userId: functionArgs.userId,
+            productId: functionArgs.productId,
+            paymentMethod: functionArgs.paymentMethod,
+            options: functionArgs.options ?? null,
+          });
+          toolResult = JSON.stringify(order);
+        } catch (err) {
+          toolResult = `Order creation failed: ${err instanceof Error ? err.message : String(err)}`;
+        }
+      } else if (functionName === "schedule_inspection") {
+        try {
+          const booking = await scheduleInspection({
+            sessionId,
+            userId: functionArgs.userId,
+            storeId: functionArgs.storeId,
+            timeslot: functionArgs.timeslot,
+            notes: functionArgs.notes,
+          });
+          toolResult = JSON.stringify(booking);
+        } catch (err) {
+          toolResult = `Inspection scheduling failed: ${err instanceof Error ? err.message : String(err)}`;
+        }
+      } else if (functionName === "ocr_and_extract") {
+        if (!functionArgs.imageUrl) {
+          toolResult = "imageUrl is required.";
+        } else {
+          const extraction = await ocrAndExtract({
+            imageUrl: functionArgs.imageUrl,
+            promptHint: functionArgs.promptHint,
+          });
+          ocrConfidence = extraction.photoscore;
+          if (
+            extraction.detected_model &&
+            !verificationData.slots_filled.trade_in_model
+          ) {
+            verificationData.slots_filled.trade_in_model =
+              extraction.detected_model;
+          }
+          toolResult = JSON.stringify(extraction);
+        }
+      } else if (functionName === "enqueue_human_review") {
+        try {
+          const ticket = await enqueueHumanReview({
+            sessionId,
+            reason: functionArgs.reason || "manual_review",
+            payload: functionArgs.payload ?? null,
+          });
+          verificationData.flags.requires_human_review = true;
+          toolResult = JSON.stringify(ticket);
+        } catch (err) {
+          toolResult = `Failed to enqueue review: ${err instanceof Error ? err.message : String(err)}`;
+        }
+      } else if (functionName === "sendemail") {
             const toolStart = Date.now();
             const normalizedArgs = {
               ...functionArgs,
@@ -2222,6 +2467,29 @@ export async function POST(request: NextRequest) {
       finalResponse = assistantMessage.content || "";
     }
 
+    verificationData.reply_text = finalResponse;
+    const computedConfidence = computeConfidence(
+      priceConfidence,
+      normalizeConfidence,
+      ocrConfidence,
+    );
+    if (computedConfidence !== null) {
+      verificationData.confidence = Number(
+        computedConfidence.toFixed(2),
+      );
+      if (computedConfidence < 0.6) {
+        verificationData.flags.requires_human_review = true;
+        if (!finalResponse.toLowerCase().includes("manual review")) {
+          finalResponse = `${finalResponse}\n\nI’m flagging this for a TradeZone specialist to review before we commit to the numbers.`;
+        }
+      } else if (computedConfidence < 0.8) {
+        verificationData.flags.is_provisional = true;
+        if (!finalResponse.toLowerCase().includes("provisional")) {
+          finalResponse = `${finalResponse}\n\nThis is a provisional range and may change after inspection.`;
+        }
+      }
+    }
+
     const noToolCalls =
       !assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0;
     if (tradeInIntent && tradeInLeadId && noToolCalls) {
@@ -2373,6 +2641,7 @@ export async function POST(request: NextRequest) {
       response: finalResponse,
       sessionId,
       model: textModel,
+      verification: verificationData,
       usage: {
         promptTokens,
         completionTokens,
