@@ -44,6 +44,7 @@ import {
   ocrAndExtract,
   type TopUpResult,
 } from "@/lib/agent-tools";
+import { searchWooProducts } from "@/lib/agent-tools";
 
 // Security imports
 import {
@@ -122,6 +123,7 @@ type HybridSearchSource =
   | "vector_store"
   | "trade_in_vector_store"
   | "product_catalog"
+  | "woo_snapshot"
   | "perplexity";
 
 type HybridSearchResult = {
@@ -978,6 +980,34 @@ async function runHybridSearch(
 
     if (catalogMatches.length === 0) {
       console.warn("[ChatKit] No catalog matches found for query:", query);
+    }
+  }
+
+  if (vectorSource !== "trade_in_vector_store" && catalogMatches.length === 0) {
+    try {
+      const wooFallback = await searchWooProducts(query, 3);
+      if (wooFallback.length) {
+        const lines = wooFallback
+          .map((product) => {
+            const priceLabel =
+              typeof product.price_sgd === "number"
+                ? ` — S$${product.price_sgd.toFixed(2)}`
+                : "";
+            const link = product.permalink
+              ? ` (View: ${product.permalink})`
+              : "";
+            return `- ${product.name}${priceLabel}${link}`;
+          })
+          .join("\n");
+        const wooMessage = `I spotted these on TradeZone.sg:\n\n${lines}\n\nWant me to double-check one of them?`;
+        return {
+          result: wooMessage,
+          source: "woo_snapshot",
+          matches: [],
+        };
+      }
+    } catch (wooError) {
+      console.warn("[ChatKit] Woo fallback failed", wooError);
     }
   }
 

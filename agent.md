@@ -2933,3 +2933,9 @@ Document progress + deviations here whenever the plan evolves so every teammate 
   3. **Confidence gating:** compute `confidence = 0.5*price_grid_conf + 0.3*normalize_match + 0.2*ocr_score`. Replies with confidence <0.6 must auto-call `enqueue_human_review`, 0.6–0.79 reply with provisional language + provenance, ≥0.8 reply normally.
   4. **Conflict detector:** if user-provided price differs from canonical by >S$50 (or >10%), block auto-updates, log the discrepancy, and surface it in the dashboard checklist.
   5. **Telemetry:** track extraction accuracy, arithmetic mismatch rate, percent auto-vs-provisional replies, human-review turnaround, and normalize_product false +/- rates. Add a Grafana or Supabase dashboard before production cutover.
+
+### 2025-11-17 Voice + Catalog Parity Patch
+- Catalog ETL now ingests **all WooCommerce SKUs**, even titles without bullet descriptions (e.g., PS5 games). Games are grouped into dedicated families (PS5, Xbox, Switch, PC, multi-platform), and any Woo product missing from the normalized catalog shows up under `validation_report.missingWooProducts` so gaps surface immediately.
+- Added a WooCommerce snapshot fallback: if the vectorized catalog doesn’t return a match but the storefront has it, `/api/chatkit/agent` automatically pulls the raw product (name, price, link) and never replies “not in stock” while the page exists.
+- Voice/text prompts now stress short, user-led replies: follow the user’s topic switches, stop talking the instant they speak, and end each reply with a single next-step prompt.
+- Broad category queries (“soccer games”) return cross-platform suggestions; only after the user specifies a platform do we narrow the list. When a user shares a product link, treat it as available and offer confirmation instead of refusing.

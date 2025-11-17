@@ -28,6 +28,7 @@ interface VariantDraft {
   sourceProduct: CatalogProduct;
   data: Partial<Record<ConditionKey, PriceFragment>>;
   notes: string[];
+  platform?: string | null;
 }
 
 interface TradeEntry {
@@ -48,7 +49,12 @@ interface NormalizedModel {
   bundle?: string | null;
   region?: string | null;
   storage?: string | null;
-  options: Record<string, string | null>;
+  options: {
+    region?: string | null;
+    storage?: string | null;
+    bundle?: string | null;
+    platform?: string | null;
+  };
   aliases: string[];
   source: {
     productId: number;
@@ -151,6 +157,31 @@ const FAMILY_RULES: Array<{
     id: "vr_wearables",
     title: "VR & Wearables",
     keywords: ["quest", "vr", "psvr", "glass", "osmo"],
+  },
+  {
+    id: "games_playstation",
+    title: "PlayStation Games",
+    keywords: [],
+  },
+  {
+    id: "games_xbox",
+    title: "Xbox Games",
+    keywords: [],
+  },
+  {
+    id: "games_switch",
+    title: "Nintendo Switch Games",
+    keywords: [],
+  },
+  {
+    id: "games_pc",
+    title: "PC Games",
+    keywords: [],
+  },
+  {
+    id: "games_multi",
+    title: "Other Games",
+    keywords: [],
   },
   {
     id: "misc",
@@ -355,6 +386,57 @@ function determineFamily(value: string): string {
   return bestMatch ? bestMatch.familyId : "misc";
 }
 
+const GAME_FAMILY_RULES = [
+  {
+    familyId: "games_playstation",
+    platform: "PlayStation",
+    keywords: ["ps5", "playstation 5", "ps4", "playstation 4"],
+  },
+  {
+    familyId: "games_xbox",
+    platform: "Xbox",
+    keywords: ["xbox", "series x", "series s"],
+  },
+  {
+    familyId: "games_switch",
+    platform: "Nintendo Switch",
+    keywords: ["switch"],
+  },
+  {
+    familyId: "games_pc",
+    platform: "PC",
+    keywords: ["pc", "steam"],
+  },
+];
+
+function detectGameFamily(
+  product: CatalogProduct,
+  title: string,
+): { familyId: string; platform?: string } | null {
+  const categoryNames = (product.categories ?? [])
+    .map((category) => category.name?.toLowerCase() ?? "")
+    .filter(Boolean);
+  const lowerTitle = title.toLowerCase();
+  const isGameCategory = categoryNames.some((name) => name.includes("game"));
+  if (!isGameCategory && !lowerTitle.includes("game")) {
+    return null;
+  }
+
+  for (const rule of GAME_FAMILY_RULES) {
+    if (
+      rule.keywords.some(
+        (keyword) =>
+          lowerTitle.includes(keyword) ||
+          categoryNames.some((name) => name.includes(keyword)),
+      )
+    ) {
+      return { familyId: rule.familyId, platform: rule.platform };
+    }
+  }
+
+  return { familyId: "games_multi" };
+}
+
 function extractRegion(line: string): string | null {
   const lower = line.toLowerCase();
   if (lower.includes("singapore") || lower.includes("sg")) return "Singapore";
@@ -448,7 +530,28 @@ function buildVariantDrafts(products: CatalogProduct[]): VariantDraft[] {
     const text = htmlToPlainText(
       product.short_description || product.description,
     );
-    if (!text) return;
+    if (!text) {
+      const fallbackPrice = parseMoney((product as any).price);
+      if (fallbackPrice !== null) {
+        const soldOut =
+          (product.stock_status || "").toLowerCase() === "outofstock";
+        variants.push({
+          title: product.name ? `${product.name}` : `Product ${product.id}`,
+          sourceProduct: product,
+          data: {
+            brand_new: {
+              condition: "brand_new",
+              price: fallbackPrice,
+              instalment: null,
+              soldOut,
+              raw: `price:${fallbackPrice}`,
+            },
+          },
+          notes: [],
+        });
+      }
+      return;
+    }
     const lines = text
       .split("\n")
       .map((line) => normalizeLine(line))
@@ -512,13 +615,22 @@ function createModelFromVariant(variant: VariantDraft): NormalizedModel | null {
   const asciiTitle = stripPriceFromTitle(toAscii(title));
   if (!asciiTitle) return null;
 
+  const detectedGameFamily = detectGameFamily(
+    variant.sourceProduct,
+    asciiTitle || variant.sourceProduct.name || "",
+  );
+
   const familyId =
-    determineFamily(asciiTitle || variant.sourceProduct.name || "") || "misc";
+    detectedGameFamily?.familyId ||
+    determineFamily(asciiTitle || variant.sourceProduct.name || "") ||
+      "misc";
   const modelSlug = slugify(asciiTitle);
   const modelId = `${familyId}-${modelSlug}`;
   const region = extractRegion(asciiTitle);
   const bundle = extractBundle(asciiTitle);
   const storage = extractStorage(asciiTitle);
+  const platform =
+    detectedGameFamily?.platform || detectPlatform(asciiTitle) || null;
 
   const baseAlias = asciiTitle.toLowerCase();
   const noDescriptors = baseAlias
@@ -626,6 +738,7 @@ function createModelFromVariant(variant: VariantDraft): NormalizedModel | null {
       region,
       storage,
       bundle,
+      platform,
     },
     aliases,
     source: {
@@ -666,7 +779,35 @@ function mapTradeFamily(model: string, family?: string): string {
   ) {
     return "vr_wearables";
   }
+  if (lower.includes("game")) {
+    if (lower.includes("ps5") || lower.includes("playstation 5")) {
+      return "games_playstation";
+    }
+    if (lower.includes("ps4") || lower.includes("playstation 4")) {
+      return "games_playstation";
+    }
+    if (lower.includes("xbox")) {
+      return "games_xbox";
+    }
+    if (lower.includes("switch")) {
+      return "games_switch";
+    }
+    if (lower.includes("pc")) {
+      return "games_pc";
+    }
+    return "games_multi";
+  }
   return "misc";
+}
+
+function detectPlatform(input: string): string | null {
+  const lower = input.toLowerCase();
+  if (lower.includes("ps5") || lower.includes("playstation 5")) return "PS5";
+  if (lower.includes("ps4") || lower.includes("playstation 4")) return "PS4";
+  if (lower.includes("xbox")) return "Xbox";
+  if (lower.includes("switch")) return "Nintendo Switch";
+  if (lower.includes("pc")) return "PC";
+  return null;
 }
 
 function matchTradeEntryToModel(
@@ -812,6 +953,7 @@ interface ValidationReport {
   }>;
   unmatchedTradeEntries: TradeEntry[];
   modelsWithoutTrade: Array<{ modelId: string; title: string }>;
+  missingWooProducts: Array<{ productId: number; name: string }>;
 }
 
 async function main() {
@@ -866,6 +1008,7 @@ async function main() {
     factorOutliers: [],
     unmatchedTradeEntries: [],
     modelsWithoutTrade: [],
+    missingWooProducts: [],
   };
 
   families.forEach((family) => {
@@ -899,6 +1042,16 @@ async function main() {
       warnings,
     };
   });
+
+  const modeledProductIds = new Set(
+    models.map((model) => model.source.productId),
+  );
+  validation.missingWooProducts = wooProducts
+    .filter((product) => !modeledProductIds.has(product.id))
+    .map((product) => ({
+      productId: product.id,
+      name: product.name || `Product ${product.id}`,
+    }));
 
   const tradeEntries = [...tradeJsonl, ...tradeCsv];
   attachTradeData(models, tradeEntries, validation);

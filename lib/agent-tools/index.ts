@@ -36,6 +36,14 @@ interface WooProduct {
   stock_quantity?: number | null;
 }
 
+export interface WooProductSearchResult {
+  productId: number;
+  name: string;
+  permalink?: string;
+  price_sgd: number | null;
+  stock_status?: string;
+}
+
 export interface NormalizeProductResult {
   query: string;
   candidates: Array<{
@@ -134,6 +142,14 @@ function getSupabaseServerClient(): SupabaseClient | null {
   );
 }
 
+function parseMoney(value?: string | null): number | null {
+  if (!value) return null;
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  if (!cleaned) return null;
+  const parsed = parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 async function loadWooProducts(): Promise<Map<number, WooProduct>> {
   if (wooProductsCache && Date.now() - wooProductsCache.loadedAt < 5 * 60 * 1000) {
     return wooProductsCache.map;
@@ -187,6 +203,39 @@ function selectCondition(
     if (match) return match;
   }
   return model.flagshipCondition || model.conditions[0] || null;
+}
+
+export async function searchWooProducts(
+  query: string,
+  limit = 5,
+): Promise<WooProductSearchResult[]> {
+  if (!query) return [];
+  const normalized = query.toLowerCase();
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+  const products = Array.from((await loadWooProducts()).values());
+  const scored = products
+    .map((product) => {
+      const name = (product.name || "").toLowerCase();
+      let score = 0;
+      tokens.forEach((token) => {
+        if (name.includes(token)) {
+          score += token.length;
+        }
+      });
+      return { product, score };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored.map(({ product }) => ({
+    productId: product.id,
+    name: product.name,
+    permalink: product.permalink,
+    price_sgd: parseMoney(product.price),
+    stock_status: product.stock_status,
+  }));
 }
 
 export async function priceLookup(
