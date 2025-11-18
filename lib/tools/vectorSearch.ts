@@ -193,6 +193,14 @@ export async function handleVectorSearch(
     if (label === "catalog") {
       try {
         catalogMatches = await findCatalogMatches(query, 3);
+        console.log(
+          `[VectorSearch] Catalog matches found: ${catalogMatches.length}`,
+        );
+        if (catalogMatches.length > 0) {
+          console.log(
+            `[VectorSearch] Top match: ${catalogMatches[0].name} - ${catalogMatches[0].price || "N/A"}`,
+          );
+        }
       } catch (catalogError) {
         console.error("[VectorSearch] Catalog fallback error:", catalogError);
         catalogMatches = [];
