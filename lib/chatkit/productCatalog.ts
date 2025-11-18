@@ -270,7 +270,17 @@ function calculateModelBoost(
     boost += 120;
   }
   if (intent.includesBundle) {
-    boost += title.includes("bundle") ? 120 : -40;
+    // Boost products with "bundle" or "limited edition" (premium special editions)
+    if (title.includes("bundle")) {
+      boost += 120;
+    } else if (
+      title.includes("limited edition") ||
+      title.includes("anniversary")
+    ) {
+      boost += 100; // Treat Limited Editions as bundles
+    } else {
+      boost -= 40;
+    }
   }
   if (intent.includesOled) {
     boost += title.includes("oled") ? 80 : -20;
