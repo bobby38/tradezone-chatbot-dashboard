@@ -1,5 +1,42 @@
 [
   {
+    "id": 27910,
+    "name": "1.11 SALE RX 6600 Ryzen 5 5600 16GB 1TB MATX Gaming Pc",
+    "permalink": "https://tradezone.sg/product/1-11-sale-rx-6600-ryzen-5-5600-16gb-1tb-matx-gaming-pc/",
+    "sku": "",
+    "type": "simple",
+    "price": "649",
+    "regular_price": "649",
+    "sale_price": "",
+    "stock_status": "instock",
+    "date_created": "2025-11-17T12:25:07",
+    "date_modified": "2025-11-17T12:25:11",
+    "short_description": "<p>⚠️ SELLING PRICE: $649 ONLY⚠️ (instalment $684.69)<br />\nCustomize option available!!!!<br />\n💛 Atome 3 Months : $228.23 ( Per Month )<br />\n💚 Grabpay later 4 Months : $171.17 ( Per Month )<br />\n💛 Atome 6 Months : $114.11 ( Per Month )</p>\n<p>– Gaming ⭐ ⭐<br />\n-Productivity ⭐ ⭐ ️<br />\n– Video Editing ⭐ ⭐<br />\n– Aesthetics ⭐ ⭐ ️</p>\n<p>Full Spec<br />\n[CPU] Ryzen 5 5600 $110<br />\n[CPU COOLER] Stock Cooler $4<br />\n[GPU] Gigabyte Eagle RX 6600 $250<br />\n[MOBO] ASRock A520M/ac $99<br />\n[STORAGE] Klevv Cras C910 Lite 1TB $69<br />\n[RAM] XPG Spectrix 3600Mhz DDR4 8GBx2 (16GB) Black $69<br />\n[CASE] Aftershock MATX Case $19<br />\n[PSU] Deepcool PF550 $29</p>\n",
+    "description": "",
+    "categories": [
+      {
+        "id": 122,
+        "name": "Ready To Ship",
+        "slug": "ready-to-ship"
+      },
+      {
+        "id": 261,
+        "name": "Refurbished",
+        "slug": "refurbished"
+      }
+    ],
+    "tags": [],
+    "images": [
+      {
+        "id": 27911,
+        "src": "https://tradezone.sg/wp-content/uploads/2025/11/1111_sale_rx_6600_ryzen_5_5600_1763266594_b609938f_progressive.jpg",
+        "alt": ""
+      }
+    ],
+    "attributes": [],
+    "variations": []
+  },
+  {
     "id": 27300,
     "name": "11.11 SALE - RTX 5070 Ti Intel Ultra 7 265KF 32GB 1TB Lian Li O11 Mini V2 PC",
     "permalink": "https://tradezone.sg/product/10-10-sale-rtx-5070-ti-intel-ultra-5-245k-32gb-1tb-lian-li-o11-mini-v2-pc/",
@@ -2691,38 +2728,6 @@
     "variations": []
   },
   {
-    "id": 22985,
-    "name": "11.11 SALE - RTX 3070 Ryzen 5 5600 16GB 1TB P300 ATX Gaming Pc",
-    "permalink": "https://tradezone.sg/product/gf-sale-rtx-3080-ryzen-7-5700x3d-32gb-1tb-p300-atx-gaming-pc/",
-    "sku": "",
-    "type": "simple",
-    "price": "1029",
-    "regular_price": "1029",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2025-03-14T06:04:50",
-    "date_modified": "2025-11-04T06:35:23",
-    "short_description": "<p>***Refurbished Set Like new***</p>\n<p>Hi TradeZone is doing a promotion for the month!</p>\n<p>⚠️ SELLING PRICE: $1029 ONLY⚠️ (instalment $1085.59)<br />\nCustomize option available!!!!<br />\n💛 Atome 3 Months : $361.86 ( Per Month )<br />\n💚 Grabpay later 4 Months : $271.39 ( Per Month )<br />\n💛 Atome 6 Months : $180.93 ( Per Month )</p>\n<p>&#8211; Gaming ⭐ ⭐<br />\n-Productivity ⭐ ⭐ ️<br />\n&#8211; Video Editing ⭐ ⭐<br />\n&#8211; Aesthetics ⭐ ⭐ ️</p>\n<p>Full Spec<br />\n[CPU] Ryzen 5 5600 $110<br />\n[CPU COOLER] Thermalright Peerless Assassin 120 $59<br />\n[GPU] ASUS ROG STRIX NVIDIA GeForce RTX 3070 Gaming Graphics Card $399<br />\n[MOBO] Gigabyte Aorus Ultra Gaming X470 $100<br />\n[STORAGE] WD PC SN740 1TB NVMe M.2 $110<br />\n[RAM] G.Skill Trident Z Neo DDR4-3600 8GBx2 (16GB) $69<br />\n[CASE] Phanteks Eclipse P300 $99<br />\n[PSU] EVGA SuperNova 650W Gold $83</p>\n<p>🔜 [Windows] Windows 11 Pro Activated (FREE worth $130!!)<br />\n🔜 [Building Cost] (FREE worth $50)<br />\n🔜 [Delivery] Free Island Wide Delivery!!!!!!!!</p>\n",
-    "description": "",
-    "categories": [
-      {
-        "id": 261,
-        "name": "Refurbished",
-        "slug": "refurbished"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 24311,
-        "src": "https://tradezone.sg/wp-content/uploads/2025/03/R-2025-05-10T150606.506-1.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [],
-    "variations": []
-  },
-  {
     "id": 26981,
     "name": "11.11 SALE - RTX 3080 RYZEN 5 5700X 32GB 2TB Corsair 4000D Gaming Pc",
     "permalink": "https://tradezone.sg/product/10-10-sale-rtx-3080-ryzen-5-5700x-32gb-2tb-corsair-4000d-gaming-pc/",
@@ -4942,66 +4947,6 @@
     ],
     "attributes": [],
     "variations": []
-  },
-  {
-    "id": 17113,
-    "name": "Nintendo Switch/PS4/PS5 EA SPORTS FC 25 Standard Edition",
-    "permalink": "https://tradezone.sg/product/pre-order-nintendo-switch-ps4-ps5-ea-sports-fc-25-standard-edition/",
-    "sku": "",
-    "type": "variable",
-    "price": "34.90",
-    "regular_price": "",
-    "sale_price": "",
-    "stock_status": "instock",
-    "date_created": "2024-09-08T05:34:25",
-    "date_modified": "2025-10-28T09:50:07",
-    "short_description": "",
-    "description": "",
-    "categories": [
-      {
-        "id": 109,
-        "name": "Brand New Games",
-        "slug": "brand-new-games"
-      },
-      {
-        "id": 121,
-        "name": "Brand New Games",
-        "slug": "brand-new-games-playstation-4"
-      },
-      {
-        "id": 137,
-        "name": "Brand New Games",
-        "slug": "brand-new-games-nintendo"
-      }
-    ],
-    "tags": [],
-    "images": [
-      {
-        "id": 17138,
-        "src": "https://tradezone.sg/wp-content/uploads/2024/09/game-27.png",
-        "alt": ""
-      }
-    ],
-    "attributes": [
-      {
-        "id": 0,
-        "name": "Platform",
-        "slug": "Platform",
-        "position": 0,
-        "visible": true,
-        "variation": true,
-        "options": [
-          "Nintendo Switch (EU)",
-          "PS5 (R3)",
-          "PS4 (R3)"
-        ]
-      }
-    ],
-    "variations": [
-      17115,
-      17116,
-      17114
-    ]
   },
   {
     "id": 7911,

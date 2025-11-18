@@ -49,26 +49,26 @@ class AIAnalyticsService {
 
   constructor() {
     this.apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || ''
-    
+
     // Get saved provider and model from localStorage
     const savedProvider = typeof window !== 'undefined' ? localStorage.getItem('ai-provider') : null
     const savedModel = typeof window !== 'undefined' ? localStorage.getItem('ai-model') : null
-    
+
     const provider = savedProvider || (process.env.NEXT_PUBLIC_OPENAI_API_KEY ? 'openai' : 'openrouter')
-    
-    this.baseUrl = provider === 'openai' 
-      ? 'https://api.openai.com/v1' 
+
+    this.baseUrl = provider === 'openai'
+      ? 'https://api.openai.com/v1'
       : 'https://openrouter.ai/api/v1'
-    
+
     // Use saved model or default
     if (savedModel) {
-      this.model = provider === 'openrouter' && !savedModel.includes('/') 
-        ? `openai/${savedModel}` 
+      this.model = provider === 'openrouter' && !savedModel.includes('/')
+        ? `google/${savedModel}`
         : savedModel
     } else {
-      this.model = provider === 'openai' 
-        ? 'gpt-4o' 
-        : 'openai/gpt-4-turbo-preview'
+      this.model = provider === 'openai'
+        ? 'gpt-4o'
+        : 'google/gemini-pro'
     }
   }
 
@@ -78,7 +78,7 @@ class AIAnalyticsService {
     }
 
     const prompt = this.buildAnalysisPrompt(logs)
-    
+
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -95,8 +95,8 @@ class AIAnalyticsService {
           messages: [
             {
               role: 'system',
-              content: `You are an expert AI analyst specializing in chatbot performance and user experience analysis. 
-              Analyze the provided chat logs and return insights in the exact JSON format specified. 
+              content: `You are an expert AI analyst specializing in chatbot performance and user experience analysis.
+              Analyze the provided chat logs and return insights in the exact JSON format specified.
               Focus on actionable insights for improving the trading chatbot experience.`
             },
             {
@@ -129,7 +129,7 @@ class AIAnalyticsService {
 
   private buildAnalysisPrompt(logs: ChatLog[]): string {
     const recentLogs = logs.slice(0, 50) // Analyze last 50 conversations
-    
+
     const conversationSummary = recentLogs.map(log => ({
       user_query: log.prompt,
       bot_response: log.response,
@@ -201,7 +201,7 @@ Return only valid JSON without any additional text or formatting.
       }
 
       const parsed = JSON.parse(jsonMatch[0])
-      
+
       // Validate the structure
       if (!parsed.overall_sentiment || !parsed.performance_feedback || !parsed.recommendations) {
         throw new Error('Invalid analysis response structure')
@@ -278,7 +278,7 @@ Return only valid JSON without any additional text or formatting.
 
       const data = await response.json()
       const result = JSON.parse(data.choices[0]?.message?.content || '{}')
-      
+
       return {
         sentiment: result.sentiment || 'neutral',
         confidence: result.confidence || 0.5,
