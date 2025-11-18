@@ -3251,3 +3251,124 @@ npm run test:ui
 **Deployment Ready:** ✅ All critical optimizations validated and tested
 
 ---
+
+### January 18, 2025 - Bundle Search & Product Links Fix ✅
+
+**Status:** Critical user-facing issues resolved
+
+**Issues Discovered:**
+1. ❌ User searches "any ps5 bundle" but Limited Edition products (30th Anniversary, Ghost of Yotei) don't appear
+2. ❌ Product responses missing clickable links and images
+3. ⚠️ Using deprecated `gpt-4o-mini` instead of `gpt-4.1-mini` (Nov 2025 recommended model)
+4. ⚠️ Response time too slow (~10s, target <3s)
+5. ⚠️ Token usage too high (~20K, target <6K)
+
+**Root Causes:**
+1. **Bundle keyword mismatch**: Products titled "Limited Edition" not recognized as bundles
+2. **Prompt too restrictive**: System prompt said "only include links when specific item requested"
+3. **Wrong model**: Using deprecated gpt-4o-mini for vector search
+4. **Catalog boost logic**: Bundle searches penalized (-40) products without "bundle" in title
+
+**Solutions Implemented:**
+
+**1. Bundle Search Fix** (`lib/chatkit/productCatalog.ts`)
+- When user searches "bundle", also boost "limited edition" and "anniversary" products (+100)
+- Treats premium Limited Editions as special bundles
+- Result: "ps5 bundle" now returns 30th Anniversary and Ghost of Yotei bundles
+
+**2. Product Links Always Included** (`lib/chatkit/defaultPrompt.ts`)
+- Changed prompt from "only when specific item requested" to "ALWAYS include"
+- Added CRITICAL instruction to preserve "Online Store Matches" section with links
+- Explicit format: `- ProductName — Price ([View Product](URL))`
+- Result: All product responses now include clickable links
+
+**3. Model Upgrade** (`lib/tools/vectorSearch.ts`)
+- Upgraded from deprecated `gpt-4o-mini` → `gpt-4.1-mini`
+- Benefits: Faster, cheaper, more efficient (Nov 2025 recommended model)
+
+**4. Debug Logging** (`lib/tools/vectorSearch.ts`)
+- Added catalog match count logging
+- Logs top match details for troubleshooting
+
+**Test Results (Before vs After):**
+
+**BEFORE:**
+```
+Query: "any ps5 bundle"
+Response: 
+- PlayStation 5 Pro/Slim for S$499
+- PS5 Ninja Gaiden 4 for S$89.90
+- EA Sports FC 26 for S$79.90
+❌ No Limited Editions
+❌ No clickable links
+⚠️ Response time: ~12s
+⚠️ Token usage: ~21K
+```
+
+**AFTER:**
+```
+Query: "any ps5 bundle"
+Response:
+- PS5 Slim Disc 30th Anniversary Limited Edition 1TB — S$1149 
+  ([View Product](https://tradezone.sg/product/sony-playstation-ps5-30th-anniversary/))
+- PS5 Slim Digital 30th Anniversary Limited Edition 1TB — S$949 
+  ([View Product](URL))
+- PS5 Disc Slim 1TB Japan Ghost of Yotei Gold Limited Edition — S$149 
+  ([View Product](URL))
+
+✅ Limited Editions appear first
+✅ Clickable product links
+✅ Correct bundle results
+⚠️ Response time: ~8-10s (still needs optimization)
+⚠️ Token usage: ~13-20K (history truncation not working yet)
+```
+
+**Commits:**
+- `5dbd0e9` - fix: upgrade vector search model from gpt-4o-mini to gpt-4.1-mini
+- `597a09d` - fix: improve bundle search to include Limited Edition products
+- `430cd36` - debug: add catalog match logging to vector search
+- `3699236` - fix: ensure product links always appear in chat responses
+
+**Files Changed:**
+- `lib/tools/vectorSearch.ts` - Model upgrade + logging
+- `lib/chatkit/productCatalog.ts` - Bundle boost logic for Limited Editions
+- `lib/chatkit/defaultPrompt.ts` - Always include product links
+
+**Deployment:**
+- Commit: `3699236`
+- Status: Ready for production deployment
+- Deploy via Coolify manual redeploy
+
+**Outstanding Performance Issues (Monitor After Deployment):**
+1. ⚠️ Response latency still 8-10s (target <3s)
+   - Possible causes: Vector search still slow, network latency
+   - Next step: Monitor production logs after deployment
+   
+2. ⚠️ Token usage still 13-20K (target <6K)
+   - History truncation may not be working
+   - Check: app/api/chatkit/agent/route.ts history truncation logic
+   - Next step: Add logging to verify truncation is active
+
+**Success Metrics:**
+✅ **User-Facing Issues Fixed:**
+- Bundle search returns correct Limited Edition products
+- Product links clickable in all responses
+- Better product recommendations
+
+⚠️ **Performance (Needs Monitoring):**
+- Response time: 8-10s (improved from 12s, target <3s)
+- Token usage: 13-20K (reduced variability, target <6K)
+- Cost per query: ~$0.002-0.003 (acceptable for now)
+
+**Next Steps:**
+1. Deploy commit `3699236` to production
+2. Monitor Coolify logs for:
+   - `[VectorSearch] Catalog matches found: X`
+   - `[ChatKit] Slow vector search: Xms`
+   - `[ChatKit] High usage detected: X tokens`
+3. If latency/tokens still high after deployment:
+   - Investigate history truncation not working
+   - Consider caching frequently searched products
+   - Add request timeout limits
+
+---
