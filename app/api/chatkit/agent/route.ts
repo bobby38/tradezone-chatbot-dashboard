@@ -999,7 +999,7 @@ async function runHybridSearch(
             return `- ${product.name}${priceLabel}${link}`;
           })
           .join("\n");
-        const wooMessage = `I spotted these on TradeZone.sg:\n\n${lines}\n\nWant me to double-check one of them?`;
+        const wooMessage = `I spotted these on TradeZone.sg:\n\n${lines}\n\nI can double-check any of these for you—just ask.`;
         return {
           result: wooMessage,
           source: "woo_snapshot",
@@ -1185,16 +1185,16 @@ function formatHybridFallback(
           : "TradeZone website";
   const callToAction =
     source === "product_catalog"
-      ? "I can reserve stock with the team or notify you when it’s back—just say the word."
+      ? "I can reserve stock or notify you if it changes—just let me know."
       : source === "trade_in_vector_store"
-        ? "Need a precise quote or want to submit photos? I can guide you through the trade-in form."
-        : "Need help comparing options or checking stock? Let me know.";
+        ? "I can guide you through the trade-in form whenever you’re ready."
+        : "I can double-check any of these for you—just ask.";
   return [
     `Here’s what I found for “${query}”:`,
     "",
     result,
     "",
-    `_Source: ${sourceLabel}_`,
+    `_(source: ${sourceLabel})_`,
     "",
     callToAction,
   ].join("\n");
