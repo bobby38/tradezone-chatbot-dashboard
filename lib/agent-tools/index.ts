@@ -151,7 +151,10 @@ function parseMoney(value?: string | null): number | null {
 }
 
 async function loadWooProducts(): Promise<Map<number, WooProduct>> {
-  if (wooProductsCache && Date.now() - wooProductsCache.loadedAt < 5 * 60 * 1000) {
+  if (
+    wooProductsCache &&
+    Date.now() - wooProductsCache.loadedAt < 5 * 60 * 1000
+  ) {
     return wooProductsCache.map;
   }
   try {
@@ -213,11 +216,56 @@ export async function searchWooProducts(
   const normalized = query.toLowerCase();
   const tokens = normalized.split(/\s+/).filter(Boolean);
   if (!tokens.length) return [];
+
+  // Detect product family in query (same logic as catalog search)
+  const familyKeywords = [
+    {
+      pattern: /\b(ps5|playstation\s*5|playstation5)\b/i,
+      keywords: ["ps5", "playstation 5", "playstation5"],
+    },
+    {
+      pattern: /\b(ps4|playstation\s*4|playstation4)\b/i,
+      keywords: ["ps4", "playstation 4", "playstation4"],
+    },
+    {
+      pattern: /\b(xbox\s*series|xsx|xss|series\s*x|series\s*s)\b/i,
+      keywords: ["xbox series", "series x", "series s"],
+    },
+    {
+      pattern: /\b(switch|nintendo\s*switch)\b/i,
+      keywords: ["switch", "nintendo"],
+    },
+    {
+      pattern: /\b(steam\s*deck|rog\s*ally|ally|legion|claw)\b/i,
+      keywords: ["steam deck", "rog ally", "legion", "claw"],
+    },
+    { pattern: /\b(quest|psvr|vr)\b/i, keywords: ["quest", "psvr", "vr"] },
+  ];
+
+  let familyFilter: string[] | null = null;
+  for (const { pattern, keywords } of familyKeywords) {
+    if (pattern.test(query)) {
+      familyFilter = keywords;
+      break;
+    }
+  }
+
   const products = Array.from((await loadWooProducts()).values());
   const scored = products
     .map((product) => {
       const name = (product.name || "").toLowerCase();
       let score = 0;
+
+      // Apply family filter if detected
+      if (familyFilter && tokens.length > 1) {
+        const matchesFamily = familyFilter.some((keyword) =>
+          name.includes(keyword),
+        );
+        if (!matchesFamily) {
+          return { product, score: 0 }; // Filter out products from other families
+        }
+      }
+
       tokens.forEach((token) => {
         if (name.includes(token)) {
           score += token.length;
