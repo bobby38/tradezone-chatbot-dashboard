@@ -240,9 +240,7 @@ function summarizeMatchesByModifier(
       : sorted.slice(0, sliceSize);
 
   const heading =
-    modifier === "high_end"
-      ? "Higher-end picks"
-      : "Best value picks";
+    modifier === "high_end" ? "Higher-end picks" : "Best value picks";
 
   const lines = subset.map(({ match, price }) => {
     const flagship = match.flagshipCondition;
@@ -1695,7 +1693,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (history && history.length > 0) {
-      history.forEach((msg: any) => {
+      // Truncate to last 20 messages (10 exchanges) to reduce token usage
+      const maxHistoryMessages = 20;
+      const truncatedHistory =
+        history.length > maxHistoryMessages
+          ? history.slice(-maxHistoryMessages)
+          : history;
+
+      truncatedHistory.forEach((msg: any) => {
         if (msg.role && msg.content) {
           messages.push({ role: msg.role, content: msg.content });
         }
@@ -2163,176 +2168,180 @@ export async function POST(request: NextRequest) {
               } else {
                 toolResult = "Failed to submit trade-in lead.";
               }
-          await logToolRun({
-            request_id: requestId,
-            session_id: sessionId,
-            tool_name: functionName,
-            args: functionArgs,
-            result_preview: toolResult.slice(0, 280),
-            source: "trade_in_lead",
-            success: false,
-            latency_ms: toolLatency,
-            error_message: err instanceof Error ? err.message : String(err),
-          });
-        }
-      } else if (functionName === "normalize_product") {
-        const rawQuery =
-          typeof functionArgs.query === "string" ? functionArgs.query : "";
-        const slotParam =
-          functionArgs.slot === "trade_in" || functionArgs.slot === "target"
-            ? functionArgs.slot
-            : "target";
-        if (!rawQuery) {
-          toolResult = "I need a product description to normalize.";
-        } else {
-          const normalized = await normalizeProduct(rawQuery);
-          const payload: NormalizeProductResult & { slot: string } = {
-            ...normalized,
-            slot: slotParam,
-          };
-          toolResult = JSON.stringify(payload);
-          const topCandidate = normalized.candidates[0];
-          if (topCandidate) {
-            normalizeConfidence = topCandidate.confidence;
-            if (slotParam === "target") {
-              verificationData.slots_filled.target_model = topCandidate.name;
-              verificationData.slots_filled.target_variant =
-                topCandidate.familyId;
-            } else {
-              verificationData.slots_filled.trade_in_model = topCandidate.name;
-              verificationData.slots_filled.trade_in_variant =
-                topCandidate.familyId;
+              await logToolRun({
+                request_id: requestId,
+                session_id: sessionId,
+                tool_name: functionName,
+                args: functionArgs,
+                result_preview: toolResult.slice(0, 280),
+                source: "trade_in_lead",
+                success: false,
+                latency_ms: toolLatency,
+                error_message: err instanceof Error ? err.message : String(err),
+              });
             }
-          }
-        }
-      } else if (functionName === "price_lookup") {
-        const productId =
-          typeof functionArgs.productId === "string"
-            ? functionArgs.productId
-            : "";
-        const priceType =
-          functionArgs.priceType === "retail" ||
-          functionArgs.priceType === "trade_in"
-            ? functionArgs.priceType
-            : "trade_in";
-        const subject =
-          functionArgs.subject === "target" ||
-          functionArgs.subject === "trade_in"
-            ? functionArgs.subject
-            : priceType === "trade_in"
-              ? "trade_in"
-              : "target";
-        if (!productId) {
-          toolResult = "productId is required.";
-        } else {
-          const lookup = await priceLookup({
-            productId,
-            condition:
-              typeof functionArgs.condition === "string"
-                ? functionArgs.condition
-                : undefined,
-            priceType,
-          });
-          priceConfidence = lookup.confidence;
-          verificationData.provenance.push({
-            field:
-              subject === "trade_in"
-                ? "trade_in_value_sgd"
-                : "target_price_sgd",
-            source: lookup.source,
-            confidence: lookup.confidence,
-          });
-          if (subject === "trade_in") {
-            verificationData.slots_filled.trade_in_value_sgd =
-              lookup.value_sgd;
-            verificationData.slots_filled.trade_in_condition = lookup.condition;
-          } else {
-            verificationData.slots_filled.target_price_sgd = lookup.value_sgd;
-          }
-          toolResult = JSON.stringify({ ...lookup, subject });
-        }
-      } else if (functionName === "calculate_top_up") {
-        const targetPrice = Number(functionArgs.targetPrice);
-        const tradeValue = Number(functionArgs.tradeInValue);
-        const discount = Number(functionArgs.usedDiscount || 0);
-        if (!Number.isFinite(targetPrice) || !Number.isFinite(tradeValue)) {
-          toolResult = "targetPrice and tradeInValue are required.";
-        } else {
-          const calc = calculateTopUp(targetPrice, tradeValue, discount);
-          latestTopUp = calc;
-          verificationData.top_up_sgd = calc.top_up_sgd;
-          verificationData.calculation_steps = calc.steps;
-          verificationData.slots_filled.used_device_discount_sgd = discount;
-          toolResult = JSON.stringify(calc);
-        }
-      } else if (functionName === "inventory_check") {
-        const productId =
-          typeof functionArgs.productId === "string"
-            ? functionArgs.productId
-            : "";
-        if (!productId) {
-          toolResult = "productId is required.";
-        } else {
-          const stock = await inventoryCheck(productId);
-          toolResult = JSON.stringify(stock);
-        }
-      } else if (functionName === "order_create") {
-        try {
-          const order = await createOrder({
-            sessionId,
-            userId: functionArgs.userId,
-            productId: functionArgs.productId,
-            paymentMethod: functionArgs.paymentMethod,
-            options: functionArgs.options ?? null,
-          });
-          toolResult = JSON.stringify(order);
-        } catch (err) {
-          toolResult = `Order creation failed: ${err instanceof Error ? err.message : String(err)}`;
-        }
-      } else if (functionName === "schedule_inspection") {
-        try {
-          const booking = await scheduleInspection({
-            sessionId,
-            userId: functionArgs.userId,
-            storeId: functionArgs.storeId,
-            timeslot: functionArgs.timeslot,
-            notes: functionArgs.notes,
-          });
-          toolResult = JSON.stringify(booking);
-        } catch (err) {
-          toolResult = `Inspection scheduling failed: ${err instanceof Error ? err.message : String(err)}`;
-        }
-      } else if (functionName === "ocr_and_extract") {
-        if (!functionArgs.imageUrl) {
-          toolResult = "imageUrl is required.";
-        } else {
-          const extraction = await ocrAndExtract({
-            imageUrl: functionArgs.imageUrl,
-            promptHint: functionArgs.promptHint,
-          });
-          ocrConfidence = extraction.photoscore;
-          if (
-            extraction.detected_model &&
-            !verificationData.slots_filled.trade_in_model
-          ) {
-            verificationData.slots_filled.trade_in_model =
-              extraction.detected_model;
-          }
-          toolResult = JSON.stringify(extraction);
-        }
-      } else if (functionName === "enqueue_human_review") {
-        try {
-          const ticket = await enqueueHumanReview({
-            sessionId,
-            reason: functionArgs.reason || "manual_review",
-            payload: functionArgs.payload ?? null,
-          });
-          verificationData.flags.requires_human_review = true;
-          toolResult = JSON.stringify(ticket);
-        } catch (err) {
-          toolResult = `Failed to enqueue review: ${err instanceof Error ? err.message : String(err)}`;
-        }
-      } else if (functionName === "sendemail") {
+          } else if (functionName === "normalize_product") {
+            const rawQuery =
+              typeof functionArgs.query === "string" ? functionArgs.query : "";
+            const slotParam =
+              functionArgs.slot === "trade_in" || functionArgs.slot === "target"
+                ? functionArgs.slot
+                : "target";
+            if (!rawQuery) {
+              toolResult = "I need a product description to normalize.";
+            } else {
+              const normalized = await normalizeProduct(rawQuery);
+              const payload: NormalizeProductResult & { slot: string } = {
+                ...normalized,
+                slot: slotParam,
+              };
+              toolResult = JSON.stringify(payload);
+              const topCandidate = normalized.candidates[0];
+              if (topCandidate) {
+                normalizeConfidence = topCandidate.confidence;
+                if (slotParam === "target") {
+                  verificationData.slots_filled.target_model =
+                    topCandidate.name;
+                  verificationData.slots_filled.target_variant =
+                    topCandidate.familyId;
+                } else {
+                  verificationData.slots_filled.trade_in_model =
+                    topCandidate.name;
+                  verificationData.slots_filled.trade_in_variant =
+                    topCandidate.familyId;
+                }
+              }
+            }
+          } else if (functionName === "price_lookup") {
+            const productId =
+              typeof functionArgs.productId === "string"
+                ? functionArgs.productId
+                : "";
+            const priceType =
+              functionArgs.priceType === "retail" ||
+              functionArgs.priceType === "trade_in"
+                ? functionArgs.priceType
+                : "trade_in";
+            const subject =
+              functionArgs.subject === "target" ||
+              functionArgs.subject === "trade_in"
+                ? functionArgs.subject
+                : priceType === "trade_in"
+                  ? "trade_in"
+                  : "target";
+            if (!productId) {
+              toolResult = "productId is required.";
+            } else {
+              const lookup = await priceLookup({
+                productId,
+                condition:
+                  typeof functionArgs.condition === "string"
+                    ? functionArgs.condition
+                    : undefined,
+                priceType,
+              });
+              priceConfidence = lookup.confidence;
+              verificationData.provenance.push({
+                field:
+                  subject === "trade_in"
+                    ? "trade_in_value_sgd"
+                    : "target_price_sgd",
+                source: lookup.source,
+                confidence: lookup.confidence,
+              });
+              if (subject === "trade_in") {
+                verificationData.slots_filled.trade_in_value_sgd =
+                  lookup.value_sgd;
+                verificationData.slots_filled.trade_in_condition =
+                  lookup.condition;
+              } else {
+                verificationData.slots_filled.target_price_sgd =
+                  lookup.value_sgd;
+              }
+              toolResult = JSON.stringify({ ...lookup, subject });
+            }
+          } else if (functionName === "calculate_top_up") {
+            const targetPrice = Number(functionArgs.targetPrice);
+            const tradeValue = Number(functionArgs.tradeInValue);
+            const discount = Number(functionArgs.usedDiscount || 0);
+            if (!Number.isFinite(targetPrice) || !Number.isFinite(tradeValue)) {
+              toolResult = "targetPrice and tradeInValue are required.";
+            } else {
+              const calc = calculateTopUp(targetPrice, tradeValue, discount);
+              latestTopUp = calc;
+              verificationData.top_up_sgd = calc.top_up_sgd;
+              verificationData.calculation_steps = calc.steps;
+              verificationData.slots_filled.used_device_discount_sgd = discount;
+              toolResult = JSON.stringify(calc);
+            }
+          } else if (functionName === "inventory_check") {
+            const productId =
+              typeof functionArgs.productId === "string"
+                ? functionArgs.productId
+                : "";
+            if (!productId) {
+              toolResult = "productId is required.";
+            } else {
+              const stock = await inventoryCheck(productId);
+              toolResult = JSON.stringify(stock);
+            }
+          } else if (functionName === "order_create") {
+            try {
+              const order = await createOrder({
+                sessionId,
+                userId: functionArgs.userId,
+                productId: functionArgs.productId,
+                paymentMethod: functionArgs.paymentMethod,
+                options: functionArgs.options ?? null,
+              });
+              toolResult = JSON.stringify(order);
+            } catch (err) {
+              toolResult = `Order creation failed: ${err instanceof Error ? err.message : String(err)}`;
+            }
+          } else if (functionName === "schedule_inspection") {
+            try {
+              const booking = await scheduleInspection({
+                sessionId,
+                userId: functionArgs.userId,
+                storeId: functionArgs.storeId,
+                timeslot: functionArgs.timeslot,
+                notes: functionArgs.notes,
+              });
+              toolResult = JSON.stringify(booking);
+            } catch (err) {
+              toolResult = `Inspection scheduling failed: ${err instanceof Error ? err.message : String(err)}`;
+            }
+          } else if (functionName === "ocr_and_extract") {
+            if (!functionArgs.imageUrl) {
+              toolResult = "imageUrl is required.";
+            } else {
+              const extraction = await ocrAndExtract({
+                imageUrl: functionArgs.imageUrl,
+                promptHint: functionArgs.promptHint,
+              });
+              ocrConfidence = extraction.photoscore;
+              if (
+                extraction.detected_model &&
+                !verificationData.slots_filled.trade_in_model
+              ) {
+                verificationData.slots_filled.trade_in_model =
+                  extraction.detected_model;
+              }
+              toolResult = JSON.stringify(extraction);
+            }
+          } else if (functionName === "enqueue_human_review") {
+            try {
+              const ticket = await enqueueHumanReview({
+                sessionId,
+                reason: functionArgs.reason || "manual_review",
+                payload: functionArgs.payload ?? null,
+              });
+              verificationData.flags.requires_human_review = true;
+              toolResult = JSON.stringify(ticket);
+            } catch (err) {
+              toolResult = `Failed to enqueue review: ${err instanceof Error ? err.message : String(err)}`;
+            }
+          } else if (functionName === "sendemail") {
             const toolStart = Date.now();
             const normalizedArgs = {
               ...functionArgs,
@@ -2504,9 +2513,7 @@ export async function POST(request: NextRequest) {
       ocrConfidence,
     );
     if (computedConfidence !== null) {
-      verificationData.confidence = Number(
-        computedConfidence.toFixed(2),
-      );
+      verificationData.confidence = Number(computedConfidence.toFixed(2));
       if (computedConfidence < 0.6) {
         verificationData.flags.requires_human_review = true;
         if (!finalResponse.toLowerCase().includes("manual review")) {
