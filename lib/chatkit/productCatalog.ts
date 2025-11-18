@@ -511,6 +511,36 @@ export async function findCatalogMatches(
   const queryTokens = tokenize(normalizedQuery);
   const { models, aliasMap } = await loadCatalogContext();
 
+  // Detect product family keywords in query
+  const familyKeywords = [
+    {
+      pattern: /\b(ps5|playstation\s*5|playstation5)\b/i,
+      family: "playstation_5",
+    },
+    {
+      pattern: /\b(ps4|playstation\s*4|playstation4)\b/i,
+      family: "playstation_4",
+    },
+    {
+      pattern: /\b(xbox\s*series|xsx|xss|series\s*x|series\s*s)\b/i,
+      family: "xbox_series",
+    },
+    { pattern: /\b(switch|nintendo\s*switch)\b/i, family: "nintendo_switch" },
+    {
+      pattern: /\b(steam\s*deck|rog\s*ally|ally|legion|claw)\b/i,
+      family: "handheld_pc",
+    },
+    { pattern: /\b(quest|psvr|vr)\b/i, family: "vr_wearables" },
+  ];
+
+  let detectedFamily: string | null = null;
+  for (const { pattern, family } of familyKeywords) {
+    if (pattern.test(query)) {
+      detectedFamily = family;
+      break;
+    }
+  }
+
   const aliasCandidates = aliasMap.get(normalizedQuery);
   const pool =
     aliasCandidates && aliasCandidates.length > 0 ? aliasCandidates : models;
@@ -525,7 +555,17 @@ export async function findCatalogMatches(
             1000
         : scoreModel(model, normalizedQuery, queryTokens, intent),
     }))
-    .filter(({ score }) => score > 0)
+    .filter(({ score, model }) => {
+      // Filter out zero-score matches
+      if (score <= 0) return false;
+
+      // If a specific product family was detected in query, only show products from that family
+      if (detectedFamily && queryTokens.length > 1) {
+        return model.familyId === detectedFamily;
+      }
+
+      return true;
+    })
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       const aPrice =
