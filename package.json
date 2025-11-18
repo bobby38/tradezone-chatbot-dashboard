@@ -9,7 +9,11 @@
     "lint": "next lint",
     "refresh:catalog": "node scripts/refresh-product-catalog.mjs",
     "catalog:build": "tsx scripts/build-products-master.ts",
-    "catalog:sync-zep": "tsx scripts/sync-zep-graph.ts"
+    "catalog:sync-zep": "tsx scripts/sync-zep-graph.ts",
+    "test": "playwright test",
+    "test:critical": "./tests/run-critical-tests.sh",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report"
   },
   "dependencies": {
     "@getzep/zep-cloud": "^3.10.0",
