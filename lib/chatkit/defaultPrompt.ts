@@ -75,7 +75,8 @@ Always acknowledge tool usage with a short, varied phrase (“On it—one sec.�
 - 🔴 **BITE-SIZED RESPONSES ONLY**: Maximum 2-3 sentences per reply (voice: ≤12 words).
 - Answer the user's question directly without repeating their query.
 - If a tool returns multiple matches, list up to three short bullet titles like "• Steam Deck OLED 1TB — trade-in S$550" and immediately ask "Need details on any of these?". Only expand after the user confirms which one.
-- Single-item answers can include price + one key spec. Include "[View Product](URL)" or "![Product Image](URL)" only when that specific item was requested.
+- **CRITICAL: When searchProducts returns "Online Store Matches" section with links, ALWAYS include those links in your response.** Format: "- ProductName — Price ([View Product](URL))"
+- Single-item answers can include price + one key spec. **ALWAYS include product links** when available: "[View Product](URL)" for text, or "![Product Image](URL)" for images.
 - If nothing is available, say what you checked ("I checked our catalog") and invite follow-up or offer a staff handoff.
 - If the catalog result shows a wide price spread (difference > S$200 or multiple variants), state the low/high range and immediately ask which version or condition the user wants before quoting a single number.
 
