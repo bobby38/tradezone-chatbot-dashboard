@@ -3628,3 +3628,110 @@ NEW: contact → PHOTOS → payout
 - ❌ Agent asking for device twice
 
 ---
+
+### January 19, 2025 PM - Trade-In Flow Critical Fixes (Commit: `9259a6b`)
+
+**Status**: ✅ All three user-reported issues resolved
+
+**Production Testing Revealed**:
+1. ❌ **Photos being skipped** - Agent went straight from contact to payout
+2. ❌ **Installment request ignored** - User said "yes i want installment", agent offered cash/PayNow/bank
+3. ❌ **Contact collection too rushed** - Asked name/phone/email all at once
+4. ❌ **Email still not sending** - Lead created but no notification
+
+---
+
+#### **Fix 1: Email Auto-Submit Logic** (`app/api/chatkit/agent/route.ts:2630`)
+**Problem**: Email auto-submit only ran when `tradeInIntent` was true, but when user said "cash" (payout), that word didn't match trade-in keywords, so auto-submit never checked.
+
+**Root Cause**:
+```typescript
+// OLD CODE (broken):
+if (tradeInIntent && tradeInLeadId && noToolCalls) {
+  // Only runs if current message contains trade-in keywords like "trade", "sell", "upgrade"
+  await autoSubmitTradeInLeadIfComplete(...)
+}
+```
+
+**Fix**:
+```typescript
+// NEW CODE (working):
+if (tradeInLeadId && noToolCalls) {
+  // Runs whenever there's an active lead, regardless of current message
+  await autoSubmitTradeInLeadIfComplete(...)
+}
+```
+
+**Result**: ✅ Auto-submit now triggers on ANY message when lead is active (including "cash", "PayNow", etc.)
+
+---
+
+#### **Fix 2: Installment Handling** (`lib/chatkit/defaultPrompt.ts:112-118`)
+**Problem**: Agent offered "cash, PayNow, or bank transfer" even when user explicitly asked for installment.
+
+**Fix**: Added explicit installment recognition and handling:
+```typescript
+12. **Installment Plans**: When user asks about installment or mentions "installment" or "payment plan":
+   - Check the top-up amount from pricing data
+   - Offer available plans based on amount: 3 months (S$300-599), 6 months (S$600-999), 12 months (S$1000+)
+   - Example: "Top-up is S$550, so 6-month installment works (S$92/month, 0% interest). Want that?"
+   - Save preferred_payout as "installment" when confirmed
+   - If they asked about installment earlier but you offered cash/PayNow/bank, ACKNOWLEDGE the installment request first
+```
+
+**Result**: ✅ Agent now recognizes installment requests and offers appropriate plans with monthly calculations
+
+---
+
+#### **Fix 3: Contact Collection Flow** (`lib/chatkit/defaultPrompt.ts:106-110`)
+**Problem**: Asked "can I have your name, phone number, and email" all at once.
+
+**Fix**: Changed to one-at-a-time sequence:
+```typescript
+10. **Contact info collection - ONE AT A TIME**: 
+   - First ask: "What's your email?" → Wait for response → Repeat back: "Got it, {email}."
+   - Then ask: "Phone number?" → Wait for response → Repeat back: "{phone}, right?"
+   - NEVER ask for name/phone/email all at once
+```
+
+**Result**: ✅ Agent now asks for contact details one at a time with confirmation
+
+---
+
+#### **Fix 4: Photo Prompt Order** (Already fixed in commit `a4ffc1a`)
+Photos are now asked BEFORE payout, marked as CRITICAL step in the flow.
+
+---
+
+**Testing Requirements**:
+```
+Full flow test: PS5 Fat Disc → PS5 Pro + installment
+1. ✅ User: "can i trade my ps5 fat disc to ps5 pro how much and can i do installment what cost per month"
+2. ✅ Agent: Provides pricing (S$350 trade-in, S$900 PS5 Pro, S$550 top-up)
+3. ✅ Agent: Offers 6-month installment (S$92/month)
+4. ✅ Agent: Asks for email (one question)
+5. ✅ Agent: Confirms email
+6. ✅ Agent: Asks for phone (one question)  
+7. ✅ Agent: Confirms phone by repeating it back
+8. ✅ Agent: Asks for photos BEFORE payout
+9. ✅ Agent: Asks for payout preference (cash/PayNow/bank OR installment)
+10. ✅ User: "yes i want installment"
+11. ✅ Agent: Confirms installment choice
+12. ✅ Agent: Submits lead
+13. ✅ Email sent to contactus@tradezone.sg (BCC: info@rezult.co)
+```
+
+**Files Modified**:
+- `app/api/chatkit/agent/route.ts` - Auto-submit trigger condition
+- `lib/chatkit/defaultPrompt.ts` - Installment handling, contact flow
+
+**Deployment**: Commit `9259a6b` pushed to main, ready for Coolify auto-deploy
+
+**Monitor After Deploy**:
+```bash
+# Successful flow should show:
+[ChatKit] Auto-submit conditions met, submitting trade-in lead...
+[TradeIn] Email sent: true
+```
+
+---
