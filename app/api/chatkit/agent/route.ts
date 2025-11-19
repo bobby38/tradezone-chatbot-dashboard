@@ -855,6 +855,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       : false;
 
     const hasDevice = Boolean(detail.brand && detail.model);
+    // Storage is optional - many devices have fixed storage (PS5 825GB/2TB, Switch 64GB, etc.)
     const hasStorage = Boolean(detail.storage);
     const hasContact = Boolean(detail.contact_name && detail.contact_phone);
     const hasEmail = Boolean(detail.contact_email);
@@ -885,10 +886,10 @@ async function autoSubmitTradeInLeadIfComplete(params: {
             ].some((kw) => msg.includes(kw)),
           ));
 
+    // Storage is optional (many devices have fixed storage), but all other fields are required
     if (
       alreadyNotified ||
       !hasDevice ||
-      !hasStorage ||
       !hasContact ||
       !hasEmail ||
       !hasPayout ||
