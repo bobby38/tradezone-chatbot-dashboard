@@ -860,40 +860,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasEmail = Boolean(detail.contact_email);
     const hasPayout = Boolean(detail.preferred_payout);
 
-    // Check if photos acknowledged (from DB or conversation history)
-    let photoAcknowledged =
-      (Array.isArray(detail.trade_in_media) &&
-        detail.trade_in_media.length > 0) ||
-      (typeof detail.notes === "string" &&
-        /photos?:\s*not provided/i.test(detail.notes)) ||
-      (typeof detail.source_message_summary === "string" &&
-        /photos?:\s*not provided/i.test(detail.source_message_summary));
-
-    // Also check recent conversation for photo intent
-    if (!photoAcknowledged && params.history) {
-      const recentUserMessages = params.history
-        .filter((msg) => msg.role === "user")
-        .slice(-5)
-        .map((msg) => msg.content.toLowerCase());
-
-      const photoKeywords = [
-        "here",
-        "uploaded",
-        "sent",
-        "attached",
-        "sending",
-        "image",
-        "photo",
-        "pic",
-        "no photos",
-        "no image",
-        "dont have",
-        "don't have",
-      ];
-      photoAcknowledged = recentUserMessages.some((msg) =>
-        photoKeywords.some((keyword) => msg.includes(keyword)),
-      );
-    }
+    // Photos are optional - not required for auto-submit (customers visit store)
 
     if (
       alreadyNotified ||
@@ -901,8 +868,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       !hasStorage ||
       !hasContact ||
       !hasEmail ||
-      !hasPayout ||
-      !photoAcknowledged
+      !hasPayout
     ) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
@@ -911,7 +877,6 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         hasContact,
         hasEmail,
         hasPayout,
-        photoAcknowledged,
       });
       return null;
     }
@@ -1766,20 +1731,20 @@ export async function POST(request: NextRequest) {
       contextInsertIndex += 1;
     }
 
+    // Truncate to last 20 messages (10 exchanges) to reduce token usage
+    const maxHistoryMessages = 20;
+    const truncatedHistory =
+      history && history.length > maxHistoryMessages
+        ? history.slice(-maxHistoryMessages)
+        : history || [];
+
+    if (history && history.length > maxHistoryMessages) {
+      console.log(
+        `[ChatKit] History truncated: ${history.length} → ${truncatedHistory.length} messages`,
+      );
+    }
+
     if (history && history.length > 0) {
-      // Truncate to last 20 messages (10 exchanges) to reduce token usage
-      const maxHistoryMessages = 20;
-      const truncatedHistory =
-        history.length > maxHistoryMessages
-          ? history.slice(-maxHistoryMessages)
-          : history;
-
-      if (history.length > maxHistoryMessages) {
-        console.log(
-          `[ChatKit] History truncated: ${history.length} → ${truncatedHistory.length} messages`,
-        );
-      }
-
       truncatedHistory.forEach((msg: any) => {
         if (msg.role && msg.content) {
           messages.push({ role: msg.role, content: msg.content });
