@@ -1816,17 +1816,39 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (existingLead) {
-        tradeInLeadId = existingLead.id;
-        tradeInLeadStatus = existingLead.status;
-        tradeInIntent = true; // Force trade-in mode if active lead exists
-
-        // Add current trade-in summary (pass recent history for photo detection)
-        const tradeInSummary = await buildTradeInSummary(
-          existingLead.id,
-          truncatedHistory,
+        // Only resume trade-in if it's not completed/submitted AND user shows trade-in intent
+        const completedStatuses = [
+          "submitted",
+          "completed",
+          "closed",
+          "archived",
+        ];
+        const isCompleted = completedStatuses.includes(
+          existingLead.status || "",
         );
-        if (tradeInSummary) {
-          messages.splice(2, 0, { role: "system", content: tradeInSummary });
+
+        if (!isCompleted && tradeInIntent) {
+          // Resume active trade-in
+          tradeInLeadId = existingLead.id;
+          tradeInLeadStatus = existingLead.status;
+
+          console.log(
+            `[ChatKit] Resuming trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
+          );
+
+          // Add current trade-in summary (pass recent history for photo detection)
+          const tradeInSummary = await buildTradeInSummary(
+            existingLead.id,
+            truncatedHistory,
+          );
+          if (tradeInSummary) {
+            messages.splice(2, 0, { role: "system", content: tradeInSummary });
+          }
+        } else if (isCompleted) {
+          console.log(
+            `[ChatKit] Ignoring completed trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
+          );
+          // Don't load completed trade-in context
         }
       } else if (tradeInIntent) {
         // Create new lead only if trade-in intent detected and no existing lead
