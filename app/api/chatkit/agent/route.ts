@@ -2627,7 +2627,9 @@ export async function POST(request: NextRequest) {
 
     const noToolCalls =
       !assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0;
-    if (tradeInIntent && tradeInLeadId && noToolCalls) {
+    // Auto-submit whenever there's an active trade-in lead, regardless of current message intent
+    // This ensures we catch final steps like "cash" (payout) that don't contain trade-in keywords
+    if (tradeInLeadId && noToolCalls) {
       const autoSubmitResult = await autoSubmitTradeInLeadIfComplete({
         leadId: tradeInLeadId,
         requestId,
