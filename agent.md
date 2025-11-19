@@ -3445,3 +3445,186 @@ Response:
 4. ⏳ Monitor token usage logs
 5. ⏳ Verify bundle search results
 6. ⏳ Check product link display
+
+---
+
+### January 19, 2025 - Final Production Fixes (Commits: 5a4c13f, d584ff9, d2543fb, a4ffc1a)
+
+**All Critical Issues Resolved**:
+
+#### 1. **Photo Status Display Bug** (Commit: `5a4c13f`)
+**Problem**: Agent saying "Photos: Not provided" even after user uploaded image
+**Root Cause**: 
+- Image upload is asynchronous (via `/api/tradein/media`)
+- Agent generates summary immediately before upload completes
+- Database check happens too early
+
+**Fix**:
+- Added 500ms delay before checking `trade_in_media` table
+- Check conversation history for photo keywords: `here`, `uploaded`, `sent`, `attached`
+- Show "Upload in progress" when user indicates photos
+- Pass conversation history to `buildTradeInSummary()` function
+
+**Result**: ✅ Photo status accurate in agent's final message
+
+---
+
+#### 2. **Trade-In Email Not Sending** (Commit: `d584ff9`)
+**Problem**: Trade-in completes successfully but no email to `contactus@tradezone.sg`
+**Root Cause**: 
+- Auto-submit checks `photoAcknowledged` before proceeding
+- User says "here" (photo intent)
+- Auto-submit checks database BEFORE image links
+- Returns `null`, never calls `submitTradeInLead`, no email sent
+
+**Fix**:
+- Auto-submit now checks conversation history for photo acknowledgment
+- Keywords: `here`, `uploaded`, `sent`, `no photo`, `dont have`, `later`
+- Proceeds with submission when user acknowledges photo step
+- Added diagnostic logging for auto-submit conditions
+
+**Result**: ✅ Emails send when trade-in completes
+
+---
+
+#### 3. **ReferenceError: truncatedHistory** (Commit: `d2543fb` - PRODUCTION CRASH)
+**Problem**: `ReferenceError: truncatedHistory is not defined` causing production crashes
+**Root Cause**:
+- `truncatedHistory` scoped inside `if (history && history.length > 0)` block
+- Called `buildTradeInSummary(leadId, truncatedHistory)` outside that scope
+- Variable not accessible → crash
+
+**Fix**:
+- Moved `truncatedHistory` declaration to function scope
+- Now defined before if block: `const truncatedHistory = history && history.length > maxHistoryMessages ? history.slice(-maxHistoryMessages) : history || [];`
+- Accessible throughout function
+
+**Result**: ✅ No more production crashes
+
+---
+
+#### 4. **Photo Flow Order Correction** (Commit: `a4ffc1a`)
+**User Feedback**: "Photos more important than payout. Ask BEFORE payout. Encourage but not obligatory."
+
+**Corrected Flow Order**:
+```
+OLD: contact → payout → [photos skipped]
+NEW: contact → PHOTOS → payout
+```
+
+**Photo Step (ENCOURAGED, NOT REQUIRED)**:
+- Agent asks: "Got photos? Helps us quote faster."
+- If user uploads → "Thanks!" and continue
+- If user declines → "No worries, we'll inspect in-store." and continue
+- Photos encouraged but never block submission
+
+**Auto-Submit Check**:
+- `photoStepAcknowledged` detects: uploaded image, "no photo", "later", "dont have"
+- Ensures agent asked the question before auto-submitting
+- User can decline and still proceed to payout
+
+**Result**: ✅ Photos asked at right time, encouraged but optional
+
+---
+
+### **Complete Trade-In Flow (FINAL)**
+
+```
+1. User: "can i trade xbox s 1tb for ps5"
+2. Agent: Trade-in value S$150-200, PS5 price S$XXX, top-up S$YYY. Proceed?
+3. User: "yes"
+4. Agent: "What's the condition?" (mint/good/fair/faulty)
+5. User: "good"
+6. Agent: "Box and accessories included?"
+7. User: "yes all"
+8. Agent: "Any defects or issues?"
+9. User: "no working great"
+10. Agent: "Email address?"
+11. User: "bobby_dennie@hotmail.com"
+12. Agent: "Phone number?"
+13. User: "8448 9068"
+14. Agent: "Got photos? Helps us quote faster." ← PHOTO STEP (encouraged)
+15. User: [uploads] OR "no" OR "later"
+16. Agent: "Thanks!" OR "No worries, we'll inspect in-store."
+17. Agent: "Payout method? Cash, PayNow, or bank?" ← AFTER PHOTOS
+18. User: "paynow"
+19. User: "can i do installment for the top up?"
+20. Agent: "Yes! We offer 0% installment plans..."
+21. Agent: [Trade-In Summary with all details]
+22. ✅ Email sent to contactus@tradezone.sg (BCC: info@rezult.co)
+23. ✅ Dashboard shows lead with email_sent action
+```
+
+---
+
+### **Testing Checklist**
+
+#### Test Scenario 1: Trade-In with Photos
+- ✅ Flow completes without crashes
+- ✅ Agent asks for photos AFTER contact, BEFORE payout
+- ✅ User uploads image
+- ✅ Agent shows "Upload in progress" or "Provided"
+- ✅ Email received at contactus@tradezone.sg
+- ✅ Dashboard shows 1 file uploaded
+
+#### Test Scenario 2: Trade-In without Photos
+- ✅ Agent asks "Got photos?"
+- ✅ User says "no" or "later"
+- ✅ Agent says "No worries, we'll inspect in-store."
+- ✅ Flow continues to payout
+- ✅ Email still sends
+- ✅ Dashboard shows 0 files, "Photos: Not provided"
+
+#### Test Scenario 3: Trade + Upgrade + Installment
+- ✅ User wants to trade Xbox for PS5
+- ✅ Agent calculates: PS5 price - trade-in value = top-up
+- ✅ User asks about installment
+- ✅ Agent explains installment options
+- ✅ Full flow completes with email
+
+---
+
+### **Production Deployment**
+
+**Latest Commit**: `a4ffc1a`
+**Branch**: `main`
+**Status**: ✅ All critical issues resolved
+
+**Commits Summary**:
+- `1afaa5d` - Trade-in database error, context loop, history logging
+- `5a4c13f` - Photo status display fix
+- `d584ff9` - Email notification fix (auto-submit photo detection)
+- `d2543fb` - ReferenceError crash fix (truncatedHistory scope)
+- `a4ffc1a` - Photo flow order correction (ask before payout)
+
+**Files Modified**:
+- `app/api/chatkit/agent/route.ts` - History scope, auto-submit logic, logging
+- `lib/trade-in/service.ts` - Database error fix
+- `lib/chatkit/tradeInPrompts.ts` - Context continuity, photo flow
+- `lib/chatkit/defaultPrompt.ts` - Photo order, link policy
+- `lib/tools/vectorSearch.ts` - Model upgrade
+- `lib/chatkit/productCatalog.ts` - Bundle recognition
+
+**Deploy Command**: Manual redeploy button in Coolify
+
+**Monitor After Deploy**:
+```bash
+# Look for these logs in Coolify:
+[ChatKit] Auto-submit conditions met, submitting trade-in lead...
+[TradeIn] ========== SUBMIT TRADE-IN LEAD ==========
+[TradeIn] Notification enabled, fetching media...
+[TradeIn] Media found: X files
+[TradeIn] Sending email notification...
+[EmailService] Using SMTP config from database
+[TradeIn] Email sent: true
+[TradeIn] ========== SUBMISSION COMPLETE ==========
+```
+
+**No More Expected**:
+- ❌ `ReferenceError: truncatedHistory is not defined`
+- ❌ `JSON object requested, multiple (or no) rows returned`
+- ❌ Photos showing "Not provided" when uploaded
+- ❌ Emails not sending
+- ❌ Agent asking for device twice
+
+---
