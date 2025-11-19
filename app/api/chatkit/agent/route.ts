@@ -860,7 +860,30 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasEmail = Boolean(detail.contact_email);
     const hasPayout = Boolean(detail.preferred_payout);
 
-    // Photos are optional - not required for auto-submit (customers visit store)
+    // Check if photos step acknowledged (encouraged but not required)
+    const photoStepAcknowledged =
+      (Array.isArray(detail.trade_in_media) &&
+        detail.trade_in_media.length > 0) ||
+      (typeof detail.notes === "string" &&
+        /photos?:\s*not provided/i.test(detail.notes)) ||
+      (typeof detail.source_message_summary === "string" &&
+        /photos?:\s*not provided/i.test(detail.source_message_summary)) ||
+      (params.history &&
+        params.history
+          .filter((msg) => msg.role === "user")
+          .slice(-5)
+          .map((msg) => msg.content.toLowerCase())
+          .some((msg) =>
+            [
+              "here",
+              "uploaded",
+              "sent",
+              "no photo",
+              "dont have",
+              "no image",
+              "later",
+            ].some((kw) => msg.includes(kw)),
+          ));
 
     if (
       alreadyNotified ||
@@ -868,7 +891,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       !hasStorage ||
       !hasContact ||
       !hasEmail ||
-      !hasPayout
+      !hasPayout ||
+      !photoStepAcknowledged
     ) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
@@ -877,6 +901,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         hasContact,
         hasEmail,
         hasPayout,
+        photoStepAcknowledged,
       });
       return null;
     }
