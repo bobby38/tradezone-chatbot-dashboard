@@ -356,7 +356,9 @@ export async function updateTradeInLead(
 
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("trade_in_leads")
-    .select("status, contact_name, contact_phone, contact_email, preferred_payout")
+    .select(
+      "status, contact_name, contact_phone, contact_email, preferred_payout",
+    )
     .eq("id", leadId)
     .single();
 
@@ -422,14 +424,24 @@ export async function updateTradeInLead(
     .from("trade_in_leads")
     .update(updatePayload)
     .eq("id", leadId)
-    .select()
-    .single();
+    .select();
 
-  if (updateError || !updatedLead) {
+  if (updateError) {
     throw new Error(
       `Failed to update trade-in lead: ${updateError?.message ?? "unknown error"}`,
     );
   }
+
+  // Handle case where no rows were updated or multiple rows returned
+  if (
+    !updatedLead ||
+    (Array.isArray(updatedLead) && updatedLead.length === 0)
+  ) {
+    throw new Error(`Trade-in lead not found or already deleted: ${leadId}`);
+  }
+
+  // Get the first (and should be only) result
+  const lead = Array.isArray(updatedLead) ? updatedLead[0] : updatedLead;
 
   let actionsLogged = 0;
   const actionPayloads: Record<string, any>[] = [];
@@ -465,7 +477,7 @@ export async function updateTradeInLead(
     }
   }
 
-  return { lead: updatedLead, actionsLogged, previousStatus };
+  return { lead, actionsLogged, previousStatus };
 }
 
 export async function createTradeInUploadUrl(params: {

@@ -1700,6 +1700,12 @@ export async function POST(request: NextRequest) {
           ? history.slice(-maxHistoryMessages)
           : history;
 
+      if (history.length > maxHistoryMessages) {
+        console.log(
+          `[ChatKit] History truncated: ${history.length} → ${truncatedHistory.length} messages`,
+        );
+      }
+
       truncatedHistory.forEach((msg: any) => {
         if (msg.role && msg.content) {
           messages.push({ role: msg.role, content: msg.content });
