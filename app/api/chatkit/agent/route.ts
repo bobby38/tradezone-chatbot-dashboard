@@ -842,6 +842,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
   leadId: string;
   requestId: string;
   sessionId: string;
+  history?: Array<{ role: string; content: string }>;
 }): Promise<{ status?: string } | null> {
   try {
     const detail = await getTradeInLeadDetail(params.leadId);
@@ -878,7 +879,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       return null;
     }
 
-    const summary = await buildTradeInSummary(params.leadId);
+    const summary = await buildTradeInSummary(params.leadId, params.history);
     const newStatus =
       detail.status && detail.status !== "new" ? detail.status : "in_review";
 
@@ -1105,8 +1106,14 @@ async function runHybridSearch(
   return { result: fallbackMessage, source: vectorSource, matches: [] };
 }
 
-async function buildTradeInSummary(leadId: string) {
+async function buildTradeInSummary(
+  leadId: string,
+  recentHistory?: Array<{ role: string; content: string }>,
+) {
   try {
+    // Wait a moment for any pending media uploads to complete
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const { data: lead } = await supabase
       .from("trade_in_leads")
       .select(
@@ -1127,9 +1134,35 @@ async function buildTradeInSummary(leadId: string) {
     const accessories = Array.isArray(lead.accessories)
       ? lead.accessories.join(", ")
       : lead.accessories || "None";
+
+    // Check if user indicated they're providing photos (from recent conversation)
+    let photoIntentDetected = false;
+    if (recentHistory) {
+      const recentUserMessages = recentHistory
+        .filter((msg) => msg.role === "user")
+        .slice(-5) // Check last 5 user messages
+        .map((msg) => msg.content.toLowerCase());
+
+      const photoKeywords = [
+        "here",
+        "uploaded",
+        "sent",
+        "attached",
+        "sending",
+        "image",
+        "photo",
+        "pic",
+      ];
+      photoIntentDetected = recentUserMessages.some((msg) =>
+        photoKeywords.some((keyword) => msg.includes(keyword)),
+      );
+    }
+
     const photosProvided = lead.trade_in_media?.length
       ? "Provided"
-      : "Not provided — final quote upon inspection";
+      : photoIntentDetected
+        ? "Upload in progress"
+        : "Not provided — final quote upon inspection";
 
     return [
       "Trade-In Context Summary:",
@@ -1756,8 +1789,11 @@ export async function POST(request: NextRequest) {
         tradeInLeadStatus = existingLead.status;
         tradeInIntent = true; // Force trade-in mode if active lead exists
 
-        // Add current trade-in summary
-        const tradeInSummary = await buildTradeInSummary(existingLead.id);
+        // Add current trade-in summary (pass recent history for photo detection)
+        const tradeInSummary = await buildTradeInSummary(
+          existingLead.id,
+          truncatedHistory,
+        );
         if (tradeInSummary) {
           messages.splice(2, 0, { role: "system", content: tradeInSummary });
         }
@@ -1772,8 +1808,11 @@ export async function POST(request: NextRequest) {
         tradeInLeadId = ensureResult.leadId;
         tradeInLeadStatus = ensureResult.status;
 
-        // Add current trade-in summary if available
-        const tradeInSummary = await buildTradeInSummary(ensureResult.leadId);
+        // Add current trade-in summary if available (pass recent history for photo detection)
+        const tradeInSummary = await buildTradeInSummary(
+          ensureResult.leadId,
+          truncatedHistory,
+        );
         if (tradeInSummary) {
           messages.splice(2, 0, { role: "system", content: tradeInSummary });
         }
@@ -2540,6 +2579,7 @@ export async function POST(request: NextRequest) {
         leadId: tradeInLeadId,
         requestId,
         sessionId,
+        history: truncatedHistory,
       });
       if (autoSubmitResult?.status) {
         tradeInLeadStatus = autoSubmitResult.status;
