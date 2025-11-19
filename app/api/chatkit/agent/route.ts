@@ -859,13 +859,41 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasContact = Boolean(detail.contact_name && detail.contact_phone);
     const hasEmail = Boolean(detail.contact_email);
     const hasPayout = Boolean(detail.preferred_payout);
-    const photoAcknowledged =
+
+    // Check if photos acknowledged (from DB or conversation history)
+    let photoAcknowledged =
       (Array.isArray(detail.trade_in_media) &&
         detail.trade_in_media.length > 0) ||
       (typeof detail.notes === "string" &&
         /photos?:\s*not provided/i.test(detail.notes)) ||
       (typeof detail.source_message_summary === "string" &&
         /photos?:\s*not provided/i.test(detail.source_message_summary));
+
+    // Also check recent conversation for photo intent
+    if (!photoAcknowledged && params.history) {
+      const recentUserMessages = params.history
+        .filter((msg) => msg.role === "user")
+        .slice(-5)
+        .map((msg) => msg.content.toLowerCase());
+
+      const photoKeywords = [
+        "here",
+        "uploaded",
+        "sent",
+        "attached",
+        "sending",
+        "image",
+        "photo",
+        "pic",
+        "no photos",
+        "no image",
+        "dont have",
+        "don't have",
+      ];
+      photoAcknowledged = recentUserMessages.some((msg) =>
+        photoKeywords.some((keyword) => msg.includes(keyword)),
+      );
+    }
 
     if (
       alreadyNotified ||
@@ -876,8 +904,21 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       !hasPayout ||
       !photoAcknowledged
     ) {
+      console.log("[ChatKit] Auto-submit conditions not met:", {
+        alreadyNotified,
+        hasDevice,
+        hasStorage,
+        hasContact,
+        hasEmail,
+        hasPayout,
+        photoAcknowledged,
+      });
       return null;
     }
+
+    console.log(
+      "[ChatKit] Auto-submit conditions met, submitting trade-in lead...",
+    );
 
     const summary = await buildTradeInSummary(params.leadId, params.history);
     const newStatus =
