@@ -3735,3 +3735,83 @@ Full flow test: PS5 Fat Disc → PS5 Pro + installment
 ```
 
 ---
+
+### January 19, 2025 Evening - Contact Data Persistence Fix (Commit: `68baf36`)
+
+**Status**: ✅ Critical data loss bug fixed
+
+**Problem Discovered in Production**:
+- Agent collected email, phone, and name in conversation
+- Dashboard showed only email saved, phone and name were `—`
+- No email notification sent (because `hasContact` check failed)
+
+**Root Cause**:
+```typescript
+// Auto-submit requires BOTH name AND phone:
+const hasContact = Boolean(detail.contact_name && detail.contact_phone);
+
+// But agent was calling tradein_update_lead after EACH field:
+User: "info@rezult.co" → tradein_update_lead({contact_email: "..."})
+User: "8448 9068" → tradein_update_lead({contact_phone: "..."}) 
+User: "robert grunt" → Agent asks accessories (never saved name!)
+```
+
+**Why This Happened**:
+- Instruction said "After every user reply containing trade-in info, call tradein_update_lead"
+- Agent interpreted this as "call after EACH contact field"
+- Name was collected LAST, but agent moved to accessories question before calling the tool
+- Result: Name and phone never made it to database
+
+**Fix** (`lib/chatkit/defaultPrompt.ts:105-113`):
+```typescript
+8. After every user reply containing trade-in info, call "tradein_update_lead" **before** you answer.
+   - **EXCEPTION**: When collecting contact info (email/phone/name), wait until you have ALL THREE before calling tradein_update_lead with all contact fields together
+   - Example: After user gives name (final contact field), call tradein_update_lead with {contact_email, contact_phone, contact_name} in ONE call
+
+10. **Contact info collection - ONE AT A TIME**:
+   - First ask: "What's your email?" → Wait for response → Repeat back: "Got it, {email}."
+   - Then ask: "Phone number?" → Wait for response → Repeat back: "{phone}, right?"
+   - Then ask: "And your name?" → Wait for response → Repeat back: "Thanks, {name}."
+   - **CRITICAL**: After ALL THREE collected, call tradein_update_lead with {contact_email, contact_phone, contact_name} in ONE call
+```
+
+**Expected Behavior After Fix**:
+```
+User: "info@rezult.co"
+Agent: "Got it, info@rezult.co."  (NO tool call yet)
+
+User: "8448 9068"  
+Agent: "8448 9068, right?"  (NO tool call yet)
+
+User: "robert grunt"
+Agent: "Thanks, robert grunt."
+→ NOW calls tradein_update_lead with {
+    contact_email: "info@rezult.co",
+    contact_phone: "8448 9068", 
+    contact_name: "robert grunt"
+  }
+
+User: "yes all" (accessories)
+Agent: "Thanks! Got photos?"
+```
+
+**Result**: ✅ All three contact fields saved together, email notification can proceed
+
+**Files Modified**:
+- `lib/chatkit/defaultPrompt.ts` - Batch contact update logic
+
+**Deployment**: Commit `68baf36` pushed to main, ready for Coolify
+
+**Testing Checklist**:
+```
+1. ✅ Agent asks for email
+2. ✅ Agent confirms email (no tool call)
+3. ✅ Agent asks for phone
+4. ✅ Agent confirms phone (no tool call)
+5. ✅ Agent asks for name
+6. ✅ Agent confirms name AND calls tradein_update_lead with all 3 fields
+7. ✅ Dashboard shows email, phone, AND name
+8. ✅ Email notification sends (hasContact = true)
+```
+
+---
