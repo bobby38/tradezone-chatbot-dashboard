@@ -115,10 +115,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Support both GPT-4o Realtime and GPT-4o-mini Realtime
+    // Realtime model: allow override; default to cost-efficient gpt-5-mini preview
     const model =
       process.env.OPENAI_REALTIME_MODEL ||
-      "gpt-4o-mini-realtime-preview-2024-12-17";
+      "gpt-5-mini-realtime-preview-2024-12-17";
 
     const config = {
       apiKey: process.env.OPENAI_API_KEY,

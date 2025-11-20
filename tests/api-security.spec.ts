@@ -6,8 +6,6 @@
 import { test, expect } from '@playwright/test';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://trade.rezult.co';
-  ? 'https://trade.rezult.co'
-  : 'http://localhost:3001';
 
 const API_KEY = process.env.CHATKIT_API_KEY || 'test-key';
 

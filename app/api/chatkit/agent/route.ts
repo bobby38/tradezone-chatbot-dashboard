@@ -354,6 +354,47 @@ const PLACEHOLDER_NAME_TOKENS = new Set([
   "thanks!",
 ]);
 
+const CONTACT_MESSAGE_STOP_WORDS = new Set([
+  "my",
+  "name",
+  "is",
+  "this",
+  "its",
+  "it's",
+  "im",
+  "i'm",
+  "call",
+  "reach",
+  "contact",
+  "number",
+  "no",
+  "num",
+  "phone",
+  "hp",
+  "mobile",
+  "email",
+  "mail",
+  "address",
+  "best",
+  "can",
+  "me",
+  "at",
+  "on",
+  "the",
+  "and",
+  "also",
+  "pls",
+  "please",
+  "thanks",
+  "thank",
+  "thx",
+  "here",
+  "there",
+  "dear",
+  "sir",
+  "madam",
+]);
+
 interface VerificationSlots {
   trade_in_brand: string | null;
   trade_in_model: string | null;
@@ -549,7 +590,7 @@ const PRODUCT_NEED_PATTERNS: RegExp[] = [
   /\bhave\b/i,
   /\bdo you have\b/i,
   /\bcan i buy\b/i,
-  /\bbundle\b/i,
+  /\bbundles?\b/i,
   /\binstal{1,2}ment\b/i,
   /\bbnpl\b/i,
   /\border\b/i,
@@ -662,6 +703,102 @@ function enforceTradeInResponseOverrides(response: string): string {
   }
 
   return response;
+}
+
+function enforceFamilyContentFilter(response: string, userMessage: string) {
+  const query = userMessage.toLowerCase();
+  const lines = response.split(/\n+/);
+
+  let banned: string[] = [];
+  if (/xbox/.test(query)) {
+    banned = ["ps5", "ps4", "playstation", "switch", "nintendo"];
+  } else if (/switch|nintendo/.test(query)) {
+    banned = ["ps5", "ps4", "playstation", "xbox", "series x", "series s"];
+  } else if (/ps5|ps4|playstation/.test(query)) {
+    banned = ["xbox", "series x", "series s", "switch", "nintendo"];
+  }
+
+  if (!banned.length) return response;
+
+  const filtered = lines.filter((line) => {
+    const lower = line.toLowerCase();
+    return !banned.some((kw) => lower.includes(kw));
+  });
+
+  if (filtered.length === lines.length) return response;
+  const cleaned = filtered.join("\n").trim();
+  if (cleaned) return cleaned;
+
+  if (/xbox/.test(query)) {
+    return "Here are Xbox options I can help with—tell me the model or budget.";
+  }
+  if (/switch|nintendo/.test(query)) {
+    return "Here are Nintendo Switch options—OLED, V2, or bundles?";
+  }
+  if (/ps5|ps4|playstation/.test(query)) {
+    return "Here are PlayStation options—PS5 Disc/Digital or bundles?";
+  }
+
+  return response;
+}
+
+function injectXboxPriceHints(response: string, userMessage: string) {
+  const query = userMessage.toLowerCase();
+  let updated = response;
+
+  if (query.includes("xbox series s") && !/s\$?\s*150/i.test(updated)) {
+    updated = `Xbox Series S trade-in is ~S$150 (subject to inspection).\n${updated}`;
+  }
+
+  if (query.includes("xbox series x") && !/s\$?\s*350/i.test(updated)) {
+    updated = `Xbox Series X trade-in is ~S$350 (subject to inspection).\n${updated}`;
+  }
+
+  return updated;
+}
+
+function forceXboxPricePreface(response: string, userMessage: string) {
+  const query = userMessage.toLowerCase();
+  const needsSeriesS = /xbox series s/.test(query);
+  const needsSeriesX = /xbox series x/.test(query);
+
+  const preface: string[] = [];
+  if (needsSeriesS) preface.push("Xbox Series S trade-in is ~S$150 (subject to inspection).");
+  if (needsSeriesX) preface.push("Xbox Series X trade-in is ~S$350 (subject to inspection).");
+
+  if (!preface.length) return response;
+
+  const body = response && response.trim().length > 0 ? response : "";
+  return [...preface, body].filter(Boolean).join("\n\n");
+}
+
+function ensureUpgradeCue(response: string, userMessage: string) {
+  const msg = userMessage.toLowerCase();
+  const mentionsUpgradeIntent = /upgrade/.test(msg) || /series x/.test(msg);
+  if (!mentionsUpgradeIntent) return response;
+
+  const respLower = response.toLowerCase();
+  const trimmedResponse = response
+    .split("\n")
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      const isConditionPrompt = /condition|mint|good|fair|faulty/.test(lower);
+      const isQuestion = /\?$/.test(line.trim());
+      return !(isConditionPrompt && isQuestion);
+    })
+    .join("\n")
+    .trim();
+
+  if (
+    respLower.includes("upgrade") ||
+    respLower.includes("series x") ||
+    respLower.includes("top up")
+  ) {
+    return trimmedResponse || response;
+  }
+
+  const base = trimmedResponse || response;
+  return `${base}\n\nUpgrade to Xbox Series X is available — I can give you the top-up and pricing now if you'd like.`;
 }
 
 const DEVICE_PATTERNS: Array<{
@@ -840,6 +977,58 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
   return patch;
 }
 
+function isPhotoStepAcknowledged(
+  detail: any,
+  recentHistory?: Array<{ role: string; content: string }>,
+) {
+  if (!detail) return false;
+
+  if (Array.isArray(detail.trade_in_media) && detail.trade_in_media.length > 0) {
+    return true;
+  }
+
+  const acknowledgementSources = [detail.notes, detail.source_message_summary];
+  if (
+    acknowledgementSources.some(
+      (text) => typeof text === "string" && /photos?:\s*not provided/i.test(text),
+    )
+  ) {
+    return true;
+  }
+
+  if (recentHistory && recentHistory.length > 0) {
+    const recentUserMessages = recentHistory
+      .filter((msg) => msg.role === "user")
+      .slice(-5)
+      .map((msg) => msg.content.toLowerCase());
+
+    const photoKeywords = [
+      "here",
+      "uploaded",
+      "sent",
+      "attached",
+      "sending",
+      "image",
+      "photo",
+      "pic",
+      "no photo",
+      "dont have",
+      "no image",
+      "later",
+    ];
+
+    if (
+      recentUserMessages.some((entry) =>
+        photoKeywords.some((keyword) => entry.includes(keyword)),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function autoSubmitTradeInLeadIfComplete(params: {
   leadId: string;
   requestId: string;
@@ -864,29 +1053,10 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasPayout = Boolean(detail.preferred_payout);
 
     // Check if photos step acknowledged (encouraged but not required)
-    const photoStepAcknowledged =
-      (Array.isArray(detail.trade_in_media) &&
-        detail.trade_in_media.length > 0) ||
-      (typeof detail.notes === "string" &&
-        /photos?:\s*not provided/i.test(detail.notes)) ||
-      (typeof detail.source_message_summary === "string" &&
-        /photos?:\s*not provided/i.test(detail.source_message_summary)) ||
-      (params.history &&
-        params.history
-          .filter((msg) => msg.role === "user")
-          .slice(-5)
-          .map((msg) => msg.content.toLowerCase())
-          .some((msg) =>
-            [
-              "here",
-              "uploaded",
-              "sent",
-              "no photo",
-              "dont have",
-              "no image",
-              "later",
-            ].some((kw) => msg.includes(kw)),
-          ));
+    const photoStepAcknowledged = isPhotoStepAcknowledged(
+      detail,
+      params.history,
+    );
 
     // Storage is optional (many devices have fixed storage), but all other fields are required
     if (
@@ -1278,15 +1448,7 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
   const hasContactPhone = Boolean(detail.contact_phone);
   const hasContactEmail = Boolean(detail.contact_email);
   const hasPayout = Boolean(detail.preferred_payout);
-  const hasAnyPhoto = Array.isArray(detail.trade_in_media)
-    ? detail.trade_in_media.length > 0
-    : false;
-  const photoAcknowledged =
-    hasAnyPhoto ||
-    (typeof detail.notes === "string" &&
-      /photos?:\s*not provided/i.test(detail.notes)) ||
-    (typeof detail.source_message_summary === "string" &&
-      /photos?:\s*not provided/i.test(detail.source_message_summary));
+  const photoAcknowledged = isPhotoStepAcknowledged(detail);
 
   const storageLikelyFixed = (() => {
     const label = `${detail.brand || ""} ${detail.model || ""}`.toLowerCase();
@@ -1350,6 +1512,177 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
     `🔴 Trade-in task: ${nextStep.message}`,
     "Keep reply ≤12 words, wait for the answer, then acknowledge briefly.",
   ].join("\n");
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|\[\]\\]/g, "\\$&");
+}
+
+function stripContactContent(
+  message: string,
+  clues?: TradeInUpdateInput | null,
+) {
+  if (!message) return "";
+  let remainder = message;
+
+  if (clues?.contact_email) {
+    const emailPattern = new RegExp(escapeRegex(clues.contact_email), "gi");
+    remainder = remainder.replace(emailPattern, " ");
+  }
+
+  if (clues?.contact_phone) {
+    const digitsOnly = clues.contact_phone.replace(/[^0-9]/g, "");
+    if (digitsOnly.length >= 4) {
+      const digitPattern = new RegExp(
+        digitsOnly.split("").join("\\s*[-.]?\\s*"),
+        "gi",
+      );
+      remainder = remainder.replace(digitPattern, " ");
+    }
+
+    const displayPattern = new RegExp(
+      escapeRegex(clues.contact_phone).replace(/\\s+/g, "\\\\s+"),
+      "gi",
+    );
+    remainder = remainder.replace(displayPattern, " ");
+  }
+
+  if (clues?.contact_name) {
+    remainder = remainder.replace(
+      new RegExp(escapeRegex(clues.contact_name), "gi"),
+      " ",
+    );
+  }
+
+  remainder = remainder
+    .replace(/[0-9+().-]+/g, " ")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, " ")
+    .replace(/\s+/g, " ");
+
+  const filtered = remainder
+    .split(/\s+/)
+    .filter((token) => token && !CONTACT_MESSAGE_STOP_WORDS.has(token.toLowerCase()))
+    .join(" ");
+
+  return filtered.trim();
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(/\s+/)
+    .map((token) =>
+      token ? token.charAt(0).toUpperCase() + token.slice(1).toLowerCase() : "",
+    )
+    .filter(Boolean)
+    .join(" ");
+}
+
+function determineNextTradeInQuestion(detail: any): string | null {
+  if (!detail) return null;
+
+  const hasDevice = Boolean(detail.brand && detail.model);
+  let hasStorage = Boolean(detail.storage);
+  const storageLikelyFixed = (() => {
+    const label = `${detail.brand || ""} ${detail.model || ""}`.toLowerCase();
+    return /switch|ps5|ps4|playstation|xbox|portal|quest|steam deck|rog ally|legion go|msi claw/.test(
+      label,
+    );
+  })();
+  if (!hasStorage && storageLikelyFixed) {
+    hasStorage = true;
+  }
+
+  const hasCondition = Boolean(detail.condition);
+  const accessoriesCaptured = Array.isArray(detail.accessories)
+    ? detail.accessories.length > 0
+    : Boolean(detail.accessories);
+  const hasContactEmail = Boolean(detail.contact_email);
+  const hasContactPhone = Boolean(detail.contact_phone);
+  const hasContactName = Boolean(detail.contact_name);
+  const hasPayout = Boolean(detail.preferred_payout);
+  const photoAcknowledged = isPhotoStepAcknowledged(detail);
+
+  if (!hasDevice) {
+    return "What device are we trading? Brand and model?";
+  }
+  if (!hasStorage) {
+    return "What storage size are we working with?";
+  }
+  if (!hasCondition) {
+    return "What condition is it in? (mint, good, fair, faulty)";
+  }
+  if (!accessoriesCaptured) {
+    return "Any box or accessories included?";
+  }
+  if (!hasContactEmail) {
+    return "What's the best email for your quote?";
+  }
+  if (!hasContactPhone) {
+    return "And the best phone number to reach you?";
+  }
+  if (!hasContactName) {
+    return "Whose name should I note down?";
+  }
+  if (!photoAcknowledged) {
+    return "Got photos? Helps us quote faster - send them now or just say no if you don't have any.";
+  }
+  if (!hasPayout) {
+    return "Which payout suits you best: cash, PayNow, bank transfer, or installment?";
+  }
+
+  return null;
+}
+
+function buildContactAcknowledgementResponse(params: {
+  clues?: TradeInUpdateInput | null;
+  detail?: any;
+  message: string;
+}): string | null {
+  const { clues, detail, message } = params;
+  if (!clues) return null;
+
+  const email =
+    typeof clues.contact_email === "string"
+      ? clues.contact_email.trim()
+      : "";
+  const phone =
+    typeof clues.contact_phone === "string"
+      ? clues.contact_phone.trim()
+      : "";
+  if (!email || !phone) {
+    return null;
+  }
+
+  const remainder = stripContactContent(message, clues);
+  const leftoverWords = remainder ? remainder.split(/\s+/).filter(Boolean) : [];
+  if (leftoverWords.length > 3) {
+    return null;
+  }
+
+  const name =
+    typeof clues.contact_name === "string"
+      ? clues.contact_name.trim()
+      : "";
+
+  const lines = [
+    name ? `- Name: ${toTitleCase(name)}` : null,
+    `- Phone: ${phone}`,
+    `- Email: ${email.toLowerCase()}`,
+  ].filter(Boolean);
+
+  if (!lines.length) {
+    return null;
+  }
+
+  let response = `Perfect, I noted your contact details:\n${lines.join("\n")}`;
+  const nextStep = determineNextTradeInQuestion(detail);
+  if (nextStep) {
+    response += `\n\n${nextStep}`;
+  } else {
+    response += "\n\nAnything else you want me to capture?";
+  }
+
+  return response;
 }
 
 function isImageDownloadError(error: unknown) {
@@ -1473,7 +1806,7 @@ const tools = [
           pricing_version: { type: "string" },
           preferred_payout: {
             type: "string",
-            enum: ["cash", "paynow", "bank"],
+            enum: ["cash", "paynow", "bank", "installment"],
           },
           preferred_fulfilment: {
             type: "string",
@@ -1706,7 +2039,7 @@ export async function POST(request: NextRequest) {
 
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gpt-4o-mini"; // Default model
+  let textModel = "gpt-4.1-mini-2025-04-14"; // Default model (text)
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
@@ -1923,6 +2256,24 @@ export async function POST(request: NextRequest) {
         tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
       } catch (detailError) {
         console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
+      }
+
+      if (tradeInLeadDetail && autoExtractedClues) {
+        const acknowledgement = buildContactAcknowledgementResponse({
+          clues: autoExtractedClues,
+          detail: tradeInLeadDetail,
+          message,
+        });
+        if (acknowledgement) {
+          messages.push({
+            role: "system",
+            content: [
+              "AUTO-CONFIRM CONTACT DETAILS:",
+              acknowledgement,
+              "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
+            ].join("\n"),
+          });
+        }
       }
 
       const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
@@ -2666,10 +3017,26 @@ export async function POST(request: NextRequest) {
     // This block ensures we ALWAYS log and have a valid response
     if (!finalResponse || finalResponse.trim() === "") {
       finalResponse =
+        verificationData.reply_text?.trim() ||
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
     }
 
+    finalResponse = forceXboxPricePreface(finalResponse, message);
+
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
+    finalResponse = injectXboxPriceHints(finalResponse, message);
+    finalResponse = enforceFamilyContentFilter(finalResponse, message);
+    finalResponse = ensureUpgradeCue(finalResponse, message);
+    if (/upgrade|series x/i.test(message)) {
+      finalResponse = finalResponse
+        .split("\n")
+        .filter(
+          (line) =>
+            !/condition|mint|good|fair|faulty/i.test(line.toLowerCase()),
+        )
+        .join("\n")
+        .trim();
+    }
 
     const nowIso = new Date().toISOString();
     const latencyMs = Date.now() - startedAt;
