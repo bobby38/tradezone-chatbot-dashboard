@@ -777,6 +777,8 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.preferred_payout = "paynow";
   } else if (/bank/i.test(lower)) {
     patch.preferred_payout = "bank";
+  } else if (/installment|instalment|payment\s+plan/i.test(lower)) {
+    patch.preferred_payout = "installment";
   }
 
   const emailMatch = message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -1781,7 +1783,7 @@ export async function POST(request: NextRequest) {
     const isFirstTurn = !history || history.length === 0;
     const userOpenedWithQuestion =
       isFirstTurn &&
-      /\?|have\s+you|do\s+you|got\s+any|price|how much|what'?s|need\s|looking for|recommend|suggest/i.test(
+      /\?|have\s+you|do\s+you|can\s+i|can\s+you|got\s+any|price|how much|what'?s|need\s|looking for|recommend|suggest|trade.+for|trade.+to/i.test(
         message,
       );
     if (userOpenedWithQuestion) {
