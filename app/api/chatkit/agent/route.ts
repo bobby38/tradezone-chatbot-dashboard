@@ -2250,34 +2250,65 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (tradeInIntent && tradeInLeadId) {
-      try {
-        tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
-      } catch (detailError) {
-        console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
-      }
-
-      if (tradeInLeadDetail && autoExtractedClues) {
-        const acknowledgement = buildContactAcknowledgementResponse({
-          clues: autoExtractedClues,
-          detail: tradeInLeadDetail,
-          message,
-        });
-        if (acknowledgement) {
-          messages.push({
-            role: "system",
-            content: [
-              "AUTO-CONFIRM CONTACT DETAILS:",
-              acknowledgement,
-              "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
-            ].join("\n"),
-          });
+      if (tradeInIntent && tradeInLeadId) {
+        try {
+          tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
+        } catch (detailError) {
+          console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
         }
-      }
 
-      const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
-      if (missingPrompt) {
-        messages.push({ role: "system", content: missingPrompt });
+        if (tradeInLeadDetail && autoExtractedClues) {
+          const acknowledgement = buildContactAcknowledgementResponse({
+            clues: autoExtractedClues,
+            detail: tradeInLeadDetail,
+            message,
+          });
+          if (acknowledgement) {
+            messages.push({
+              role: "system",
+              content: [
+                "AUTO-CONFIRM CONTACT DETAILS:",
+                acknowledgement,
+                "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
+              ].join("\n"),
+            });
+          }
+
+          const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
+          const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
+          const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
+          const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+
+          if (hasContactName && hasContactPhone && hasContactEmail && !photoAcknowledged) {
+            messages.push({
+              role: "system",
+              content:
+                "Ask: 'Got photos? Helps us quote faster.' If they say no, reply 'Photos noted as not provided' and save it. Do this BEFORE payout/installation questions.",
+            });
+          }
+
+          const deviceCaptured = Boolean(
+            tradeInLeadDetail.brand && tradeInLeadDetail.model,
+          );
+          const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
+          if (deviceCaptured && hasContactEmail && hasContactPhone && hasContactName && !photoAcknowledged) {
+            messages.push({
+              role: "system",
+              content:
+                "Before payout/summary, you MUST ask: 'Got photos? Helps us quote faster.' If they decline, reply 'Photos noted as not provided' and continue. Do not finalize payout/summary until you ask this.",
+            });
+          }
+
+          if (deviceCaptured && hasContactEmail && hasContactPhone && hasContactName && payoutSet && !photoAcknowledged) {
+            // Remove payout mention if photos not asked yet
+            lastHybridResult = null;
+          }
+        }
+
+        const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
+        if (missingPrompt) {
+          messages.push({ role: "system", content: missingPrompt });
+        }
       }
     }
 
