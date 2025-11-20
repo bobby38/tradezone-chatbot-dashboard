@@ -3087,7 +3087,7 @@ export async function POST(request: NextRequest) {
       const monthly3 = Math.round(topUp / 3);
       const monthly6 = Math.round(topUp / 6);
       const monthly12 = Math.round(topUp / 12);
-      const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; final checkout may differ).`;
+      const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout).`;
       finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
     }
 
