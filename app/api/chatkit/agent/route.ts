@@ -2078,6 +2078,15 @@ export async function POST(request: NextRequest) {
       { role: "system", content: TRADE_IN_SYSTEM_CONTEXT },
     ];
 
+    // Voice/text guardrail: avoid repeated greetings after the first user turn
+    if (Array.isArray(history) && history.length > 0) {
+      messages.push({
+        role: "system",
+        content:
+          "Do not greet again; reply tersely to the user's ask. Skip pleasantries like 'Hi' or 'How can I help'.",
+      });
+    }
+
     const zepContext = await fetchZepContext(sessionId);
     console.debug("[ChatKit] Zep context loaded", {
       sessionId,
@@ -3017,7 +3026,16 @@ export async function POST(request: NextRequest) {
             isGenericAssistantReply(finalResponse) ||
             (lastHybridSource === "product_catalog" && !hasLink)
           ) {
-            finalResponse = fallback;
+            // If catalog search had no link, avoid guessing price—send user to live page
+            if (lastHybridSource === "product_catalog" && !hasLink) {
+              const encoded = encodeURIComponent(lastHybridQuery || "product");
+              finalResponse = [
+                `Couldn't pull a live price from the catalog. Check the latest price/availability on the site: https://tradezone.sg/?s=${encoded}`,
+                "If you prefer, share the product link and I'll fetch details from that page.",
+              ].join(" ");
+            } else {
+              finalResponse = fallback;
+            }
           } else if (
             !hasLink &&
             !isTradeInQuery &&
