@@ -2327,6 +2327,15 @@ export async function POST(request: NextRequest) {
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
+    // Installment guardrail: acknowledge only, avoid monthly math
+    if (/installment|instalment|payment\s*plan/i.test(message)) {
+      messages.push({
+        role: "system",
+        content:
+          "Installment request: Confirm we offer installment and capture preferred_payout=installment, but DO NOT compute or quote monthly amounts. Keep reply under two sentences.",
+      });
+    }
+
     console.log("[ChatKit] Tool choice:", {
       isTradeInPricingQuery,
       isProductInfoQuery,
