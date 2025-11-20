@@ -2327,7 +2327,7 @@ export async function POST(request: NextRequest) {
     if (productSlug) {
       messages.push({
         role: "system",
-        content: `User shared a TradeZone product link. Treat this as a direct product request for "${productSlug.replace(/-/g, " ")}". Do not say you cannot confirm availability; offer to check stock/reserve instead.`,
+        content: `User shared a TradeZone product link. Treat this as a direct request for "${productSlug.replace(/-/g, " ")}". Respond with a short peek (1-2 sentences) plus the product link. Do NOT speculate about stock; say the page has live availability and they can add to cart there or ask us to reserve.`,
       });
     }
 
