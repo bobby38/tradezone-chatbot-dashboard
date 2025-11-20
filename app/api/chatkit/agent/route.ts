@@ -2344,12 +2344,12 @@ export async function POST(request: NextRequest) {
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
-    // Installment guardrail: acknowledge only, avoid monthly math
+    // Installment guardrail: include a rough monthly estimate when user asks about installment
     if (/installment|instalment|payment\s*plan/i.test(message)) {
       messages.push({
         role: "system",
         content:
-          "Installment request: Confirm we offer installment and capture preferred_payout=installment, but DO NOT compute or quote monthly amounts. Keep reply under two sentences.",
+          "Installment request: Offer a rough monthly estimate (total top-up ÷ 3, round to nearest dollar) and state it's an estimate, subject to final checkout. Keep reply under two sentences. Set preferred_payout=installment when confirmed.",
       });
     }
 
@@ -3078,6 +3078,12 @@ export async function POST(request: NextRequest) {
     }
 
     finalResponse = forceXboxPricePreface(finalResponse, message);
+
+    // If the user asked about installment, add a rough monthly estimate based on last top-up
+    if (/installment|instalment|payment\s*plan/i.test(message) && latestTopUp?.top_up_sgd) {
+      const monthly = Math.round(latestTopUp.top_up_sgd / 3);
+      finalResponse = `${finalResponse}\n\n3-month installment available — roughly S$${monthly}/month (estimate only; final checkout may differ).`;
+    }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
     finalResponse = injectXboxPriceHints(finalResponse, message);
