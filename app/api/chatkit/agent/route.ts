@@ -2076,16 +2076,12 @@ export async function POST(request: NextRequest) {
       { role: "system", content: systemPrompt },
       // Always include trade-in context so agent knows to use tools throughout conversation
       { role: "system", content: TRADE_IN_SYSTEM_CONTEXT },
-    ];
-
-    // Voice/text guardrail: avoid repeated greetings after the first user turn
-    if (Array.isArray(history) && history.length > 0) {
-      messages.push({
+      {
         role: "system",
         content:
-          "Do not greet again; reply tersely to the user's ask. Skip pleasantries like 'Hi' or 'How can I help'.",
-      });
-    }
+          "Skip greetings and get to the answer quickly. No 'Hi/Hello', no repeated clarifications—respond directly to the latest user ask.",
+      },
+    ];
 
     const zepContext = await fetchZepContext(sessionId);
     console.debug("[ChatKit] Zep context loaded", {
@@ -3145,6 +3141,23 @@ export async function POST(request: NextRequest) {
     if (productSlug && !/https?:\/\//i.test(finalResponse)) {
       const productUrl = `https://tradezone.sg/product/${productSlug}/`;
       finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
+    }
+
+    // If user asked for a link or we still have no URL, give a safe site search link
+    const linkRequested = /\b(link|url|page)\b/i.test(message);
+    const missingUrl = !/https?:\/\//i.test(finalResponse);
+    if (
+      (linkRequested || missingUrl) &&
+      (isProductInfoQuery ||
+        productSlug ||
+        lastHybridSource === "product_catalog")
+    ) {
+      const query = productSlug
+        ? productSlug.replace(/-/g, " ")
+        : lastHybridQuery || message;
+      const searchUrl = `https://tradezone.sg/?s=${encodeURIComponent(query)}`;
+      finalResponse =
+        `${finalResponse}\n\nSee live price/availability here: ${searchUrl}`.trim();
     }
 
     const nowIso = new Date().toISOString();
