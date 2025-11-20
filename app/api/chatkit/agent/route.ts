@@ -2179,13 +2179,13 @@ export async function POST(request: NextRequest) {
           );
 
           // Add current trade-in summary (pass recent history for photo detection)
-      const tradeInSummary = await buildTradeInSummary(
-        existingLead.id,
-        truncatedHistory,
-      );
-      if (tradeInSummary) {
-        messages.splice(2, 0, { role: "system", content: tradeInSummary });
-      }
+          const tradeInSummary = await buildTradeInSummary(
+            existingLead.id,
+            truncatedHistory,
+          );
+          if (tradeInSummary) {
+            messages.splice(2, 0, { role: "system", content: tradeInSummary });
+          }
         } else if (isCompleted) {
           console.log(
             `[ChatKit] Ignoring completed trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
