@@ -2052,6 +2052,7 @@ export async function POST(request: NextRequest) {
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
+  let installmentRequested = false;
   let verificationData = createVerificationPayload();
   let normalizeConfidence: number | null = null;
   let priceConfidence: number | null = null;
@@ -2344,12 +2345,13 @@ export async function POST(request: NextRequest) {
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
-    // Installment guardrail: include a rough monthly estimate when user asks about installment
+    // Installment guardrail: include rough estimates (3 / 6 / 12) when user asks about installment
     if (/installment|instalment|payment\s*plan/i.test(message)) {
+      installmentRequested = true;
       messages.push({
         role: "system",
         content:
-          "Installment request: Offer a rough monthly estimate (total top-up ÷ 3, round to nearest dollar) and state it's an estimate, subject to final checkout. Keep reply under two sentences. Set preferred_payout=installment when confirmed.",
+          "Installment request: Offer rough monthly estimates (3/6/12 months) using top-up ÷ months, rounded, and say it's an estimate subject to checkout. Keep reply under two sentences. Set preferred_payout=installment when confirmed.",
       });
     }
 
@@ -3079,10 +3081,14 @@ export async function POST(request: NextRequest) {
 
     finalResponse = forceXboxPricePreface(finalResponse, message);
 
-    // If the user asked about installment, add a rough monthly estimate based on last top-up
-    if (/installment|instalment|payment\s*plan/i.test(message) && latestTopUp?.top_up_sgd) {
-      const monthly = Math.round(latestTopUp.top_up_sgd / 3);
-      finalResponse = `${finalResponse}\n\n3-month installment available — roughly S$${monthly}/month (estimate only; final checkout may differ).`;
+    // If the user asked about installment, add rough monthly estimates (3/6/12)
+    if (installmentRequested && latestTopUp?.top_up_sgd) {
+      const topUp = latestTopUp.top_up_sgd;
+      const monthly3 = Math.round(topUp / 3);
+      const monthly6 = Math.round(topUp / 6);
+      const monthly12 = Math.round(topUp / 12);
+      const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; final checkout may differ).`;
+      finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
