@@ -2055,6 +2055,8 @@ export async function POST(request: NextRequest) {
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
   let installmentRequested = false;
+  let isProductInfoQuery = false;
+  let isTradeInPricingQuery = false;
   let verificationData = createVerificationPayload();
   let normalizeConfidence: number | null = null;
   let priceConfidence: number | null = null;
@@ -2343,13 +2345,13 @@ export async function POST(request: NextRequest) {
 
     // First call to OpenAI to determine if tools are needed
     // 🔴 CRITICAL FIX: Force searchProducts for trade-in pricing queries
-    const isTradeInPricingQuery =
+    isTradeInPricingQuery =
       detectTradeInIntent(message) &&
       /\b(price|worth|value|quote|offer|how much|goes? for|typically|payout|cash out)\b/i.test(
         message,
       );
 
-    const isProductInfoQuery = detectProductInfoIntent(message);
+    isProductInfoQuery = detectProductInfoIntent(message);
     const productLinkMatch = message.match(/tradezone\.sg\/product\/([\w-]+)/i);
     productSlug = productLinkMatch?.[1] || productSlug;
 
