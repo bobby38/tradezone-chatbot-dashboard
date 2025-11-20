@@ -388,7 +388,7 @@ export const VOICE_TOOL_DEFINITIONS = [
         pricing_version: { type: "string", description: "Quote version/date" },
         preferred_payout: {
           type: "string",
-          enum: ["cash", "paynow", "bank"],
+          enum: ["cash", "paynow", "bank", "installment"],
           description: "Payout method",
         },
         preferred_fulfilment: {

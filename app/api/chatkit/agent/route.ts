@@ -1783,7 +1783,7 @@ export async function POST(request: NextRequest) {
     const isFirstTurn = !history || history.length === 0;
     const userOpenedWithQuestion =
       isFirstTurn &&
-      /\?|have\s+you|do\s+you|can\s+i|can\s+you|got\s+any|price|how much|what'?s|need\s|looking for|recommend|suggest|trade.+for|trade.+to/i.test(
+      /\?|have\s+you|do\s+you|can\s+i|can\s+you|got\s+any|any\s+|price|how much|what'?s|need\s|looking for|recommend|suggest|trade.+for|trade.+to/i.test(
         message,
       );
     if (userOpenedWithQuestion) {
