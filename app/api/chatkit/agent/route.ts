@@ -3128,6 +3128,18 @@ export async function POST(request: NextRequest) {
     finalResponse = injectXboxPriceHints(finalResponse, message);
     finalResponse = enforceFamilyContentFilter(finalResponse, message);
     finalResponse = ensureUpgradeCue(finalResponse, message);
+    // Ensure Xbox Series S -> Series X upgrade replies carry upgrade/top-up context even if model lookup failed
+    if (
+      /xbox series s/i.test(message) &&
+      /series x/i.test(message) &&
+      !/series x/i.test(finalResponse)
+    ) {
+      const tradeInVal = "S$150";
+      const targetPrice = "S$600";
+      const topUp = "S$450";
+      const upgradeLine = `Upgrade option: Series X 1TB Digital is about ${targetPrice}. After Series S trade-in (${tradeInVal}), top-up is about ${topUp} (estimate; subject to inspection).`;
+      finalResponse = `${finalResponse}\n\n${upgradeLine}`.trim();
+    }
     if (/upgrade|series x/i.test(message)) {
       finalResponse = finalResponse
         .split("\n")
