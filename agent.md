@@ -315,6 +315,157 @@ CREATE INDEX idx_gsc_perf_site_date_page_clicks ON gsc_performance (site, date D
 
 **Next Priority**: Fix contact extraction acknowledgment logic to handle bulk input gracefully.
 
+---
+
+### January 20, 2025 - Email Trigger Investigation (Critical Bug Found)
+
+**Status**: 🔴 **CRITICAL BUG IDENTIFIED** - Email not sending due to strict validation
+
+**Investigation Request**: User asked "do you test email trigger all good"
+
+**Finding**: Email trigger has **overly strict validation** that blocks emails when contact name extraction fails.
+
+---
+
+#### **The Email Trigger Logic** (`app/api/chatkit/agent/route.ts:862-898`)
+
+```typescript
+// Line 862 - Contact validation
+const hasContact = Boolean(detail.contact_name && detail.contact_phone);
+const hasEmail = Boolean(detail.contact_email);
+const hasPayout = Boolean(detail.preferred_payout);
+
+// Line 890-898 - Auto-submit check
+if (
+  alreadyNotified ||
+  !hasDevice ||
+  !hasContact ||      // ❌ Requires BOTH name AND phone
+  !hasEmail ||
+  !hasPayout ||
+  !photoStepAcknowledged
+) {
+  console.log("[ChatKit] Auto-submit conditions not met");
+  return null; // Email NOT sent
+}
+```
+
+---
+
+#### **The Critical Bug**
+
+**From Production Logs** (User gave: "joe doe 8448 9068 bobby_dennie@hotmail.com"):
+```
+Dashboard shows:
+- contact_email: "bobby_dennie@hotmail.com" ✅
+- contact_phone: "8448 9068" ✅
+- contact_name: "trade Fat Disc" ❌ CORRUPTED!
+
+Result: hasContact = false (because name is corrupted)
+Email trigger: BLOCKED ❌
+```
+
+**Why Name Gets Corrupted**:
+1. Auto-extraction regex (lines 774-789) extracts email + phone correctly
+2. Name extraction uses simple pattern matching
+3. When user provides all 3 at once in format "name phone email", parser gets confused
+4. Name field captures wrong data (e.g., "trade Fat Disc" from earlier in conversation)
+
+---
+
+#### **Why This is Critical**
+
+The validation logic is **TOO STRICT**:
+- Requires: `contact_name` AND `contact_phone` AND `contact_email`
+- If ANY field fails extraction, email is blocked
+- Name extraction is the weakest link (most likely to fail)
+
+**Impact**: 
+- ❌ Trade-in submissions don't send email notifications
+- ❌ Staff doesn't get notified of new leads
+- ❌ Customers don't get confirmation emails
+- ⚠️ All because of a corrupted name field
+
+---
+
+#### **Recommended Solutions**
+
+**Option 1: Relax Validation (Quick Fix)**
+```typescript
+// Make name optional - email + phone is enough
+const hasContact = Boolean(detail.contact_phone); // Remove name requirement
+const hasEmail = Boolean(detail.contact_email);
+
+// Staff can see name in dashboard if captured, but don't block email
+```
+
+**Option 2: Improve Name Extraction (Better Fix)**
+```typescript
+// Add smarter pattern matching for bulk input
+// Example: "joe doe 8448 9068 bobby@email.com"
+// 1. Extract email first (regex)
+// 2. Extract phone (regex)  
+// 3. Everything else = name (remaining text)
+```
+
+**Option 3: Smart Fallback**
+```typescript
+// Try multiple extraction strategies
+const extractContactData = (message) => {
+  // Strategy 1: Separate fields
+  // Strategy 2: Bulk input parsing
+  // Strategy 3: AI-assisted extraction
+  // Fallback: Mark fields as "provided but unparsed"
+};
+```
+
+---
+
+#### **Temporary Workaround**
+
+Until fixed, staff can:
+1. Check dashboard regularly for new trade-in leads
+2. Look for leads with missing/corrupted names
+3. Contact customers using phone/email (which ARE captured correctly)
+
+---
+
+#### **Code Locations**
+
+**Auto-extraction logic**: `app/api/chatkit/agent/route.ts:774-789`
+```typescript
+const emailMatch = message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+const phoneMatch = message.match(/\+?\d[\d\s-]{7,}/);
+// Name extraction: ???
+```
+
+**Validation logic**: `app/api/chatkit/agent/route.ts:862-898`
+```typescript
+const hasContact = Boolean(detail.contact_name && detail.contact_phone);
+```
+
+**Email service**: `lib/trade-in/service.ts:520-650`
+```typescript
+// Only sends if all validations pass
+if (input.notify !== false) {
+  // Email sending code
+}
+```
+
+---
+
+#### **Action Items for Next Session**
+
+1. ✅ **Document findings** (this section)
+2. ⚠️ **Decide approach**: Relax validation vs improve extraction
+3. ⚠️ **Implement fix**: Based on decision
+4. ⚠️ **Test scenarios**:
+   - "joe doe 8448 9068 joe@email.com" (bulk input)
+   - Email then phone then name (one at a time)
+   - Mixed order inputs
+5. ⚠️ **Verify email trigger** works with fix
+
+**User Note**: "normally he do easy your last series is funky" - The previous fixes may have introduced regression. Need to review what changed between working state and current broken state.
+
 --------|-------|----------------|----------|-----------|
 | **Fluent Form Trade-In** | `submissions` | `/dashboard/submissions` | Trade-in Forms | Blue (Monitor) |
 | **Agent Trade-In** | `trade_in_leads` | `/dashboard/trade-in` | Full page | - |
