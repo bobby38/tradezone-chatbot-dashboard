@@ -2051,6 +2051,7 @@ export async function POST(request: NextRequest) {
   let tradeInIntent = false;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
+  let productSlug: string | null = null;
   let verificationData = createVerificationPayload();
   let normalizeConfidence: number | null = null;
   let priceConfidence: number | null = null;
@@ -2075,6 +2076,11 @@ export async function POST(request: NextRequest) {
     ];
 
     const zepContext = await fetchZepContext(sessionId);
+    console.debug("[ChatKit] Zep context loaded", {
+      sessionId,
+      hasUserSummary: Boolean(zepContext.userSummary),
+      hasContext: Boolean(zepContext.context),
+    });
     let contextInsertIndex = 1;
     if (zepContext.userSummary) {
       messages.splice(contextInsertIndex, 0, {
@@ -2172,13 +2178,13 @@ export async function POST(request: NextRequest) {
           );
 
           // Add current trade-in summary (pass recent history for photo detection)
-          const tradeInSummary = await buildTradeInSummary(
-            existingLead.id,
-            truncatedHistory,
-          );
-          if (tradeInSummary) {
-            messages.splice(2, 0, { role: "system", content: tradeInSummary });
-          }
+      const tradeInSummary = await buildTradeInSummary(
+        existingLead.id,
+        truncatedHistory,
+      );
+      if (tradeInSummary) {
+        messages.splice(2, 0, { role: "system", content: tradeInSummary });
+      }
         } else if (isCompleted) {
           console.log(
             `[ChatKit] Ignoring completed trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
@@ -2322,7 +2328,7 @@ export async function POST(request: NextRequest) {
 
     const isProductInfoQuery = detectProductInfoIntent(message);
     const productLinkMatch = message.match(/tradezone\.sg\/product\/([\w-]+)/i);
-    const productSlug = productLinkMatch?.[1];
+    productSlug = productLinkMatch?.[1] || productSlug;
 
     if (productSlug) {
       messages.push({
@@ -3086,6 +3092,12 @@ export async function POST(request: NextRequest) {
         )
         .join("\n")
         .trim();
+    }
+
+    // Ensure product link is included when the user shared a specific product URL
+    if (productSlug && !/https?:\/\//i.test(finalResponse)) {
+      const productUrl = `https://tradezone.sg/product/${productSlug}/`;
+      finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
     }
 
     const nowIso = new Date().toISOString();
