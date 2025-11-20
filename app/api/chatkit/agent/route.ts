@@ -763,8 +763,10 @@ function forceXboxPricePreface(response: string, userMessage: string) {
   const needsSeriesX = /xbox series x/.test(query);
 
   const preface: string[] = [];
-  if (needsSeriesS) preface.push("Xbox Series S trade-in is ~S$150 (subject to inspection).");
-  if (needsSeriesX) preface.push("Xbox Series X trade-in is ~S$350 (subject to inspection).");
+  if (needsSeriesS)
+    preface.push("Xbox Series S trade-in is ~S$150 (subject to inspection).");
+  if (needsSeriesX)
+    preface.push("Xbox Series X trade-in is ~S$350 (subject to inspection).");
 
   if (!preface.length) return response;
 
@@ -983,14 +985,18 @@ function isPhotoStepAcknowledged(
 ) {
   if (!detail) return false;
 
-  if (Array.isArray(detail.trade_in_media) && detail.trade_in_media.length > 0) {
+  if (
+    Array.isArray(detail.trade_in_media) &&
+    detail.trade_in_media.length > 0
+  ) {
     return true;
   }
 
   const acknowledgementSources = [detail.notes, detail.source_message_summary];
   if (
     acknowledgementSources.some(
-      (text) => typeof text === "string" && /photos?:\s*not provided/i.test(text),
+      (text) =>
+        typeof text === "string" && /photos?:\s*not provided/i.test(text),
     )
   ) {
     return true;
@@ -1560,7 +1566,9 @@ function stripContactContent(
 
   const filtered = remainder
     .split(/\s+/)
-    .filter((token) => token && !CONTACT_MESSAGE_STOP_WORDS.has(token.toLowerCase()))
+    .filter(
+      (token) => token && !CONTACT_MESSAGE_STOP_WORDS.has(token.toLowerCase()),
+    )
     .join(" ");
 
   return filtered.trim();
@@ -1641,13 +1649,9 @@ function buildContactAcknowledgementResponse(params: {
   if (!clues) return null;
 
   const email =
-    typeof clues.contact_email === "string"
-      ? clues.contact_email.trim()
-      : "";
+    typeof clues.contact_email === "string" ? clues.contact_email.trim() : "";
   const phone =
-    typeof clues.contact_phone === "string"
-      ? clues.contact_phone.trim()
-      : "";
+    typeof clues.contact_phone === "string" ? clues.contact_phone.trim() : "";
   if (!email || !phone) {
     return null;
   }
@@ -1659,9 +1663,7 @@ function buildContactAcknowledgementResponse(params: {
   }
 
   const name =
-    typeof clues.contact_name === "string"
-      ? clues.contact_name.trim()
-      : "";
+    typeof clues.contact_name === "string" ? clues.contact_name.trim() : "";
 
   const lines = [
     name ? `- Name: ${toTitleCase(name)}` : null,
@@ -2255,67 +2257,82 @@ export async function POST(request: NextRequest) {
           });
         }
       }
-    }
 
-      if (tradeInIntent && tradeInLeadId) {
-        try {
-          tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
-        } catch (detailError) {
-          console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
-        }
+      try {
+        tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
+      } catch (detailError) {
+        console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
+      }
 
-        if (tradeInLeadDetail && autoExtractedClues) {
-          const acknowledgement = buildContactAcknowledgementResponse({
-            clues: autoExtractedClues,
-            detail: tradeInLeadDetail,
-            message,
+      if (tradeInLeadDetail && autoExtractedClues) {
+        const acknowledgement = buildContactAcknowledgementResponse({
+          clues: autoExtractedClues,
+          detail: tradeInLeadDetail,
+          message,
+        });
+        if (acknowledgement) {
+          messages.push({
+            role: "system",
+            content: [
+              "AUTO-CONFIRM CONTACT DETAILS:",
+              acknowledgement,
+              "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
+            ].join("\n"),
           });
-          if (acknowledgement) {
-            messages.push({
-              role: "system",
-              content: [
-                "AUTO-CONFIRM CONTACT DETAILS:",
-                acknowledgement,
-                "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
-              ].join("\n"),
-            });
-          }
-
-          const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
-          const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
-          const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
-          const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
-
-          if (hasContactName && hasContactPhone && hasContactEmail && !photoAcknowledged) {
-            messages.push({
-              role: "system",
-              content:
-                "Ask: 'Got photos? Helps us quote faster.' If they say no, reply 'Photos noted as not provided' and save it. Do this BEFORE payout/installation questions.",
-            });
-          }
-
-          const deviceCaptured = Boolean(
-            tradeInLeadDetail.brand && tradeInLeadDetail.model,
-          );
-          const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
-          if (deviceCaptured && hasContactEmail && hasContactPhone && hasContactName && !photoAcknowledged) {
-            messages.push({
-              role: "system",
-              content:
-                "Before payout/summary, you MUST ask: 'Got photos? Helps us quote faster.' If they decline, reply 'Photos noted as not provided' and continue. Do not finalize payout/summary until you ask this.",
-            });
-          }
-
-          if (deviceCaptured && hasContactEmail && hasContactPhone && hasContactName && payoutSet && !photoAcknowledged) {
-            // Remove payout mention if photos not asked yet
-            lastHybridResult = null;
-          }
         }
 
-        const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
-        if (missingPrompt) {
-          messages.push({ role: "system", content: missingPrompt });
+        const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
+        const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
+        const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
+        const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+
+        if (
+          hasContactName &&
+          hasContactPhone &&
+          hasContactEmail &&
+          !photoAcknowledged
+        ) {
+          messages.push({
+            role: "system",
+            content:
+              "Ask: 'Got photos? Helps us quote faster.' If they say no, reply 'Photos noted as not provided' and save it. Do this BEFORE payout/installation questions.",
+          });
         }
+
+        const deviceCaptured = Boolean(
+          tradeInLeadDetail.brand && tradeInLeadDetail.model,
+        );
+        const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
+        if (
+          deviceCaptured &&
+          hasContactEmail &&
+          hasContactPhone &&
+          hasContactName &&
+          !photoAcknowledged
+        ) {
+          messages.push({
+            role: "system",
+            content:
+              "Before payout/summary, you MUST ask: 'Got photos? Helps us quote faster.' If they decline, reply 'Photos noted as not provided' and continue. Do not finalize payout/summary until you ask this.",
+          });
+        }
+
+        if (
+          deviceCaptured &&
+          hasContactEmail &&
+          hasContactPhone &&
+          hasContactName &&
+          payoutSet &&
+          !photoAcknowledged
+        ) {
+          // Remove payout mention if photos not asked yet
+          lastHybridResult = null;
+        }
+      }
+
+      const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
+      if (missingPrompt) {
+        messages.push({ role: "system", content: missingPrompt });
       }
     }
 
@@ -3216,7 +3233,7 @@ export async function POST(request: NextRequest) {
     } catch (logError) {
       console.error("[ChatKit] Supabase logging error:", logError);
     }
-  }
+  } // end finally
 
   return NextResponse.json(
     {
