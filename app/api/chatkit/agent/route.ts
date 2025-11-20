@@ -2369,6 +2369,15 @@ export async function POST(request: NextRequest) {
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
+    // Query-specific guardrails
+    if (/\bgalaxy\s+tab\b/i.test(message)) {
+      messages.push({
+        role: "system",
+        content:
+          "User asked for Samsung Galaxy Tab tablets. Recommend only Samsung tablets (Tab A7/A8/A9/S6/S7/S8/S9, etc.). Exclude phones (Fold/Flip/S series), games, and non-tablet items. Prefer affordable options first if they said cheap. Provide price + product link; keep response under 3 bullet points plus one closing line if needed.",
+      });
+    }
+
     // Installment guardrail: include rough estimates (3 / 6 / 12) when user asks about installment
     if (/installment|instalment|payment\s*plan/i.test(message)) {
       installmentRequested = true;
@@ -3149,6 +3158,21 @@ export async function POST(request: NextRequest) {
         )
         .join("\n")
         .trim();
+    }
+
+    // Deduplicate repeated lines (e.g., repeated "I can double-check..." closers)
+    {
+      const seen = new Set<string>();
+      const deduped: string[] = [];
+      for (const rawLine of finalResponse.split("\n")) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const key = line.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(line);
+      }
+      finalResponse = deduped.join("\n").trim();
     }
 
     // Ensure product link is included when the user shared a specific product URL

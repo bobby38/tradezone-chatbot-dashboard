@@ -91,6 +91,8 @@ export interface FlattenedModel {
   title: string;
   aliases: string[];
   tokens: string[];
+  brand?: string;
+  categories?: string[];
   permalink?: string;
   warnings?: string[];
   priceRange: PriceRange | null;
@@ -521,6 +523,38 @@ export async function findCatalogMatches(
   const queryTokens = tokenize(normalizedQuery);
   const { models, aliasMap } = await loadCatalogContext();
 
+  // Domain filters to cut noise (tablets, games, coolers, etc.)
+  const wantsTablet = /\b(tab|tablet)\b/i.test(query);
+  const wantsSamsung = /\bgalaxy|samsung\b/i.test(query);
+  const wantsGame = /(ps[45]|playstation|xbox|switch|nintendo|game)\b/i.test(query) || /aladdin|aladin/i.test(query);
+  const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(query);
+
+  const filteredModels = models.filter((model) => {
+    const categories = (model.categories || []).map((c) => c.toLowerCase());
+    const brand = (model.brand || "").toLowerCase();
+
+    if (wantsTablet) {
+      if (!categories.some((c) => c.includes("tablet"))) return false;
+      if (wantsSamsung && brand && brand !== "samsung") return false;
+    }
+
+    if (wantsGame) {
+      const isGame = categories.some((c) => c.includes("game"));
+      if (!isGame) return false;
+      // platform hints
+      if (/switch|nintendo/i.test(query)) return categories.some((c) => c.includes("switch"));
+      if (/ps5|playstation 5|ps 5/i.test(query)) return categories.some((c) => c.includes("ps5"));
+      if (/ps4|playstation 4|ps 4/i.test(query)) return categories.some((c) => c.includes("ps4"));
+      if (/xbox/i.test(query)) return categories.some((c) => c.includes("xbox"));
+    }
+
+    if (wantsCooler) {
+      if (!categories.some((c) => c.includes("cooler") || c.includes("thermal"))) return false;
+    }
+
+    return true;
+  });
+
   // Detect product family keywords in query
   const familyKeywords = [
     {
@@ -553,7 +587,11 @@ export async function findCatalogMatches(
 
   const aliasCandidates = aliasMap.get(normalizedQuery);
   const pool =
-    aliasCandidates && aliasCandidates.length > 0 ? aliasCandidates : models;
+    aliasCandidates && aliasCandidates.length > 0
+      ? aliasCandidates
+      : filteredModels.length > 0
+        ? filteredModels
+        : models;
 
   const scored = pool
     .map((model) => ({
