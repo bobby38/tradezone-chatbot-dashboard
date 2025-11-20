@@ -2321,7 +2321,18 @@ export async function POST(request: NextRequest) {
       );
 
     const isProductInfoQuery = detectProductInfoIntent(message);
-    const shouldForceCatalog = isTradeInPricingQuery || isProductInfoQuery;
+    const productLinkMatch = message.match(/tradezone\.sg\/product\/([\w-]+)/i);
+    const productSlug = productLinkMatch?.[1];
+
+    if (productSlug) {
+      messages.push({
+        role: "system",
+        content: `User shared a TradeZone product link. Treat this as a direct product request for "${productSlug.replace(/-/g, " ")}". Do not say you cannot confirm availability; offer to check stock/reserve instead.`,
+      });
+    }
+
+    const shouldForceCatalog =
+      isTradeInPricingQuery || isProductInfoQuery || Boolean(productSlug);
 
     const toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
