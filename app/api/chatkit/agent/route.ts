@@ -1052,20 +1052,19 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasEmail = Boolean(detail.contact_email);
     const hasPayout = Boolean(detail.preferred_payout);
 
-    // Check if photos step acknowledged (encouraged but not required)
+    // Check if photos step acknowledged (encouraged but no longer blocking email)
     const photoStepAcknowledged = isPhotoStepAcknowledged(
       detail,
       params.history,
     );
 
-    // Storage is optional (many devices have fixed storage), but all other fields are required
+    // Storage is optional; photos are encouraged but no longer block auto-submit
     if (
       alreadyNotified ||
       !hasDevice ||
       !hasContact ||
       !hasEmail ||
-      !hasPayout ||
-      !photoStepAcknowledged
+      !hasPayout
     ) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
