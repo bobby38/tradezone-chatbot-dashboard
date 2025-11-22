@@ -284,6 +284,38 @@ export async function handleVectorSearch(
           console.log(
             `[VectorSearch] Top match: ${catalogMatches[0].name} - ${catalogMatches[0].price || "N/A"}`,
           );
+
+          // Detect category mismatch (e.g., searching for phones but getting games)
+          const detectedCategory = extractProductCategory(query);
+          if (detectedCategory && catalogMatches.length > 0) {
+            const topMatchName = catalogMatches[0].name.toLowerCase();
+            const categoryMismatch =
+              (detectedCategory === "phone" &&
+                !topMatchName.includes("phone") &&
+                !topMatchName.includes("iphone") &&
+                !topMatchName.includes("samsung") &&
+                !topMatchName.includes("pixel") &&
+                !topMatchName.includes("galaxy")) ||
+              (detectedCategory === "laptop" &&
+                !topMatchName.includes("laptop") &&
+                !topMatchName.includes("notebook") &&
+                !topMatchName.includes("macbook")) ||
+              (detectedCategory === "tablet" &&
+                !topMatchName.includes("tablet") &&
+                !topMatchName.includes("ipad"));
+
+            if (categoryMismatch) {
+              console.warn(
+                `[VectorSearch] Category mismatch detected: query="${query}", category="${detectedCategory}", topMatch="${catalogMatches[0].name}"`,
+              );
+              // Return helpful message instead of irrelevant results
+              return {
+                text: `I don't have ${detectedCategory === "phone" ? "phones" : detectedCategory === "laptop" ? "laptops" : detectedCategory + "s"} in my current product database. Please check our website at https://tradezone.sg for our latest ${detectedCategory} inventory, or I can help you with gaming consoles and accessories instead.`,
+                store: label,
+                matches: [],
+              };
+            }
+          }
         }
       } catch (catalogError) {
         console.error("[VectorSearch] Catalog fallback error:", catalogError);
