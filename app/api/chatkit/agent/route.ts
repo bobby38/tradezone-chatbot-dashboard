@@ -2603,6 +2603,9 @@ export async function POST(request: NextRequest) {
   let priceConfidence: number | null = null;
   let ocrConfidence: number | null = null;
   let latestTopUp: TopUpResult | null = null;
+  let tradeInNeedsPayoutPrompt = false;
+  let tradeInReadyForPhotoPrompt = false;
+  let tradeInPhotoAcknowledged = false;
 
   try {
     // Load settings and system prompt
@@ -2865,11 +2868,19 @@ export async function POST(request: NextRequest) {
           ? tradeInLeadDetail.accessories.length > 0
           : Boolean(tradeInLeadDetail?.accessories);
         const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+        tradeInPhotoAcknowledged = photoAcknowledged;
 
         const deviceCaptured = Boolean(
           tradeInLeadDetail.brand && tradeInLeadDetail.model,
         );
         const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
+        const needsPayoutPrompt =
+          deviceCaptured &&
+          hasContactName &&
+          hasContactPhone &&
+          hasContactEmail &&
+          !payoutSet;
+        tradeInNeedsPayoutPrompt = needsPayoutPrompt;
         const readyForPhotoNudge =
           deviceCaptured &&
           hasCondition &&
@@ -2878,8 +2889,9 @@ export async function POST(request: NextRequest) {
           hasContactPhone &&
           hasContactEmail &&
           payoutSet;
+        tradeInReadyForPhotoPrompt = readyForPhotoNudge && !photoAcknowledged;
 
-        if (readyForPhotoNudge && !photoAcknowledged) {
+        if (tradeInReadyForPhotoPrompt) {
           messages.push({
             role: "system",
             content:
@@ -3761,6 +3773,14 @@ export async function POST(request: NextRequest) {
       finalResponse =
         verificationData.reply_text?.trim() ||
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
+    }
+
+    if (tradeInNeedsPayoutPrompt) {
+      finalResponse =
+        "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.";
+    } else if (tradeInReadyForPhotoPrompt) {
+      finalResponse =
+        "Photos help us quote faster—want to send one now? If you don't have any handy I'll note 'Photos: Not provided — final quote upon inspection.'";
     }
 
     finalResponse = forceXboxPricePreface(finalResponse, message);
