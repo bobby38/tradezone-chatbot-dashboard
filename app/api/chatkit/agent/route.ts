@@ -1607,20 +1607,25 @@ async function runHybridSearch(
 async function buildTradeInSummary(
   leadId: string,
   recentHistory?: Array<{ role: string; content: string }>,
+  detailOverride?: any,
 ) {
   try {
     // Wait a moment for any pending media uploads to complete
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const { data: lead } = await supabase
-      .from("trade_in_leads")
-      .select(
-        `brand, model, storage, condition, accessories, preferred_payout,
-         contact_name, contact_phone, contact_email, notes,
-         trade_in_media ( id )`,
-      )
-      .eq("id", leadId)
-      .maybeSingle();
+    let lead = detailOverride;
+    if (!lead) {
+      const { data: fetched } = await supabase
+        .from("trade_in_leads")
+        .select(
+          `brand, model, storage, condition, accessories, preferred_payout,
+           contact_name, contact_phone, contact_email, notes,
+           trade_in_media ( id )`,
+        )
+        .eq("id", leadId)
+        .maybeSingle();
+      lead = fetched;
+    }
 
     if (!lead) return null;
 
