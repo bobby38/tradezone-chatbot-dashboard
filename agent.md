@@ -3872,27 +3872,27 @@ Response:
 
 ---
 
-#### 4. **Photo Flow Order Correction** (Commit: `a4ffc1a`)
-**User Feedback**: "Photos more important than payout. Ask BEFORE payout. Encourage but not obligatory."
+#### 4. **Photo Flow Order Update** (Latest feedback: Nov 22, 2025)
+**What changed**: Earlier (Jan 20) we nudged photos before payout to make sure the checklist stayed green. Recent ops feedback shows that asking for photos too early slows customers down and caused email delays.
 
-**Corrected Flow Order**:
+**Current Flow Order**:
 ```
-OLD: contact → payout → [photos skipped]
-NEW: contact → PHOTOS → payout
+OLD (Jan): contact → photos → payout
+NEW (Nov): contact → payout → optional photo nudge ("Helps us quote faster")
 ```
 
 **Photo Step (ENCOURAGED, NOT REQUIRED)**:
-- Agent asks: "Got photos? Helps us quote faster."
+- Finish pricing, contact, and payout first so the lead can submit even if no media is available.
+- After payout confirmation, ask once: "Photos help us quote faster—want to send one?"
 - If user uploads → "Thanks!" and continue
-- If user declines → "No worries, we'll inspect in-store." and continue
-- Photos encouraged but never block submission
+- If user declines → "No worries, final quote after inspection." Save `Photos: Not provided — final quote upon inspection`.
+- Never block submission because of missing photos.
 
 **Auto-Submit Check**:
-- `photoStepAcknowledged` detects: uploaded image, "no photo", "later", "dont have"
-- Ensures agent asked the question before auto-submitting
-- User can decline and still proceed to payout
+- `photoStepAcknowledged` still listens for uploads or phrases like "no photo", "later", "don't have".
+- Submission proceeds as long as device + contact + payout exist; photo acknowledgement just logs whether we asked.
 
-**Result**: ✅ Photos asked at right time, encouraged but optional
+**Result**: ✅ Photos remain encouraged, but the form can finalize immediately after payout/contact so email notifications never stall.
 
 ---
 
@@ -3912,11 +3912,11 @@ NEW: contact → PHOTOS → payout
 11. User: "bobby_dennie@hotmail.com"
 12. Agent: "Phone number?"
 13. User: "8448 9068"
-14. Agent: "Got photos? Helps us quote faster." ← PHOTO STEP (encouraged)
-15. User: [uploads] OR "no" OR "later"
-16. Agent: "Thanks!" OR "No worries, we'll inspect in-store."
-17. Agent: "Payout method? Cash, PayNow, or bank?" ← AFTER PHOTOS
-18. User: "paynow"
+14. Agent: "Payout method? Cash, PayNow, or bank?" ← LOCK PAYOUT BEFORE PHOTO NUDGE
+15. User: "paynow"
+16. Agent: "Photos help us quote faster—want to send one?"
+17. User: [uploads] OR "no" OR "later"
+18. Agent: "Thanks!" OR "No worries, we'll inspect in-store."
 19. User: "can i do installment for the top up?"
 20. Agent: "Yes! We offer 0% installment plans..."
 21. Agent: [Trade-In Summary with all details]
@@ -3930,7 +3930,7 @@ NEW: contact → PHOTOS → payout
 
 #### Test Scenario 1: Trade-In with Photos
 - ✅ Flow completes without crashes
-- ✅ Agent asks for photos AFTER contact, BEFORE payout
+- ✅ Agent asks for photos AFTER payout (one optional nudge)
 - ✅ User uploads image
 - ✅ Agent shows "Upload in progress" or "Provided"
 - ✅ Email received at contactus@tradezone.sg
@@ -4067,8 +4067,8 @@ if (tradeInLeadId && noToolCalls) {
 
 ---
 
-#### **Fix 4: Photo Prompt Order** (Already fixed in commit `a4ffc1a`)
-Photos are now asked BEFORE payout, marked as CRITICAL step in the flow.
+#### **Fix 4: Photo Prompt Order** (Originally commit `a4ffc1a`, updated Nov 22, 2025)
+Photos are now nudged **after** payout/contact are confirmed so the form can submit immediately. We still log the acknowledgement (`Photos: Provided` or `Not provided — final quote upon inspection`) but never block notification.
 
 ---
 
@@ -4082,8 +4082,8 @@ Full flow test: PS5 Fat Disc → PS5 Pro + installment
 5. ✅ Agent: Confirms email
 6. ✅ Agent: Asks for phone (one question)  
 7. ✅ Agent: Confirms phone by repeating it back
-8. ✅ Agent: Asks for photos BEFORE payout
-9. ✅ Agent: Asks for payout preference (cash/PayNow/bank OR installment)
+8. ✅ Agent: Confirms payout preference (cash/PayNow/bank OR installment)
+9. ✅ Agent: Asks for photos once all info saved (optional)
 10. ✅ User: "yes i want installment"
 11. ✅ Agent: Confirms installment choice
 12. ✅ Agent: Submits lead
@@ -4690,4 +4690,3 @@ WooCommerce search → finds 20 real products ✅
 - Vector search flow: `lib/tools/vectorSearch.ts:230-285`
 
 ---
-

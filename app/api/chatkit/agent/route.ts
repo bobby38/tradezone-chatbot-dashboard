@@ -1997,6 +1997,15 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
     hasStorage = true;
   }
 
+  const readyForPhotos =
+    hasDevice &&
+    hasCondition &&
+    accessoriesCaptured &&
+    hasContactName &&
+    hasContactPhone &&
+    hasContactEmail &&
+    hasPayout;
+
   const steps: Array<{ missing: boolean; message: string }> = [
     {
       missing: !hasDevice,
@@ -2031,14 +2040,14 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
         "Ask for the full email address (not just the provider), repeat the entire address back, wait for a clear yes, then save contact_email.",
     },
     {
-      missing: !photoAcknowledged,
-      message:
-        'Ask: "Got photos? Helps us quote faster." If they say no, respond "Photos noted as not provided" and save it.',
-    },
-    {
       missing: !hasPayout,
       message:
-        'Ask: "Cash, PayNow, or bank?" and save preferred payout before submitting.',
+        'Ask: "Cash, PayNow, or bank transfer?" and save preferred payout unless the user already said they want installments. If they asked for installments, set preferred_payout=installment and skip this question.',
+    },
+    {
+      missing: readyForPhotos && !photoAcknowledged,
+      message:
+        'All details captured—now ask once: "Got photos? Helps us quote faster." If they say no, respond "Photos noted as not provided — final quote upon inspection" and keep moving.',
     },
   ];
 
@@ -2162,11 +2171,11 @@ function determineNextTradeInQuestion(detail: any): string | null {
   if (!hasContactName) {
     return "Whose name should I note down?";
   }
-  if (!photoAcknowledged) {
-    return "Got photos? Helps us quote faster - send them now or just say no if you don't have any.";
-  }
   if (!hasPayout) {
-    return "Which payout suits you best: cash, PayNow, bank transfer, or installment?";
+    return "Which payout suits you best: cash, PayNow, or bank transfer? Skip this if they already picked installment—just set preferred_payout=installment.";
+  }
+  if (!photoAcknowledged) {
+    return "Got photos to speed inspection? Optional—note 'Photos: Not provided' if they can't send any.";
   }
 
   return null;
@@ -2849,49 +2858,33 @@ export async function POST(request: NextRequest) {
         const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
         const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
         const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
+        const hasCondition = Boolean(tradeInLeadDetail?.condition);
+        const accessoriesCaptured = Array.isArray(
+          tradeInLeadDetail?.accessories,
+        )
+          ? tradeInLeadDetail.accessories.length > 0
+          : Boolean(tradeInLeadDetail?.accessories);
         const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
-
-        if (
-          hasContactName &&
-          hasContactPhone &&
-          hasContactEmail &&
-          !photoAcknowledged
-        ) {
-          messages.push({
-            role: "system",
-            content:
-              "Ask: 'Got photos? Helps us quote faster.' If they say no, reply 'Photos noted as not provided' and save it. Do this BEFORE payout/installation questions.",
-          });
-        }
 
         const deviceCaptured = Boolean(
           tradeInLeadDetail.brand && tradeInLeadDetail.model,
         );
         const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
-        if (
+        const readyForPhotoNudge =
           deviceCaptured &&
-          hasContactEmail &&
-          hasContactPhone &&
+          hasCondition &&
+          accessoriesCaptured &&
           hasContactName &&
-          !photoAcknowledged
-        ) {
+          hasContactPhone &&
+          hasContactEmail &&
+          payoutSet;
+
+        if (readyForPhotoNudge && !photoAcknowledged) {
           messages.push({
             role: "system",
             content:
-              "Before payout/summary, you MUST ask: 'Got photos? Helps us quote faster.' If they decline, reply 'Photos noted as not provided' and continue. Do not finalize payout/summary until you ask this.",
+              "You've locked device, condition, accessories, contact, and payout. Now ask once: 'Got photos? Helps us speed inspection.' If they decline, save 'Photos: Not provided — final quote upon inspection' and continue—do not block submission.",
           });
-        }
-
-        if (
-          deviceCaptured &&
-          hasContactEmail &&
-          hasContactPhone &&
-          hasContactName &&
-          payoutSet &&
-          !photoAcknowledged
-        ) {
-          // Remove payout mention if photos not asked yet
-          lastHybridResult = null;
         }
 
         if (deviceCaptured && hasContactEmail && hasContactPhone) {
@@ -3775,14 +3768,20 @@ export async function POST(request: NextRequest) {
     // If the user asked about installment, add rough monthly estimates (3/6/12)
     if (installmentRequested && latestTopUp?.top_up_sgd) {
       const topUp = latestTopUp.top_up_sgd;
-      const monthly3 = Math.round(topUp / 3);
-      const monthly6 = Math.round(topUp / 6);
-      const monthly12 = Math.round(topUp / 12);
-      const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
-      finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
+      if (topUp >= 300) {
+        const monthly3 = Math.round(topUp / 3);
+        const monthly6 = Math.round(topUp / 6);
+        const monthly12 = Math.round(topUp / 12);
+        const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
+        finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
+      } else {
+        const roundedTopUp = Math.round(topUp);
+        const notEligibleLine = `Installments kick in for top-ups >=S$300 and stay subject to approval. This upgrade's top-up is about S$${roundedTopUp}, so we'll stick to PayNow/bank/cash this time.`;
+        finalResponse = `${finalResponse}\n\n${notEligibleLine}`.trim();
+      }
     } else if (installmentRequested) {
       finalResponse =
-        `${finalResponse}\n\nInstallments here refer to splitting the top-up you pay for the new device. Once we lock the trade-in value I'll break down the monthly payments for you.`.trim();
+        `${finalResponse}\n\nInstallments split the top-up you pay for the new device (available once the top-up is >=S$300 and always subject to approval). I'll break down the monthly payments after we lock the devices.`.trim();
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
