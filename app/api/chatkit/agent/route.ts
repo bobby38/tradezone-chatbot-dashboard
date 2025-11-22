@@ -2874,12 +2874,14 @@ export async function POST(request: NextRequest) {
           tradeInLeadDetail.brand && tradeInLeadDetail.model,
         );
         const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
-        const needsPayoutPrompt =
+        const readyForPayoutPrompt =
           deviceCaptured &&
+          hasCondition &&
+          accessoriesCaptured &&
           hasContactName &&
           hasContactPhone &&
-          hasContactEmail &&
-          !payoutSet;
+          hasContactEmail;
+        const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
         tradeInNeedsPayoutPrompt = needsPayoutPrompt;
         const readyForPhotoNudge =
           deviceCaptured &&
