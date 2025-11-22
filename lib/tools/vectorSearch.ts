@@ -228,10 +228,8 @@ function enrichQueryWithCategory(query: string): string {
   return query;
 }
 
-function formatTradeInResponse(query: string): VectorSearchResult | null {
-  const match = findTradeInPriceMatch(query);
-  if (!match) return null;
-
+function formatTradeInResponse(match: ReturnType<typeof findTradeInPriceMatch>): string {
+  if (!match) return "I don't have that in the trade-in list yet.";
   const parts: string[] = [];
   if (match.preowned) {
     parts.push(`Preowned: ${formatPriceRange(match.preowned)}`);
@@ -240,8 +238,7 @@ function formatTradeInResponse(query: string): VectorSearchResult | null {
     parts.push(`Brand new: ${formatPriceRange(match.brandNew)}`);
   }
   const detail = parts.length ? parts.join(" · ") : "No pricing available";
-  const text = `${match.label} — ${detail}. Subject to inspection.`;
-  return { text, store: "trade_in" };
+  return `${match.label} — ${detail}. Subject to inspection.`;
 }
 
 export async function handleVectorSearch(
@@ -250,6 +247,8 @@ export async function handleVectorSearch(
 ): Promise<VectorSearchResult> {
   const resolvedStore = resolveVectorStore(context);
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
+  const priceListMatch = findTradeInPriceMatch(query);
+  const priceListText = priceListMatch ? formatTradeInResponse(priceListMatch) : null;
 
   // SEARCH FLOW: WooCommerce → Vector → Zep → Perplexity
   // WooCommerce = source of truth (what we sell)
@@ -257,6 +256,10 @@ export async function handleVectorSearch(
   let wooProducts: Awaited<
     ReturnType<typeof import("@/lib/agent-tools").searchWooProducts>
   > = [];
+  const wantsFullList = /\b(any|all|everything|list|show\s+me\s+all)\b/i.test(
+    query,
+  );
+  const wooLimit = wantsFullList ? 20 : 5;
 
   if (resolvedStore.label === "catalog") {
     try {
@@ -264,7 +267,7 @@ export async function handleVectorSearch(
         `[VectorSearch] Step 1: Checking WooCommerce (source of truth)...`,
       );
       const { searchWooProducts } = await import("@/lib/agent-tools");
-      wooProducts = await searchWooProducts(query, 5);
+      wooProducts = await searchWooProducts(query, wooLimit);
 
       if (wooProducts.length > 0) {
         console.log(
@@ -296,11 +299,13 @@ export async function handleVectorSearch(
     }
   }
 
-  if (resolvedStore.label === "trade_in") {
-    const manual = formatTradeInResponse(query);
-    if (manual) {
-      return manual;
-    }
+  const isTradeIntentContext =
+    resolvedStore.label === "trade_in" ||
+    (context?.intent && context.intent.toLowerCase() === "trade_in") ||
+    (context?.toolUsed && context.toolUsed.startsWith("tradein_"));
+
+  if (priceListText && isTradeIntentContext) {
+    return { text: priceListText, store: "trade_in" };
   }
 
   // PRIORITY 2: Fall back to Vector DB search
