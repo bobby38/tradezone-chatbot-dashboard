@@ -12,6 +12,7 @@ type VectorStoreLabel = "catalog" | "trade_in";
 export interface VectorSearchContext {
   intent?: string;
   toolUsed?: string;
+  tradeDeviceQuery?: string;
 }
 
 interface ResolvedVectorStore {
@@ -247,7 +248,13 @@ export async function handleVectorSearch(
 ): Promise<VectorSearchResult> {
   const resolvedStore = resolveVectorStore(context);
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
-  const priceListMatch = findTradeInPriceMatch(query);
+  const tradeQueryOverride = context?.tradeDeviceQuery?.trim();
+  let priceListMatch = tradeQueryOverride
+    ? findTradeInPriceMatch(tradeQueryOverride)
+    : null;
+  if (!priceListMatch) {
+    priceListMatch = findTradeInPriceMatch(query);
+  }
   const priceListText = priceListMatch ? formatTradeInResponse(priceListMatch) : null;
 
   // SEARCH FLOW: WooCommerce → Vector → Zep → Perplexity
@@ -260,6 +267,11 @@ export async function handleVectorSearch(
     query,
   );
   const wooLimit = wantsFullList ? 20 : 5;
+  const isTradeIntentContext =
+    resolvedStore.label === "trade_in" ||
+    (context?.intent && context.intent.toLowerCase() === "trade_in") ||
+    (context?.toolUsed && context.toolUsed.startsWith("tradein_"));
+  const tradeSnippet = priceListText && isTradeIntentContext ? priceListText : null;
 
   if (resolvedStore.label === "catalog") {
     try {
@@ -292,7 +304,9 @@ export async function handleVectorSearch(
             })
             .join("\n");
           return {
-            text: `Here’s everything I have for “${query}” right now:\n\n${listText}\n\nPick one and I’ll pull the specs or availability.`,
+            text: prependTradeSnippet(
+              `Here’s everything I have for “${query}” right now:\n\n${listText}\n\nPick one and I’ll pull the specs or availability.`,
+            ),
             store: "product_catalog",
             matches: [],
           };
@@ -318,14 +332,8 @@ export async function handleVectorSearch(
     }
   }
 
-  const isTradeIntentContext =
-    resolvedStore.label === "trade_in" ||
-    (context?.intent && context.intent.toLowerCase() === "trade_in") ||
-    (context?.toolUsed && context.toolUsed.startsWith("tradein_"));
-
-  if (priceListText && isTradeIntentContext) {
-    return { text: priceListText, store: "trade_in" };
-  }
+  const prependTradeSnippet = (text: string) =>
+    tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
   // PRIORITY 2: Fall back to Vector DB search
   try {
@@ -655,14 +663,17 @@ export async function handleVectorSearch(
     }
 
     return {
-      text: finalText,
+      text: prependTradeSnippet(finalText),
       store: label,
       matches: label === "catalog" ? catalogMatches : undefined,
     };
   } catch (error) {
     console.error("Error in vector search:", error);
+    const errorText = prependTradeSnippet(
+      "I encountered an error searching our product database. Please try again or contact support.",
+    );
     return {
-      text: "I encountered an error searching our product database. Please try again or contact support.",
+      text: errorText,
       store: resolvedStore.label,
       matches: resolvedStore.label === "catalog" ? [] : undefined,
     };

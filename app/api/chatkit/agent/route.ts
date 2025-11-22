@@ -2181,6 +2181,17 @@ function determineNextTradeInQuestion(detail: any): string | null {
   return null;
 }
 
+function buildTradeDeviceQuery(
+  detail?: any,
+  clues?: TradeInUpdateInput | null,
+): string | null {
+  const brand = (clues?.brand || detail?.brand || "").trim();
+  const model = (clues?.model || detail?.model || "").trim();
+  const storage = (clues?.storage || detail?.storage || "").trim();
+  const parts = [brand, model, storage].filter(Boolean);
+  return parts.length ? parts.join(" ") : null;
+}
+
 function buildContactAcknowledgementResponse(params: {
   clues?: TradeInUpdateInput | null;
   detail?: any;
@@ -2606,6 +2617,7 @@ export async function POST(request: NextRequest) {
   let tradeInNeedsPayoutPrompt = false;
   let tradeInReadyForPhotoPrompt = false;
   let tradeInPhotoAcknowledged = false;
+  let tradeDeviceQuery: string | null = null;
   let tradeInPriceShared = false;
 
   try {
@@ -3076,10 +3088,15 @@ export async function POST(request: NextRequest) {
               isTradeInIntent,
               sessionId,
             });
-            const vectorContext: VectorSearchContext | undefined =
-              isTradeInIntent
-                ? { intent: "trade_in", toolUsed: functionName }
-                : { toolUsed: functionName };
+            const vectorContext: VectorSearchContext = {
+              toolUsed: functionName,
+            };
+            if (isTradeInIntent) {
+              vectorContext.intent = "trade_in";
+              if (tradeDeviceQuery) {
+                vectorContext.tradeDeviceQuery = tradeDeviceQuery;
+              }
+            }
             console.log(`[ChatKit] Vector context:`, vectorContext);
 
             const { modifier, cleanedQuery } = analyzePriceModifier(rawQuery);
@@ -3737,6 +3754,14 @@ export async function POST(request: NextRequest) {
         if (!finalResponse.toLowerCase().includes("provisional")) {
           finalResponse = `${finalResponse}\n\nThis is a provisional range and may change after inspection.`;
         }
+      }
+
+      const derivedTradeQuery = buildTradeDeviceQuery(
+        tradeInLeadDetail,
+        autoExtractedClues,
+      );
+      if (derivedTradeQuery) {
+        tradeDeviceQuery = derivedTradeQuery;
       }
     }
 
