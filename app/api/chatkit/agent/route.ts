@@ -874,6 +874,13 @@ const PRODUCT_KEYWORDS = [
   "smartphone",
   "tablet",
   "ipad",
+  // Computers
+  "laptop",
+  "notebook",
+  "macbook",
+  "pc",
+  "computer",
+  "desktop",
   // Other products
   "osmo",
   "glass",
@@ -888,6 +895,8 @@ const PRODUCT_KEYWORDS = [
   "gpu",
   "rtx",
   "graphics card",
+  "nvidia",
+  "amd",
   "game",
   "bundle",
   "controller",
