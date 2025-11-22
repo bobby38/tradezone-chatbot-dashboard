@@ -870,11 +870,22 @@ const PRODUCT_KEYWORDS = [
   // Other products
   "osmo",
   "camera",
+  "vlog",
+  "gimbal",
+  "drone",
   "gpu",
+  "rtx",
+  "graphics card",
+  "smart glass",
+  "glasses",
+  "xreal",
   "console",
   "bundle",
   "game",
   "controller",
+  "headset",
+  "headphone",
+  "earbuds",
 ];
 
 const PRODUCT_NEED_PATTERNS: RegExp[] = [
