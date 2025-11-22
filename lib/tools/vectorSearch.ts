@@ -263,11 +263,37 @@ const STATIC_TRADE_IN_ENTRIES: StaticTradeInEntry[] = [
   },
 ];
 
+const STATIC_TRADE_IN_RANGES: Array<{
+  label: string;
+  min: number;
+  max: number;
+  pattern: RegExp;
+}> = [
+  {
+    label: "Portal White (preowned)",
+    min: 100,
+    max: 130,
+    pattern: /\bportal\b.*\bwhite\b/i,
+  },
+  {
+    label: "Portal Midnight Black (preowned)",
+    min: 110,
+    max: 140,
+    pattern: /\bportal\b.*\b(midnight|black)\b/i,
+  },
+];
+
 function lookupStaticTradeInResult(query: string): VectorSearchResult | null {
   const lower = query.toLowerCase();
   for (const entry of STATIC_TRADE_IN_ENTRIES) {
     if (entry.pattern.test(lower)) {
       const text = `${entry.label} trade-in estimate: S$${entry.value} (preowned, subject to inspection).`;
+      return { text, store: "trade_in" };
+    }
+  }
+  for (const range of STATIC_TRADE_IN_RANGES) {
+    if (range.pattern.test(lower)) {
+      const text = `${range.label} trade-in estimate: S$${range.min}–${range.max} (subject to inspection).`;
       return { text, store: "trade_in" };
     }
   }
