@@ -17,6 +17,7 @@ const PRICE_ENTRIES: TradeInPriceEntry[] = buildPriceEntries();
 
 function buildPriceEntries(): TradeInPriceEntry[] {
   const entriesMap = new Map<string, TradeInPriceEntry>();
+  const baseRanges: Record<string, PriceRange> = {};
 
   for (const [, category] of Object.entries(tradeInData.categories)) {
     if (!category) continue;
@@ -37,7 +38,9 @@ function buildPriceEntries(): TradeInPriceEntry[] {
     if (category.preowned_trade_in) {
       for (const [label, value] of Object.entries(category.preowned_trade_in)) {
         const entry = ensureEntry(label);
-        entry.preowned = normalizeValue(value);
+        const range = normalizeValue(value);
+        entry.preowned = range;
+        baseRanges[label.toLowerCase()] = range;
       }
     }
 
@@ -108,10 +111,11 @@ export function findTradeInPriceMatch(
   }
 
   if (best && best.score >= 0.5) {
+    const base = baseRanges[best.entry.label.toLowerCase()];
     return {
       label: best.entry.label,
       category: best.entry.category,
-      preowned: best.entry.preowned,
+      preowned: best.entry.preowned || base,
       brandNew: best.entry.brandNew,
     };
   }
