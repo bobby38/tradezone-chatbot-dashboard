@@ -224,6 +224,56 @@ function enrichQueryWithCategory(query: string): string {
   return query;
 }
 
+interface StaticTradeInEntry {
+  label: string;
+  value: number;
+  pattern: RegExp;
+}
+
+const STATIC_TRADE_IN_ENTRIES: StaticTradeInEntry[] = [
+  {
+    label: "PS4 Fat 500GB",
+    value: 50,
+    pattern: /\bps4\b.*\bfat\b.*500\s*gb/i,
+  },
+  {
+    label: "PS4 Fat 1TB",
+    value: 60,
+    pattern: /\bps4\b.*\bfat\b.*1\s*tb/i,
+  },
+  {
+    label: "PS4 Slim 500GB",
+    value: 70,
+    pattern: /\bps4\b.*\bslim\b.*500\s*gb/i,
+  },
+  {
+    label: "PS4 Slim 1TB",
+    value: 80,
+    pattern: /\bps4\b.*\bslim\b.*1\s*tb/i,
+  },
+  {
+    label: "PS4 Pro 1TB",
+    value: 100,
+    pattern: /\bps4\b.*\bpro\b.*1\s*tb/i,
+  },
+  {
+    label: "PS4 Pro 2TB",
+    value: 120,
+    pattern: /\bps4\b.*\bpro\b.*2\s*tb/i,
+  },
+];
+
+function lookupStaticTradeInResult(query: string): VectorSearchResult | null {
+  const lower = query.toLowerCase();
+  for (const entry of STATIC_TRADE_IN_ENTRIES) {
+    if (entry.pattern.test(lower)) {
+      const text = `${entry.label} trade-in estimate: S$${entry.value} (preowned, subject to inspection).`;
+      return { text, store: "trade_in" };
+    }
+  }
+  return null;
+}
+
 export async function handleVectorSearch(
   query: string,
   context?: VectorSearchContext,
@@ -273,6 +323,13 @@ export async function handleVectorSearch(
         wooError,
       );
       // Continue to vector search even if WooCommerce fails
+    }
+  }
+
+  if (resolvedStore.label === "trade_in") {
+    const manual = lookupStaticTradeInResult(query);
+    if (manual) {
+      return manual;
     }
   }
 
