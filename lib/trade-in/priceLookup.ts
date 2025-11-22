@@ -13,11 +13,11 @@ interface TradeInPriceEntry {
   tokens: string[];
 }
 
+const BASE_PREOWNED_MAP = new Map<string, PriceRange>();
 const PRICE_ENTRIES: TradeInPriceEntry[] = buildPriceEntries();
 
 function buildPriceEntries(): TradeInPriceEntry[] {
   const entriesMap = new Map<string, TradeInPriceEntry>();
-  const baseRanges: Record<string, PriceRange> = {};
 
   for (const [, category] of Object.entries(tradeInData.categories)) {
     if (!category) continue;
@@ -40,7 +40,7 @@ function buildPriceEntries(): TradeInPriceEntry[] {
         const entry = ensureEntry(label);
         const range = normalizeValue(value);
         entry.preowned = range;
-        baseRanges[label.toLowerCase()] = range;
+        BASE_PREOWNED_MAP.set(label.toLowerCase(), range);
       }
     }
 
@@ -101,7 +101,7 @@ export function findTradeInPriceMatch(
       return {
         label: entry.label,
         category: entry.category,
-        preowned: entry.preowned,
+        preowned: entry.preowned || BASE_PREOWNED_MAP.get(entry.label.toLowerCase()),
         brandNew: entry.brandNew,
       };
     }
@@ -111,7 +111,7 @@ export function findTradeInPriceMatch(
   }
 
   if (best && best.score >= 0.5) {
-    const base = baseRanges[best.entry.label.toLowerCase()];
+    const base = BASE_PREOWNED_MAP.get(best.entry.label.toLowerCase());
     return {
       label: best.entry.label,
       category: best.entry.category,
