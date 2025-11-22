@@ -934,6 +934,12 @@ const PRODUCT_KEYWORDS = [
   "webcam",
   "microphone",
   "mic",
+  "chair",
+  "gaming chair",
+  "office chair",
+  "desk",
+  "table",
+  "gaming desk",
   // Cameras & content creation
   "osmo",
   "osmo pocket",
