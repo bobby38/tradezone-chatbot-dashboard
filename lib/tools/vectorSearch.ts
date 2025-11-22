@@ -278,6 +278,25 @@ export async function handleVectorSearch(
             price: r.price_sgd,
           })),
         );
+        if (wantsFullList) {
+          const listText = wooProducts
+            .map((product, idx) => {
+              const priceLabel =
+                typeof product.price_sgd === "number"
+                  ? ` — S$${product.price_sgd.toFixed(2)}`
+                  : "";
+              const link = product.permalink
+                ? ` ([View Product](${product.permalink}))`
+                : "";
+              return `${idx + 1}. ${product.name}${priceLabel}${link}`;
+            })
+            .join("\n");
+          return {
+            text: `Here’s everything I have for “${query}” right now:\n\n${listText}\n\nPick one and I’ll pull the specs or availability.`,
+            store: "product_catalog",
+            matches: [],
+          };
+        }
         // Continue to vector/zep/perplexity for enrichment
       } else {
         console.log(
