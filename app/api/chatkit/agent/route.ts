@@ -21,6 +21,7 @@ import { TRADE_IN_SYSTEM_CONTEXT } from "@/lib/chatkit/tradeInPrompts";
 import {
   findCatalogMatches,
   findClosestMatch,
+  getCatalogModelById,
   type CatalogMatch,
 } from "@/lib/chatkit/productCatalog";
 import {
@@ -32,6 +33,7 @@ import {
   addZepMemoryTurn,
   fetchZepContext,
   queryZepGraphContext,
+  type ZepGraphNodeSummary,
 } from "@/lib/zep";
 import {
   normalizeProduct,
@@ -442,6 +444,239 @@ function createVerificationPayload(): VerificationPayload {
       is_provisional: false,
     },
   };
+}
+
+interface MemoryHints {
+  names: string[];
+  emails: string[];
+  phones: string[];
+  devices: string[];
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return Array.from(
+    new Set(values.filter((value) => typeof value === "string" && value.trim())),
+  ).map((value) => value.trim());
+}
+
+function normalizeNameCase(value: string): string {
+  return value
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildMemoryHintsFromZep(zep: ZepContextResult): MemoryHints {
+  const blob = [zep.userSummary, zep.context]
+    .filter((value) => typeof value === "string" && value.trim().length > 0)
+    .join("\n");
+  if (!blob) {
+    return { names: [], emails: [], phones: [], devices: [] };
+  }
+
+  const emailMatches = blob.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+  const phoneMatches = blob.match(/\+?\d[\d\s-]{7,}/g) ?? [];
+  const nameMatches = blob.match(/name[:\s-]+([A-Za-z][A-Za-z\s]{2,40})/gi) ?? [];
+  const deviceMatches = blob.match(
+    /ps5|ps4|playstation|xbox|switch|steam deck|rog ally|quest|portal|iphone|ipad/gi,
+  ) ?? [];
+
+  const names = nameMatches
+    .map((match) => match.split(/name[:\s-]+/i)[1]?.trim())
+    .filter(Boolean)
+    .map((name) => normalizeNameCase(name!));
+
+  return {
+    names: dedupeStrings(names),
+    emails: dedupeStrings(emailMatches.map((email) => email.toLowerCase())),
+    phones: dedupeStrings(
+      phoneMatches.map((phone) => phone.replace(/\s+/g, " ").trim()),
+    ),
+    devices: dedupeStrings(deviceMatches.map((device) => device.trim())),
+  };
+}
+
+function buildMemoryGuardrailMessages(
+  detail: any,
+  hints: MemoryHints,
+): string[] {
+  const messages: string[] = [];
+  if (!detail?.contact_email && hints.emails.length) {
+    const email = hints.emails[0];
+    messages.push(
+      `Memory already has the customer's email (${email}). Say "Still using ${email}?" instead of asking from scratch, and only update if they correct it.`,
+    );
+  }
+  if (!detail?.contact_phone && hints.phones.length) {
+    const phone = hints.phones[0];
+    messages.push(
+      `Memory shows their phone as ${phone}. Confirm it rather than re-asking, and note if they change it.`,
+    );
+  }
+  if (!detail?.contact_name && hints.names.length) {
+    const name = hints.names[0];
+    messages.push(
+      `Use "Still going by ${name}?" before requesting their name again. Only overwrite if they give a different one.`,
+    );
+  }
+  if (
+    (!detail?.brand || !detail?.model) &&
+    hints.devices.length
+  ) {
+    messages.push(
+      `Earlier memory mentions ${hints.devices[0]}. Reference that model before asking the customer to repeat their device details.`,
+    );
+  }
+  return messages;
+}
+
+interface GraphConflict {
+  modelId: string;
+  nodeName: string;
+  graphPrice: number | null;
+  catalogPrice: number | null;
+  delta: number | null;
+}
+
+function asNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function extractGraphNodePrice(payload: Record<string, any>): number | null {
+  if (Array.isArray(payload.conditions)) {
+    for (const condition of payload.conditions) {
+      const price = asNumber(condition?.basePrice ?? condition?.price);
+      if (price !== null) return price;
+    }
+  }
+  if (payload.tradeIn) {
+    const tradeMin = asNumber(payload.tradeIn.min);
+    if (tradeMin !== null) return tradeMin;
+    const tradeMax = asNumber(payload.tradeIn.max);
+    if (tradeMax !== null) return tradeMax;
+  }
+  if (typeof payload.tradeMin !== "undefined" || typeof payload.tradeMax !== "undefined") {
+    const tradeValue = asNumber(payload.tradeMin ?? payload.tradeMax);
+    if (tradeValue !== null) return tradeValue;
+  }
+  if (payload.metadata) {
+    const metaValue =
+      asNumber(payload.metadata.trade_in_value_min_sgd) ||
+      asNumber(payload.metadata.trade_in_value_max_sgd) ||
+      asNumber(payload.metadata.target_price_sgd);
+    if (metaValue !== null) return metaValue;
+  }
+  if (payload.price) {
+    const price = asNumber(payload.price);
+    if (price !== null) return price;
+  }
+  return null;
+}
+
+function pushGraphProvenanceEntries(params: {
+  nodes: ZepGraphNodeSummary[];
+  verificationData: VerificationPayload;
+}): void {
+  const { nodes, verificationData } = params;
+  nodes.slice(0, 3).forEach((node) => {
+    const payload = node.data || {};
+    const price = extractGraphNodePrice(payload);
+    if (price === null) return;
+    const field = payload.kind === "trade_in" ? "trade_in_value_sgd" : "target_price_sgd";
+    verificationData.provenance.push({
+      field,
+      source: `zep_graph:${payload.modelId || payload.kind || node.name || "node"}`,
+      confidence: 0.7,
+    });
+    if (
+      field === "target_price_sgd" &&
+      verificationData.slots_filled.target_price_sgd === null
+    ) {
+      verificationData.slots_filled.target_price_sgd = price;
+    }
+    if (
+      field === "trade_in_value_sgd" &&
+      verificationData.slots_filled.trade_in_value_sgd === null
+    ) {
+      verificationData.slots_filled.trade_in_value_sgd = price;
+    }
+    if (
+      !verificationData.slots_filled.target_model &&
+      typeof payload.title === "string"
+    ) {
+      verificationData.slots_filled.target_model = payload.title;
+    }
+  });
+}
+
+async function detectGraphConflictsFromNodes(
+  nodes: ZepGraphNodeSummary[],
+): Promise<GraphConflict[]> {
+  const conflicts: GraphConflict[] = [];
+  for (const node of nodes) {
+    const payload = node.data || {};
+    const modelId = payload.modelId;
+    if (!modelId || !Array.isArray(payload.conditions)) continue;
+    const graphPrice = extractGraphNodePrice(payload);
+    if (graphPrice === null) continue;
+    const catalogModel = await getCatalogModelById(modelId);
+    if (!catalogModel) continue;
+    const catalogPriceEntry = catalogModel.conditions.find(
+      (condition) => typeof condition.basePrice === "number",
+    );
+    const catalogPrice = catalogPriceEntry?.basePrice ?? null;
+    if (catalogPrice === null) continue;
+    const delta = Math.abs(catalogPrice - graphPrice);
+    if (delta >= 25) {
+      conflicts.push({
+        modelId,
+        nodeName: node.name || payload.title || modelId,
+        graphPrice,
+        catalogPrice,
+        delta,
+      });
+    }
+  }
+  return conflicts;
+}
+
+function formatCurrency(value: number | null): string {
+  if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
+  return `S$${value.toFixed(0)}`;
+}
+
+function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
+  const lines = conflicts.slice(0, 3).map((conflict) => {
+    return `${conflict.nodeName}: graph ${formatCurrency(conflict.graphPrice)} vs catalog ${formatCurrency(conflict.catalogPrice)} (Δ ${formatCurrency(conflict.delta ?? null)})`;
+  });
+  return [
+    "⚠️ Catalog mismatch detected between Zep graph and local master file.",
+    ...lines,
+    "Respond with provisional language, cite both sources, and offer a human review before locking pricing.",
+  ].join("\n");
+}
+
+function summarizeGraphNodesForPrompt(
+  nodes: ZepGraphNodeSummary[],
+): string | null {
+  if (!nodes.length) return null;
+  const lines = nodes.slice(0, 3).map((node) => {
+    const payload = node.data || {};
+    const price = extractGraphNodePrice(payload);
+    const priceLabel =
+      price !== null ? `~${formatCurrency(price)}` : "reference only";
+    const label = payload.kind || (node.labels && node.labels[0]) || "product";
+    return `• ${node.name || payload.title || payload.modelId || "node"} (${label}) ${priceLabel}`;
+  });
+  return [
+    "Use these Zep graph facts as cited sources in your reply (e.g., 'from Zep graph: ...').",
+    ...lines,
+  ].join("\n");
 }
 
 const MODIFIER_FILLER_TOKENS = new Set([
@@ -2086,6 +2321,7 @@ export async function POST(request: NextRequest) {
     ];
 
     const zepContext = await fetchZepContext(sessionId);
+    const memoryHints = buildMemoryHintsFromZep(zepContext);
     console.debug("[ChatKit] Zep context loaded", {
       sessionId,
       hasUserSummary: Boolean(zepContext.userSummary),
@@ -2269,6 +2505,16 @@ export async function POST(request: NextRequest) {
         tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
       } catch (detailError) {
         console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
+      }
+
+      if (tradeInLeadDetail) {
+        const guardrails = buildMemoryGuardrailMessages(
+          tradeInLeadDetail,
+          memoryHints,
+        );
+        guardrails.forEach((content) =>
+          messages.push({ role: "system", content }),
+        );
       }
 
       if (tradeInLeadDetail && autoExtractedClues) {
@@ -2560,6 +2806,7 @@ export async function POST(request: NextRequest) {
               latency_ms: toolLatency,
             });
           } else if (functionName === "tradezone_graph_query") {
+            const toolStart = Date.now();
             const question =
               typeof functionArgs.question === "string"
                 ? functionArgs.question.trim()
@@ -2568,8 +2815,33 @@ export async function POST(request: NextRequest) {
               toolResult =
                 "I need a specific pricing or bundle question to query the TradeZone graph.";
             } else {
-              toolResult = await queryZepGraphContext(question, sessionId);
+              const graphResult = await queryZepGraphContext(
+                question,
+                sessionId,
+              );
+              toolResult = graphResult.summary;
               toolSource = "product_catalog";
+              pushGraphProvenanceEntries({
+                nodes: graphResult.nodes,
+                verificationData,
+              });
+              const conflictList = await detectGraphConflictsFromNodes(
+                graphResult.nodes,
+              );
+              if (conflictList.length) {
+                verificationData.flags.requires_human_review = true;
+                verificationData.flags.is_provisional = true;
+                messages.push({
+                  role: "system",
+                  content: formatGraphConflictSystemMessage(conflictList),
+                });
+              }
+              const citationReminder = summarizeGraphNodesForPrompt(
+                graphResult.nodes,
+              );
+              if (citationReminder) {
+                messages.push({ role: "system", content: citationReminder });
+              }
             }
 
             toolSummaries.push({
@@ -2586,7 +2858,7 @@ export async function POST(request: NextRequest) {
               result_preview: toolResult.slice(0, 280),
               source: toolSource,
               success: true,
-              latency_ms: 0,
+              latency_ms: Date.now() - toolStart,
             });
           } else if (functionName === "tradein_update_lead") {
             const toolStart = Date.now();

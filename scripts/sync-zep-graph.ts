@@ -8,6 +8,13 @@ interface ProductsMasterFile {
   families: Array<{
     family_id: string;
     title: string;
+    instalment_factor?: number;
+    bnpl_providers?: Array<{
+      id: string;
+      name: string;
+      months: number[];
+    }>;
+    warranties?: Record<string, string>;
     models: Array<{
       model_id: string;
       title: string;
@@ -15,6 +22,15 @@ interface ProductsMasterFile {
       region?: string | null;
       storage?: string | null;
       options?: Record<string, unknown>;
+      categories?: string[];
+      tags?: string[];
+      kind?: string;
+      warranty_notes?: string[];
+      source?: {
+        productId?: number;
+        productName?: string;
+        permalink?: string;
+      };
       aliases: string[];
       conditions: Array<{
         condition: string;
@@ -103,7 +119,7 @@ async function main() {
         graphId,
         sourceDescription: "products_master",
         data: JSON.stringify({
-          kind: "product",
+          kind: model.kind || "product",
           familyId: family.family_id,
           familyTitle: family.title,
           modelId: model.model_id,
@@ -111,7 +127,16 @@ async function main() {
           bundle: model.bundle ?? null,
           region: model.region ?? null,
           storage: model.storage ?? null,
+          options: model.options ?? {},
           aliases: model.aliases,
+          categories: model.categories ?? [],
+          tags: model.tags ?? [],
+          warranties: {
+            family: family.warranties ?? {},
+            model: model.warranty_notes ?? [],
+          },
+          bnplProviders: family.bnpl_providers ?? [],
+          source: model.source ?? {},
           conditions: model.conditions,
         }),
       });

@@ -31,6 +31,10 @@ interface ProductModelRecord {
   region?: string | null;
   storage?: string | null;
   aliases: string[];
+  categories?: string[];
+  tags?: string[];
+  kind?: string;
+  warranty_notes?: string[];
   source?: {
     productId?: number;
     productName?: string;
@@ -93,6 +97,9 @@ export interface FlattenedModel {
   tokens: string[];
   brand?: string;
   categories?: string[];
+  tags?: string[];
+  kind?: string;
+  warrantyNotes?: string[];
   permalink?: string;
   warnings?: string[];
   priceRange: PriceRange | null;
@@ -363,6 +370,10 @@ function buildFlattenedModels(master: ProductsMasterFile): FlattenedModel[] {
         title: model.title,
         aliases,
         tokens,
+        categories: model.categories || [],
+        tags: model.tags || [],
+        kind: model.kind,
+        warrantyNotes: model.warranty_notes || [],
         permalink: model.source?.permalink,
         warnings: model.warnings || [],
         priceRange,

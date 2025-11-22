@@ -3261,6 +3261,9 @@ Document progress + deviations here whenever the plan evolves so every teammate 
   - If the catalog graph doesn’t exist yet, run `npx tsx scripts/create-zep-graph.ts` once; the script now prints the canonical ID even if the API returns `graphId` instead of `graph_id`. Copy the logged `ZEP_CATALOG_GRAPH_ID=...` into `.env.local` before syncing.
   - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`. Successful runs log ten batches (182 records currently) with no 404s—rerun whenever catalog data changes.
   - `/api/chatkit/agent` automatically fetches `context` + `user_summary` from Zep, stores each turn via `addZepMemoryTurn`, and exposes the new `tradezone_graph_query` tool so GPT can pull structured bundle/trade relationships when vector search is noisy.
+  - Catalog nodes now carry `kind`, `tags`, `categories`, warranty notes, BNPL context, and live Woo identifiers. Always run `npm run catalog:build && npm run catalog:sync-zep` together so the graph stays in lockstep with `/data/catalog`.
+  - The agent parses Zep summaries for contact info + device clues. If memory already has the user’s email/phone/name, the prompt now says “Still using …?” instead of re-interrogating. Verify with a multi-field utterance (`"joe doe 8448 9068 sample@mail.com"`) to confirm it acknowledges all three before moving on.
+  - `tradezone_graph_query` responses now log provenance into the verification payload and compare graph prices against `products_master`. If the delta is ≥S$25, the reply is forced into provisional language and the bot must cite both Zep and catalog before offering to escalate.
 - **Upcoming agent hardening checkpoints (do not skip before rollout):**
   1. **Expose deterministic tools** for every numeric fact: `normalize_product`, `price_lookup`, `calculate_top_up`, `inventory_check`, `schedule_inspection`, `ocr_and_extract`, `enqueue_human_review`. The LLM must never emit a number we didn’t fetch from these tools.
   2. **Require a verification payload** with each numeric reply. Shape:
@@ -3299,6 +3302,12 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 - Added a WooCommerce snapshot fallback: if the vectorized catalog doesn’t return a match but the storefront has it, `/api/chatkit/agent` automatically pulls the raw product (name, price, link) and never replies “not in stock” while the page exists.
 - Voice/text prompts now stress short, user-led replies: follow the user’s topic switches, stop talking the instant they speak, and end each reply with a single next-step prompt.
 - Broad category queries (“soccer games”) return cross-platform suggestions; only after the user specifies a platform do we narrow the list. When a user shares a product link, treat it as available and offer confirmation instead of refusing.
+
+### 2025-11-21 Zep Graph Hardening
+- `npm run catalog:build` now emits model `kind` (product/accessory/bundle/service/warranty/game), graph tags, and warranty snippets; `npm run catalog:sync-zep` pushes those fields plus BNPL + alias metadata so `tradezone_graph_query` can answer combo questions (“PS5 + DualSense + warranty”) deterministically.
+- `/api/chatkit/agent` reads Zep user summaries before planning its checklist. When memory already holds contact info, it confirms (“Still using ___?”) instead of re-asking, and the acknowledgement template repeats all three values whenever the customer dumps them in a single turn.
+- Graph queries feed provenance into the verification payload, and prices are cross-checked against the fresh `products_master`. If the delta ≥ S$25 the bot is forced into provisional wording, flags the reply for human review, and cites both Zep + catalog before offering escalation.
+- Testing loop: (1) Run `npm run catalog:build && npm run catalog:sync-zep`, (2) ask “Bundle PS5 with two controllers + warranty” and confirm the response cites Zep graph, (3) give a stale price in the Woo snapshot to trigger a ≥S$25 mismatch and verify the agent marks it provisional, and (4) send “john smith 8888 9999 demo@tradezone.sg” to ensure memory-driven confirmations fire without re-asking.
 
 ---
 

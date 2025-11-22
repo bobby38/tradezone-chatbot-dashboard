@@ -42,6 +42,21 @@ async function ensureThreadExists(client: ZepClient, threadId: string) {
 export interface ZepContextResult {
   context: string;
   userSummary: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ZepGraphNodeSummary {
+  id?: string;
+  name?: string;
+  labels?: string[];
+  data: Record<string, any>;
+  summary?: string;
+}
+
+export interface ZepGraphQueryResult {
+  summary: string;
+  nodes: ZepGraphNodeSummary[];
+  facts: string[];
 }
 
 export async function fetchZepContext(
@@ -57,7 +72,17 @@ export async function fetchZepContext(
       mode: "summary",
     });
     const contextBlock = response?.context || "";
-    return { context: contextBlock, userSummary: contextBlock };
+    const summaryBlock =
+      typeof (response as any)?.summary === "string"
+        ? (response as any).summary
+        : Array.isArray((response as any)?.summaries)
+          ? (response as any).summaries.join("\n")
+          : contextBlock;
+    return {
+      context: contextBlock,
+      userSummary: summaryBlock,
+      metadata: (response as any)?.metadata,
+    };
   } catch (error) {
     if ((error as any)?.statusCode === 404) {
       return { context: "", userSummary: "" };
@@ -112,10 +137,14 @@ export async function addZepMemoryTurn(
 export async function queryZepGraphContext(
   question: string,
   userId?: string,
-): Promise<string> {
+): Promise<ZepGraphQueryResult> {
   const client = getZepClient();
   if (!client) {
-    return "Graph memory is not configured.";
+    return {
+      summary: "Graph memory is not configured.",
+      nodes: [],
+      facts: [],
+    };
   }
   try {
     const result = await client.graph.search({
@@ -124,41 +153,107 @@ export async function queryZepGraphContext(
       graphId: process.env.ZEP_CATALOG_GRAPH_ID,
       limit: 10,
     });
-    const summary = summarizeGraphResults(result);
-    return summary || "No structured data found for that question.";
+    const normalized = normalizeGraphResults(result);
+    if (!normalized.summary) {
+      normalized.summary = "No structured data found for that question.";
+    }
+    return normalized;
   } catch (error) {
     console.error("[Zep] graph.search failed", error);
-    return "Encountered an issue retrieving structured data.";
+    return {
+      summary: "Encountered an issue retrieving structured data.",
+      nodes: [],
+      facts: [],
+    };
   }
 }
 
-function summarizeGraphResults(result: any): string {
-  if (!result) return "";
-  const sections: string[] = [];
+function normalizeGraphResults(result: any): ZepGraphQueryResult {
+  if (!result) {
+    return { summary: "", nodes: [], facts: [] };
+  }
 
-  if (Array.isArray(result.nodes) && result.nodes.length) {
-    const nodeLines = result.nodes.slice(0, 3).map((node: any) => {
-      const labels = Array.isArray(node.labels) ? node.labels.join(", ") : "node";
+  const nodes = Array.isArray(result.nodes)
+    ? result.nodes.slice(0, 10).map(normalizeGraphNode)
+    : [];
+  const facts = Array.isArray(result.edges)
+    ? result.edges
+        .slice(0, 5)
+        .map((edge: any) => truncate(edge.fact || edge.name || "Relation", 160))
+    : [];
+  const supporting = Array.isArray(result.episodes)
+    ? result.episodes
+        .slice(0, 2)
+        .map((episode: any) => truncate(episode.content || "", 160))
+    : [];
+
+  const sections: string[] = [];
+  if (nodes.length) {
+    const nodeLines = nodes.slice(0, 3).map((node) => {
+      const labels = Array.isArray(node.labels) && node.labels.length
+        ? node.labels.join(", ")
+        : node.data.kind || "node";
       const summary = node.summary ? ` — ${truncate(node.summary, 140)}` : "";
-      return `- ${node.name} (${labels})${summary}`;
+      return `- ${node.name || node.data.title || node.data.modelId || "node"} (${labels})${summary}`;
     });
     sections.push(`Nodes:\n${nodeLines.join("\n")}`);
   }
-
-  if (Array.isArray(result.edges) && result.edges.length) {
-    const edgeLines = result.edges.slice(0, 3).map((edge: any) => {
-      const fact = edge.fact || edge.name || "Relation";
-      return `- ${truncate(fact, 160)}`;
-    });
-    sections.push(`Facts:\n${edgeLines.join("\n")}`);
+  if (facts.length) {
+    sections.push(`Facts:\n${facts.map((fact) => `- ${fact}`).join("\n")}`);
+  }
+  if (supporting.length) {
+    sections.push(
+      `Supporting notes:\n${supporting.map((note) => `- ${note}`).join("\n")}`,
+    );
   }
 
-  if (Array.isArray(result.episodes) && result.episodes.length) {
-    const episodeLines = result.episodes
-      .slice(0, 2)
-      .map((episode: any) => `- ${truncate(episode.content || "", 160)}`);
-    sections.push(`Supporting notes:\n${episodeLines.join("\n")}`);
-  }
+  return {
+    summary: sections.join("\n\n"),
+    nodes,
+    facts,
+  };
+}
 
-  return sections.join("\n\n");
+function normalizeGraphNode(raw: any): ZepGraphNodeSummary {
+  const payload = extractNodePayload(raw);
+  const name = raw?.name || payload.title || payload.modelId || payload.familyTitle;
+  return {
+    id: raw?.id || payload.modelId || payload.id,
+    name,
+    labels: Array.isArray(raw?.labels) ? raw.labels : payload.labels,
+    data: payload,
+    summary: raw?.summary || payload.summary,
+  };
+}
+
+function extractNodePayload(raw: any): Record<string, any> {
+  const candidates = [
+    raw?.data?.json,
+    raw?.data,
+    raw?.properties?.json,
+    raw?.properties,
+    raw?.metadata,
+  ];
+  for (const candidate of candidates) {
+    const parsed = safeParse(candidate);
+    if (parsed && typeof parsed === "object") {
+      return parsed as Record<string, any>;
+    }
+  }
+  return {};
+}
+
+function safeParse(value: any): unknown {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === "object") {
+    return value;
+  }
+  return null;
 }

@@ -42,6 +42,15 @@ interface TradeEntry {
   source: string;
 }
 
+type ModelKind =
+  | "product"
+  | "bundle"
+  | "accessory"
+  | "warranty"
+  | "service"
+  | "game"
+  | "misc";
+
 interface NormalizedModel {
   familyId: string;
   modelId: string;
@@ -64,6 +73,10 @@ interface NormalizedModel {
   conditions: ProductCondition[];
   lookupTokens: string[];
   warnings: string[];
+  categories: string[];
+  tags: string[];
+  kind: ModelKind;
+  warrantyNotes: string[];
 }
 
 interface ProductCondition {
@@ -223,6 +236,22 @@ const BRAND_STOP_REGEX = new RegExp(
   "gi",
 );
 
+const ACCESSORY_KEYWORDS = [
+  "accessory",
+  "accessories",
+  "controller",
+  "headset",
+  "earbuds",
+  "charger",
+  "dock",
+  "case",
+  "stand",
+];
+
+const WARRANTY_KEYWORDS = ["warranty", "protection", "care plan", "accidental"];
+const SERVICE_KEYWORDS = ["install", "setup", "repair", "inspection", "service"];
+const PROMO_KEYWORDS = ["bundle", "promo", "promotion", "deal", "pack", "combo"];
+
 const STOP_VARIANT_PREFIXES = [
   /^⭐/i,
   /^🌟/i,
@@ -308,6 +337,70 @@ function looksLikeVariant(line: string): boolean {
   return /switch|ps5|ps4|xbox|steam|rog|ally|quest|portal|legion|claw|osmo|camera/i.test(
     line,
   );
+}
+
+function collectCategories(product: CatalogProduct): string[] {
+  const categories = new Set<string>();
+  (product.categories ?? []).forEach((category) => {
+    if (!category?.name) return;
+    const normalized = toAscii(category.name).toLowerCase();
+    if (normalized) {
+      categories.add(normalized);
+    }
+  });
+  return Array.from(categories);
+}
+
+function classifyModelKind(
+  familyId: string,
+  title: string,
+  categories: string[],
+  bundle?: string | null,
+): ModelKind {
+  const lower = title.toLowerCase();
+  const matchesKeyword = (keywords: string[]) =>
+    keywords.some(
+      (keyword) =>
+        lower.includes(keyword) ||
+        categories.some((category) => category.includes(keyword)),
+    );
+
+  if (matchesKeyword(WARRANTY_KEYWORDS)) return "warranty";
+  if (matchesKeyword(SERVICE_KEYWORDS)) return "service";
+  if (matchesKeyword(ACCESSORY_KEYWORDS)) return "accessory";
+  if (matchesKeyword(["game"])) return "game";
+
+  const isBundle =
+    Boolean(bundle) ||
+    matchesKeyword(PROMO_KEYWORDS) ||
+    categories.some((category) => category.includes("bundle"));
+  if (isBundle) return "bundle";
+
+  return familyId === "misc" ? "misc" : "product";
+}
+
+function buildGraphTags(params: {
+  familyId: string;
+  kind: ModelKind;
+  categories: string[];
+  bundle?: string | null;
+  storage?: string | null;
+  platform?: string | null;
+}): string[] {
+  const tags = new Set<string>();
+  tags.add(`family:${params.familyId}`);
+  tags.add(`kind:${params.kind}`);
+  if (params.bundle) tags.add("has_bundle");
+  if (params.storage) tags.add(`storage:${params.storage.toLowerCase()}`);
+  if (params.platform)
+    tags.add(`platform:${params.platform.toLowerCase().replace(/\s+/g, "_")}`);
+  if (!params.categories.length) {
+    tags.add("category:unspecified");
+  }
+  params.categories.forEach((category) => {
+    tags.add(`category:${category.replace(/\s+/g, "_")}`);
+  });
+  return Array.from(tags);
 }
 
 function parsePriceFragments(
@@ -615,6 +708,8 @@ function createModelFromVariant(variant: VariantDraft): NormalizedModel | null {
   const asciiTitle = stripPriceFromTitle(toAscii(title));
   if (!asciiTitle) return null;
 
+  const categories = collectCategories(variant.sourceProduct);
+
   const detectedGameFamily = detectGameFamily(
     variant.sourceProduct,
     asciiTitle || variant.sourceProduct.name || "",
@@ -631,6 +726,19 @@ function createModelFromVariant(variant: VariantDraft): NormalizedModel | null {
   const storage = extractStorage(asciiTitle);
   const platform =
     detectedGameFamily?.platform || detectPlatform(asciiTitle) || null;
+
+  const kind = classifyModelKind(familyId, asciiTitle, categories, bundle);
+  const tags = buildGraphTags({
+    familyId,
+    kind,
+    categories,
+    bundle,
+    storage,
+    platform,
+  });
+  const warrantyNotes = variant.notes.filter((note) =>
+    /warranty|guarantee|protection|care plan/i.test(note.toLowerCase()),
+  );
 
   const baseAlias = asciiTitle.toLowerCase();
   const noDescriptors = baseAlias
@@ -749,6 +857,10 @@ function createModelFromVariant(variant: VariantDraft): NormalizedModel | null {
     conditions,
     lookupTokens,
     warnings: unique([...warnings, ...variant.notes]),
+    categories,
+    tags,
+    kind,
+    warrantyNotes,
   };
 }
 
@@ -1076,6 +1188,10 @@ async function main() {
         aliases: model.aliases,
         source: model.source,
         warnings: model.warnings,
+         categories: model.categories,
+         tags: model.tags,
+         kind: model.kind,
+         warranty_notes: model.warrantyNotes,
         conditions: model.conditions,
       })),
     })),
