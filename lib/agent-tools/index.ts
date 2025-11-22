@@ -267,12 +267,30 @@ export async function searchWooProducts(
       keywords: ["steam deck", "rog ally", "legion", "claw"],
     },
     { pattern: /\b(quest|psvr|vr)\b/i, keywords: ["quest", "psvr", "vr"] },
+    // Phone/tablet patterns - match specific phone brands
+    {
+      pattern:
+        /\b(iphone|samsung\s*galaxy|galaxy\s*(z|s|a|note)|pixel|oppo)\b/i,
+      keywords: ["iphone", "galaxy z", "galaxy s", "galaxy a", "pixel", "oppo"],
+      category: "phone",
+    },
+    {
+      pattern: /\b(ipad|galaxy\s*tab|tablet)\b/i,
+      keywords: ["ipad", "galaxy tab", "tablet"],
+      category: "tablet",
+    },
   ];
 
   let familyFilter: string[] | null = null;
-  for (const { pattern, keywords } of familyKeywords) {
+  let categoryFilter: string | null = null;
+  for (const { pattern, keywords, category } of familyKeywords) {
     if (pattern.test(query)) {
       familyFilter = keywords;
+      categoryFilter = category || null;
+      console.log(
+        `[searchWooProducts] Detected category: ${categoryFilter || "gaming"}, filter:`,
+        keywords,
+      );
       break;
     }
   }
@@ -283,8 +301,20 @@ export async function searchWooProducts(
       const name = (product.name || "").toLowerCase();
       let score = 0;
 
-      // Apply family filter if detected
-      if (familyFilter && tokens.length > 1) {
+      // Apply category filter for phones/tablets (stricter matching)
+      if (categoryFilter === "phone" || categoryFilter === "tablet") {
+        // For phones: must match at least one phone keyword
+        const matchesCategory = familyFilter!.some((keyword) =>
+          name.includes(keyword),
+        );
+        if (!matchesCategory) {
+          return { product, score: 0 };
+        }
+        // Bonus points for phone/tablet category match
+        score += 100;
+      }
+      // Apply family filter if detected (gaming products)
+      else if (familyFilter && tokens.length > 1) {
         const matchesFamily = familyFilter.some((keyword) =>
           name.includes(keyword),
         );
@@ -293,6 +323,7 @@ export async function searchWooProducts(
         }
       }
 
+      // Score based on token matching
       tokens.forEach((token) => {
         if (name.includes(token)) {
           score += token.length;
