@@ -197,6 +197,23 @@ const FAMILY_RULES: Array<{
     keywords: [],
   },
   {
+    id: "phones",
+    title: "Mobile Phones",
+    keywords: [
+      "iphone",
+      "samsung galaxy",
+      "google pixel",
+      "oppo",
+      "smartphone",
+      "mobile phone",
+    ],
+  },
+  {
+    id: "tablets",
+    title: "Tablets",
+    keywords: ["ipad", "galaxy tab", "tablet"],
+  },
+  {
     id: "misc",
     title: "Other Catalog Items",
     keywords: [],
@@ -249,8 +266,21 @@ const ACCESSORY_KEYWORDS = [
 ];
 
 const WARRANTY_KEYWORDS = ["warranty", "protection", "care plan", "accidental"];
-const SERVICE_KEYWORDS = ["install", "setup", "repair", "inspection", "service"];
-const PROMO_KEYWORDS = ["bundle", "promo", "promotion", "deal", "pack", "combo"];
+const SERVICE_KEYWORDS = [
+  "install",
+  "setup",
+  "repair",
+  "inspection",
+  "service",
+];
+const PROMO_KEYWORDS = [
+  "bundle",
+  "promo",
+  "promotion",
+  "deal",
+  "pack",
+  "combo",
+];
 
 const STOP_VARIANT_PREFIXES = [
   /^⭐/i,
@@ -718,7 +748,7 @@ function createModelFromVariant(variant: VariantDraft): NormalizedModel | null {
   const familyId =
     detectedGameFamily?.familyId ||
     determineFamily(asciiTitle || variant.sourceProduct.name || "") ||
-      "misc";
+    "misc";
   const modelSlug = slugify(asciiTitle);
   const modelId = `${familyId}-${modelSlug}`;
   const region = extractRegion(asciiTitle);
@@ -1188,10 +1218,10 @@ async function main() {
         aliases: model.aliases,
         source: model.source,
         warnings: model.warnings,
-         categories: model.categories,
-         tags: model.tags,
-         kind: model.kind,
-         warranty_notes: model.warrantyNotes,
+        categories: model.categories,
+        tags: model.tags,
+        kind: model.kind,
+        warranty_notes: model.warrantyNotes,
         conditions: model.conditions,
       })),
     })),

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-11-22T08:55:19.714Z",
+  "generated_at": "2025-11-22T12:16:13.305Z",
   "variant_count": 1037,
   "model_count": 930,
   "families": {
@@ -41,7 +41,7 @@
       "warnings": []
     },
     "misc": {
-      "models": 61,
+      "models": 60,
       "priceRange": [
         1,
         4119
@@ -117,6 +117,14 @@
       "priceRange": [
         19.9,
         89.9
+      ],
+      "warnings": []
+    },
+    "phones": {
+      "models": 1,
+      "priceRange": [
+        89,
+        89
       ],
       "warnings": []
     },
@@ -1275,7 +1283,7 @@
       "title": "Xreal One Pro / Xreal Air 2 Ultra / Xreal One / Xreal Air 2 Pro / Xreal Beam Pro Option"
     },
     {
-      "modelId": "misc-tesla_cyberdock_for_iphone_17_16_15_14_pro_pro_max_3_in_1_wireless_charger",
+      "modelId": "phones-tesla_cyberdock_for_iphone_17_16_15_14_pro_pro_max_3_in_1_wireless_charger",
       "title": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger"
     },
     {

@@ -1,7 +1,7 @@
 {
-  "generated_at": "2025-11-22T08:55:19.719Z",
+  "generated_at": "2025-11-22T12:16:13.311Z",
   "source_catalog_size": 999,
-  "family_count": 10,
+  "family_count": 11,
   "families": [
     {
       "family_id": "games_playstation",
@@ -56559,70 +56559,6 @@
           ]
         },
         {
-          "model_id": "misc-tesla_cyberdock_for_iphone_17_16_15_14_pro_pro_max_3_in_1_wireless_charger",
-          "title": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
-          "bundle": null,
-          "region": null,
-          "storage": null,
-          "options": {
-            "region": null,
-            "storage": null,
-            "bundle": null,
-            "platform": null
-          },
-          "aliases": [
-            "tesla cyberdock for iphone 17/16/15/14 / pro / pro max (3 in 1) wireless charger"
-          ],
-          "source": {
-            "productId": 27152,
-            "productName": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
-            "permalink": "https://tradezone.sg/product/tesla-cyberdock-for-iphone-17-16-15-14-pro-pro-max-3-in-1-wireless-charger/"
-          },
-          "warnings": [],
-          "categories": [
-            "chargers"
-          ],
-          "tags": [
-            "family:misc",
-            "kind:accessory",
-            "category:chargers"
-          ],
-          "kind": "accessory",
-          "warranty_notes": [],
-          "conditions": [
-            {
-              "condition": "brand_new",
-              "basePrice": 89,
-              "instalmentTotal": 93.9,
-              "observedInstalment": null,
-              "instalmentFactor": 1.055,
-              "observedFactor": null,
-              "factorDelta": null,
-              "bnpl": [
-                {
-                  "providerId": "atome",
-                  "providerName": "Atome",
-                  "months": 3,
-                  "monthly": 31.3
-                },
-                {
-                  "providerId": "spay_later",
-                  "providerName": "SPay Later",
-                  "months": 6,
-                  "monthly": 15.65
-                },
-                {
-                  "providerId": "grabpay_later",
-                  "providerName": "GrabPay Later",
-                  "months": 4,
-                  "monthly": 23.48
-                }
-              ],
-              "soldOut": false
-            }
-          ]
-        },
-        {
           "model_id": "misc-liberlive_c2_c1_stringless_smart_guitar",
           "title": "LiberLive C2/C1 Stringless Smart Guitar",
           "bundle": null,
@@ -64872,6 +64808,101 @@
                 }
               ],
               "soldOut": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "phones",
+      "title": "Mobile Phones",
+      "instalment_factor": 1.055,
+      "bnpl_providers": [
+        {
+          "id": "atome",
+          "name": "Atome",
+          "months": [
+            3
+          ]
+        },
+        {
+          "id": "spay_later",
+          "name": "SPay Later",
+          "months": [
+            6
+          ]
+        },
+        {
+          "id": "grabpay_later",
+          "name": "GrabPay Later",
+          "months": [
+            4
+          ]
+        }
+      ],
+      "warranties": {},
+      "models": [
+        {
+          "model_id": "phones-tesla_cyberdock_for_iphone_17_16_15_14_pro_pro_max_3_in_1_wireless_charger",
+          "title": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
+          "bundle": null,
+          "region": null,
+          "storage": null,
+          "options": {
+            "region": null,
+            "storage": null,
+            "bundle": null,
+            "platform": null
+          },
+          "aliases": [
+            "tesla cyberdock for iphone 17/16/15/14 / pro / pro max (3 in 1) wireless charger"
+          ],
+          "source": {
+            "productId": 27152,
+            "productName": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
+            "permalink": "https://tradezone.sg/product/tesla-cyberdock-for-iphone-17-16-15-14-pro-pro-max-3-in-1-wireless-charger/"
+          },
+          "warnings": [],
+          "categories": [
+            "chargers"
+          ],
+          "tags": [
+            "family:phones",
+            "kind:accessory",
+            "category:chargers"
+          ],
+          "kind": "accessory",
+          "warranty_notes": [],
+          "conditions": [
+            {
+              "condition": "brand_new",
+              "basePrice": 89,
+              "instalmentTotal": 93.9,
+              "observedInstalment": null,
+              "instalmentFactor": 1.055,
+              "observedFactor": null,
+              "factorDelta": null,
+              "bnpl": [
+                {
+                  "providerId": "atome",
+                  "providerName": "Atome",
+                  "months": 3,
+                  "monthly": 31.3
+                },
+                {
+                  "providerId": "spay_later",
+                  "providerName": "SPay Later",
+                  "months": 6,
+                  "monthly": 15.65
+                },
+                {
+                  "providerId": "grabpay_later",
+                  "providerName": "GrabPay Later",
+                  "months": 4,
+                  "monthly": 23.48
+                }
+              ],
+              "soldOut": false
             }
           ]
         }
