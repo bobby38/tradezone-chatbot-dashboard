@@ -215,9 +215,10 @@ function enrichQueryWithCategory(query: string): string {
   const hint = categoryHints[category];
   if (hint) {
     console.log(
-      `[VectorSearch] Detected category: ${category}, enriching query`,
+      `[VectorSearch] Detected category: ${category} (enrichment disabled)`,
     );
-    return `${hint} ${query}`;
+    // Disabled enrichment - it was causing irrelevant matches
+    // return `${hint} ${query}`;
   }
 
   return query;
@@ -228,7 +229,7 @@ export async function handleVectorSearch(
   context?: VectorSearchContext,
 ): Promise<VectorSearchResult> {
   const resolvedStore = resolveVectorStore(context);
-  const enrichedQuery = enrichQueryWithCategory(query);
+  const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
 
   try {
     const { id: vectorStoreId, label } = resolvedStore;
