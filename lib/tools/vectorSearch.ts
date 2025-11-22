@@ -231,6 +231,57 @@ export async function handleVectorSearch(
   const resolvedStore = resolveVectorStore(context);
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
 
+  // PRIORITY 1: Try WooCommerce JSON first for product queries
+  if (resolvedStore.label === "catalog") {
+    const detectedCategory = extractProductCategory(query);
+    if (detectedCategory === "phone" || detectedCategory === "tablet") {
+      try {
+        console.log(
+          `[VectorSearch] Priority search: WooCommerce first for ${detectedCategory}...`,
+        );
+        const { searchWooProducts } = await import("@/lib/agent-tools");
+        const wooResults = await searchWooProducts(query, 5);
+
+        if (wooResults.length > 0) {
+          console.log(
+            `[VectorSearch] WooCommerce priority search found ${wooResults.length} ${detectedCategory} products`,
+            wooResults.map((r) => ({
+              name: r.name,
+              permalink: r.permalink,
+              price: r.price_sgd,
+            })),
+          );
+
+          const wooText = wooResults
+            .map((r, idx) => {
+              const price = r.price_sgd
+                ? `S$${r.price_sgd.toFixed(2)}`
+                : "Price not available";
+              const url = r.permalink || `https://tradezone.sg`;
+              return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}`;
+            })
+            .join("\n\n");
+
+          return {
+            text: `I found ${wooResults.length} ${detectedCategory === "phone" ? "phone" : "tablet"} product${wooResults.length > 1 ? "s" : ""} in stock:\n\n${wooText}\n\nThese are the ONLY ${detectedCategory} products currently available. For more options, visit https://tradezone.sg`,
+            store: resolvedStore.label,
+            matches: [],
+          };
+        } else {
+          console.log(
+            `[VectorSearch] No WooCommerce matches for ${detectedCategory}, falling back to vector search`,
+          );
+        }
+      } catch (wooError) {
+        console.error(
+          `[VectorSearch] WooCommerce priority search failed:`,
+          wooError,
+        );
+      }
+    }
+  }
+
+  // PRIORITY 2: Fall back to Vector DB search
   try {
     const { id: vectorStoreId, label } = resolvedStore;
 
