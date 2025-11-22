@@ -2606,6 +2606,7 @@ export async function POST(request: NextRequest) {
   let tradeInNeedsPayoutPrompt = false;
   let tradeInReadyForPhotoPrompt = false;
   let tradeInPhotoAcknowledged = false;
+  let tradeInPriceShared = false;
 
   try {
     // Load settings and system prompt
@@ -2881,7 +2882,8 @@ export async function POST(request: NextRequest) {
           hasContactName &&
           hasContactPhone &&
           hasContactEmail;
-        const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
+        const needsPayoutPrompt =
+          readyForPayoutPrompt && !payoutSet && tradeInPriceShared;
         tradeInNeedsPayoutPrompt = needsPayoutPrompt;
         const readyForPhotoNudge =
           deviceCaptured &&
@@ -3092,6 +3094,9 @@ export async function POST(request: NextRequest) {
             );
 
             toolSource = source;
+            if (source === "trade_in_vector_store") {
+              tradeInPriceShared = true;
+            }
             let resolvedResult = result;
 
             if (
