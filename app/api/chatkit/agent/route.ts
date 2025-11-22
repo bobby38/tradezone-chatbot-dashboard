@@ -3782,7 +3782,11 @@ export async function POST(request: NextRequest) {
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
     }
 
-    if (tradeInNeedsPayoutPrompt) {
+    const userMessageLooksLikeFreshTradeIntent =
+      detectTradeInIntent(message) &&
+      !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
+
+    if (tradeInNeedsPayoutPrompt && !userMessageLooksLikeFreshTradeIntent) {
       finalResponse =
         "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.";
     } else if (tradeInReadyForPhotoPrompt) {
