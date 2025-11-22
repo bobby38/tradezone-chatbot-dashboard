@@ -4329,6 +4329,7 @@ The system uses **different search flows** based on the query intent:
 
 #### 1. Product Purchase Searches (Buying)
 **WooCommerce is the SINGLE SOURCE OF TRUTH**
+**Vector/Zep/Perplexity are ENRICHMENT LAYERS**
 
 ```
 User Query: "any samsung phone"
@@ -4337,18 +4338,41 @@ searchProducts tool called
     ↓
 handleVectorSearch(query, context)
     ↓
-PRIORITY 1: WooCommerce JSON Search (lib/agent-tools/searchWooProducts)
+STEP 1: WooCommerce JSON Search (lib/agent-tools/searchWooProducts)
     ├─ Category detection (phone/tablet/gaming console)
     ├─ Token matching with family filters
     ├─ Returns: Product name, price, permalink, stock status
-    └─ If found → Return immediately (don't check vector/zep/perplexity)
+    ├─ If found → Store products, continue to enrichment ✓
+    └─ If NOT found → Return "not in catalog" immediately ✗
     ↓
-If NOT in WooCommerce:
-    └─ Return "not in catalog" message
-    └─ DO NOT search vector DB/Zep/Perplexity (waste of time)
+STEP 2: Vector Database Search (OpenAI file_search)
+    ├─ Search vector store for product details/specs
+    ├─ Returns: Additional context, descriptions, features
+    └─ Enriches WooCommerce results with more details
+    ↓
+STEP 3: Zep Memory Context (lib/zep)
+    ├─ Fetch conversation history and user preferences
+    ├─ Returns: Previous interactions, mentioned products
+    └─ Adds personalization to response
+    ↓
+STEP 4: Perplexity Web Search (if needed)
+    ├─ Search tradezone.sg for blog posts, guides, policies
+    ├─ Returns: Website content, FAQs, how-tos
+    └─ Adds supplementary information
+    ↓
+FINAL RESPONSE:
+    **Products in Stock:** (from WooCommerce)
+    1. Galaxy Z Fold 6 — S$1,099 [View Product](link)
+    
+    **Additional Details:** (from Vector/Zep/Perplexity)
+    - Specs, features, comparisons, user context
 ```
 
-**Key Principle**: If product doesn't exist in WooCommerce, we don't sell it. Stop searching.
+**Key Principles**: 
+- If product doesn't exist in WooCommerce → Stop immediately, don't enrich nothing
+- If product exists in WooCommerce → Layer on Vector/Zep/Perplexity details
+- WooCommerce = "What we sell" (factual inventory)
+- Vector/Zep/Perplexity = "What we know about it" (context/details)
 
 **Implementation**: `lib/tools/vectorSearch.ts:230-285`
 - WooCommerce search runs FIRST for all catalog queries

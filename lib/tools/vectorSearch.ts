@@ -231,46 +231,36 @@ export async function handleVectorSearch(
   const resolvedStore = resolveVectorStore(context);
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
 
-  // PRIORITY 1: WooCommerce is SINGLE SOURCE OF TRUTH for ALL product queries
-  // Check WooCommerce FIRST - if not there, don't waste time with other searches
+  // SEARCH FLOW: WooCommerce → Vector → Zep → Perplexity
+  // WooCommerce = source of truth (what we sell)
+  // Vector/Zep/Perplexity = enrichment layers (add details/context)
+  let wooProducts: Awaited<
+    ReturnType<typeof import("@/lib/agent-tools").searchWooProducts>
+  > = [];
+
   if (resolvedStore.label === "catalog") {
     try {
       console.log(
-        `[VectorSearch] PRIORITY 1: Searching WooCommerce (single source of truth)...`,
+        `[VectorSearch] Step 1: Checking WooCommerce (source of truth)...`,
       );
       const { searchWooProducts } = await import("@/lib/agent-tools");
-      const wooResults = await searchWooProducts(query, 5);
+      wooProducts = await searchWooProducts(query, 5);
 
-      if (wooResults.length > 0) {
+      if (wooProducts.length > 0) {
         console.log(
-          `[VectorSearch] ✅ WooCommerce found ${wooResults.length} products`,
-          wooResults.map((r) => ({
+          `[VectorSearch] ✅ WooCommerce found ${wooProducts.length} products - continuing to enrichment layers`,
+          wooProducts.map((r) => ({
             name: r.name,
             permalink: r.permalink,
             price: r.price_sgd,
           })),
         );
-
-        const wooText = wooResults
-          .map((r, idx) => {
-            const price = r.price_sgd
-              ? `S$${r.price_sgd.toFixed(2)}`
-              : "Price not available";
-            const url = r.permalink || `https://tradezone.sg`;
-            return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}`;
-          })
-          .join("\n\n");
-
-        return {
-          text: `I found ${wooResults.length} product${wooResults.length > 1 ? "s" : ""} in stock:\n\n${wooText}\n\nFor more details, visit https://tradezone.sg`,
-          store: resolvedStore.label,
-          matches: [],
-        };
+        // Continue to vector/zep/perplexity for enrichment
       } else {
         console.log(
           `[VectorSearch] ❌ No WooCommerce matches - product not in catalog`,
         );
-        // If not in WooCommerce, tell user directly - don't waste time with vector/zep/perplexity
+        // If not in WooCommerce, stop here - we don't sell it
         return {
           text: `I don't have "${query}" in our product catalog. Please check https://tradezone.sg for our current inventory, or let me know if you'd like help with something else.`,
           store: resolvedStore.label,
@@ -279,10 +269,10 @@ export async function handleVectorSearch(
       }
     } catch (wooError) {
       console.error(
-        `[VectorSearch] WooCommerce search failed, falling back to vector:`,
+        `[VectorSearch] WooCommerce search failed, continuing to vector:`,
         wooError,
       );
-      // Only fall back to vector if WooCommerce search itself failed (technical error)
+      // Continue to vector search even if WooCommerce fails
     }
   }
 
@@ -577,10 +567,37 @@ export async function handleVectorSearch(
       };
     }
 
-    const finalText =
-      priceSpreadNote && label === "catalog"
-        ? `${trimmedEnriched}\n\n${priceSpreadNote}`
-        : trimmedEnriched;
+    // Step 4: Combine WooCommerce (source of truth) + Vector/Zep enrichment
+    let finalText = "";
+
+    if (wooProducts.length > 0) {
+      console.log(
+        `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
+      );
+      const wooSection = wooProducts
+        .map((r, idx) => {
+          const price = r.price_sgd
+            ? `S$${r.price_sgd.toFixed(2)}`
+            : "Price not available";
+          const url = r.permalink || `https://tradezone.sg`;
+          return `${idx + 1}. **${r.name}** — ${price}\n   [View Product](${url})`;
+        })
+        .join("\n\n");
+
+      // WooCommerce first, then vector enrichment (if any)
+      const vectorEnrichment =
+        trimmedEnriched && trimmedEnriched.length > 50
+          ? `\n\n**Additional Details:**\n${trimmedEnriched}`
+          : "";
+
+      finalText = `**Products in Stock:**\n\n${wooSection}${vectorEnrichment}`;
+    } else {
+      // No WooCommerce products, just use vector/enrichment
+      finalText =
+        priceSpreadNote && label === "catalog"
+          ? `${trimmedEnriched}\n\n${priceSpreadNote}`
+          : trimmedEnriched;
+    }
 
     return {
       text: finalText,
