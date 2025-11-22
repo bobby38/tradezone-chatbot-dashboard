@@ -326,6 +326,11 @@ export async function handleVectorSearch(
                   if (wooResults.length > 0) {
                     console.log(
                       `[VectorSearch] Found ${wooResults.length} WooCommerce matches for ${detectedCategory}`,
+                      wooResults.map((r) => ({
+                        name: r.name,
+                        permalink: r.permalink,
+                        price: r.price_sgd,
+                      })),
                     );
 
                     const wooText = wooResults

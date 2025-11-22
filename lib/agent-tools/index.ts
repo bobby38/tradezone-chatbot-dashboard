@@ -304,13 +304,23 @@ export async function searchWooProducts(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  return scored.map(({ product }) => ({
+  const results = scored.map(({ product }) => ({
     productId: product.id,
     name: product.name,
     permalink: product.permalink,
     price_sgd: parseMoney(product.price),
     stock_status: product.stock_status,
   }));
+
+  // Debug logging to check if permalinks exist
+  if (results.length > 0) {
+    console.log(
+      "[searchWooProducts] Sample result:",
+      JSON.stringify(results[0], null, 2),
+    );
+  }
+
+  return results;
 }
 
 export async function priceLookup(
