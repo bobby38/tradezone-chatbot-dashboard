@@ -841,34 +841,20 @@ function detectTradeInIntent(query: string): boolean {
   );
 }
 
+// Import catalog families to auto-generate product keywords (no more manual syncing!)
+import catalogData from "@/data/catalog/products_master.json";
+
+// Auto-generate PRODUCT_KEYWORDS from catalog families + common product terms
 const PRODUCT_KEYWORDS = [
-  // Gaming consoles
-  "switch",
-  "ps5",
-  "ps4",
-  "playstation",
-  "xbox",
-  "series x",
-  "series s",
-  "steam deck",
-  "rog ally",
-  "ally",
-  "legion go",
-  "msi claw",
-  "quest",
-  "meta quest",
-  "portal",
-  // Phones & tablets
-  "phone",
-  "iphone",
-  "samsung",
-  "galaxy",
-  "pixel",
-  "oppo",
-  "tablet",
-  "ipad",
-  // Other products
-  "osmo",
+  // Extract all keywords from catalog families
+  ...catalogData.families.flatMap((family: any) => family.keywords || []),
+  // Add common product terms
+  "game",
+  "bundle",
+  "controller",
+  "headset",
+  "headphone",
+  "earbuds",
   "camera",
   "vlog",
   "gimbal",
@@ -876,20 +862,7 @@ const PRODUCT_KEYWORDS = [
   "gpu",
   "rtx",
   "graphics card",
-  "smart glass",
-  "glasses",
-  "xreal",
-  "rayban",
-  "ray-ban",
-  "meta",
-  "console",
-  "bundle",
-  "game",
-  "controller",
-  "headset",
-  "headphone",
-  "earbuds",
-];
+].map((k) => k.toLowerCase());
 
 const PRODUCT_NEED_PATTERNS: RegExp[] = [
   /\bprice\b/i,
