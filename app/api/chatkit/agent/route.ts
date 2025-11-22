@@ -841,20 +841,46 @@ function detectTradeInIntent(query: string): boolean {
   );
 }
 
-// Import catalog families to auto-generate product keywords (no more manual syncing!)
-import catalogData from "@/data/catalog/products_master.json";
-
-// Auto-generate PRODUCT_KEYWORDS from catalog families + common product terms
+// PRODUCT_KEYWORDS: Used to detect when user is asking about products
+// Note: Catalog JSON doesn't include keywords, they're only in build script
+// TODO: Extract to shared constants file for consistency
 const PRODUCT_KEYWORDS = [
-  // Extract all keywords from catalog families
-  ...catalogData.families.flatMap((family: any) => family.keywords || []),
-  // Add common product terms
-  "game",
-  "bundle",
-  "controller",
-  "headset",
-  "headphone",
-  "earbuds",
+  // Gaming consoles
+  "switch",
+  "ps5",
+  "ps4",
+  "playstation",
+  "xbox",
+  "series x",
+  "series s",
+  "steam deck",
+  "rog ally",
+  "ally",
+  "legion",
+  "claw",
+  "ayaneo",
+  "portal",
+  "quest",
+  "meta quest",
+  "vr",
+  "psvr",
+  // Phones & tablets
+  "phone",
+  "iphone",
+  "samsung",
+  "galaxy",
+  "pixel",
+  "oppo",
+  "smartphone",
+  "tablet",
+  "ipad",
+  // Other products
+  "osmo",
+  "glass",
+  "glasses",
+  "xreal",
+  "rayban",
+  "ray-ban",
   "camera",
   "vlog",
   "gimbal",
@@ -862,7 +888,13 @@ const PRODUCT_KEYWORDS = [
   "gpu",
   "rtx",
   "graphics card",
-].map((k) => k.toLowerCase());
+  "game",
+  "bundle",
+  "controller",
+  "headset",
+  "headphone",
+  "earbuds",
+];
 
 const PRODUCT_NEED_PATTERNS: RegExp[] = [
   /\bprice\b/i,
