@@ -2,6 +2,10 @@ import {
   findCatalogMatches,
   type CatalogMatch,
 } from "@/lib/chatkit/productCatalog";
+import {
+  findTradeInPriceMatch,
+  formatPriceRange,
+} from "@/lib/trade-in/priceLookup";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -224,80 +228,20 @@ function enrichQueryWithCategory(query: string): string {
   return query;
 }
 
-interface StaticTradeInEntry {
-  label: string;
-  value: number;
-  pattern: RegExp;
-}
+function formatTradeInResponse(query: string): VectorSearchResult | null {
+  const match = findTradeInPriceMatch(query);
+  if (!match) return null;
 
-const STATIC_TRADE_IN_ENTRIES: StaticTradeInEntry[] = [
-  {
-    label: "PS4 Fat 500GB",
-    value: 50,
-    pattern: /\bps4\b.*\bfat\b.*500\s*gb/i,
-  },
-  {
-    label: "PS4 Fat 1TB",
-    value: 60,
-    pattern: /\bps4\b.*\bfat\b.*1\s*tb/i,
-  },
-  {
-    label: "PS4 Slim 500GB",
-    value: 70,
-    pattern: /\bps4\b.*\bslim\b.*500\s*gb/i,
-  },
-  {
-    label: "PS4 Slim 1TB",
-    value: 80,
-    pattern: /\bps4\b.*\bslim\b.*1\s*tb/i,
-  },
-  {
-    label: "PS4 Pro 1TB",
-    value: 100,
-    pattern: /\bps4\b.*\bpro\b.*1\s*tb/i,
-  },
-  {
-    label: "PS4 Pro 2TB",
-    value: 120,
-    pattern: /\bps4\b.*\bpro\b.*2\s*tb/i,
-  },
-];
-
-const STATIC_TRADE_IN_RANGES: Array<{
-  label: string;
-  min: number;
-  max: number;
-  pattern: RegExp;
-}> = [
-  {
-    label: "Portal White (preowned)",
-    min: 100,
-    max: 130,
-    pattern: /\bportal\b.*\bwhite\b/i,
-  },
-  {
-    label: "Portal Midnight Black (preowned)",
-    min: 110,
-    max: 140,
-    pattern: /\bportal\b.*\b(midnight|black)\b/i,
-  },
-];
-
-function lookupStaticTradeInResult(query: string): VectorSearchResult | null {
-  const lower = query.toLowerCase();
-  for (const entry of STATIC_TRADE_IN_ENTRIES) {
-    if (entry.pattern.test(lower)) {
-      const text = `${entry.label} trade-in estimate: S$${entry.value} (preowned, subject to inspection).`;
-      return { text, store: "trade_in" };
-    }
+  const parts: string[] = [];
+  if (match.preowned) {
+    parts.push(`Preowned: ${formatPriceRange(match.preowned)}`);
   }
-  for (const range of STATIC_TRADE_IN_RANGES) {
-    if (range.pattern.test(lower)) {
-      const text = `${range.label} trade-in estimate: S$${range.min}–${range.max} (subject to inspection).`;
-      return { text, store: "trade_in" };
-    }
+  if (match.brandNew) {
+    parts.push(`Brand new: ${formatPriceRange(match.brandNew)}`);
   }
-  return null;
+  const detail = parts.length ? parts.join(" · ") : "No pricing available";
+  const text = `${match.label} — ${detail}. Subject to inspection.`;
+  return { text, store: "trade_in" };
 }
 
 export async function handleVectorSearch(
@@ -353,7 +297,7 @@ export async function handleVectorSearch(
   }
 
   if (resolvedStore.label === "trade_in") {
-    const manual = lookupStaticTradeInResult(query);
+    const manual = formatTradeInResponse(query);
     if (manual) {
       return manual;
     }

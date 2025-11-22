@@ -3926,6 +3926,16 @@ NEW (Nov): contact → payout → optional photo nudge ("Helps us quote faster")
 
 ---
 
+### Canonical Trade-In Price Source (Single Update Point)
+
+- All trade-in and brand-new price quotes now come from `data/trade_in_prices_2025.json`, parsed by `lib/trade-in/priceLookup.ts`.
+- The JSON already covers Steam Deck, ROG Ally, Legion Go, MSI Claw, Switch family, PS4/PS5, PS Portal, PS VR2, Xbox Series, Meta Quest, Pico 4, and DJI Osmo Pocket 3—the exact set the client maintains.
+- The agent matches user wording against that JSON before asking follow-up questions, so every quote uses the real grid numbers. If a model isn’t in the list, it says so instead of improvising.
+- **Updating prices**: edit the JSON (keep the same structure), commit, redeploy. No prompt/code changes required; the helper automatically picks up the new values.
+- Retail quotes (for upgrade math) also reference the same JSON when a brand-new price exists; otherwise they fall back to WooCommerce so we stay consistent across the board.
+
+---
+
 ### **Testing Checklist**
 
 #### Test Scenario 1: Trade-In with Photos
