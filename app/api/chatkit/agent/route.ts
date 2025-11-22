@@ -455,7 +455,9 @@ interface MemoryHints {
 
 function dedupeStrings(values: string[]): string[] {
   return Array.from(
-    new Set(values.filter((value) => typeof value === "string" && value.trim())),
+    new Set(
+      values.filter((value) => typeof value === "string" && value.trim()),
+    ),
   ).map((value) => value.trim());
 }
 
@@ -474,12 +476,15 @@ function buildMemoryHintsFromZep(zep: ZepContextResult): MemoryHints {
     return { names: [], emails: [], phones: [], devices: [] };
   }
 
-  const emailMatches = blob.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+  const emailMatches =
+    blob.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
   const phoneMatches = blob.match(/\+?\d[\d\s-]{7,}/g) ?? [];
-  const nameMatches = blob.match(/name[:\s-]+([A-Za-z][A-Za-z\s]{2,40})/gi) ?? [];
-  const deviceMatches = blob.match(
-    /ps5|ps4|playstation|xbox|switch|steam deck|rog ally|quest|portal|iphone|ipad/gi,
-  ) ?? [];
+  const nameMatches =
+    blob.match(/name[:\s-]+([A-Za-z][A-Za-z\s]{2,40})/gi) ?? [];
+  const deviceMatches =
+    blob.match(
+      /ps5|ps4|playstation|xbox|switch|steam deck|rog ally|quest|portal|iphone|ipad/gi,
+    ) ?? [];
 
   const names = nameMatches
     .map((match) => match.split(/name[:\s-]+/i)[1]?.trim())
@@ -519,10 +524,7 @@ function buildMemoryGuardrailMessages(
       `Use "Still going by ${name}?" before requesting their name again. Only overwrite if they give a different one.`,
     );
   }
-  if (
-    (!detail?.brand || !detail?.model) &&
-    hints.devices.length
-  ) {
+  if ((!detail?.brand || !detail?.model) && hints.devices.length) {
     messages.push(
       `Earlier memory mentions ${hints.devices[0]}. Reference that model before asking the customer to repeat their device details.`,
     );
@@ -560,7 +562,10 @@ function extractGraphNodePrice(payload: Record<string, any>): number | null {
     const tradeMax = asNumber(payload.tradeIn.max);
     if (tradeMax !== null) return tradeMax;
   }
-  if (typeof payload.tradeMin !== "undefined" || typeof payload.tradeMax !== "undefined") {
+  if (
+    typeof payload.tradeMin !== "undefined" ||
+    typeof payload.tradeMax !== "undefined"
+  ) {
     const tradeValue = asNumber(payload.tradeMin ?? payload.tradeMax);
     if (tradeValue !== null) return tradeValue;
   }
@@ -587,7 +592,8 @@ function pushGraphProvenanceEntries(params: {
     const payload = node.data || {};
     const price = extractGraphNodePrice(payload);
     if (price === null) return;
-    const field = payload.kind === "trade_in" ? "trade_in_value_sgd" : "target_price_sgd";
+    const field =
+      payload.kind === "trade_in" ? "trade_in_value_sgd" : "target_price_sgd";
     verificationData.provenance.push({
       field,
       source: `zep_graph:${payload.modelId || payload.kind || node.name || "node"}`,
@@ -2413,13 +2419,28 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    const zepContext = await fetchZepContext(sessionId);
+    let zepContext: Awaited<ReturnType<typeof fetchZepContext>> = {
+      userSummary: null,
+      context: null,
+    };
+    try {
+      zepContext = await fetchZepContext(sessionId);
+      console.log("[ChatKit] Zep context loaded", {
+        sessionId,
+        hasUserSummary: Boolean(zepContext.userSummary),
+        hasContext: Boolean(zepContext.context),
+      });
+    } catch (zepError: any) {
+      // Graceful fallback when Zep is unavailable (rate limits, quota exceeded, etc.)
+      console.warn(
+        "[ChatKit] Zep unavailable, continuing without memory context",
+        {
+          error: zepError?.message || String(zepError),
+          statusCode: zepError?.statusCode,
+        },
+      );
+    }
     const memoryHints = buildMemoryHintsFromZep(zepContext);
-    console.debug("[ChatKit] Zep context loaded", {
-      sessionId,
-      hasUserSummary: Boolean(zepContext.userSummary),
-      hasContext: Boolean(zepContext.context),
-    });
     let contextInsertIndex = 1;
     if (zepContext.userSummary) {
       messages.splice(contextInsertIndex, 0, {
@@ -2928,7 +2949,8 @@ export async function POST(request: NextRequest) {
               let usedCache = Boolean(cachedResult);
 
               const now = Date.now();
-              const cooldownUntil = zepGraphSessionCooldowns.get(sessionId) || 0;
+              const cooldownUntil =
+                zepGraphSessionCooldowns.get(sessionId) || 0;
 
               if (!graphResult) {
                 if (now < cooldownUntil) {
@@ -2957,7 +2979,11 @@ export async function POST(request: NextRequest) {
                     }
                   } else {
                     graphResult = freshResult;
-                    storeGraphResult(sessionId, normalizedQuestion, freshResult);
+                    storeGraphResult(
+                      sessionId,
+                      normalizedQuestion,
+                      freshResult,
+                    );
                   }
                 }
               }
@@ -3557,7 +3583,8 @@ export async function POST(request: NextRequest) {
       const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
       finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
     } else if (installmentRequested) {
-      finalResponse = `${finalResponse}\n\nInstallments here refer to splitting the top-up you pay for the new device. Once we lock the trade-in value I'll break down the monthly payments for you.`.trim();
+      finalResponse =
+        `${finalResponse}\n\nInstallments here refer to splitting the top-up you pay for the new device. Once we lock the trade-in value I'll break down the monthly payments for you.`.trim();
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);

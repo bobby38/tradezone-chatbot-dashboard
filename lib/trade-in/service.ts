@@ -409,16 +409,25 @@ export async function updateTradeInLead(
     const previousIsMeaningful = hasMeaningfulValue(previousName);
 
     if (!newName || !newIsMeaningful) {
+      // Delete if new name is empty or meaningless
       delete updatePayload.contact_name;
     } else if (previousName && previousIsMeaningful) {
+      // If same name (case-insensitive), skip update
       if (previousName.toLowerCase() === newName.toLowerCase()) {
         delete updatePayload.contact_name;
-      } else {
-        // Keep the previously confirmed meaningful name; ignore later chatter
-        delete updatePayload.contact_name;
       }
+      // Otherwise, ALLOW the update (new meaningful name replaces old one)
+      // Removed the else block that was blocking all updates
     }
   }
+
+  console.log("[TradeIn] Updating lead:", {
+    leadId,
+    fieldsToUpdate: Object.keys(updatePayload),
+    hasContactName: "contact_name" in updatePayload,
+    hasContactEmail: "contact_email" in updatePayload,
+    hasContactPhone: "contact_phone" in updatePayload,
+  });
 
   const { data: updatedLead, error: updateError } = await supabaseAdmin
     .from("trade_in_leads")

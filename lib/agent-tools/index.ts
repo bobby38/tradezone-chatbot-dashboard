@@ -10,11 +10,10 @@ import {
   type PriceRange,
 } from "@/lib/chatkit/productCatalog";
 
-const WOO_PRODUCTS_PATH = path.join(
-  process.cwd(),
-  "public",
-  "tradezone-WooCommerce-Products.json",
-);
+// Support both local files and remote URLs for WooCommerce product catalog
+const WOO_PRODUCTS_PATH =
+  process.env.WOOCOMMERCE_PRODUCT_JSON_PATH ||
+  path.join(process.cwd(), "public", "tradezone-WooCommerce-Products.json");
 
 const PRICE_GRID_SOURCE = "products_master.json";
 const REVIEW_TABLE = "agent_review_queue";
@@ -158,11 +157,39 @@ async function loadWooProducts(): Promise<Map<number, WooProduct>> {
     return wooProductsCache.map;
   }
   try {
-    const raw = await fs.readFile(WOO_PRODUCTS_PATH, "utf8");
+    let raw: string;
+
+    // Support both local files and remote URLs
+    if (
+      WOO_PRODUCTS_PATH.startsWith("http://") ||
+      WOO_PRODUCTS_PATH.startsWith("https://")
+    ) {
+      console.log(
+        "[agent-tools] Fetching WooCommerce products from URL:",
+        WOO_PRODUCTS_PATH,
+      );
+      const response = await fetch(WOO_PRODUCTS_PATH);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch WooCommerce products: ${response.status} ${response.statusText}`,
+        );
+      }
+      raw = await response.text();
+    } else {
+      console.log(
+        "[agent-tools] Loading WooCommerce products from local file:",
+        WOO_PRODUCTS_PATH,
+      );
+      raw = await fs.readFile(WOO_PRODUCTS_PATH, "utf8");
+    }
+
     const parsed = JSON.parse(raw) as WooProduct[];
     const map = new Map<number, WooProduct>();
     parsed.forEach((product) => map.set(product.id, product));
     wooProductsCache = { map, loadedAt: Date.now() };
+    console.log(
+      `[agent-tools] ✅ Loaded ${map.size} WooCommerce products from ${WOO_PRODUCTS_PATH.startsWith("http") ? "URL" : "local file"}`,
+    );
     return map;
   } catch (error) {
     console.warn("[agent-tools] Failed to load WooCommerce snapshot", error);

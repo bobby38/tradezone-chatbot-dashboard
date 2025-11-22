@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
           type: "server_vad",
           threshold: 0.5,
           prefix_padding_ms: 300,
-          silence_duration_ms: 200,
+          silence_duration_ms: 500, // Increased from 200ms to 500ms to prevent interruptions
         },
         tools: VOICE_TOOL_DEFINITIONS,
         tool_choice: "auto",

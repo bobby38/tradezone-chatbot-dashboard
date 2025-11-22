@@ -142,11 +142,94 @@ export interface VectorSearchResult {
   matches?: CatalogMatch[];
 }
 
+/**
+ * Extract product category from query for better search filtering
+ */
+function extractProductCategory(query: string): string | null {
+  const lower = query.toLowerCase();
+
+  // Category detection patterns (order matters - check specific before general)
+  const categoryPatterns = [
+    {
+      pattern: /\b(laptop|notebook|ultrabook|gaming\s*laptop)\b/i,
+      category: "laptop",
+    },
+    { pattern: /\b(desktop|pc|tower|gaming\s*pc)\b/i, category: "desktop" },
+    {
+      pattern: /\b(graphics?\s*card|gpu|video\s*card|rtx|gtx|radeon)\b/i,
+      category: "gpu",
+    },
+    {
+      pattern: /\b(console|playstation|ps[1-5]|xbox|nintendo|switch)\b/i,
+      category: "console",
+    },
+    {
+      pattern: /\b(handheld|steam\s*deck|rog\s*ally|legion\s*go|switch)\b/i,
+      category: "handheld",
+    },
+    {
+      pattern: /\b(phone|mobile|smartphone|iphone|samsung\s*galaxy)\b/i,
+      category: "phone",
+    },
+    { pattern: /\b(tablet|ipad)\b/i, category: "tablet" },
+    { pattern: /\b(monitor|display|screen)\b/i, category: "monitor" },
+    { pattern: /\b(keyboard|mechanical\s*keyboard)\b/i, category: "keyboard" },
+    { pattern: /\b(mouse|gaming\s*mouse)\b/i, category: "mouse" },
+    { pattern: /\b(headset|headphone|earphone)\b/i, category: "audio" },
+  ];
+
+  for (const { pattern, category } of categoryPatterns) {
+    if (pattern.test(lower)) {
+      return category;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Enhance query with category context for better search results
+ */
+function enrichQueryWithCategory(query: string): string {
+  const category = extractProductCategory(query);
+
+  if (!category) {
+    return query;
+  }
+
+  // Add category-specific context to improve search accuracy
+  const categoryHints: Record<string, string> = {
+    laptop: "gaming laptop computer with",
+    desktop: "desktop gaming PC with",
+    gpu: "graphics card GPU component",
+    console: "gaming console system",
+    handheld: "portable gaming handheld device",
+    phone: "mobile phone smartphone",
+    tablet: "tablet device",
+    monitor: "gaming monitor display",
+    keyboard: "mechanical gaming keyboard",
+    mouse: "gaming mouse",
+    audio: "gaming headset audio",
+  };
+
+  const hint = categoryHints[category];
+  if (hint) {
+    console.log(
+      `[VectorSearch] Detected category: ${category}, enriching query`,
+    );
+    return `${hint} ${query}`;
+  }
+
+  return query;
+}
+
 export async function handleVectorSearch(
   query: string,
   context?: VectorSearchContext,
 ): Promise<VectorSearchResult> {
   const resolvedStore = resolveVectorStore(context);
+  const enrichedQuery = enrichQueryWithCategory(query);
+
   try {
     const { id: vectorStoreId, label } = resolvedStore;
 
@@ -158,7 +241,7 @@ export async function handleVectorSearch(
       },
       body: JSON.stringify({
         model: "gpt-4.1-mini",
-        input: query,
+        input: enrichedQuery, // Use enriched query with category context
         tools: [
           {
             type: "file_search",
