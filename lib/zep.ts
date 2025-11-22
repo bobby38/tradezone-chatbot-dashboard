@@ -57,6 +57,7 @@ export interface ZepGraphQueryResult {
   summary: string;
   nodes: ZepGraphNodeSummary[];
   facts: string[];
+  rateLimited?: boolean;
 }
 
 export async function fetchZepContext(
@@ -160,10 +161,15 @@ export async function queryZepGraphContext(
     return normalized;
   } catch (error) {
     console.error("[Zep] graph.search failed", error);
+    const statusCode = (error as any)?.statusCode;
     return {
-      summary: "Encountered an issue retrieving structured data.",
+      summary:
+        statusCode === 429
+          ? "Structured catalog is cooling down."
+          : "Encountered an issue retrieving structured data.",
       nodes: [],
       facts: [],
+      rateLimited: statusCode === 429,
     };
   }
 }

@@ -738,6 +738,52 @@ const MODIFIER_FILLER_TOKENS = new Set([
   "50%",
 ]);
 
+const ZEP_GRAPH_CACHE_TTL_MS = 60 * 1000;
+const ZEP_GRAPH_CACHE_LIMIT = 200;
+const ZEP_GRAPH_RATE_LIMIT_COOLDOWN_MS = 30 * 1000;
+const zepGraphCache = new Map<
+  string,
+  { result: ZepGraphQueryResult; expiresAt: number }
+>();
+const zepGraphSessionCooldowns = new Map<string, number>();
+
+function normalizeGraphQuestion(question: string): string {
+  return question.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getCachedGraphResult(
+  sessionId: string,
+  normalizedQuestion: string,
+): ZepGraphQueryResult | null {
+  const cacheKey = `${sessionId}:${normalizedQuestion}`;
+  const cached = zepGraphCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+  if (cached) {
+    zepGraphCache.delete(cacheKey);
+  }
+  return null;
+}
+
+function storeGraphResult(
+  sessionId: string,
+  normalizedQuestion: string,
+  result: ZepGraphQueryResult,
+) {
+  const cacheKey = `${sessionId}:${normalizedQuestion}`;
+  zepGraphCache.set(cacheKey, {
+    result,
+    expiresAt: Date.now() + ZEP_GRAPH_CACHE_TTL_MS,
+  });
+  if (zepGraphCache.size > ZEP_GRAPH_CACHE_LIMIT) {
+    const oldest = zepGraphCache.keys().next().value;
+    if (oldest) {
+      zepGraphCache.delete(oldest);
+    }
+  }
+}
+
 const HIGH_END_KEYWORDS = new Set([
   "highend",
   "high",
@@ -1289,8 +1335,9 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasDevice = Boolean(detail.brand && detail.model);
     // Storage is optional - many devices have fixed storage (PS5 825GB/2TB, Switch 64GB, etc.)
     const hasStorage = Boolean(detail.storage);
-    const hasContact = Boolean(detail.contact_name && detail.contact_phone);
+    const hasContactPhone = Boolean(detail.contact_phone);
     const hasEmail = Boolean(detail.contact_email);
+    const hasContactName = Boolean(detail.contact_name);
     const hasPayout = Boolean(detail.preferred_payout);
 
     // Check if photos step acknowledged (encouraged but no longer blocking email)
@@ -1303,7 +1350,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     if (
       alreadyNotified ||
       !hasDevice ||
-      !hasContact ||
+      !hasContactPhone ||
       !hasEmail ||
       !hasPayout
     ) {
@@ -1311,12 +1358,19 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         alreadyNotified,
         hasDevice,
         hasStorage,
-        hasContact,
+        hasContactPhone,
         hasEmail,
         hasPayout,
         photoStepAcknowledged,
       });
       return null;
+    }
+
+    if (!hasContactName) {
+      console.warn(
+        "[ChatKit] Auto-submit proceeding without confirmed contact name",
+        { leadId: params.leadId },
+      );
     }
 
     console.log(
@@ -1628,6 +1682,40 @@ async function buildTradeInSummary(
     console.error("[ChatKit] Failed to build trade-in summary", err);
     return null;
   }
+}
+
+function buildTradeInUserSummary(detail: any): string | null {
+  if (!detail) return null;
+  const deviceParts = [detail.brand, detail.model, detail.storage]
+    .filter(Boolean)
+    .map((value: string) => value.trim())
+    .filter(Boolean);
+  const accessories = Array.isArray(detail.accessories)
+    ? detail.accessories.join(", ")
+    : detail.accessories;
+
+  const lines = [
+    "Saved trade-in info so far:",
+    deviceParts.length ? `Device: ${deviceParts.join(" ")}` : null,
+    detail.condition ? `Condition: ${detail.condition}` : null,
+    accessories ? `Accessories: ${accessories}` : null,
+    detail.preferred_payout
+      ? `Payout preference: ${detail.preferred_payout}`
+      : null,
+    detail.contact_name || detail.contact_phone || detail.contact_email
+      ? `Contact: ${[
+          detail.contact_name,
+          detail.contact_phone,
+          detail.contact_email,
+        ]
+          .filter(Boolean)
+          .join(" · ")}`
+      : null,
+  ].filter(Boolean);
+
+  if (lines.length <= 1) return null;
+  lines.push("Ask the customer if anything needs updating before proceeding.");
+  return lines.join("\n");
 }
 
 function isGenericAssistantReply(text: string) {
@@ -2581,6 +2669,16 @@ export async function POST(request: NextRequest) {
           // Remove payout mention if photos not asked yet
           lastHybridResult = null;
         }
+
+        if (deviceCaptured && hasContactEmail && hasContactPhone) {
+          const userSummary = buildTradeInUserSummary(tradeInLeadDetail);
+          if (userSummary) {
+            messages.push({
+              role: "system",
+              content: `${userSummary}\nOnly recap once unless the customer changes something.`,
+            });
+          }
+        }
       }
 
       const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
@@ -2811,36 +2909,86 @@ export async function POST(request: NextRequest) {
               typeof functionArgs.question === "string"
                 ? functionArgs.question.trim()
                 : "";
+            let graphCallSuccess = false;
             if (!question) {
               toolResult =
                 "I need a specific pricing or bundle question to query the TradeZone graph.";
             } else {
-              const graphResult = await queryZepGraphContext(
-                question,
+              const normalizedQuestion = normalizeGraphQuestion(question);
+              const cachedResult = getCachedGraphResult(
                 sessionId,
+                normalizedQuestion,
               );
-              toolResult = graphResult.summary;
-              toolSource = "product_catalog";
-              pushGraphProvenanceEntries({
-                nodes: graphResult.nodes,
-                verificationData,
-              });
-              const conflictList = await detectGraphConflictsFromNodes(
-                graphResult.nodes,
-              );
-              if (conflictList.length) {
-                verificationData.flags.requires_human_review = true;
-                verificationData.flags.is_provisional = true;
-                messages.push({
-                  role: "system",
-                  content: formatGraphConflictSystemMessage(conflictList),
-                });
+              let graphResult = cachedResult;
+              let usedCache = Boolean(cachedResult);
+
+              const now = Date.now();
+              const cooldownUntil = zepGraphSessionCooldowns.get(sessionId) || 0;
+
+              if (!graphResult) {
+                if (now < cooldownUntil) {
+                  toolResult =
+                    "Structured catalog is cooling down—try again in a few seconds.";
+                } else {
+                  zepGraphSessionCooldowns.set(sessionId, now);
+                  const freshResult = await queryZepGraphContext(
+                    question,
+                    sessionId,
+                  );
+                  if (freshResult.rateLimited) {
+                    zepGraphSessionCooldowns.set(
+                      sessionId,
+                      now + ZEP_GRAPH_RATE_LIMIT_COOLDOWN_MS,
+                    );
+                    toolResult =
+                      "Structured catalog is cooling down—reusing recent info.";
+                    const fallbackCached = getCachedGraphResult(
+                      sessionId,
+                      normalizedQuestion,
+                    );
+                    if (fallbackCached) {
+                      graphResult = fallbackCached;
+                      usedCache = true;
+                    }
+                  } else {
+                    graphResult = freshResult;
+                    storeGraphResult(sessionId, normalizedQuestion, freshResult);
+                  }
+                }
               }
-              const citationReminder = summarizeGraphNodesForPrompt(
-                graphResult.nodes,
-              );
-              if (citationReminder) {
-                messages.push({ role: "system", content: citationReminder });
+
+              if (graphResult) {
+                toolResult = graphResult.summary;
+                toolSource = "product_catalog";
+                pushGraphProvenanceEntries({
+                  nodes: graphResult.nodes,
+                  verificationData,
+                });
+                const conflictList = await detectGraphConflictsFromNodes(
+                  graphResult.nodes,
+                );
+                if (conflictList.length) {
+                  verificationData.flags.requires_human_review = true;
+                  verificationData.flags.is_provisional = true;
+                  messages.push({
+                    role: "system",
+                    content: formatGraphConflictSystemMessage(conflictList),
+                  });
+                }
+                const citationReminder = summarizeGraphNodesForPrompt(
+                  graphResult.nodes,
+                );
+                if (citationReminder) {
+                  messages.push({ role: "system", content: citationReminder });
+                }
+                if (usedCache) {
+                  messages.push({
+                    role: "system",
+                    content:
+                      "Using cached structured catalog data to avoid repeated graph lookups.",
+                  });
+                }
+                graphCallSuccess = true;
               }
             }
 
@@ -2857,7 +3005,7 @@ export async function POST(request: NextRequest) {
               args: functionArgs,
               result_preview: toolResult.slice(0, 280),
               source: toolSource,
-              success: true,
+              success: graphCallSuccess,
               latency_ms: Date.now() - toolStart,
             });
           } else if (functionName === "tradein_update_lead") {
@@ -3401,8 +3549,10 @@ export async function POST(request: NextRequest) {
       const monthly3 = Math.round(topUp / 3);
       const monthly6 = Math.round(topUp / 6);
       const monthly12 = Math.round(topUp / 12);
-      const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout).`;
+      const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
       finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
+    } else if (installmentRequested) {
+      finalResponse = `${finalResponse}\n\nInstallments here refer to splitting the top-up you pay for the new device. Once we lock the trade-in value I'll break down the monthly payments for you.`.trim();
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
