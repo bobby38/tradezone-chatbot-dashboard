@@ -842,6 +842,7 @@ function detectTradeInIntent(query: string): boolean {
 }
 
 const PRODUCT_KEYWORDS = [
+  // Gaming consoles
   "switch",
   "ps5",
   "ps4",
@@ -857,6 +858,16 @@ const PRODUCT_KEYWORDS = [
   "quest",
   "meta quest",
   "portal",
+  // Phones & tablets
+  "phone",
+  "iphone",
+  "samsung",
+  "galaxy",
+  "pixel",
+  "oppo",
+  "tablet",
+  "ipad",
+  // Other products
   "osmo",
   "camera",
   "gpu",
