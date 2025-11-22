@@ -334,17 +334,17 @@ export async function handleVectorSearch(
                     );
 
                     const wooText = wooResults
-                      .map((r) => {
+                      .map((r, idx) => {
                         const price = r.price_sgd
                           ? `S$${r.price_sgd.toFixed(2)}`
                           : "Price not available";
                         const url = r.permalink || `https://tradezone.sg`;
-                        return `- **${r.name}** — ${price}\n  [View Product](${url})`;
+                        return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}`;
                       })
                       .join("\n\n");
 
                     return {
-                      text: `**${detectedCategory === "phone" ? "Phones" : "Tablets"} Available:**\n\n${wooText}\n\n*Need more options? Check our full catalog at [tradezone.sg](https://tradezone.sg)*`,
+                      text: `I found ${wooResults.length} ${detectedCategory === "phone" ? "phone" : "tablet"} product${wooResults.length > 1 ? "s" : ""} in stock:\n\n${wooText}\n\nThese are the ONLY ${detectedCategory} products currently available. For more options, visit https://tradezone.sg`,
                       store: label,
                       matches: [],
                     };
