@@ -580,17 +580,21 @@ export async function handleVectorSearch(
             ? `S$${r.price_sgd.toFixed(2)}`
             : "Price not available";
           const url = r.permalink || `https://tradezone.sg`;
-          return `${idx + 1}. **${r.name}** — ${price}\n   [View Product](${url})`;
+          // CRITICAL: Include product ID to force exact name usage
+          return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${r.productId}`;
         })
         .join("\n\n");
 
       // WooCommerce first, then vector enrichment (if any)
       const vectorEnrichment =
         trimmedEnriched && trimmedEnriched.length > 50
-          ? `\n\n**Additional Details:**\n${trimmedEnriched}`
+          ? `\n\n**Additional Context:**\n${trimmedEnriched}`
           : "";
 
-      finalText = `**Products in Stock:**\n\n${wooSection}${vectorEnrichment}`;
+      // ANTI-HALLUCINATION: Add explicit instruction in the response itself
+      const antiHallucinationNote = `\n\n⚠️ SYSTEM NOTE: These are the ONLY ${wooProducts.length} product(s) available. Do NOT add, modify, or suggest similar products. Return product names EXACTLY as shown above.`;
+
+      finalText = `**Products Currently in Stock:**\n\n${wooSection}${antiHallucinationNote}${vectorEnrichment}`;
     } else {
       // No WooCommerce products, just use vector/enrichment
       finalText =
