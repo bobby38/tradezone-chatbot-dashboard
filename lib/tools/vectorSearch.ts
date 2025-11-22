@@ -308,7 +308,55 @@ export async function handleVectorSearch(
               console.warn(
                 `[VectorSearch] Category mismatch detected: query="${query}", category="${detectedCategory}", topMatch="${catalogMatches[0].name}"`,
               );
-              // Return helpful message instead of irrelevant results
+
+              // Try WooCommerce direct search as fallback for phones/tablets
+              if (
+                detectedCategory === "phone" ||
+                detectedCategory === "tablet"
+              ) {
+                try {
+                  console.log(
+                    `[VectorSearch] Attempting WooCommerce fallback for ${detectedCategory}...`,
+                  );
+                  const { searchWooProducts } = await import(
+                    "@/lib/agent-tools"
+                  );
+                  const wooResults = await searchWooProducts(query, 5);
+
+                  if (wooResults.length > 0) {
+                    console.log(
+                      `[VectorSearch] Found ${wooResults.length} WooCommerce matches for ${detectedCategory}`,
+                    );
+
+                    const wooText = wooResults
+                      .map((r) => {
+                        const price = r.price_sgd
+                          ? `S$${r.price_sgd.toFixed(2)}`
+                          : "Price not available";
+                        const url = r.permalink || `https://tradezone.sg`;
+                        return `- **${r.name}** — ${price}\n  [View Product](${url})`;
+                      })
+                      .join("\n\n");
+
+                    return {
+                      text: `**${detectedCategory === "phone" ? "Phones" : "Tablets"} Available:**\n\n${wooText}\n\n*Need more options? Check our full catalog at [tradezone.sg](https://tradezone.sg)*`,
+                      store: label,
+                      matches: [],
+                    };
+                  } else {
+                    console.log(
+                      `[VectorSearch] No WooCommerce matches found for ${detectedCategory}`,
+                    );
+                  }
+                } catch (wooError) {
+                  console.error(
+                    `[VectorSearch] WooCommerce fallback failed:`,
+                    wooError,
+                  );
+                }
+              }
+
+              // Fallback message if WooCommerce search also fails
               return {
                 text: `I don't have ${detectedCategory === "phone" ? "phones" : detectedCategory === "laptop" ? "laptops" : detectedCategory + "s"} in my current product database. Please check our website at https://tradezone.sg for our latest ${detectedCategory} inventory, or I can help you with gaming consoles and accessories instead.`,
                 store: label,
