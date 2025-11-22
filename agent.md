@@ -4556,3 +4556,138 @@ OPENAI_API_KEY=sk-xxxxx
 
 ---
 
+### January 22, 2025 - Product Keyword Expansion (Commits: 1a15bf3, 2214b6c, a913bc4, 745410f, ae80444)
+
+**Problem**: Many product searches failed because keywords weren't in `PRODUCT_KEYWORDS` array, causing `isProductInfoQuery: false` → no WooCommerce search → agent hallucinated products.
+
+**Examples of Failures**:
+- "any final fantasy" → Agent invented fake Final Fantasy products not in catalog
+- "any laptop with rtx gpu" → Error (no search triggered)
+- "any robot" → Said "no robots" but link showed Looi AI Robot exists
+- "any chair" → Said "no chairs" but chair category exists on website
+
+**Root Cause**: `PRODUCT_KEYWORDS` array in `app/api/chatkit/agent/route.ts` was incomplete. The `detectProductInfoIntent()` function checks if user message contains any keyword from this array. Missing keywords = no WooCommerce search.
+
+**Solution**: Expanded PRODUCT_KEYWORDS from ~60 keywords to **200+ keywords** covering entire store catalog:
+
+**Added Categories**:
+
+1. **Game Franchises** (Commit: 1a15bf3):
+   - final fantasy, call of duty, assassin's creed, zelda, mario, pokemon
+   - battlefield, fifa, nba 2k, gran turismo, horizon, spiderman
+   - god of war, resident evil, tekken, naruto, dragon ball
+   - minecraft, diablo, halo, persona, yakuza, dark souls
+   - elden ring, bloodborne, sekiro, monster hunter, metal gear
+
+2. **Computers & Laptops** (Commit: 2214b6c):
+   - laptop, notebook, macbook, pc, computer, desktop
+
+3. **PC Parts** (Commit: a913bc4):
+   - motherboard, mobo, cpu, processor, intel, ryzen
+   - ram, memory, ddr4, ddr5
+   - storage, ssd, nvme, hard drive, hdd
+   - cpu cooler, cooler, aio, fan, pc fan
+   - case, pc case, tower, psu, power supply
+
+4. **Gaming Consoles & Handhelds** (Commit: a913bc4):
+   - ps5 pro, playstation portal, steam deck oled
+   - legion go, msi claw, quest 3, psvr2
+   - nintendo, handheld, console
+
+5. **Peripherals & Accessories** (Commits: 745410f, a913bc4):
+   - mouse, mousepad, keyboard, headset, monitor
+   - webcam, microphone, speaker, soundbar
+   - charger, cable, adapter, powerbank, usb-c, type-c
+   - case, cover, stand, mount, grip, skin
+
+6. **Smart Glasses & VR** (Commit: a913bc4):
+   - smart glasses, meta glasses, oakley, xreal
+
+7. **Graphics Cards** (Commit: a913bc4):
+   - GPU model numbers: 3060, 3070, 3080, 3090
+   - 4060, 4070, 4080, 4090
+   - 5050, 5060, 5070, 5080, 5090
+   - radeon, geforce
+
+8. **Cameras & Content Creation** (Commit: a913bc4):
+   - osmo pocket, dji, gimbal, drone, vlog
+
+9. **AI & Robots** (Commit: 745410f):
+   - robot, looi, ai robot
+
+10. **Network Equipment** (Commit: a913bc4):
+    - router, wifi, wifi router, mesh, access point
+
+11. **Furniture** (Commit: ae80444):
+    - chair, gaming chair, office chair, desk, table, gaming desk
+
+12. **General Product Terms** (Commit: a913bc4):
+    - accessory, accessories, gadget, gadgets
+    - warranty, extended warranty
+    - refurbished, pre-order, preorder
+    - brand new, pre-owned, used
+
+**Results**:
+- ✅ "any final fantasy" → Now searches WooCommerce, finds 20+ games
+- ✅ "any laptop with rtx gpu" → Finds GIGABYTE laptops with RTX 5050
+- ✅ "any robot" → Finds Looi AI Robot
+- ✅ "rayban meta" → Finds RayBan Meta smart glasses
+- ✅ "any chair" → Finds SeatZone gaming chairs
+
+**Technical Implementation**:
+```typescript
+// File: app/api/chatkit/agent/route.ts (lines 844-1050)
+const PRODUCT_KEYWORDS = [
+  // Gaming consoles & handhelds
+  "switch", "nintendo", "ps5", "ps4", "ps5 pro",
+  "playstation", "playstation portal", "xbox",
+  "steam deck", "steam deck oled", "rog ally",
+  // ... 200+ keywords total
+];
+
+function detectProductInfoIntent(query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  
+  // Check if query contains any product keyword
+  const hasProductKeyword = PRODUCT_KEYWORDS.some(keyword =>
+    normalized.includes(keyword)
+  );
+  
+  // Check if query has product need pattern
+  const hasProductNeed = PRODUCT_NEED_PATTERNS.some(pattern =>
+    pattern.test(normalized)
+  );
+  
+  return hasProductKeyword || hasProductNeed;
+}
+```
+
+**Before** keyword expansion:
+```
+User: "any final fantasy"
+detectProductInfoIntent() → false (no keyword match)
+toolChoice: 'auto' (agent decides)
+Agent invents products from training data ❌
+```
+
+**After** keyword expansion:
+```
+User: "any final fantasy"
+detectProductInfoIntent() → true ("final fantasy" in PRODUCT_KEYWORDS)
+toolChoice: 'required' (force searchProducts call)
+WooCommerce search → finds 20 real products ✅
+```
+
+**Maintenance Notes**:
+- Keywords stored in `app/api/chatkit/agent/route.ts` (lines 844-1050)
+- TODO: Extract to shared constants file (`data/product_keywords.json`)
+- When adding new product categories, update PRODUCT_KEYWORDS array
+- Test with: Check logs for `isProductInfoQuery: true/false`
+
+**Related Files**:
+- Keyword detection: `app/api/chatkit/agent/route.ts:1057-1082`
+- WooCommerce search: `lib/agent-tools/index.ts:238-327`
+- Vector search flow: `lib/tools/vectorSearch.ts:230-285`
+
+---
+
