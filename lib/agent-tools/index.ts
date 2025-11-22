@@ -312,6 +312,17 @@ export async function searchWooProducts(
         }
         // Bonus points for phone/tablet category match
         score += 100;
+
+        // CRITICAL: Prioritize exact brand matches (oppo, pixel, samsung, etc.)
+        // If query has specific brand, boost products with that brand
+        const brandTokens = tokens.filter((t) =>
+          ["oppo", "pixel", "samsung", "galaxy", "iphone"].includes(t),
+        );
+        brandTokens.forEach((brand) => {
+          if (name.includes(brand)) {
+            score += 500; // Heavy bonus for matching the requested brand
+          }
+        });
       }
       // Apply family filter if detected (gaming products)
       else if (familyFilter && tokens.length > 1) {
