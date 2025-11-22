@@ -4318,3 +4318,217 @@ Agent: "128GB or 1TB?" ← ❌ WRONG! Switch OLED only has 64GB
 - Ready for Coolify auto-deploy
 
 ---
+
+---
+
+## Product Search Architecture (January 2025)
+
+### Search Flow Priority Order
+
+The system uses **different search flows** based on the query intent:
+
+#### 1. Product Purchase Searches (Buying)
+**WooCommerce is the SINGLE SOURCE OF TRUTH**
+
+```
+User Query: "any samsung phone"
+    ↓
+searchProducts tool called
+    ↓
+handleVectorSearch(query, context)
+    ↓
+PRIORITY 1: WooCommerce JSON Search (lib/agent-tools/searchWooProducts)
+    ├─ Category detection (phone/tablet/gaming console)
+    ├─ Token matching with family filters
+    ├─ Returns: Product name, price, permalink, stock status
+    └─ If found → Return immediately (don't check vector/zep/perplexity)
+    ↓
+If NOT in WooCommerce:
+    └─ Return "not in catalog" message
+    └─ DO NOT search vector DB/Zep/Perplexity (waste of time)
+```
+
+**Key Principle**: If product doesn't exist in WooCommerce, we don't sell it. Stop searching.
+
+**Implementation**: `lib/tools/vectorSearch.ts:230-285`
+- WooCommerce search runs FIRST for all catalog queries
+- Only falls back to vector search on technical errors (API failure)
+- Never continues to other search methods if WooCommerce returns empty
+
+#### 2. Trade-In Pricing Searches (Selling/Upgrading)
+**Uses dedicated trade-in vector store for pricing grids**
+
+```
+User Query: "trade-in ps5 price" or "upgrade rog ally to ps5 pro"
+    ↓
+searchProducts tool with "trade-in {device}" query
+    ↓
+handleVectorSearch(query, context="trade_in")
+    ↓
+resolveVectorStore → Uses OPENAI_VECTOR_STORE_ID_TRADEIN
+    ↓
+OpenAI Responses API with file_search
+    ↓
+Returns: Trade-in price ranges, conditions, upgrade calculations
+```
+
+**Trade-In Workflow** (from `lib/chatkit/defaultPrompt.ts:84-106`):
+1. Fetch trade-in value from trade-in vector store
+2. Fetch target product price from WooCommerce catalog
+3. Calculate: `top_up = target_price - trade_in_value`
+4. Quote both numbers: "ROG Ally X trade-in ~S$600. PS5 Pro (new) S$1,099. Top-up ≈ S$499."
+
+#### 3. Website Info Searches (Policies/Guides)
+**Perplexity search on tradezone.sg domain**
+
+```
+User Query: "return policy" or "warranty info"
+    ↓
+searchtool called
+    ↓
+handlePerplexitySearch (lib/tools/perplexitySearch.ts)
+    ↓
+Perplexity API with domain: tradezone.sg filter
+    ↓
+Returns: Policy pages, blog articles, FAQ content
+```
+
+### WooCommerce Search Implementation
+
+**File**: `lib/agent-tools/index.ts:238-327`
+
+**Features**:
+- **Category Detection**: Phones, tablets, gaming consoles (PS5, Xbox, Switch, etc.)
+- **Family Filtering**: Prevents cross-contamination (e.g., "samsung phone" won't match Samsung SSDs)
+- **Token Matching**: Scores products by keyword matches in name
+- **Bonus Scoring**: +100 points for category matches (phones/tablets)
+
+**Category Patterns**:
+```typescript
+{
+  pattern: /\b(iphone|samsung\s*galaxy|galaxy\s*(z|s|a|note)|pixel|oppo)\b/i,
+  keywords: ["iphone", "galaxy z", "galaxy s", "galaxy a", "pixel", "oppo"],
+  category: "phone"
+},
+{
+  pattern: /\b(ipad|galaxy\s*tab|tablet)\b/i,
+  keywords: ["ipad", "galaxy tab", "tablet"],
+  category: "tablet"
+}
+```
+
+**Example Query Flow**:
+```
+Query: "any samsung phone"
+  ↓
+Category detected: "phone"
+Filter keywords: ["iphone", "galaxy z", "galaxy s", "galaxy a", "pixel", "oppo"]
+  ↓
+WooCommerce products scanned:
+  ❌ Samsung 980 PRO NVMe SSD (no phone keyword match)
+  ❌ Samsung EVO Plus SD Card (no phone keyword match)
+  ✅ Galaxy Z Fold 6 White 256GB (matches "galaxy z")
+  ✅ iPhone 15 Pro Max (matches "iphone")
+  ↓
+Returns: Galaxy Z Fold 6, iPhone 15 (sorted by score)
+```
+
+### Vector Store Configuration
+
+Two separate OpenAI vector stores:
+
+1. **Catalog Store** (`OPENAI_VECTOR_STORE_ID_CATALOG`)
+   - Contains: Product specs, descriptions, category info
+   - Used by: Product searches (after WooCommerce check fails)
+   - Purpose: Enrich product answers with detailed specs
+
+2. **Trade-In Store** (`OPENAI_VECTOR_STORE_ID_TRADEIN`)
+   - Contains: Trade-in pricing grids, condition matrices, upgrade paths
+   - Used by: Trade-in and upgrade quotes
+   - Purpose: Calculate cash-out and top-up values
+
+### Anti-Hallucination Safeguards
+
+**File**: `lib/chatkit/defaultPrompt.ts:69`
+
+```
+🔴 CRITICAL - NO PRODUCT HALLUCINATION:
+NEVER invent or add product names, models, or prices beyond what 
+the search tool explicitly returned. If the tool says "I found 1 
+phone product", you MUST mention EXACTLY 1 product (not 3 or 5).
+Copy product names and prices VERBATIM from the tool result.
+```
+
+**Response Format** (prevents agent from embellishing):
+```
+I found 1 phone product in stock:
+
+1. Galaxy Z Fold 6 White 256GB
+   Price: S$1,099.00
+   Link: https://tradezone.sg/product/galaxy-z-fold-6-white-256gb/
+
+These are the ONLY phone products currently available.
+```
+
+### Environment Variables
+
+```bash
+# WooCommerce Product Catalog (single source of truth)
+WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+
+# Vector Stores (for enrichment/trade-ins only)
+OPENAI_VECTOR_STORE_ID_CATALOG=vs_68e89cf979e88191bb8b4882caadbc0d
+OPENAI_VECTOR_STORE_ID_TRADEIN=vs_xxxxx (if different)
+
+# OpenAI API
+OPENAI_API_KEY=sk-xxxxx
+```
+
+### Debugging Search Flow
+
+**Enable logs to trace search execution**:
+
+```bash
+# Product search logs
+[VectorSearch] PRIORITY 1: Searching WooCommerce (single source of truth)...
+[searchWooProducts] Detected category: phone, filter: ["iphone", "galaxy z", ...]
+[VectorSearch] ✅ WooCommerce found 1 products
+[VectorSearch] ❌ No WooCommerce matches - product not in catalog
+
+# Trade-in search logs
+[VectorSearch] Using TRADE_IN vector store: vs_xxxxx
+[VectorSearch] Vector search complete for trade-in query
+```
+
+### Common Issues & Fixes
+
+**Issue**: "samsung phone" returns Samsung SSDs or SD cards
+**Cause**: No category filtering in searchWooProducts
+**Fix**: Added phone/tablet family detection with keyword filters (Commit: `c0a179b`)
+
+**Issue**: Agent invents products (Galaxy S23, A54) not in WooCommerce
+**Cause**: Agent "improving" search results with knowledge
+**Fix**: Anti-hallucination rule + explicit count in response (Commit: `ab62a1a`)
+
+**Issue**: WooCommerce fallback only triggered on category mismatch
+**Cause**: WooCommerce was secondary to vector search
+**Fix**: Made WooCommerce FIRST for all product queries (Commit: `fa5d72d`)
+
+### Testing Checklist
+
+**Product Searches** (should use WooCommerce only):
+- [ ] "any samsung phone" → Returns Galaxy Z Fold 6 (if in stock)
+- [ ] "ipad" → Returns iPads from WooCommerce
+- [ ] "ps5" → Returns PS5 consoles from WooCommerce
+- [ ] "rtx 5050" → Returns GPUs or "not in catalog"
+
+**Trade-In Searches** (should use vector store):
+- [ ] "trade-in ps5 price" → Returns S$300-360 range
+- [ ] "upgrade rog ally to ps5 pro" → Returns both prices + top-up
+
+**Website Searches** (should use Perplexity):
+- [ ] "return policy" → Returns policy page content
+- [ ] "warranty info" → Returns warranty details from site
+
+---
+
