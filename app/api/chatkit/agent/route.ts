@@ -2755,6 +2755,8 @@ export async function POST(request: NextRequest) {
   let lastHybridQuery: string | null = null;
   let lastHybridMatches: CatalogMatches = [];
   let lastSearchProductsResult: string | null = null;
+  let lastTradeInPrice: number | null = null;
+  let lastRetailPrice: number | null = null;
   let errorMessage: string | null = null;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -3413,6 +3415,15 @@ export async function POST(request: NextRequest) {
             lastHybridSource = source;
             lastHybridQuery = searchQuery;
             lastHybridMatches = matches;
+            // Capture generic price hints for fallback
+            const parsed = pickFirstNumber(resolvedResult);
+            if (parsed) {
+              if (source === "trade_in_vector_store") {
+                lastTradeInPrice = parsed;
+              } else if (source === "product_catalog" || source === "woo") {
+                lastRetailPrice = parsed;
+              }
+            }
             // Capture trade-up prices deterministically based on the query (no reliance on LLM wording)
             if (tradeUpPairIntent && forcedTradeUpMath) {
               const parsedNumber = pickFirstNumber(resolvedResult);
@@ -4291,12 +4302,14 @@ export async function POST(request: NextRequest) {
       const sourceName = tradeUpParts.source || "Your device";
       const targetName = tradeUpParts.target || "target device";
 
-      // Use captured values if present, otherwise fall back to hints
+      // Use captured values if present, otherwise fall back to hints or last tool prices
       let tradeValue =
         forcedTradeUpMath?.tradeValue ??
+        lastTradeInPrice ??
         pickHintPrice(sourceName, TRADE_IN_PRICE_HINTS);
       let retailPrice =
         forcedTradeUpMath?.retailPrice ??
+        lastRetailPrice ??
         pickHintPrice(targetName, RETAIL_PRICE_HINTS);
 
       if (tradeValue != null && retailPrice != null) {
