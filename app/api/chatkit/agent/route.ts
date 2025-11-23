@@ -903,6 +903,11 @@ function pickHintPrice(
   return null;
 }
 
+function normalizeProductName(name: string | undefined | null): string {
+  if (!name) return "device";
+  return name.trim().replace(/\s+/g, " ");
+}
+
 // PRODUCT_KEYWORDS: Used to detect when user is asking about products
 // Note: Catalog JSON doesn't include keywords, they're only in build script
 // TODO: Extract to shared constants file for consistency
@@ -2763,6 +2768,7 @@ export async function POST(request: NextRequest) {
     target?: string;
     tradeValue?: number | null;
     retailPrice?: number | null;
+    confirmed?: boolean;
   } | null = null;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
@@ -2900,7 +2906,18 @@ export async function POST(request: NextRequest) {
         target: tradeUpParts?.target,
         tradeValue: null,
         retailPrice: null,
+        confirmed: false,
       };
+
+      // Confirm the pair once up front
+      messages.push({
+        role: "system",
+        content: `Confirm the upgrade/exchange pair in one short question: "Confirm: trade ${normalizeProductName(
+          tradeUpParts?.source,
+        )} for ${normalizeProductName(
+          tradeUpParts?.target,
+        )}?" If user says yes/confirmed, proceed with pricing. If no, ask them to restate both devices.`,
+      });
     }
 
     // Check if there's an existing trade-in lead for this session
@@ -3386,6 +3403,32 @@ export async function POST(request: NextRequest) {
             lastHybridSource = source;
             lastHybridQuery = searchQuery;
             lastHybridMatches = matches;
+            // Capture trade-up prices deterministically based on the query (no reliance on LLM wording)
+            if (tradeUpPairIntent && forcedTradeUpMath) {
+              const parsedNumber = pickFirstNumber(resolvedResult);
+              if (parsedNumber) {
+                const sourceHint = forcedTradeUpMath.source
+                  ?.toLowerCase()
+                  .slice(0, 40);
+                const targetHint = forcedTradeUpMath.target
+                  ?.toLowerCase()
+                  .slice(0, 40);
+                const lowerQuery = searchQuery.toLowerCase();
+                const looksLikeSource =
+                  lowerQuery.includes("trade-in") ||
+                  (sourceHint && lowerQuery.includes(sourceHint));
+                const looksLikeTarget =
+                  targetHint && lowerQuery.includes(targetHint);
+                if (looksLikeSource && forcedTradeUpMath.tradeValue == null) {
+                  forcedTradeUpMath.tradeValue = parsedNumber;
+                } else if (
+                  looksLikeTarget &&
+                  forcedTradeUpMath.retailPrice == null
+                ) {
+                  forcedTradeUpMath.retailPrice = parsedNumber;
+                }
+              }
+            }
             const toolLatency = Date.now() - toolStart;
             const loggedArgs = {
               ...functionArgs,
