@@ -328,20 +328,6 @@ export async function handleVectorSearch(
   const tradeSnippet =
     priceListText && isTradeIntentContext ? priceListText : null;
 
-  // 🔴 CRITICAL: If we have exact pricing from JSON for trade-in, return ONLY that
-  // Don't use vector store - it has outdated pricing (e.g., PS4 Pro $350 vs correct $100)
-  if (priceListMatch && isTradeIntentContext) {
-    console.log(
-      `[VectorSearch] ✅ Exact trade-in pricing from JSON - skipping vector store to avoid outdated data`,
-      { match: priceListMatch.label, query },
-    );
-    return {
-      text: `${priceListText}\n\n💡 This is the current trade-in price from our official price list (updated ${new Date().toLocaleDateString()}). Final quote subject to physical inspection at our store.`,
-      store: "trade_in",
-      matches: undefined,
-    };
-  }
-
   if (resolvedStore.label === "catalog") {
     try {
       console.log(
