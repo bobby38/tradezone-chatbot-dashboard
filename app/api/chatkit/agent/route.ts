@@ -1568,7 +1568,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
   history?: Array<{ role: string; content: string }>;
 }): Promise<{ status?: string } | null> {
   try {
-    const detail = await getTradeInLeadDetail(params.leadId);
+    let detail = await getTradeInLeadDetail(params.leadId);
     if (!detail) return null;
 
     const alreadyNotified = Array.isArray(detail.trade_in_actions)
@@ -1580,13 +1580,44 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasDevice = Boolean(detail.brand && detail.model);
     // Storage is optional - many devices have fixed storage (PS5 825GB/2TB, Switch 64GB, etc.)
     const hasStorage = Boolean(detail.storage);
-    const hasContactPhone = Boolean(detail.contact_phone);
-    const hasEmail = Boolean(detail.contact_email);
-    const hasContactName = Boolean(detail.contact_name);
+    let hasContactPhone = Boolean(detail.contact_phone);
+    let hasEmail = Boolean(detail.contact_email);
+    let hasContactName = Boolean(detail.contact_name);
     const hasPayout = Boolean(detail.preferred_payout);
 
     // Check if photos step acknowledged (encouraged but no longer blocking email)
     let photoStepAcknowledged = isPhotoStepAcknowledged(detail, params.history);
+
+    // Attempt to backfill missing contact from recent user messages
+    if ((!hasContactName || !hasContactPhone || !hasEmail) && params.history) {
+      const recentUserConcat = params.history
+        .filter((m) => m.role === "user")
+        .slice(-6)
+        .map((m) => m.content)
+        .join(" ");
+      const contactClues = extractTradeInClues(recentUserConcat);
+      const contactPatch: TradeInUpdateInput = {};
+      if (!hasContactName && contactClues.contact_name) {
+        contactPatch.contact_name = contactClues.contact_name;
+      }
+      if (!hasContactPhone && contactClues.contact_phone) {
+        contactPatch.contact_phone = contactClues.contact_phone;
+      }
+      if (!hasEmail && contactClues.contact_email) {
+        contactPatch.contact_email = contactClues.contact_email;
+      }
+      if (Object.keys(contactPatch).length > 0) {
+        try {
+          await updateTradeInLead(params.leadId, contactPatch);
+          detail = await getTradeInLeadDetail(params.leadId);
+          hasContactPhone = Boolean(detail.contact_phone);
+          hasEmail = Boolean(detail.contact_email);
+          hasContactName = Boolean(detail.contact_name);
+        } catch (backfillError) {
+          console.warn("[ChatKit] Contact backfill failed", backfillError);
+        }
+      }
+    }
 
     // Storage is optional; photos must be acknowledged before auto-submit.
     // If not yet acknowledged, auto-mark as "Not provided — final quote upon inspection"
@@ -2975,14 +3006,15 @@ export async function POST(request: NextRequest) {
         const needsPayoutPrompt =
           readyForPayoutPrompt && !payoutSet && tradeInPriceShared;
         tradeInNeedsPayoutPrompt = needsPayoutPrompt;
+        // Photo prompt should trigger as soon as device+condition+accessories+contact are locked,
+        // independent of payout choice (works for upgrades/installments too).
         const readyForPhotoNudge =
           deviceCaptured &&
           hasCondition &&
           accessoriesCaptured &&
           hasContactName &&
           hasContactPhone &&
-          hasContactEmail &&
-          payoutSet;
+          hasContactEmail;
         tradeInReadyForPhotoPrompt = readyForPhotoNudge && !photoAcknowledged;
 
         if (tradeInReadyForPhotoPrompt) {
@@ -3456,10 +3488,50 @@ export async function POST(request: NextRequest) {
               try {
                 const detailBeforeSubmit =
                   await getTradeInLeadDetail(tradeInLeadId);
-                const photosOk = isPhotoStepAcknowledged(
+                let photosOk = isPhotoStepAcknowledged(
                   detailBeforeSubmit,
                   truncatedHistory,
                 );
+
+                // Try to backfill missing contact just before submit, in case the model forgot to call update
+                if (
+                  detailBeforeSubmit &&
+                  (!detailBeforeSubmit.contact_phone ||
+                    !detailBeforeSubmit.contact_email ||
+                    !detailBeforeSubmit.contact_name)
+                ) {
+                  const recentUserConcat = truncatedHistory
+                    .filter((m) => m.role === "user")
+                    .slice(-6)
+                    .map((m) => m.content)
+                    .join(" ");
+                  const clues = extractTradeInClues(recentUserConcat);
+                  const contactPatch: TradeInUpdateInput = {};
+                  if (!detailBeforeSubmit.contact_name && clues.contact_name) {
+                    contactPatch.contact_name = clues.contact_name;
+                  }
+                  if (
+                    !detailBeforeSubmit.contact_phone &&
+                    clues.contact_phone
+                  ) {
+                    contactPatch.contact_phone = clues.contact_phone;
+                  }
+                  if (
+                    !detailBeforeSubmit.contact_email &&
+                    clues.contact_email
+                  ) {
+                    contactPatch.contact_email = clues.contact_email;
+                  }
+                  if (Object.keys(contactPatch).length > 0) {
+                    await updateTradeInLead(tradeInLeadId, contactPatch);
+                    const refreshed = await getTradeInLeadDetail(tradeInLeadId);
+                    photosOk = isPhotoStepAcknowledged(
+                      refreshed,
+                      truncatedHistory,
+                    );
+                  }
+                }
+
                 if (!photosOk) {
                   // Auto-mark photos as not provided to avoid blocking submission.
                   await updateTradeInLead(tradeInLeadId, {
