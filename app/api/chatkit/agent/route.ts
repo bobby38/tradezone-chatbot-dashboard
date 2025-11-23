@@ -3828,22 +3828,44 @@ export async function POST(request: NextRequest) {
     finalResponse = forceXboxPricePreface(finalResponse, message);
 
     // If the user asked about installment, add rough monthly estimates (3/6/12)
-    if (installmentRequested && latestTopUp?.top_up_sgd) {
-      const topUp = latestTopUp.top_up_sgd;
-      if (topUp >= 300) {
-        const monthly3 = Math.round(topUp / 3);
-        const monthly6 = Math.round(topUp / 6);
-        const monthly12 = Math.round(topUp / 12);
-        const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
-        finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
-      } else {
-        const roundedTopUp = Math.round(topUp);
-        const notEligibleLine = `Installments kick in for top-ups >=S$300 and stay subject to approval. This upgrade's top-up is about S$${roundedTopUp}, so we'll stick to PayNow/bank/cash this time.`;
-        finalResponse = `${finalResponse}\n\n${notEligibleLine}`.trim();
+    if (installmentRequested) {
+      let topUp = latestTopUp?.top_up_sgd;
+
+      // If we don't have latestTopUp from current request, try to extract from memory/context
+      if (!topUp && tradeInLeadDetail) {
+        // Try to extract top-up from notes or source_message_summary
+        const textToSearch = [
+          tradeInLeadDetail.notes,
+          tradeInLeadDetail.source_message_summary,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        const topUpMatch = textToSearch.match(
+          /top[-\s]?up[:\s]+(?:S\$|SGD|~\$)?\s*(\d+)/i,
+        );
+        if (topUpMatch) {
+          topUp = parseInt(topUpMatch[1], 10);
+          console.log("[ChatKit] Extracted top-up from lead notes:", topUp);
+        }
       }
-    } else if (installmentRequested) {
-      finalResponse =
-        `${finalResponse}\n\nInstallments split the top-up you pay for the new device (available once the top-up is >=S$300 and always subject to approval). I'll break down the monthly payments after we lock the devices.`.trim();
+
+      if (topUp) {
+        if (topUp >= 300) {
+          const monthly3 = Math.round(topUp / 3);
+          const monthly6 = Math.round(topUp / 6);
+          const monthly12 = Math.round(topUp / 12);
+          const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
+          finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
+        } else {
+          const roundedTopUp = Math.round(topUp);
+          const notEligibleLine = `Installments kick in for top-ups >=S$300 and stay subject to approval. This upgrade's top-up is about S$${roundedTopUp}, so we'll stick to PayNow/bank/cash this time.`;
+          finalResponse = `${finalResponse}\n\n${notEligibleLine}`.trim();
+        }
+      } else {
+        finalResponse =
+          `${finalResponse}\n\nInstallments split the top-up you pay for the new device (available once the top-up is >=S$300 and always subject to approval). I'll break down the monthly payments after we lock the devices.`.trim();
+      }
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
