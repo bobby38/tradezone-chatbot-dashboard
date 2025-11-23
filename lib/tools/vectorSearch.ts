@@ -240,6 +240,20 @@ function enrichQueryWithCategory(query: string): string {
   return query;
 }
 
+function cleanQueryForSearch(query: string): string {
+  // Remove price-related keywords that confuse WooCommerce search
+  // These keywords guide LLM response but shouldn't filter products
+  const priceKeywords =
+    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive|expensive|any|some|under|below|above|over|less than|more than|around|approximately)\b/gi;
+  const cleaned = query.replace(priceKeywords, "").replace(/\s+/g, " ").trim();
+
+  if (cleaned !== query) {
+    console.log(`[VectorSearch] Cleaned query: "${query}" → "${cleaned}"`);
+  }
+
+  return cleaned || query; // Return original if cleaning results in empty string
+}
+
 function formatTradeInResponse(
   match: ReturnType<typeof findTradeInPriceMatch>,
 ): string {
@@ -295,7 +309,8 @@ export async function handleVectorSearch(
         `[VectorSearch] Step 1: Checking WooCommerce (source of truth)...`,
       );
       const { searchWooProducts } = await import("@/lib/agent-tools");
-      wooProducts = await searchWooProducts(query, wooLimit);
+      const cleanedQuery = cleanQueryForSearch(query);
+      wooProducts = await searchWooProducts(cleanedQuery, wooLimit);
 
       if (wooProducts.length > 0) {
         console.log(
@@ -347,7 +362,13 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
-          const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- You MUST show ALL products from the list above\n- Do NOT filter or hide products based on price keywords (cheap, affordable, expensive, etc.)\n- If user asked for "cheap" or "affordable", recommend the LOWEST PRICED items from the list\n- If user asked for price range (under X, below Y), recommend items within that range from the list\n- NEVER say "no products found" or "couldn't find" - the list above contains available products\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Show the full list with a brief intro mentioning the cheapest/best options for their budget`;
+          const hasAffordableKeyword =
+            /\b(cheap|affordable|budget|inexpensive)\b/i.test(query);
+          const hasPriceRange = /\b(under|below|less than)\s+\$?\d+/i.test(
+            query,
+          );
+
+          const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- User's original query: "${query}"\n- Show ALL ${wooProducts.length} products from the list above\n${hasAffordableKeyword ? "- User wants AFFORDABLE options - highlight the LOWEST PRICED items first\n" : ""}${hasPriceRange ? "- User specified price range - show products within that range\n" : ""}- NEVER say "no products found" or "couldn't find" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted`;
 
           const finalText = `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`;
 
