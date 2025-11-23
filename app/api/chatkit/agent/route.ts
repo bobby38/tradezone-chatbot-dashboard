@@ -3051,7 +3051,7 @@ export async function POST(request: NextRequest) {
       messages.push({
         role: "system",
         content:
-          "Installment request: Offer rough monthly estimates (3/6/12 months) using top-up ÷ months, rounded, and say it's an estimate subject to checkout. Keep reply under two sentences. Set preferred_payout=installment when confirmed.",
+          "Installment request: Offer rough monthly estimates (3/6/12 months) using top-up ÷ months, rounded, and say it's an estimate subject to checkout. Keep the price + installment reply to MAX 2 short sentences (≤25 words total). Set preferred_payout=installment when confirmed.",
       });
     }
 
