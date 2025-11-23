@@ -4517,7 +4517,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       console.log("[TradeUp] After adding confirmation:", finalResponse);
     }
 
+    console.log(
+      "[TradeUp] Before enforceTradeInResponseOverrides:",
+      finalResponse,
+    );
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
+    console.log(
+      "[TradeUp] After enforceTradeInResponseOverrides:",
+      finalResponse,
+    );
 
     // Skip hint injections in trade-up mode (deterministic override already handled it)
     if (!tradeUpPairIntent) {
@@ -4525,7 +4533,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       finalResponse = ensureUpgradeCue(finalResponse, message);
     }
 
-    finalResponse = enforceFamilyContentFilter(finalResponse, message);
+    // Skip family content filter in trade-up mode (we're intentionally mentioning both devices!)
+    if (!tradeUpPairIntent) {
+      console.log(
+        "[TradeUp] Before enforceFamilyContentFilter:",
+        finalResponse,
+      );
+      finalResponse = enforceFamilyContentFilter(finalResponse, message);
+      console.log("[TradeUp] After enforceFamilyContentFilter:", finalResponse);
+    }
     // Ensure Xbox Series S -> Series X upgrade replies carry upgrade/top-up context even if model lookup failed
     if (
       /xbox series s/i.test(message) &&
