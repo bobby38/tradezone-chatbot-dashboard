@@ -1733,13 +1733,20 @@ async function runHybridSearch(
   // 🔴 CRITICAL: For trade-in queries, ALWAYS trust the vector store - never fall back to Perplexity
   const isTradeInQuery = vectorSource === "trade_in_vector_store";
 
+  // Force Perplexity for promotion/sale/deal queries - always check live website
+  const isPromotionQuery =
+    /\b(promotion|promo|sale|deal|discount|offer|special|black friday|cyber monday|clearance)\b/i.test(
+      query,
+    );
+
   const vectorUseful =
     vectorResult &&
     vectorResult.trim().length >= 160 &&
     !/No product information|not found|unavailable|no results|don't have|do not have|not available|no items|no specific|were no|not listed/i.test(
       vectorResult,
     ) &&
-    !disallowedVectorPatterns.some((pattern) => pattern.test(vectorResult));
+    !disallowedVectorPatterns.some((pattern) => pattern.test(vectorResult)) &&
+    !isPromotionQuery; // Always skip vector for promotions
 
   // For trade-in queries, use vector result even if short (pricing data is concise)
   if (vectorUseful || (isTradeInQuery && vectorResult.trim().length > 0)) {
