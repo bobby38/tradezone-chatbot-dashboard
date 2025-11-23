@@ -2864,7 +2864,9 @@ export async function POST(request: NextRequest) {
       tradeInIntent = false;
     }
 
-    if (tradeInIntent && tradeInLeadId) {
+    // Always auto-save extracted trade-in clues when a lead is active,
+    // even if the current message isn’t explicitly tagged as trade-in intent.
+    if (tradeInLeadId) {
       autoExtractedClues = extractTradeInClues(message);
       if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
         if (!tradeDeviceQuery) {
