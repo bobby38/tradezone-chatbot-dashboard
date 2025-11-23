@@ -4044,23 +4044,9 @@ export async function POST(request: NextRequest) {
       finalResponse = deduped.join("\n").trim();
     }
 
-    // Ensure product link is included when the user shared a specific product URL
+    // ALWAYS include product link when we have product information
+    // Don't make users ask for links - share price AND link by default
     if (productSlug && !/https?:\/\//i.test(finalResponse)) {
-      const productUrl = `https://tradezone.sg/product/${productSlug}/`;
-      finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
-    }
-
-    // Only add a search link if user explicitly asked for a link AND we have no product URLs
-    const linkRequested = /\b(link|url|page|website)\b/i.test(message);
-    const hasProductUrl = /https?:\/\/tradezone\.sg\/product\//i.test(
-      finalResponse,
-    );
-
-    // Only add generic search link if:
-    // 1. User explicitly asked for a link/url
-    // 2. We don't already have product links in the response
-    // 3. We have a specific product slug to search for
-    if (linkRequested && !hasProductUrl && productSlug) {
       const productUrl = `https://tradezone.sg/product/${productSlug}/`;
       finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
     }
