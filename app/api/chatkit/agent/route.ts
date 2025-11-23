@@ -4158,7 +4158,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         });
       }
 
-      if (!finalResponse) {
+      // Skip LLM call if we have a deterministic trade-up response (it will be set later)
+      const skipLLMForTradeUp =
+        tradeUpPairIntent &&
+        (precomputedTradeUp.tradeValue != null ||
+          precomputedTradeUp.retailPrice != null);
+
+      if (!finalResponse && !skipLLMForTradeUp) {
         // If no suggestion was made
         const execFinalCompletion = async () => {
           const isGemini = textModel.toLowerCase().includes("gemini");
@@ -4670,6 +4676,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       console.error("[ChatKit] Supabase logging error:", logError);
     }
   } // end finally
+
+  console.log("[ChatKit] FINAL RESPONSE BEFORE RETURN:", finalResponse);
 
   return NextResponse.json(
     {
