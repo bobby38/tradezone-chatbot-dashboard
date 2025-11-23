@@ -4439,14 +4439,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
 
-    // Skip payout/photo prompts in trade-up mode (deterministic override already set the response)
-    if (!tradeUpPairIntent) {
-      if (tradeInNeedsPayoutPrompt && !userMessageLooksLikeFreshTradeIntent) {
+    // In trade-up mode: Skip payout prompt initially, but allow photo prompt after user confirms
+    const tradeUpConfirmed =
+      tradeUpPairIntent && tradeInLeadDetail?.contact_name;
+
+    if (!tradeUpPairIntent || tradeUpConfirmed) {
+      if (
+        tradeInNeedsPayoutPrompt &&
+        !userMessageLooksLikeFreshTradeIntent &&
+        !tradeUpPairIntent
+      ) {
         finalResponse =
           "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.";
       } else if (tradeInReadyForPhotoPrompt) {
         finalResponse =
-          "Photos help us quote faster—want to send one now? If you don't have any handy I'll note 'Photos: Not provided — final quote upon inspection.'";
+          "Got any photos of your device? They help with the quote!";
       }
     }
 
