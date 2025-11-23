@@ -2995,6 +2995,16 @@ export async function POST(request: NextRequest) {
     // even if the current message isn’t explicitly tagged as trade-in intent.
     if (tradeInLeadId) {
       autoExtractedClues = extractTradeInClues(message);
+      // Block auto-setting preferred_payout until contact is present to avoid validation errors
+      if (
+        autoExtractedClues?.preferred_payout &&
+        (!tradeInLeadDetail ||
+          !tradeInLeadDetail.contact_email ||
+          !tradeInLeadDetail.contact_phone ||
+          !tradeInLeadDetail.contact_name)
+      ) {
+        delete autoExtractedClues.preferred_payout;
+      }
       if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
         if (!tradeDeviceQuery) {
           const clueQuery = buildTradeDeviceQuery(null, autoExtractedClues);
