@@ -2848,6 +2848,9 @@ export async function POST(request: NextRequest) {
     tradeInIntent = detectTradeInIntent(message);
     tradeUpPairIntent = detectTradeUpPair(message);
     tradeUpParts = parseTradeUpParts(message);
+    if (tradeUpPairIntent) {
+      tradeInIntent = true; // force trade-in tool path for trade-up phrasing
+    }
 
     // Check if there's an existing trade-in lead for this session
     // This ensures we don't lose context mid-conversation
@@ -3086,6 +3089,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Trade-up pairs should always pull catalog/trade data
+    if (tradeUpPairIntent) {
+      isTradeInPricingQuery = true;
+    }
+
     const shouldForceCatalog =
       tradeUpPairIntent ||
       isTradeInPricingQuery ||
@@ -3125,7 +3133,7 @@ export async function POST(request: NextRequest) {
         : "Use retail price for the second device (default NEW unless user said preowned/used/open-box)";
       messages.push({
         role: "system",
-        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up: '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences, no other products or lists.`,
+        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists.`,
       });
     }
 
