@@ -4441,25 +4441,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           const monthly6 = Math.round(topUp / 6);
           const monthly12 = Math.round(topUp / 12);
           const estimateLine =
-            "Installment options (est.): 3m ~S$" +
+            "Installment options: 3m ~S$" +
             monthly3 +
             "/mo, 6m ~S$" +
             monthly6 +
             "/mo, 12m ~S$" +
             monthly12 +
-            "/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.";
+            "/mo (subject to approval).";
           finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
         } else {
           const roundedTopUp = Math.round(topUp);
           const notEligibleLine =
-            "Installments kick in for top-ups >=S$300 and stay subject to approval. This upgrade's top-up is about S$" +
+            "Top-up is S$" +
             roundedTopUp +
-            ", so we'll stick to PayNow/bank/cash this time.";
+            " (installments start at S$300+). PayNow/bank/cash for this one.";
           finalResponse = `${finalResponse}\n\n${notEligibleLine}`.trim();
         }
       } else {
         finalResponse =
-          `${finalResponse}\n\nInstallments split the top-up you pay for the new device (available once the top-up is >=S$300 and always subject to approval). I'll break down the monthly payments after we lock the devices.`.trim();
+          `${finalResponse}\n\nInstallments available for top-ups >=S$300 (subject to approval). I'll share monthly options once we confirm.`.trim();
       }
     }
 
