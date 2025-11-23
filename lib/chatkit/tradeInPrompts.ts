@@ -295,7 +295,12 @@ WAIT for "yes/correct/yep" before continuing.
 **Step 3: State Clear Pricing** (≤20 words)
 "Your {SOURCE} trades for S$[TRADE]. The {TARGET} is S$[BUY]. Top-up: S$[DIFFERENCE]."
 
-**Step 4: Follow COMPLETE Trade-In Flow** (DO NOT SKIP!)
+**Step 3.5: Ask to Proceed** (≤5 words)
+"Want to proceed with this trade-up?"
+WAIT for "yes/okay/sure/let's do it" before continuing.
+If NO: "No problem! Need help with anything else?"
+
+**Step 4: Follow COMPLETE Trade-In Flow** (ONLY if user said YES to proceed!)
 1. ✅ Ask storage (if not mentioned): "Storage size?"
 2. ✅ Ask condition: "Condition of your {SOURCE}?"
 3. ✅ Ask accessories: "Got the box?"

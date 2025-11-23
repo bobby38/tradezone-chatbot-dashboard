@@ -2942,11 +2942,13 @@ export async function POST(request: NextRequest) {
       // Confirm the pair once up front
       messages.push({
         role: "system",
-        content: `Confirm the upgrade/exchange pair in one short question: "Confirm: trade ${normalizeProductName(
+        content: `First, confirm the trade-up pair in one short question: "Confirm: trade ${normalizeProductName(
           tradeUpParts?.source,
-        )} for ${normalizeProductName(
-          tradeUpParts?.target,
-        )}?" If user says yes/confirmed, proceed with pricing. If no, ask them to restate both devices.`,
+        )} for ${normalizeProductName(tradeUpParts?.target)}?"
+
+After user confirms devices, show the pricing using the precomputed values, then ask: "Want to proceed with this trade-up?"
+
+Only after user says yes/proceed, start collecting details (condition, accessories, contact info, photos, payout). If they say no or hesitate, offer to help with something else.`,
       });
 
       // Pre-fetch prices server-side to avoid LLM gaps
