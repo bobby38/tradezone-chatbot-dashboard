@@ -1084,6 +1084,17 @@ const PRODUCT_NEED_PATTERNS: RegExp[] = [
   /\border\b/i,
   /\bpre[- ]?order\b/i,
   /\bget\b/i,
+  /\bany\b/i,
+  /\bshow\b/i,
+  /\bcheap\b/i,
+  /\bcheaper\b/i,
+  /\bcheapest\b/i,
+  /\baffordable\b/i,
+  /\bbudget\b/i,
+  /\binexpensive\b/i,
+  /\bunder\b/i,
+  /\bbelow\b/i,
+  /\bless than\b/i,
 ];
 
 function detectProductInfoIntent(query: string): boolean {
