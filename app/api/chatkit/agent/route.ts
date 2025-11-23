@@ -853,6 +853,19 @@ function detectTradeUpPair(query: string): boolean {
   return tradePairPattern.test(normalized);
 }
 
+function parseTradeUpParts(
+  query: string,
+): { source?: string; target?: string } | null {
+  const match = query.match(
+    /(trade|upgrade|swap|exchange)\s+(.+?)\s+(for|to)\s+(.+?)(?:[,.]| on | with |$)/i,
+  );
+  if (!match) return null;
+  const source = match[2]?.trim();
+  const target = match[4]?.trim();
+  if (!source || !target) return null;
+  return { source, target };
+}
+
 // PRODUCT_KEYWORDS: Used to detect when user is asking about products
 // Note: Catalog JSON doesn't include keywords, they're only in build script
 // TODO: Extract to shared constants file for consistency
@@ -2706,6 +2719,7 @@ export async function POST(request: NextRequest) {
   let tradeInLeadStatus: string | null = null;
   let tradeInIntent = false;
   let tradeUpPairIntent = false;
+  let tradeUpParts: { source?: string; target?: string } | null = null;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
@@ -2833,6 +2847,7 @@ export async function POST(request: NextRequest) {
 
     tradeInIntent = detectTradeInIntent(message);
     tradeUpPairIntent = detectTradeUpPair(message);
+    tradeUpParts = parseTradeUpParts(message);
 
     // Check if there's an existing trade-in lead for this session
     // This ensures we don't lose context mid-conversation
@@ -3102,10 +3117,15 @@ export async function POST(request: NextRequest) {
 
     // Trade-up pair guardrail: math-first, two sentences, no extra products
     if (tradeUpPairIntent) {
+      const hintSource = tradeUpParts?.source
+        ? `Use trade-in value for "${tradeUpParts.source}"`
+        : "Use trade-in value for the first device mentioned";
+      const hintTarget = tradeUpParts?.target
+        ? `Use retail price for "${tradeUpParts.target}" (default to NEW unless user said preowned/used/open-box)`
+        : "Use retail price for the second device (default NEW unless user said preowned/used/open-box)";
       messages.push({
         role: "system",
-        content:
-          "User is trading one device for another. Default to NEW target pricing unless the user explicitly says preowned/used/open-box—in that case use the preowned price. Respond with ONLY the two numbers and the top-up: '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences, no other products or lists.",
+        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up: '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences, no other products or lists.`,
       });
     }
 
