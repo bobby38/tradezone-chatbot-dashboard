@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { createGeminiChatCompletion } from "@/lib/gemini-client";
 import {
   handleVectorSearch,
   handlePerplexitySearch,
@@ -2992,15 +2993,40 @@ export async function POST(request: NextRequest) {
     const userMessageIndex = messages.length - 1;
     let imageStrippedForTimeout = false;
 
-    const execChatCompletion = async () =>
-      openai.chat.completions.create({
-        model: textModel,
+    const execChatCompletion = async () => {
+      // Check if using Gemini model
+      const isGemini = textModel.toLowerCase().includes("gemini");
+
+      if (isGemini && process.env.GEMINI_API_KEY) {
+        try {
+          console.log(`[ChatKit] Using Gemini model: ${textModel}`);
+          return await createGeminiChatCompletion({
+            model: textModel,
+            messages,
+            tools,
+            tool_choice: toolChoice,
+            temperature: 0.7,
+            max_tokens: 800,
+          });
+        } catch (geminiError) {
+          console.error(
+            `[ChatKit] Gemini failed, falling back to OpenAI:`,
+            geminiError,
+          );
+          // Fall through to OpenAI
+        }
+      }
+
+      // Default: OpenAI
+      return openai.chat.completions.create({
+        model: textModel.includes("gemini") ? "gpt-4o-mini" : textModel,
         messages,
         tools,
         tool_choice: toolChoice,
         temperature: 0.7,
-        max_tokens: 800, // Reduced from 2000 for cost control
+        max_tokens: 800,
       });
+    };
 
     let response;
     try {
@@ -3665,13 +3691,34 @@ export async function POST(request: NextRequest) {
 
       if (!finalResponse) {
         // If no suggestion was made
-        const execFinalCompletion = async () =>
-          openai.chat.completions.create({
-            model: textModel,
+        const execFinalCompletion = async () => {
+          const isGemini = textModel.toLowerCase().includes("gemini");
+
+          if (isGemini && process.env.GEMINI_API_KEY) {
+            try {
+              return await createGeminiChatCompletion({
+                model: textModel,
+                messages,
+                temperature: 0.7,
+                max_tokens: 800,
+              });
+            } catch (geminiError) {
+              console.error(
+                `[ChatKit] Gemini failed, falling back to OpenAI:`,
+                geminiError,
+              );
+              // Fall through to OpenAI
+            }
+          }
+
+          // Default: OpenAI
+          return openai.chat.completions.create({
+            model: textModel.includes("gemini") ? "gpt-4o-mini" : textModel,
             messages,
             temperature: 0.7,
-            max_tokens: 800, // Reduced from 2000 for cost control
+            max_tokens: 800,
           });
+        };
 
         let finalCompletion;
         try {
