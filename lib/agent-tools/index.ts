@@ -267,16 +267,24 @@ export async function searchWooProducts(
       keywords: ["steam deck", "rog ally", "legion", "claw"],
     },
     { pattern: /\b(quest|psvr|vr)\b/i, keywords: ["quest", "psvr", "vr"] },
-    // Phone/tablet patterns - match specific phone brands
+    // Phone/tablet patterns - match generic + specific brands
     {
       pattern:
-        /\b(iphone|samsung\s*galaxy|galaxy\s*(z|s|a|note)|pixel|oppo)\b/i,
-      keywords: ["iphone", "galaxy z", "galaxy s", "galaxy a", "pixel", "oppo"],
+        /\b(phones?|mobile|smartphone|iphone|samsung\s*galaxy|galaxy\s*(z|s|a|note)|pixel|oppo)\b/i,
+      keywords: [
+        "phone",
+        "mobile",
+        "smartphone",
+        "iphone",
+        "galaxy",
+        "pixel",
+        "oppo",
+      ],
       category: "phone",
     },
     {
-      pattern: /\b(ipad|galaxy\s*tab|tablet)\b/i,
-      keywords: ["ipad", "galaxy tab", "tablet"],
+      pattern: /\b(tablets?|ipad|galaxy\s*tab)\b/i,
+      keywords: ["tablet", "ipad", "galaxy tab"],
       category: "tablet",
     },
   ];

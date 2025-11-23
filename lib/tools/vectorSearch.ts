@@ -173,10 +173,10 @@ function extractProductCategory(query: string): string | null {
       category: "handheld",
     },
     {
-      pattern: /\b(phone|mobile|smartphone|iphone|samsung\s*galaxy)\b/i,
+      pattern: /\b(phones?|mobiles?|smartphones?|iphone|samsung\s*galaxy)\b/i,
       category: "phone",
     },
-    { pattern: /\b(tablet|ipad)\b/i, category: "tablet" },
+    { pattern: /\b(tablets?|ipads?)\b/i, category: "tablet" },
     { pattern: /\b(monitor|display|screen)\b/i, category: "monitor" },
     { pattern: /\b(keyboard|mechanical\s*keyboard)\b/i, category: "keyboard" },
     { pattern: /\b(mouse|gaming\s*mouse)\b/i, category: "mouse" },
