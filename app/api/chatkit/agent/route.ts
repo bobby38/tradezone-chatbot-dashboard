@@ -4376,7 +4376,10 @@ export async function POST(request: NextRequest) {
         "Photos help us quote faster—want to send one now? If you don't have any handy I'll note 'Photos: Not provided — final quote upon inspection.'";
     }
 
-    finalResponse = forceXboxPricePreface(finalResponse, message);
+    // Only apply Xbox hints if NOT in trade-up mode (deterministic override takes precedence)
+    if (!tradeUpPairIntent) {
+      finalResponse = forceXboxPricePreface(finalResponse, message);
+    }
 
     // If the user asked about installment, add rough monthly estimates (3/6/12)
     if (installmentRequested) {
@@ -4430,9 +4433,14 @@ export async function POST(request: NextRequest) {
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
-    finalResponse = injectXboxPriceHints(finalResponse, message);
+
+    // Skip hint injections in trade-up mode (deterministic override already handled it)
+    if (!tradeUpPairIntent) {
+      finalResponse = injectXboxPriceHints(finalResponse, message);
+      finalResponse = ensureUpgradeCue(finalResponse, message);
+    }
+
     finalResponse = enforceFamilyContentFilter(finalResponse, message);
-    finalResponse = ensureUpgradeCue(finalResponse, message);
     // Ensure Xbox Series S -> Series X upgrade replies carry upgrade/top-up context even if model lookup failed
     if (
       /xbox series s/i.test(message) &&
