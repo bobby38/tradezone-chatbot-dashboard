@@ -321,6 +321,13 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] ❌ No WooCommerce matches - continuing to vector search for enrichment`,
         );
+        // Flag to check if we should use Perplexity fallback later
+        const detectedCategory = extractProductCategory(query);
+        if (detectedCategory === "phone" || detectedCategory === "tablet") {
+          console.log(
+            `[VectorSearch] Detected ${detectedCategory} query with no WooCommerce results - will use Perplexity if vector search also fails`,
+          );
+        }
         // Continue to vector search - it might find related products or categories
       }
     } catch (wooError) {
@@ -466,7 +473,40 @@ export async function handleVectorSearch(
                 }
               }
 
-              // Fallback message if WooCommerce search also fails
+              // Final fallback: Use Perplexity to search the actual website
+              console.log(
+                `[VectorSearch] Attempting Perplexity search for ${detectedCategory}...`,
+              );
+              try {
+                const { handlePerplexitySearch } = await import(
+                  "./perplexitySearch"
+                );
+                const perplexityQuery = `What ${detectedCategory} products does tradezone.sg currently have in stock? List product names and prices.`;
+                const perplexityResult =
+                  await handlePerplexitySearch(perplexityQuery);
+
+                if (
+                  perplexityResult &&
+                  !perplexityResult.includes("No results found") &&
+                  !perplexityResult.includes("error")
+                ) {
+                  console.log(
+                    `[VectorSearch] ✅ Perplexity found results for ${detectedCategory}`,
+                  );
+                  return {
+                    text: perplexityResult,
+                    store: label,
+                    matches: [],
+                  };
+                }
+              } catch (perplexityError) {
+                console.error(
+                  `[VectorSearch] Perplexity search failed:`,
+                  perplexityError,
+                );
+              }
+
+              // Ultimate fallback message
               return {
                 text: `I don't have ${detectedCategory === "phone" ? "phones" : detectedCategory === "laptop" ? "laptops" : detectedCategory + "s"} in my current product database. Please check our website at https://tradezone.sg for our latest ${detectedCategory} inventory, or I can help you with gaming consoles and accessories instead.`,
                 store: label,
