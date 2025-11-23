@@ -310,7 +310,7 @@ export async function handleVectorSearch(
             .map((product, idx) => {
               const priceLabel =
                 typeof product.price_sgd === "number"
-                  ? ` — S$${product.price_sgd.toFixed(2)}`
+                  ? " — S$" + product.price_sgd.toFixed(2)
                   : "";
               const link = product.permalink
                 ? ` ([View Product](${product.permalink}))`

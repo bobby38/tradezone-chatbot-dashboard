@@ -149,9 +149,11 @@ function renderCatalogMatches(
     const flagship =
       match.flagshipCondition?.basePrice !== null &&
       match.flagshipCondition?.basePrice !== undefined
-        ? ` — S$${match.flagshipCondition.basePrice.toFixed(0)} (${match.flagshipCondition.label})`
+        ? " — S$" +
+          match.flagshipCondition.basePrice.toFixed(0) +
+          ` (${match.flagshipCondition.label})`
         : match.price
-          ? ` — S$${match.price}`
+          ? " — S$" + match.price
           : "";
     const range =
       match.priceRange && match.priceRange.min !== match.priceRange.max
@@ -168,8 +170,8 @@ function formatRangeSummary(
   if (!range) return "";
   const { min, max } = range;
   if (typeof min !== "number" || typeof max !== "number") return "";
-  if (min === max) return `S$${min.toFixed(0)}`;
-  return `S$${min.toFixed(0)}–S$${max.toFixed(0)}`;
+  if (min === max) return "S$" + min.toFixed(0);
+  return "S$" + min.toFixed(0) + "–S$" + max.toFixed(0);
 }
 
 function tokenizeQuery(text: string): string[] {
@@ -250,7 +252,7 @@ function summarizeMatchesByModifier(
     const label = flagship?.label ? ` (${flagship.label})` : "";
     const range = formatRangeSummary(match.priceRange);
     const rangeSuffix = range ? ` (Variants ${range})` : "";
-    return `- ${match.name} — S$${price.toFixed(0)}${label}${rangeSuffix}`;
+    return `- ${match.name} — S$` + price.toFixed(0) + label + rangeSuffix;
   });
 
   const section = `${heading} from the TradeZone catalog:\n\n${lines.join("\n")}`;
@@ -654,7 +656,7 @@ async function detectGraphConflictsFromNodes(
 
 function formatCurrency(value: number | null): string {
   if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
-  return `S$${value.toFixed(0)}`;
+  return "S$" + value.toFixed(0);
 }
 
 function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
@@ -1233,11 +1235,13 @@ function injectXboxPriceHints(response: string, userMessage: string) {
   let updated = response;
 
   if (query.includes("xbox series s") && !/s\$?\s*150/i.test(updated)) {
-    updated = `Xbox Series S trade-in is ~S$150 (subject to inspection).\n${updated}`;
+    updated =
+      "Xbox Series S trade-in is ~S$150 (subject to inspection).\n" + updated;
   }
 
   if (query.includes("xbox series x") && !/s\$?\s*350/i.test(updated)) {
-    updated = `Xbox Series X trade-in is ~S$350 (subject to inspection).\n${updated}`;
+    updated =
+      "Xbox Series X trade-in is ~S$350 (subject to inspection).\n" + updated;
   }
 
   return updated;
@@ -1692,7 +1696,7 @@ async function runHybridSearch(
           .map((product) => {
             const priceLabel =
               typeof product.price_sgd === "number"
-                ? ` — S$${product.price_sgd.toFixed(2)}`
+                ? " — S$" + product.price_sgd.toFixed(2)
                 : "";
             const link = product.permalink
               ? ` (View: ${product.permalink})`
@@ -3964,11 +3968,21 @@ export async function POST(request: NextRequest) {
           const monthly3 = Math.round(topUp / 3);
           const monthly6 = Math.round(topUp / 6);
           const monthly12 = Math.round(topUp / 12);
-          const estimateLine = `Installment options (est.): 3m ~S$${monthly3}/mo, 6m ~S$${monthly6}/mo, 12m ~S$${monthly12}/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.`;
+          const estimateLine =
+            "Installment options (est.): 3m ~S$" +
+            monthly3 +
+            "/mo, 6m ~S$" +
+            monthly6 +
+            "/mo, 12m ~S$" +
+            monthly12 +
+            "/mo (approx; subject to approval and final checkout). These plans cover the top-up you pay for the upgrade—we don't pay cash installments to customers.";
           finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
         } else {
           const roundedTopUp = Math.round(topUp);
-          const notEligibleLine = `Installments kick in for top-ups >=S$300 and stay subject to approval. This upgrade's top-up is about S$${roundedTopUp}, so we'll stick to PayNow/bank/cash this time.`;
+          const notEligibleLine =
+            "Installments kick in for top-ups >=S$300 and stay subject to approval. This upgrade's top-up is about S$" +
+            roundedTopUp +
+            ", so we'll stick to PayNow/bank/cash this time.";
           finalResponse = `${finalResponse}\n\n${notEligibleLine}`.trim();
         }
       } else {

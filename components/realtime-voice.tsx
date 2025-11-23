@@ -24,7 +24,7 @@ function formatMatchesMarkdown(
   const lines = matches
     .filter((match) => match?.name)
     .map((match) => {
-      const price = match?.price ? ` — S$${match.price}` : "";
+      const price = match?.price ? " — S$" + match.price : "";
       let stock = "";
       if (match?.stockStatus) {
         if (match.stockStatus === "instock") stock = " (In stock)";

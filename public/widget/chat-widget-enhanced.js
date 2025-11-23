@@ -2487,7 +2487,10 @@
                   "Content-Type": "application/json",
                   "X-API-Key": this.config.apiKey || "",
                 },
-                body: JSON.stringify({ ...parsedArgs, sessionId: this.sessionId }),
+                body: JSON.stringify({
+                  ...parsedArgs,
+                  sessionId: this.sessionId,
+                }),
               },
             );
             const data = await response.json();
@@ -2506,7 +2509,10 @@
                   "Content-Type": "application/json",
                   "X-API-Key": this.config.apiKey || "",
                 },
-                body: JSON.stringify({ ...parsedArgs, sessionId: this.sessionId }),
+                body: JSON.stringify({
+                  ...parsedArgs,
+                  sessionId: this.sessionId,
+                }),
               },
             );
             const data = await response.json();
@@ -2876,7 +2882,7 @@
       const lines = matches
         .filter((match) => match && match.name)
         .map((match) => {
-          const price = match && match.price ? ` — S$${match.price}` : "";
+          const price = match && match.price ? " — S$" + match.price : "";
           let stock = "";
           if (match && match.stockStatus) {
             if (match.stockStatus === "instock") stock = " (In stock)";

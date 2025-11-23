@@ -87,9 +87,7 @@ export interface TradeInPriceMatch {
   brandNew?: PriceRange;
 }
 
-export function findTradeInPriceMatch(
-  query: string,
-): TradeInPriceMatch | null {
+export function findTradeInPriceMatch(query: string): TradeInPriceMatch | null {
   const queryTokens = tokenize(query);
   if (queryTokens.length === 0) return null;
 
@@ -101,7 +99,8 @@ export function findTradeInPriceMatch(
       return {
         label: entry.label,
         category: entry.category,
-        preowned: entry.preowned || BASE_PREOWNED_MAP.get(entry.label.toLowerCase()),
+        preowned:
+          entry.preowned || BASE_PREOWNED_MAP.get(entry.label.toLowerCase()),
         brandNew: entry.brandNew,
       };
     }
@@ -126,7 +125,7 @@ export function findTradeInPriceMatch(
 export function formatPriceRange(range?: PriceRange): string | null {
   if (!range) return null;
   if (range.min === range.max) {
-    return `S$${range.min}`;
+    return "S$" + range.min;
   }
-  return `S$${range.min}–${range.max}`;
+  return "S$" + range.min + "–" + range.max;
 }
