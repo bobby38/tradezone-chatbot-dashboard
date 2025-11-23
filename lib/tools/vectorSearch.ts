@@ -330,9 +330,10 @@ export async function handleVectorSearch(
 
           const wooSection = wooProducts
             .map((r, idx) => {
-              const price = r.price_sgd
-                ? `S$${r.price_sgd.toFixed(2)}`
-                : "Price not available";
+              const price =
+                typeof r.price_sgd === "number"
+                  ? "S$" + r.price_sgd.toFixed(2)
+                  : "Price not available";
               const url = r.permalink || `https://tradezone.sg`;
               return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}`;
             })
