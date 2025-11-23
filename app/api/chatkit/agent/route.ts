@@ -2171,11 +2171,11 @@ function determineNextTradeInQuestion(detail: any): string | null {
   if (!hasContactName) {
     return "Whose name should I note down?";
   }
-  if (!hasPayout) {
-    return "Which payout suits you best: cash, PayNow, or bank transfer? Skip this if they already picked installment—just set preferred_payout=installment.";
-  }
   if (!photoAcknowledged) {
     return "Got photos to speed inspection? Optional—note 'Photos: Not provided' if they can't send any.";
+  }
+  if (!hasPayout) {
+    return "Which payout suits you best: cash, PayNow, or bank transfer? Skip this if they already picked installment—just set preferred_payout=installment.";
   }
 
   return null;
@@ -2802,6 +2802,12 @@ export async function POST(request: NextRequest) {
     if (tradeInIntent && tradeInLeadId) {
       autoExtractedClues = extractTradeInClues(message);
       if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
+        if (!tradeDeviceQuery) {
+          const clueQuery = buildTradeDeviceQuery(null, autoExtractedClues);
+          if (clueQuery) {
+            tradeDeviceQuery = clueQuery;
+          }
+        }
         try {
           const { lead } = await updateTradeInLead(
             tradeInLeadId,

@@ -3933,6 +3933,7 @@ NEW (Nov): contact → payout → optional photo nudge ("Helps us quote faster")
 - The agent matches user wording against that JSON before asking follow-up questions, so every quote uses the real grid numbers. If a model isn’t in the list, it says so instead of improvising.
 - **Updating prices**: edit the JSON (keep the same structure), commit, redeploy. No prompt/code changes required; the helper automatically picks up the new values.
 - Retail quotes (for upgrade math) also reference the same JSON when a brand-new price exists; otherwise they fall back to WooCommerce so we stay consistent across the board.
+- **2025-11-23 status note**: PS4 Pro trade-in still intermittently shows S$250-360 because the device matcher sometimes grabs the upgrade target before the trade-in hardware is persisted. Fix scheduled next session: capture the trade-in brand/model/storage from the first user message, pin it in context, and rerun full tests (text + voice) to confirm PS4 Pro 1TB always quotes at S$100 before the form flow.
 
 ---
 
