@@ -1062,6 +1062,85 @@ lib/
 - SMTP test evidence (`info@rezult.co` receipt).
 - Updated `agent.md`, `TRADEIN_SETUP.md`, and smoke-test checklist.
 
+### November 23, 2025 - Trade-Up Flow Complete Overhaul
+
+**Status**: ✅ Trade-up flow now 100% working with correct pricing, order, and photo prompts
+
+**Critical Issues Fixed**:
+
+1. **Pricing Response Missing** (Root Cause: LLM Overwriting Deterministic Response)
+   - **Problem**: Deterministic trade-up pricing was calculated correctly but LLM response overwrote it
+   - **Fix**: Skip LLM call entirely when `tradeUpPairIntent` and precomputed prices available
+   - **Code**: Added `skipLLMForTradeUp` flag at `app/api/chatkit/agent/route.ts:4162`
+   - **Commit**: `35dbc36`
+
+2. **Family Content Filter Removing PS4 Line**
+   - **Problem**: `enforceFamilyContentFilter` banned "PS4" when user mentioned "Xbox", removing the entire pricing line
+   - **Fix**: Skip family filter in trade-up mode (we intentionally mention both devices)
+   - **Code**: Wrapped filter in `if (!tradeUpPairIntent)` at line 4535
+   - **Commit**: `102b6fe`
+
+3. **Wrong Price Extraction (Series S vs Series X)**
+   - **Problem**: `pickFirstNumber` grabbed first price in list (Series S $399) instead of Series X ($699)
+   - **Fix**: Enhanced `pickFirstNumber` to match query terms (e.g., "series x") to specific product line
+   - **Code**: Added smart line-matching logic at `app/api/chatkit/agent/route.ts:889-920`
+   - **Commit**: `d029b8d`
+
+4. **Photo Prompt Not Showing in Trade-Up Flow**
+   - **Problem**: Photo prompt was wrapped in `if (!tradeUpPairIntent)` check, so it never appeared
+   - **Fix**: Allow photo prompt after user confirms trade-up (`tradeUpConfirmed` flag)
+   - **Code**: Modified logic at line 4443 to check `tradeUpConfirmed`
+   - **Commit**: `a8e13de`
+
+**Response Structure Now Working**:
+```
+User: "trade PS4 Pro 1TB for Xbox Series X Digital on installment"
+
+Agent Response:
+Your PS4 Pro 1TB trades for ~S$100. The Xbox Series X Digital is S$699. Top-up: ~S$599.
+
+Installment options: 3m ~S$200/mo, 6m ~S$100/mo, 12m ~S$50/mo (subject to approval).
+
+Want to proceed?
+
+[After user says "yes" and provides contact info...]
+
+Got any photos of your device? They help with the quote!
+```
+
+**Complete Flow**:
+1. ✅ Price calculation (trade-in + target + top-up)
+2. ✅ Installment breakdown (if requested)
+3. ✅ Confirmation prompt
+4. ✅ Condition collection
+5. ✅ Accessories collection
+6. ✅ Contact details (name, phone, email)
+7. ✅ Payout preference
+8. ✅ Photo request (concise)
+9. ✅ Summary + submission + email
+
+**Key Technical Improvements**:
+- Deterministic pricing preserved through entire response chain
+- Smart price extraction matching query context
+- Proper flow control preventing filter interference
+- Voice-friendly concise messaging (all responses shortened)
+- Proper confirmation sequencing
+
+**Files Modified**:
+- `app/api/chatkit/agent/route.ts` (deterministic override, filters, prompts)
+- All changes deployed and tested in production
+
+**Testing Results**:
+- ✅ Correct prices shown (PS4 $100, Xbox $699)
+- ✅ Installment calculation accurate
+- ✅ Photo prompt appears after payout
+- ✅ Email sent with all details
+- ✅ Dashboard shows complete lead
+
+**Voice Mode**: Will test tomorrow - all text changes apply to voice as well.
+
+---
+
 ### October 11, 2025 - Agent Tool-Calling Fixes
 
 **Critical Fixes Completed**:
