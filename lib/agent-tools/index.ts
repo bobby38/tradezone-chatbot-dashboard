@@ -310,6 +310,37 @@ export async function searchWooProducts(
         if (!matchesCategory) {
           return { product, score: 0 };
         }
+
+        // CRITICAL: Exclude accessories (chargers, cases, screen protectors, etc.)
+        const accessoryKeywords = [
+          "charger",
+          "charging",
+          "cable",
+          "adapter",
+          "dock",
+          "cyberdock",
+          "case",
+          "cover",
+          "protector",
+          "screen protector",
+          "tempered glass",
+          "stand",
+          "holder",
+          "mount",
+          "strap",
+          "band",
+          "warranty",
+          "extension",
+          "filter",
+          "lens",
+        ];
+        const isAccessory = accessoryKeywords.some((keyword) =>
+          name.includes(keyword),
+        );
+        if (isAccessory) {
+          return { product, score: 0 }; // Exclude accessories from phone/tablet results
+        }
+
         // Bonus points for phone/tablet category match
         score += 100;
 
