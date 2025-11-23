@@ -343,6 +343,22 @@ export async function searchWooProducts(
           "extension",
           "filter",
           "lens",
+          // Exclude audio/wearables when user asked for phones
+          "headphone",
+          "headphones",
+          "earbud",
+          "earbuds",
+          "earpod",
+          "earpods",
+          "earphone",
+          "earphones",
+          "buds",
+          "airpods",
+          "sony wh-",
+          // Exclude tablets when explicitly in phone path
+          "tablet",
+          "tab ",
+          "galaxy tab",
         ];
         const isAccessory = accessoryKeywords.some((keyword) =>
           name.includes(keyword),
