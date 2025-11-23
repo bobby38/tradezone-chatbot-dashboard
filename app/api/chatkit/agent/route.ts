@@ -919,6 +919,12 @@ async function fetchApproxPrice(
     };
     const result = await runHybridSearch(query, ctx);
     const num = pickFirstNumber(result.result);
+    console.log("[TradeUp] fetchApproxPrice result:", {
+      query,
+      contextIntent,
+      resultPreview: result.result?.substring(0, 200),
+      extractedNumber: num,
+    });
     return num ?? null;
   } catch (err) {
     console.warn("[TradeUp] fetchApproxPrice failed", { query, err });
@@ -2949,6 +2955,10 @@ export async function POST(request: NextRequest) {
           `trade-in ${tradeUpParts.source}`,
           "trade_in",
         );
+        console.log("[TradeUp] Precomputed trade-in value:", {
+          query: `trade-in ${tradeUpParts.source}`,
+          value: precomputedTradeUp.tradeValue,
+        });
       }
       if (tradeUpParts?.target) {
         // CRITICAL: Use "buy price" or "new price" to get RETAIL price, not trade-in value
@@ -2956,6 +2966,10 @@ export async function POST(request: NextRequest) {
           `buy price ${tradeUpParts.target}`,
           "retail",
         );
+        console.log("[TradeUp] Precomputed retail price:", {
+          query: `buy price ${tradeUpParts.target}`,
+          value: precomputedTradeUp.retailPrice,
+        });
       }
     }
 
