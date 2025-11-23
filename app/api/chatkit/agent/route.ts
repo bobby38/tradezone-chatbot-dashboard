@@ -4050,21 +4050,19 @@ export async function POST(request: NextRequest) {
       finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
     }
 
-    // If user asked for a link or we still have no URL, give a safe site search link
-    const linkRequested = /\b(link|url|page)\b/i.test(message);
-    const missingUrl = !/https?:\/\//i.test(finalResponse);
-    if (
-      (linkRequested || missingUrl) &&
-      (isProductInfoQuery ||
-        productSlug ||
-        lastHybridSource === "product_catalog")
-    ) {
-      const query = productSlug
-        ? productSlug.replace(/-/g, " ")
-        : lastHybridQuery || message;
-      const searchUrl = `https://tradezone.sg/?s=${encodeURIComponent(query)}`;
-      finalResponse =
-        `${finalResponse}\n\nSee live price/availability here: ${searchUrl}`.trim();
+    // Only add a search link if user explicitly asked for a link AND we have no product URLs
+    const linkRequested = /\b(link|url|page|website)\b/i.test(message);
+    const hasProductUrl = /https?:\/\/tradezone\.sg\/product\//i.test(
+      finalResponse,
+    );
+
+    // Only add generic search link if:
+    // 1. User explicitly asked for a link/url
+    // 2. We don't already have product links in the response
+    // 3. We have a specific product slug to search for
+    if (linkRequested && !hasProductUrl && productSlug) {
+      const productUrl = `https://tradezone.sg/product/${productSlug}/`;
+      finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
     }
 
     const nowIso = new Date().toISOString();
