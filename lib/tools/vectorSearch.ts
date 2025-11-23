@@ -6,6 +6,7 @@ import {
   findTradeInPriceMatch,
   formatPriceRange,
 } from "@/lib/trade-in/priceLookup";
+import { formatSGDPrice } from "@/lib/tools/priceFormatter";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -341,10 +342,7 @@ export async function handleVectorSearch(
 
           const wooSection = wooProducts
             .map((r, idx) => {
-              const priceStr =
-                typeof r.price_sgd === "number"
-                  ? "S$" + r.price_sgd.toFixed(2)
-                  : "Price not available";
+              const priceStr = formatSGDPrice(r.price_sgd);
               const urlStr = r.permalink || `https://tradezone.sg`;
               return `${idx + 1}. **${r.name}** — ${priceStr}\n   Product Link: ${urlStr}`;
             })
