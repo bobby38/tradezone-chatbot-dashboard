@@ -2951,8 +2951,9 @@ export async function POST(request: NextRequest) {
         );
       }
       if (tradeUpParts?.target) {
+        // CRITICAL: Use "buy price" or "new price" to get RETAIL price, not trade-in value
         precomputedTradeUp.retailPrice = await fetchApproxPrice(
-          `${tradeUpParts.target}`,
+          `buy price ${tradeUpParts.target}`,
           "retail",
         );
       }
@@ -4335,8 +4336,8 @@ export async function POST(request: NextRequest) {
 
     // Deterministic trade-up math override (prevents hallucinations)
     if (tradeUpPairIntent && tradeUpParts) {
-      const sourceName = tradeUpParts.source || "Your device";
-      const targetName = tradeUpParts.target || "target device";
+      const sourceName = normalizeProductName(tradeUpParts.source);
+      const targetName = normalizeProductName(tradeUpParts.target);
 
       // Use captured values if present, otherwise fall back to precomputed, last tool prices, then hints
       let tradeValue =
@@ -4352,9 +4353,14 @@ export async function POST(request: NextRequest) {
 
       if (tradeValue != null && retailPrice != null) {
         const topUp = Math.max(0, retailPrice - tradeValue);
-        finalResponse = `${sourceName} ~S$${tradeValue}. ${targetName} S$${retailPrice}. Top-up ≈ S$${topUp} (subject to inspection/stock).`;
+        finalResponse = `**Your ${sourceName}** trades in for ~S$${tradeValue}.\n**The ${targetName}** is S$${retailPrice}.\n**Top-up needed:** ~S$${topUp} (subject to inspection/stock availability).`;
       } else if (tradeValue != null && retailPrice == null) {
         finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
+      } else if (tradeValue == null && retailPrice != null) {
+        finalResponse = `${targetName} S$${retailPrice}. I need your trade-in device model to compute the top-up.`;
+      } else {
+        finalResponse =
+          "I need both your device (trade-in) and the target product to compute the top-up.";
       }
     }
 

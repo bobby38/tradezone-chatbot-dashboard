@@ -5,6 +5,9 @@
 - **Top-level modules** (`app/`): auth/login, dashboard shell, analytics (chat + GA + Woo), chat logs, submissions, emails, insights, WooCommerce, Google Analytics, session detail pages.
 - **Key services**: Supabase database/auth, Google Analytics 4, Search Console (synced into Supabase), WooCommerce API, n8n webhooks, SMTP/SMTP2GO, OpenAI/OpenRouter for AI insights.
 - **Latest documented status**: Phase 1 shipped; Phase 2 deployment checklist in progress as of August 25, 2025 (see `plan.md`).
+- **Nov 23, 2025 – Trade-up determinism**: For “trade/upgrade X for Y”, the backend now pre-fetches the trade-in price of **X** and the retail price of **Y** (preowned only if the user says so) and synthesizes a fixed reply:  
+  `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`  
+  LLM wording is ignored for this step; contact must be captured before payout; photo is a single yes/no prompt and never blocks submission.
 
 ### Development Workflow Expectations
 - For every incoming request, produce a numbered task list before touching code, keep it updated, and check off each item only after verifying the fix.
@@ -4968,4 +4971,3 @@ After deployment, test:
 3. **Production Data Reveals Edge Cases**: "3 months" not matching `/installment/` pattern
 4. **Perplexity for Live Data**: Promotions/sales need real-time website crawling
 5. **Voice/Text Parity**: Both agents need identical anti-hallucination rules
-
