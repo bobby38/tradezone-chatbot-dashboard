@@ -1619,9 +1619,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       }
     }
 
-    // Storage is optional; photos must be acknowledged before auto-submit.
-    // If not yet acknowledged, auto-mark as "Not provided — final quote upon inspection"
-    // so submission never gets permanently blocked.
+    // Photos are strongly encouraged but never block auto-submit.
+    // If not acknowledged, we still auto-mark a note so downstream summary is clear.
     if (!photoStepAcknowledged) {
       try {
         await updateTradeInLead(params.leadId, {
