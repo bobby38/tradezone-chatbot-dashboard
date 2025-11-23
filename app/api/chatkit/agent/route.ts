@@ -3131,9 +3131,24 @@ export async function POST(request: NextRequest) {
       const hintTarget = tradeUpParts?.target
         ? `Use retail price for "${tradeUpParts.target}" (default to NEW unless user said preowned/used/open-box)`
         : "Use retail price for the second device (default NEW unless user said preowned/used/open-box)";
+
+      // Force the model to fetch both prices explicitly
+      if (tradeUpParts?.source) {
+        messages.push({
+          role: "system",
+          content: `Call searchProducts for trade-in pricing with query: "trade-in ${tradeUpParts.source}". Use the returned value as the trade-in amount.`,
+        });
+      }
+      if (tradeUpParts?.target) {
+        messages.push({
+          role: "system",
+          content: `Call searchProducts for retail pricing with query: "${tradeUpParts.target}". Do NOT use trade-in value for the target product.`,
+        });
+      }
+
       messages.push({
         role: "system",
-        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists.`,
+        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values.`,
       });
     }
 
