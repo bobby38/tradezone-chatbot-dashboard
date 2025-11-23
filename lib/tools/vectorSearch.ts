@@ -156,20 +156,24 @@ function extractProductCategory(query: string): string | null {
   // Category detection patterns (order matters - check specific before general)
   const categoryPatterns = [
     {
-      pattern: /\b(laptop|notebook|ultrabook|gaming\s*laptop)\b/i,
+      pattern: /\b(laptops?|notebooks?|ultrabooks?|gaming\s*laptops?)\b/i,
       category: "laptop",
     },
-    { pattern: /\b(desktop|pc|tower|gaming\s*pc)\b/i, category: "desktop" },
     {
-      pattern: /\b(graphics?\s*card|gpu|video\s*card|rtx|gtx|radeon)\b/i,
+      pattern: /\b(desktops?|pcs?|towers?|gaming\s*pcs?)\b/i,
+      category: "desktop",
+    },
+    {
+      pattern: /\b(graphics?\s*cards?|gpus?|video\s*cards?|rtx|gtx|radeon)\b/i,
       category: "gpu",
     },
     {
-      pattern: /\b(console|playstation|ps[1-5]|xbox|nintendo|switch)\b/i,
+      pattern: /\b(consoles?|playstation|ps[1-5]|xbox|nintendo|switch)\b/i,
       category: "console",
     },
     {
-      pattern: /\b(handheld|steam\s*deck|rog\s*ally|legion\s*go|switch)\b/i,
+      pattern:
+        /\b(handhelds?|steam\s*decks?|rog\s*allys?|legion\s*gos?|switch)\b/i,
       category: "handheld",
     },
     {
@@ -177,10 +181,16 @@ function extractProductCategory(query: string): string | null {
       category: "phone",
     },
     { pattern: /\b(tablets?|ipads?)\b/i, category: "tablet" },
-    { pattern: /\b(monitor|display|screen)\b/i, category: "monitor" },
-    { pattern: /\b(keyboard|mechanical\s*keyboard)\b/i, category: "keyboard" },
-    { pattern: /\b(mouse|gaming\s*mouse)\b/i, category: "mouse" },
-    { pattern: /\b(headset|headphone|earphone)\b/i, category: "audio" },
+    { pattern: /\b(monitors?|displays?|screens?)\b/i, category: "monitor" },
+    {
+      pattern: /\b(keyboards?|mechanical\s*keyboards?)\b/i,
+      category: "keyboard",
+    },
+    {
+      pattern: /\b(mice|mouses?|gaming\s*mice|gaming\s*mouses?)\b/i,
+      category: "mouse",
+    },
+    { pattern: /\b(headsets?|headphones?|earphones?)\b/i, category: "audio" },
   ];
 
   for (const { pattern, category } of categoryPatterns) {
