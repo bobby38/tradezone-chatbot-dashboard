@@ -4381,7 +4381,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       if (tradeValue != null && retailPrice != null) {
         const topUp = Math.max(0, retailPrice - tradeValue);
-        finalResponse = `Your ${sourceName} trades for ~S$${tradeValue}. The ${targetName} is S$${retailPrice}. Top-up: ~S$${topUp}. Are you keen to proceed?`;
+        finalResponse = `Your ${sourceName} trades for ~S$${tradeValue}. The ${targetName} is S$${retailPrice}. Top-up: ~S$${topUp}.`;
       } else if (tradeValue != null && retailPrice == null) {
         finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
       } else if (tradeValue == null && retailPrice != null) {
@@ -4461,6 +4461,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         finalResponse =
           `${finalResponse}\n\nInstallments available for top-ups >=S$300 (subject to approval). I'll share monthly options once we confirm.`.trim();
       }
+    }
+
+    // Add confirmation prompt after installment info (only for trade-up mode)
+    if (tradeUpPairIntent && installmentRequested) {
+      finalResponse = `${finalResponse}\n\nWant to proceed?`;
+    } else if (tradeUpPairIntent) {
+      finalResponse = `${finalResponse}\n\nAre you keen to proceed?`;
     }
 
     finalResponse = enforceTradeInResponseOverrides(finalResponse);
