@@ -12,7 +12,16 @@ export function formatSGDPrice(value: number | null | undefined): string {
 
 export function formatSGDPriceShort(value: number | null | undefined): string {
   if (typeof value !== "number" || Number.isNaN(value)) {
-    return "N/A";
+    return "";
+  }
+  return "S$" + value.toFixed(0);
+}
+
+export function formatSGDPriceShortOrNull(
+  value: number | null | undefined,
+): string | null {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return null;
   }
   return "S$" + value.toFixed(0);
 }

@@ -6,7 +6,10 @@ import {
   findTradeInPriceMatch,
   formatPriceRange,
 } from "@/lib/trade-in/priceLookup";
-import { formatSGDPrice } from "@/lib/tools/priceFormatter";
+import {
+  formatSGDPrice,
+  formatSGDPriceShortOrNull,
+} from "@/lib/tools/priceFormatter";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -64,11 +67,7 @@ function parsePrice(value?: string | null): number | null {
 }
 
 function formatCurrency(value?: number | null): string | null {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return null;
-  }
-  // CRITICAL: Use concatenation not template literal to avoid Next.js compilation error
-  return "S$" + value.toFixed(0);
+  return formatSGDPriceShortOrNull(value);
 }
 
 function formatRange(
@@ -312,7 +311,7 @@ export async function handleVectorSearch(
             .map((product, idx) => {
               const priceLabel =
                 typeof product.price_sgd === "number"
-                  ? " — S$" + product.price_sgd.toFixed(2)
+                  ? " — " + formatSGDPrice(product.price_sgd)
                   : "";
               const link = product.permalink
                 ? ` ([View Product](${product.permalink}))`
@@ -493,9 +492,7 @@ export async function handleVectorSearch(
 
                     const wooText = wooResults
                       .map((r, idx) => {
-                        const price = r.price_sgd
-                          ? "S$" + r.price_sgd.toFixed(2)
-                          : "Price not available";
+                        const price = formatSGDPrice(r.price_sgd);
                         const url = r.permalink || `https://tradezone.sg`;
                         return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}`;
                       })
@@ -721,9 +718,7 @@ export async function handleVectorSearch(
       );
       const wooSection = wooProducts
         .map((r, idx) => {
-          const price = r.price_sgd
-            ? "S$" + r.price_sgd.toFixed(2)
-            : "Price not available";
+          const price = formatSGDPrice(r.price_sgd);
           const url = r.permalink || `https://tradezone.sg`;
           // CRITICAL: Include product ID to force exact name usage
           return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${r.productId}`;
