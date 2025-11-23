@@ -66,6 +66,7 @@ function formatCurrency(value?: number | null): string | null {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return null;
   }
+  // CRITICAL: Use concatenation not template literal to avoid Next.js compilation error
   return "S$" + value.toFixed(0);
 }
 
