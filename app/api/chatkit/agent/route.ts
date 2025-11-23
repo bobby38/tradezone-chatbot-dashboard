@@ -908,6 +908,24 @@ function normalizeProductName(name: string | undefined | null): string {
   return name.trim().replace(/\s+/g, " ");
 }
 
+async function fetchApproxPrice(
+  query: string,
+  contextIntent: "trade_in" | "retail",
+): Promise<number | null> {
+  try {
+    const ctx: VectorSearchContext = {
+      intent: contextIntent === "trade_in" ? "trade_in" : "product",
+      toolUsed: "server_fetch",
+    };
+    const result = await runHybridSearch(query, ctx);
+    const num = pickFirstNumber(result.result);
+    return num ?? null;
+  } catch (err) {
+    console.warn("[TradeUp] fetchApproxPrice failed", { query, err });
+    return null;
+  }
+}
+
 // PRODUCT_KEYWORDS: Used to detect when user is asking about products
 // Note: Catalog JSON doesn't include keywords, they're only in build script
 // TODO: Extract to shared constants file for consistency
@@ -2757,6 +2775,10 @@ export async function POST(request: NextRequest) {
   let lastSearchProductsResult: string | null = null;
   let lastTradeInPrice: number | null = null;
   let lastRetailPrice: number | null = null;
+  let precomputedTradeUp: {
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+  } = {};
   let errorMessage: string | null = null;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -2920,6 +2942,20 @@ export async function POST(request: NextRequest) {
           tradeUpParts?.target,
         )}?" If user says yes/confirmed, proceed with pricing. If no, ask them to restate both devices.`,
       });
+
+      // Pre-fetch prices server-side to avoid LLM gaps
+      if (tradeUpParts?.source) {
+        precomputedTradeUp.tradeValue = await fetchApproxPrice(
+          `trade-in ${tradeUpParts.source}`,
+          "trade_in",
+        );
+      }
+      if (tradeUpParts?.target) {
+        precomputedTradeUp.retailPrice = await fetchApproxPrice(
+          `${tradeUpParts.target}`,
+          "retail",
+        );
+      }
     }
 
     // Check if there's an existing trade-in lead for this session
@@ -4302,13 +4338,15 @@ export async function POST(request: NextRequest) {
       const sourceName = tradeUpParts.source || "Your device";
       const targetName = tradeUpParts.target || "target device";
 
-      // Use captured values if present, otherwise fall back to hints or last tool prices
+      // Use captured values if present, otherwise fall back to precomputed, last tool prices, then hints
       let tradeValue =
         forcedTradeUpMath?.tradeValue ??
+        precomputedTradeUp.tradeValue ??
         lastTradeInPrice ??
         pickHintPrice(sourceName, TRADE_IN_PRICE_HINTS);
       let retailPrice =
         forcedTradeUpMath?.retailPrice ??
+        precomputedTradeUp.retailPrice ??
         lastRetailPrice ??
         pickHintPrice(targetName, RETAIL_PRICE_HINTS);
 
