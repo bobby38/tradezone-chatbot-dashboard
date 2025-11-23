@@ -2898,6 +2898,8 @@ export async function POST(request: NextRequest) {
       forcedTradeUpMath = {
         source: tradeUpParts?.source,
         target: tradeUpParts?.target,
+        tradeValue: null,
+        retailPrice: null,
       };
     }
 
@@ -3954,6 +3956,37 @@ export async function POST(request: NextRequest) {
         }
 
         lastSearchProductsResult = toolResult;
+        // Capture trade-up prices deterministically based on the query
+        if (tradeUpPairIntent && forcedTradeUpMath) {
+          const rawQuery =
+            typeof functionArgs.query === "string"
+              ? functionArgs.query.toLowerCase()
+              : "";
+          const parsedNumber = pickFirstNumber(toolResult);
+          if (parsedNumber) {
+            const sourceHint = forcedTradeUpMath.source
+              ?.toLowerCase()
+              .slice(0, 40);
+            const targetHint = forcedTradeUpMath.target
+              ?.toLowerCase()
+              .slice(0, 40);
+
+            const looksLikeSource =
+              rawQuery.includes("trade-in") ||
+              (sourceHint && rawQuery.includes(sourceHint));
+            const looksLikeTarget = targetHint && rawQuery.includes(targetHint);
+
+            if (looksLikeSource && forcedTradeUpMath.tradeValue == null) {
+              forcedTradeUpMath.tradeValue = parsedNumber;
+            } else if (
+              looksLikeTarget &&
+              forcedTradeUpMath.retailPrice == null
+            ) {
+              forcedTradeUpMath.retailPrice = parsedNumber;
+            }
+          }
+        }
+
         messages.push({
           role: "tool",
           tool_call_id: toolCall.id,
@@ -4205,13 +4238,13 @@ export async function POST(request: NextRequest) {
       const sourceName = tradeUpParts.source || "Your device";
       const targetName = tradeUpParts.target || "target device";
 
-      // Try to derive prices from last search result; fall back to hints
+      // Use captured values if present, otherwise fall back to hints
       let tradeValue =
-        pickFirstNumber(lastSearchProductsResult) ||
+        forcedTradeUpMath?.tradeValue ??
         pickHintPrice(sourceName, TRADE_IN_PRICE_HINTS);
       let retailPrice =
-        pickHintPrice(targetName, RETAIL_PRICE_HINTS) ||
-        pickFirstNumber(lastSearchProductsResult);
+        forcedTradeUpMath?.retailPrice ??
+        pickHintPrice(targetName, RETAIL_PRICE_HINTS);
 
       if (tradeValue != null && retailPrice != null) {
         const topUp = Math.max(0, retailPrice - tradeValue);
