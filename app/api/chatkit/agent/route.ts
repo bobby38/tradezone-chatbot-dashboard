@@ -4365,6 +4365,18 @@ export async function POST(request: NextRequest) {
         lastRetailPrice ??
         pickHintPrice(targetName, RETAIL_PRICE_HINTS);
 
+      console.log("[TradeUp] Deterministic override check:", {
+        tradeUpPairIntent,
+        sourceName,
+        targetName,
+        forcedTradeUpMath,
+        precomputedTradeUp,
+        lastTradeInPrice,
+        lastRetailPrice,
+        finalTradeValue: tradeValue,
+        finalRetailPrice: retailPrice,
+      });
+
       if (tradeValue != null && retailPrice != null) {
         const topUp = Math.max(0, retailPrice - tradeValue);
         finalResponse = `**Your ${sourceName}** trades in for ~S$${tradeValue}.\n**The ${targetName}** is S$${retailPrice}.\n**Top-up needed:** ~S$${topUp} (subject to inspection/stock availability).`;
