@@ -4381,7 +4381,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       if (tradeValue != null && retailPrice != null) {
         const topUp = Math.max(0, retailPrice - tradeValue);
-        finalResponse = `**Your ${sourceName}** trades in for ~S$${tradeValue}.\n**The ${targetName}** is S$${retailPrice}.\n**Top-up needed:** ~S$${topUp} (subject to inspection/stock availability).`;
+        finalResponse = `Your ${sourceName} trades for ~S$${tradeValue}. The ${targetName} is S$${retailPrice}. Top-up: ~S$${topUp}. Are you keen to proceed?`;
       } else if (tradeValue != null && retailPrice == null) {
         finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
       } else if (tradeValue == null && retailPrice != null) {
@@ -4396,12 +4396,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
 
-    if (tradeInNeedsPayoutPrompt && !userMessageLooksLikeFreshTradeIntent) {
-      finalResponse =
-        "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.";
-    } else if (tradeInReadyForPhotoPrompt) {
-      finalResponse =
-        "Photos help us quote faster—want to send one now? If you don't have any handy I'll note 'Photos: Not provided — final quote upon inspection.'";
+    // Skip payout/photo prompts in trade-up mode (deterministic override already set the response)
+    if (!tradeUpPairIntent) {
+      if (tradeInNeedsPayoutPrompt && !userMessageLooksLikeFreshTradeIntent) {
+        finalResponse =
+          "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.";
+      } else if (tradeInReadyForPhotoPrompt) {
+        finalResponse =
+          "Photos help us quote faster—want to send one now? If you don't have any handy I'll note 'Photos: Not provided — final quote upon inspection.'";
+      }
     }
 
     // Only apply Xbox hints if NOT in trade-up mode (deterministic override takes precedence)
