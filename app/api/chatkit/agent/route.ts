@@ -94,6 +94,26 @@ const ALLOWED_ORIGINS = [
     : []),
 ];
 
+// Fallback price hints (rough) used when tool results are missing or the model fails to include math
+const TRADE_IN_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
+  { pattern: /ps4\s*pro/i, value: 100 },
+  { pattern: /ps4/i, value: 80 },
+  { pattern: /ps5\s*pro/i, value: 380 },
+  { pattern: /ps5/i, value: 350 },
+  { pattern: /xbox\s*series\s*x/i, value: 350 },
+  { pattern: /xbox\s*series\s*s/i, value: 150 },
+  { pattern: /osmo\s+pocket\s*3/i, value: 350 },
+];
+
+const RETAIL_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
+  { pattern: /xbox\s*series\s*x/i, value: 600 },
+  { pattern: /xbox\s*series\s*s/i, value: 300 },
+  { pattern: /ps5\s*pro/i, value: 900 },
+  { pattern: /ps5/i, value: 800 },
+  { pattern: /ps4\s*pro/i, value: 250 },
+  { pattern: /osmo\s+pocket\s*3/i, value: 600 },
+];
+
 function getCorsHeaders(origin: string | null): HeadersInit {
   const allowedOrigin =
     origin &&
@@ -864,6 +884,23 @@ function parseTradeUpParts(
   const target = match[4]?.trim();
   if (!source || !target) return null;
   return { source, target };
+}
+
+function pickFirstNumber(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const m = text.match(/\b(\d{2,5})\b/);
+  return m ? Number(m[1]) : null;
+}
+
+function pickHintPrice(
+  name: string | undefined | null,
+  table: Array<{ pattern: RegExp; value: number }>,
+): number | null {
+  if (!name) return null;
+  for (const entry of table) {
+    if (entry.pattern.test(name)) return entry.value;
+  }
+  return null;
 }
 
 // PRODUCT_KEYWORDS: Used to detect when user is asking about products
@@ -2712,6 +2749,7 @@ export async function POST(request: NextRequest) {
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
   let lastHybridMatches: CatalogMatches = [];
+  let lastSearchProductsResult: string | null = null;
   let errorMessage: string | null = null;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -2720,6 +2758,12 @@ export async function POST(request: NextRequest) {
   let tradeInIntent = false;
   let tradeUpPairIntent = false;
   let tradeUpParts: { source?: string; target?: string } | null = null;
+  let forcedTradeUpMath: {
+    source?: string;
+    target?: string;
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+  } | null = null;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
@@ -2850,6 +2894,11 @@ export async function POST(request: NextRequest) {
     tradeUpParts = parseTradeUpParts(message);
     if (tradeUpPairIntent) {
       tradeInIntent = true; // force trade-in tool path for trade-up phrasing
+      // Pre-set forced math slots so we can synthesize the reply later
+      forcedTradeUpMath = {
+        source: tradeUpParts?.source,
+        target: tradeUpParts?.target,
+      };
     }
 
     // Check if there's an existing trade-in lead for this session
@@ -3904,6 +3953,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        lastSearchProductsResult = toolResult;
         messages.push({
           role: "tool",
           tool_call_id: toolCall.id,
@@ -4148,6 +4198,27 @@ export async function POST(request: NextRequest) {
       finalResponse =
         verificationData.reply_text?.trim() ||
         "I apologize, I seem to be having trouble formulating a response. Could you please rephrase that?";
+    }
+
+    // Deterministic trade-up math override (prevents hallucinations)
+    if (tradeUpPairIntent && tradeUpParts) {
+      const sourceName = tradeUpParts.source || "Your device";
+      const targetName = tradeUpParts.target || "target device";
+
+      // Try to derive prices from last search result; fall back to hints
+      let tradeValue =
+        pickFirstNumber(lastSearchProductsResult) ||
+        pickHintPrice(sourceName, TRADE_IN_PRICE_HINTS);
+      let retailPrice =
+        pickHintPrice(targetName, RETAIL_PRICE_HINTS) ||
+        pickFirstNumber(lastSearchProductsResult);
+
+      if (tradeValue != null && retailPrice != null) {
+        const topUp = Math.max(0, retailPrice - tradeValue);
+        finalResponse = `${sourceName} ~S$${tradeValue}. ${targetName} S$${retailPrice}. Top-up ≈ S$${topUp} (subject to inspection/stock).`;
+      } else if (tradeValue != null && retailPrice == null) {
+        finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
+      }
     }
 
     const userMessageLooksLikeFreshTradeIntent =
