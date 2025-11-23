@@ -33,6 +33,7 @@ interface WooProduct {
   regular_price?: string;
   stock_status?: string;
   stock_quantity?: number | null;
+  images?: Array<{ id: number; src: string; alt?: string }>;
 }
 
 export interface WooProductSearchResult {
@@ -41,6 +42,7 @@ export interface WooProductSearchResult {
   permalink?: string;
   price_sgd: number | null;
   stock_status?: string;
+  image?: string;
 }
 
 export interface NormalizeProductResult {
@@ -391,6 +393,7 @@ export async function searchWooProducts(
     permalink: product.permalink,
     price_sgd: parseMoney(product.price),
     stock_status: product.stock_status,
+    image: product.images?.[0]?.src, // Include first image
   }));
 
   // Debug logging to check if permalinks exist

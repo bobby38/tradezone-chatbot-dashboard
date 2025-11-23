@@ -359,7 +359,12 @@ export async function handleVectorSearch(
               const link = product.permalink
                 ? ` ([View Product](${product.permalink}))`
                 : "";
-              return `${idx + 1}. ${product.name}${priceLabel}${link}`;
+              // Include image for first product only
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
+              return `${idx + 1}. ${product.name}${priceLabel}${link}${imageStr}`;
             })
             .join("\n");
           return {
@@ -386,7 +391,10 @@ export async function handleVectorSearch(
             .map((r, idx) => {
               const priceStr = formatSGDPrice(r.price_sgd);
               const urlStr = r.permalink || `https://tradezone.sg`;
-              return `${idx + 1}. **${r.name}** — ${priceStr}\n   Product Link: ${urlStr}`;
+              // Include image for first product only (not all products to avoid clutter)
+              const imageStr =
+                idx === 0 && r.image ? `\n   ![${r.name}](${r.image})` : "";
+              return `${idx + 1}. **${r.name}** — ${priceStr}\n   Product Link: ${urlStr}${imageStr}`;
             })
             .join("\n\n");
 
@@ -571,7 +579,12 @@ export async function handleVectorSearch(
                       .map((r, idx) => {
                         const price = formatSGDPrice(r.price_sgd);
                         const url = r.permalink || `https://tradezone.sg`;
-                        return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}`;
+                        // Include image for first product only
+                        const imageStr =
+                          idx === 0 && r.image
+                            ? `\n   ![${r.name}](${r.image})`
+                            : "";
+                        return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}${imageStr}`;
                       })
                       .join("\n\n");
 
@@ -811,8 +824,11 @@ export async function handleVectorSearch(
         .map((r, idx) => {
           const price = formatSGDPrice(r.price_sgd);
           const url = r.permalink || `https://tradezone.sg`;
+          // Include image for first product only
+          const imageStr =
+            idx === 0 && r.image ? `\n   ![${r.name}](${r.image})` : "";
           // CRITICAL: Include product ID to force exact name usage
-          return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${r.productId}`;
+          return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${r.productId}${imageStr}`;
         })
         .join("\n\n");
 
