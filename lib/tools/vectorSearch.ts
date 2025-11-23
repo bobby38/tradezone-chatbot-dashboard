@@ -368,9 +368,30 @@ export async function handleVectorSearch(
             query,
           );
 
-          const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- User's original query: "${query}"\n- Show ALL ${wooProducts.length} products from the list above\n${hasAffordableKeyword ? "- User wants AFFORDABLE options - highlight the LOWEST PRICED items first\n" : ""}${hasPriceRange ? "- User specified price range - show products within that range\n" : ""}- NEVER say "no products found" or "couldn't find" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted`;
+          const affordableHint = hasAffordableKeyword
+            ? "- User wants AFFORDABLE options - highlight the LOWEST PRICED items first\n"
+            : "";
+          const priceRangeHint = hasPriceRange
+            ? "- User specified price range - show products within that range\n"
+            : "";
 
-          const finalText = `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`;
+          const antiHallucinationNote =
+            "\n\n🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n" +
+            wooSection +
+            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- User's original query: \"" +
+            query +
+            '"\n- Show ALL ' +
+            wooProducts.length +
+            " products from the list above\n" +
+            affordableHint +
+            priceRangeHint +
+            '- NEVER say "no products found" or "couldn\'t find" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted';
+
+          const finalText =
+            "**WooCommerce Live Data (" +
+            wooProducts.length +
+            " products found):**\n\n" +
+            antiHallucinationNote;
 
           return {
             text: prependTradeSnippet(finalText),
@@ -519,8 +540,22 @@ export async function handleVectorSearch(
                       })
                       .join("\n\n");
 
+                    const productType =
+                      detectedCategory === "phone" ? "phone" : "tablet";
+                    const plural = wooResults.length > 1 ? "s" : "";
                     return {
-                      text: `I found ${wooResults.length} ${detectedCategory === "phone" ? "phone" : "tablet"} product${wooResults.length > 1 ? "s" : ""} in stock:\n\n${wooText}\n\nThese are the ONLY ${detectedCategory} products currently available. For more options, visit https://tradezone.sg`,
+                      text:
+                        "I found " +
+                        wooResults.length +
+                        " " +
+                        productType +
+                        " product" +
+                        plural +
+                        " in stock:\n\n" +
+                        wooText +
+                        "\n\nThese are the ONLY " +
+                        detectedCategory +
+                        " products currently available. For more options, visit https://tradezone.sg",
                       store: label,
                       matches: [],
                     };
@@ -753,9 +788,17 @@ export async function handleVectorSearch(
           : "";
 
       // ANTI-HALLUCINATION: Structured format that MUST be preserved exactly
-      const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: You MUST copy the above product list EXACTLY as shown. Do NOT modify names, prices, or add products. Only add a brief intro line like "Here's what we have:" before the list.`;
+      const antiHallucinationNote =
+        "\n\n🔒 MANDATORY RESPONSE FORMAT - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
+        wooSection +
+        '\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: You MUST copy the above product list EXACTLY as shown. Do NOT modify names, prices, or add products. Only add a brief intro line like "Here\'s what we have:" before the list.';
 
-      finalText = `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}${vectorEnrichment}`;
+      finalText =
+        "**WooCommerce Live Data (" +
+        wooProducts.length +
+        " products found):**\n\n" +
+        antiHallucinationNote +
+        vectorEnrichment;
     } else {
       // No WooCommerce products, just use vector/enrichment
       finalText =
