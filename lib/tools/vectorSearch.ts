@@ -348,7 +348,7 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
-          const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: You MUST copy the above product list EXACTLY as shown. Do NOT modify names, prices, or add products. Only add a brief intro line like "Here's what we have:" before the list.`;
+          const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- You MUST show ALL products from the list above\n- Do NOT filter or hide products based on price keywords (cheap, affordable, expensive, etc.)\n- If user asked for "cheap" or "affordable", recommend the LOWEST PRICED items from the list\n- If user asked for price range (under X, below Y), recommend items within that range from the list\n- NEVER say "no products found" or "couldn't find" - the list above contains available products\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Show the full list with a brief intro mentioning the cheapest/best options for their budget`;
 
           const finalText = `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`;
 
