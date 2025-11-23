@@ -229,7 +229,9 @@ function enrichQueryWithCategory(query: string): string {
   return query;
 }
 
-function formatTradeInResponse(match: ReturnType<typeof findTradeInPriceMatch>): string {
+function formatTradeInResponse(
+  match: ReturnType<typeof findTradeInPriceMatch>,
+): string {
   if (!match) return "I don't have that in the trade-in list yet.";
   const parts: string[] = [];
   if (match.preowned) {
@@ -255,7 +257,9 @@ export async function handleVectorSearch(
   if (!priceListMatch) {
     priceListMatch = findTradeInPriceMatch(query);
   }
-  const priceListText = priceListMatch ? formatTradeInResponse(priceListMatch) : null;
+  const priceListText = priceListMatch
+    ? formatTradeInResponse(priceListMatch)
+    : null;
 
   // SEARCH FLOW: WooCommerce → Vector → Zep → Perplexity
   // WooCommerce = source of truth (what we sell)
@@ -271,7 +275,8 @@ export async function handleVectorSearch(
     resolvedStore.label === "trade_in" ||
     (context?.intent && context.intent.toLowerCase() === "trade_in") ||
     (context?.toolUsed && context.toolUsed.startsWith("tradein_"));
-  const tradeSnippet = priceListText && isTradeIntentContext ? priceListText : null;
+  const tradeSnippet =
+    priceListText && isTradeIntentContext ? priceListText : null;
 
   if (resolvedStore.label === "catalog") {
     try {
@@ -314,14 +319,9 @@ export async function handleVectorSearch(
         // Continue to vector/zep/perplexity for enrichment
       } else {
         console.log(
-          `[VectorSearch] ❌ No WooCommerce matches - product not in catalog`,
+          `[VectorSearch] ❌ No WooCommerce matches - continuing to vector search for enrichment`,
         );
-        // If not in WooCommerce, stop here - we don't sell it
-        return {
-          text: `I don't have "${query}" in our product catalog. Please check https://tradezone.sg for our current inventory, or let me know if you'd like help with something else.`,
-          store: resolvedStore.label,
-          matches: [],
-        };
+        // Continue to vector search - it might find related products or categories
       }
     } catch (wooError) {
       console.error(
