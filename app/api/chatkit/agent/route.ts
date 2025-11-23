@@ -886,8 +886,41 @@ function parseTradeUpParts(
   return { source, target };
 }
 
-function pickFirstNumber(text: string | null | undefined): number | null {
+function pickFirstNumber(
+  text: string | null | undefined,
+  query?: string,
+): number | null {
   if (!text) return null;
+
+  // If query provided, try to find price near the matching product name
+  if (query) {
+    const queryLower = query.toLowerCase();
+    const lines = text.split("\n");
+
+    // Look for a line containing key terms from the query
+    for (const line of lines) {
+      const lineLower = line.toLowerCase();
+
+      // Extract key product identifiers from query (e.g., "series x", "series s")
+      const keyTerms =
+        queryLower.match(/(?:series\s+[xs]|pro|slim|digital|disc)/gi) || [];
+
+      // Check if this line contains the key terms
+      const hasKeyTerms =
+        keyTerms.length === 0 ||
+        keyTerms.some((term) => lineLower.includes(term.toLowerCase()));
+
+      if (hasKeyTerms) {
+        // Extract price from this line (format: S$XXX or $XXX)
+        const priceMatch = line.match(/S?\$\s*(\d{2,5})(?:\.\d{2})?/);
+        if (priceMatch) {
+          return Number(priceMatch[1]);
+        }
+      }
+    }
+  }
+
+  // Fallback: pick first number
   const m = text.match(/\b(\d{2,5})\b/);
   return m ? Number(m[1]) : null;
 }
@@ -918,7 +951,7 @@ async function fetchApproxPrice(
       toolUsed: "server_fetch",
     };
     const result = await runHybridSearch(query, ctx);
-    const num = pickFirstNumber(result.result);
+    const num = pickFirstNumber(result.result, query);
     console.log("[TradeUp] fetchApproxPrice result:", {
       query,
       contextIntent,
