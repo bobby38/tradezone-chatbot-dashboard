@@ -316,6 +316,42 @@ export async function handleVectorSearch(
             matches: [],
           };
         }
+
+        // 🔴 CRITICAL FIX: For phone/tablet queries, skip vector enrichment
+        // Vector store contains games (Hades) that contaminate phone results
+        const detectedCategory = extractProductCategory(query);
+        const isPhoneOrTabletQuery =
+          detectedCategory === "phone" || detectedCategory === "tablet";
+
+        if (isPhoneOrTabletQuery) {
+          console.log(
+            `[VectorSearch] 🚫 Phone/tablet query - returning WooCommerce ONLY (no vector contamination)`,
+          );
+
+          const wooSection = wooProducts
+            .map((r, idx) => {
+              const price = r.price_sgd
+                ? `S$${r.price_sgd.toFixed(2)}`
+                : "Price not available";
+              const url = r.permalink || `https://tradezone.sg`;
+              return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}`;
+            })
+            .join("\n\n");
+
+          const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: You MUST copy the above product list EXACTLY as shown. Do NOT modify names, prices, or add products. Only add a brief intro line like "Here's what we have:" before the list.`;
+
+          const finalText = `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`;
+
+          return {
+            text: prependTradeSnippet(finalText),
+            store: "product_catalog",
+            matches: [],
+          };
+        }
+
+        console.log(
+          `[VectorSearch] Non-phone query - continuing to vector enrichment`,
+        );
         // Continue to vector/zep/perplexity for enrichment
       } else {
         console.log(
