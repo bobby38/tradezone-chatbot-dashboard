@@ -244,7 +244,7 @@ function cleanQueryForSearch(query: string): string {
   // Remove price-related keywords that confuse WooCommerce search
   // These keywords guide LLM response but shouldn't filter products
   const priceKeywords =
-    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive|expensive|any|some|under|below|above|over|less than|more than|around|approximately)\b/gi;
+    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive|expensive|premium|high-end|low-end|entry-level|best|top|popular|trending|any|some|all|under|below|above|over|less than|more than|around|approximately|between)\b/gi;
   const cleaned = query.replace(priceKeywords, "").replace(/\s+/g, " ").trim();
 
   if (cleaned !== query) {
@@ -252,6 +252,31 @@ function cleanQueryForSearch(query: string): string {
   }
 
   return cleaned || query; // Return original if cleaning results in empty string
+}
+
+/**
+ * Sort products by price when user explicitly wants cheap/affordable options
+ */
+function sortProductsByPrice(
+  products: Awaited<
+    ReturnType<typeof import("@/lib/agent-tools").searchWooProducts>
+  >,
+  query: string,
+): void {
+  const wantsCheapest =
+    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive)\b/i.test(query);
+
+  if (wantsCheapest && products.length > 0) {
+    // Sort by price ascending (cheapest first)
+    products.sort((a, b) => {
+      const priceA = typeof a.price_sgd === "number" ? a.price_sgd : Infinity;
+      const priceB = typeof b.price_sgd === "number" ? b.price_sgd : Infinity;
+      return priceA - priceB;
+    });
+    console.log(
+      `[VectorSearch] ✅ Sorted ${products.length} products by price (cheapest first)`,
+    );
+  }
 }
 
 function formatTradeInResponse(
@@ -311,6 +336,9 @@ export async function handleVectorSearch(
       const { searchWooProducts } = await import("@/lib/agent-tools");
       const cleanedQuery = cleanQueryForSearch(query);
       wooProducts = await searchWooProducts(cleanedQuery, wooLimit);
+
+      // Sort by price if user wants cheap options
+      sortProductsByPrice(wooProducts, query);
 
       if (wooProducts.length > 0) {
         console.log(
@@ -520,7 +548,14 @@ export async function handleVectorSearch(
                   const { searchWooProducts } = await import(
                     "@/lib/agent-tools"
                   );
-                  const wooResults = await searchWooProducts(query, 5);
+                  const cleanedFallbackQuery = cleanQueryForSearch(query);
+                  const wooResults = await searchWooProducts(
+                    cleanedFallbackQuery,
+                    5,
+                  );
+
+                  // Sort by price if user wants cheap options
+                  sortProductsByPrice(wooResults, query);
 
                   if (wooResults.length > 0) {
                     console.log(
