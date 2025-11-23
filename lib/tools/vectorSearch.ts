@@ -690,10 +690,10 @@ export async function handleVectorSearch(
           ? `\n\n**Additional Context:**\n${trimmedEnriched}`
           : "";
 
-      // ANTI-HALLUCINATION: Add explicit instruction in the response itself
-      const antiHallucinationNote = `\n\n⚠️ SYSTEM NOTE: These are the ONLY ${wooProducts.length} product(s) available. Do NOT add, modify, or suggest similar products. Return product names EXACTLY as shown above.`;
+      // ANTI-HALLUCINATION: Structured format that MUST be preserved exactly
+      const antiHallucinationNote = `\n\n🔒 MANDATORY RESPONSE FORMAT - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n${wooSection}\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: You MUST copy the above product list EXACTLY as shown. Do NOT modify names, prices, or add products. Only add a brief intro line like "Here's what we have:" before the list.`;
 
-      finalText = `**Products Currently in Stock:**\n\n${wooSection}${antiHallucinationNote}${vectorEnrichment}`;
+      finalText = `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}${vectorEnrichment}`;
     } else {
       // No WooCommerce products, just use vector/enrichment
       finalText =

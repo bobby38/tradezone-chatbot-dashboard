@@ -122,12 +122,28 @@ export async function addZepMemoryTurn(
       messages,
     });
   } catch (error: any) {
+    // Handle account quota exceeded (403)
+    if (error?.statusCode === 403) {
+      console.warn(
+        `[Zep] ⚠️  Account quota exceeded (${error?.body?.message || "forbidden"}). Skipping memory storage for session ${sessionId}.`,
+      );
+      return; // Gracefully skip - conversation continues without Zep memory
+    }
+
+    // Handle thread not found (404)
     if (error?.statusCode === 404) {
       try {
         await ensureThreadExists(client, sessionId);
         await client.thread.addMessages(sessionId, { messages });
         return;
-      } catch (creationError) {
+      } catch (creationError: any) {
+        // Check if creation also failed due to quota
+        if (creationError?.statusCode === 403) {
+          console.warn(
+            `[Zep] ⚠️  Account quota exceeded during thread creation. Skipping memory for session ${sessionId}.`,
+          );
+          return;
+        }
         console.warn("[Zep] thread creation failed", creationError);
       }
     }
@@ -196,9 +212,10 @@ function normalizeGraphResults(result: any): ZepGraphQueryResult {
   const sections: string[] = [];
   if (nodes.length) {
     const nodeLines = nodes.slice(0, 3).map((node) => {
-      const labels = Array.isArray(node.labels) && node.labels.length
-        ? node.labels.join(", ")
-        : node.data.kind || "node";
+      const labels =
+        Array.isArray(node.labels) && node.labels.length
+          ? node.labels.join(", ")
+          : node.data.kind || "node";
       const summary = node.summary ? ` — ${truncate(node.summary, 140)}` : "";
       return `- ${node.name || node.data.title || node.data.modelId || "node"} (${labels})${summary}`;
     });
@@ -222,7 +239,8 @@ function normalizeGraphResults(result: any): ZepGraphQueryResult {
 
 function normalizeGraphNode(raw: any): ZepGraphNodeSummary {
   const payload = extractNodePayload(raw);
-  const name = raw?.name || payload.title || payload.modelId || payload.familyTitle;
+  const name =
+    raw?.name || payload.title || payload.modelId || payload.familyTitle;
   return {
     id: raw?.id || payload.modelId || payload.id,
     name,

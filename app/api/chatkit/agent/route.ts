@@ -1402,7 +1402,11 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.preferred_payout = "paynow";
   } else if (/bank/i.test(lower)) {
     patch.preferred_payout = "bank";
-  } else if (/installment|instalment|payment\s+plan/i.test(lower)) {
+  } else if (
+    /installment|instalment|payment\s+plan|\b\d+\s*(month|mth|mo)\b/i.test(
+      lower,
+    )
+  ) {
     patch.preferred_payout = "installment";
   }
 
@@ -1494,24 +1498,19 @@ function isPhotoStepAcknowledged(
       .slice(-5)
       .map((msg) => msg.content.toLowerCase());
 
-    const photoKeywords = [
-      "here",
-      "uploaded",
-      "sent",
-      "attached",
-      "sending",
-      "image",
-      "photo",
-      "pic",
-      "no photo",
-      "dont have",
-      "no image",
-      "later",
+    // More specific photo-related patterns to avoid false positives
+    const photoPatterns = [
+      /\b(upload|send|attach|sent)\s+(photo|image|pic|picture)/i,
+      /\b(photo|image|pic|picture)\s+(upload|send|sent|attach)/i,
+      /\bno\s+(photo|image|pic)/i,
+      /\b(don't|dont|do not)\s+have\s+(photo|image|pic)/i,
+      /\b(will|can)\s+(send|upload)\s+later/i,
+      /\b(here|uploaded|attached)\s+(is|are)\s+(the\s+)?(photo|image|pic)/i,
     ];
 
     if (
       recentUserMessages.some((entry) =>
-        photoKeywords.some((keyword) => entry.includes(keyword)),
+        photoPatterns.some((pattern) => pattern.test(entry)),
       )
     ) {
       return true;
@@ -2643,27 +2642,29 @@ export async function POST(request: NextRequest) {
       },
     ];
 
+    // ⚠️ Zep.ai memory DISABLED (quota exceeded, $25/month not viable)
+    // TODO: Evaluate Graphiti as alternative later
     let zepContext: Awaited<ReturnType<typeof fetchZepContext>> = {
       userSummary: null,
       context: null,
     };
-    try {
-      zepContext = await fetchZepContext(sessionId);
-      console.log("[ChatKit] Zep context loaded", {
-        sessionId,
-        hasUserSummary: Boolean(zepContext.userSummary),
-        hasContext: Boolean(zepContext.context),
-      });
-    } catch (zepError: any) {
-      // Graceful fallback when Zep is unavailable (rate limits, quota exceeded, etc.)
-      console.warn(
-        "[ChatKit] Zep unavailable, continuing without memory context",
-        {
-          error: zepError?.message || String(zepError),
-          statusCode: zepError?.statusCode,
-        },
-      );
-    }
+    // try {
+    //   zepContext = await fetchZepContext(sessionId);
+    //   console.log("[ChatKit] Zep context loaded", {
+    //     sessionId,
+    //     hasUserSummary: Boolean(zepContext.userSummary),
+    //     hasContext: Boolean(zepContext.context),
+    //   });
+    // } catch (zepError: any) {
+    //   // Graceful fallback when Zep is unavailable (rate limits, quota exceeded, etc.)
+    //   console.warn(
+    //     "[ChatKit] Zep unavailable, continuing without memory context",
+    //     {
+    //       error: zepError?.message || String(zepError),
+    //       statusCode: zepError?.statusCode,
+    //     },
+    //   );
+    // }
     const memoryHints = buildMemoryHintsFromZep(zepContext);
     let contextInsertIndex = 1;
     if (zepContext.userSummary) {
@@ -3834,11 +3835,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    try {
-      await addZepMemoryTurn(sessionId, message, finalResponse);
-    } catch (memoryError) {
-      console.warn("[ChatKit] Failed to persist Zep memory", memoryError);
-    }
+    // ⚠️ Zep.ai memory DISABLED (quota exceeded, $25/month not viable)
+    // try {
+    //   await addZepMemoryTurn(sessionId, message, finalResponse);
+    // } catch (memoryError) {
+    //   console.warn("[ChatKit] Failed to persist Zep memory", memoryError);
+    // }
   } catch (error) {
     console.error("[ChatKit] Error in POST handler:", error);
     finalResponse =
