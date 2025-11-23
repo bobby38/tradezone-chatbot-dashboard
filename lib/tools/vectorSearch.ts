@@ -66,7 +66,7 @@ function formatCurrency(value?: number | null): string | null {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return null;
   }
-  return `S$${value.toFixed(0)}`;
+  return "S$" + value.toFixed(0);
 }
 
 function formatRange(
@@ -495,7 +495,7 @@ export async function handleVectorSearch(
                     const wooText = wooResults
                       .map((r, idx) => {
                         const price = r.price_sgd
-                          ? `S$${r.price_sgd.toFixed(2)}`
+                          ? "S$" + r.price_sgd.toFixed(2)
                           : "Price not available";
                         const url = r.permalink || `https://tradezone.sg`;
                         return `${idx + 1}. ${r.name}\n   Price: ${price}\n   Link: ${url}`;
@@ -598,7 +598,7 @@ export async function handleVectorSearch(
           match.flagshipCondition?.basePrice !== null
             ? `${formatCurrency(match.flagshipCondition?.basePrice)} (${match.flagshipCondition?.label})`
             : match.price
-              ? `S$${match.price}`
+              ? "S$" + match.price
               : null;
         details.push(
           `- **${match.name}**${flagshipPrice ? ` — ${flagshipPrice}` : ""}`,
@@ -723,7 +723,7 @@ export async function handleVectorSearch(
       const wooSection = wooProducts
         .map((r, idx) => {
           const price = r.price_sgd
-            ? `S$${r.price_sgd.toFixed(2)}`
+            ? "S$" + r.price_sgd.toFixed(2)
             : "Price not available";
           const url = r.permalink || `https://tradezone.sg`;
           // CRITICAL: Include product ID to force exact name usage
