@@ -22,17 +22,33 @@ GEMINI_API_KEY=your-gemini-api-key-here
 
 ### 3. Switch Model in Dashboard
 1. Go to **Dashboard → Settings → ChatKit**
-2. In "Text Model" field, enter: `gemini-2.0-flash-exp`
+2. In "Text Model" field, enter: `gemini-2.5-flash`
 3. Click **Save**
 
-That's it! The chatbot will now use Gemini for text chat.
+That's it! The chatbot will now use Gemini 2.5 Flash for text chat.
 
 ## Available Models
 
-### Gemini Models (Google)
-- `gemini-2.0-flash-exp` - Fast, cost-effective (recommended)
-- `gemini-1.5-flash` - Previous generation
-- `gemini-1.5-pro` - More capable, slower
+### Gemini Models (Google) - Recommended
+- `gemini-2.5-flash` - **BEST** - Latest, fastest, most cost-effective ⭐ (TESTED ✅)
+- `gemini-2.0-flash-exp` - Previous generation (TESTED ✅, still good)
+- `gemini-1.5-flash` - Older, not recommended
+- `gemini-1.5-pro` - Older, more capable but slower
+
+### Model Comparison
+**Gemini 2.5 Flash** (Recommended for TradeZone):
+- ⚡ Fastest response times
+- 💰 Lowest cost
+- 🎯 Best for chat, product search, trade-in workflows
+- ✅ Large-scale AI, bulk tasks
+- 📊 Solid accuracy for e-commerce
+
+**Gemini 2.5 Pro** (For complex tasks):
+- 🧠 Highest accuracy
+- 🎨 Multi-modal (images, video, audio)
+- 💵 Higher cost
+- 🐢 Slower responses
+- 🔬 Best for complex reasoning, analysis
 
 ### OpenAI Models (Default)
 - `gpt-4o-mini` - Default, balanced
@@ -75,27 +91,30 @@ The system auto-detects which provider to use based on model name:
 
 ### Test Gemini is Working
 1. Send a message to the chatbot
-2. Check Coolify logs for: `[ChatKit] Using Gemini model: gemini-2.0-flash-exp`
-3. If you see this, Gemini is active
+2. Check Coolify logs for: `[ChatKit] Using Gemini model: gemini-2.5-flash`
+3. If you see this, Gemini 2.5 Flash is active
 
 ### Test Fallback
 1. Remove GEMINI_API_KEY from env
-2. Keep model set to `gemini-2.0-flash-exp`
+2. Keep model set to `gemini-2.5-flash`
 3. Send a message
 4. Check logs for: `[ChatKit] Gemini failed, falling back to OpenAI`
 5. Chatbot should still work using OpenAI
 
-## Cost Comparison
+## Cost Comparison (per 1M tokens)
 
-**Gemini 2.0 Flash** (1M tokens):
-- Input: $0.075
-- Output: $0.30
+| Model | Input | Output | Total (avg) |
+|-------|--------|---------|-------------|
+| **Gemini 2.5 Flash** ⭐ | $0.075 | $0.30 | ~$0.19 |
+| **Gemini 2.5 Pro** | $1.25 | $5.00 | ~$3.13 |
+| Gemini 2.0 Flash | $0.075 | $0.30 | ~$0.19 |
+| **GPT-4o-mini** | $0.15 | $0.60 | ~$0.38 |
+| GPT-4o | $2.50 | $10.00 | ~$6.25 |
 
-**GPT-4o-mini** (1M tokens):
-- Input: $0.15
-- Output: $0.60
-
-**Savings: ~50% cost reduction** 🎉
+**Gemini 2.5 Flash vs GPT-4o-mini:**
+- 💰 **~50% cost savings**
+- ⚡ **Similar or better speed**
+- 🎯 **Comparable quality for e-commerce**
 
 ## Performance
 
@@ -133,10 +152,33 @@ Check which model is being used:
 
 ## Recommendations
 
-- **Production**: Start with `gemini-2.0-flash-exp`, monitor quality
-- **Testing**: Try both models, compare responses
-- **Cost-sensitive**: Use Gemini for significant savings
-- **Quality-critical**: Stick with `gpt-4o-mini` if Gemini doesn't meet needs
+### For TradeZone (E-commerce Chatbot):
+✅ **Use Gemini 2.5 Flash** (`gemini-2.5-flash`)
+- Perfect for product search, trade-in workflows, customer support
+- Fastest responses + lowest cost
+- Handles tool calling excellently
+- Great for bulk chat/messaging
+- **Tested and verified working** ✅
+
+### When to Use Each Model:
+
+**Gemini 2.5 Flash** - Use for:
+- ✅ Customer support chat (TradeZone use case)
+- ✅ Product recommendations
+- ✅ Trade-in price quotes
+- ✅ High-volume interactions
+- ✅ Fast response requirements
+
+**Gemini 2.5 Pro** - Use for:
+- Complex multi-step reasoning
+- Image/video analysis
+- Advanced analytics
+- Low-volume, high-accuracy tasks
+
+**GPT-4o-mini** - Fallback if:
+- Gemini response quality doesn't meet needs
+- Specific OpenAI features required
+- Testing/comparison needed
 
 ## Support
 

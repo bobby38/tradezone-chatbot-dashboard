@@ -54,12 +54,12 @@ function convertMessagesToGemini(messages: OpenAIMessage[]): {
         };
       } else if (msg.role === "assistant") {
         const parts: any[] = [];
-        
+
         // Add text content
         if (msg.content) {
           parts.push({ text: msg.content });
         }
-        
+
         // Add tool calls
         if (msg.tool_calls && msg.tool_calls.length > 0) {
           msg.tool_calls.forEach((toolCall) => {
@@ -71,7 +71,7 @@ function convertMessagesToGemini(messages: OpenAIMessage[]): {
             });
           });
         }
-        
+
         return {
           role: "model",
           parts,
@@ -132,10 +132,10 @@ export async function createGeminiChatCompletion(
   );
   const tools = convertToolsToGemini(params.tools);
 
-  // Map model names
+  // Map model names (default to latest Gemini 2.5 Flash)
   const modelName = params.model.includes("gemini")
     ? params.model
-    : "gemini-2.0-flash-exp";
+    : "gemini-2.5-flash";
 
   const model = genAI.getGenerativeModel({
     model: modelName,
