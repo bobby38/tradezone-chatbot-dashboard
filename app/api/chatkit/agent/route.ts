@@ -1586,10 +1586,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const hasPayout = Boolean(detail.preferred_payout);
 
     // Check if photos step acknowledged (encouraged but no longer blocking email)
-    const photoStepAcknowledged = isPhotoStepAcknowledged(
-      detail,
-      params.history,
-    );
+    let photoStepAcknowledged = isPhotoStepAcknowledged(detail, params.history);
 
     // Storage is optional; photos must be acknowledged before auto-submit.
     // If not yet acknowledged, auto-mark as "Not provided — final quote upon inspection"
