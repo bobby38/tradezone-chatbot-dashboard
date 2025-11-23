@@ -1315,8 +1315,34 @@ const DEVICE_PATTERNS: Array<{
   { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
   { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
   { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
-  { regex: /playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
-  { regex: /playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
+  // Order matters: specific variants first, then general fallbacks
+  {
+    regex: /ps5\s*pro|playstation 5\s*pro/i,
+    brand: "Sony",
+    model: "PlayStation 5 Pro",
+  },
+  {
+    regex: /ps5\s*digital|playstation 5\s*digital/i,
+    brand: "Sony",
+    model: "PlayStation 5 Digital",
+  },
+  {
+    regex: /ps5\s*disc|playstation 5\s*disc/i,
+    brand: "Sony",
+    model: "PlayStation 5 Disc",
+  },
+  { regex: /ps5|playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
+  {
+    regex: /ps4\s*pro|playstation 4\s*pro/i,
+    brand: "Sony",
+    model: "PlayStation 4 Pro",
+  },
+  {
+    regex: /ps4\s*slim|playstation 4\s*slim/i,
+    brand: "Sony",
+    model: "PlayStation 4 Slim",
+  },
+  { regex: /ps4|playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
   {
     regex: /xbox series x|\bxsx\b/i,
     brand: "Microsoft",
@@ -1565,13 +1591,31 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       params.history,
     );
 
-    // Storage is optional; photos are encouraged but no longer block auto-submit
+    // Storage is optional; photos must be acknowledged before auto-submit.
+    // If not yet acknowledged, auto-mark as "Not provided — final quote upon inspection"
+    // so submission never gets permanently blocked.
+    if (!photoStepAcknowledged) {
+      try {
+        await updateTradeInLead(params.leadId, {
+          notes:
+            "Photos: Not provided — final quote upon inspection (auto-marked)",
+        });
+        photoStepAcknowledged = true;
+      } catch (markPhotoError) {
+        console.warn(
+          "[ChatKit] Failed to auto-mark photo acknowledgement",
+          markPhotoError,
+        );
+      }
+    }
+
     if (
       alreadyNotified ||
       !hasDevice ||
       !hasContactPhone ||
       !hasEmail ||
-      !hasPayout
+      !hasPayout ||
+      !photoStepAcknowledged
     ) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
@@ -2030,9 +2074,9 @@ function buildMissingTradeInFieldPrompt(detail: any): string | null {
 
   const steps: Array<{ missing: boolean; message: string }> = [
     {
-      missing: !hasDevice,
+      missing: false, // Never re-ask device if already parsed; we infer from prior messages
       message:
-        'Ask: "What device are we trading? Brand and model?" Save brand/model before moving on.',
+        "Device already captured or inferred. Do NOT ask what device they're trading.",
     },
     {
       missing: !hasStorage,
@@ -2874,6 +2918,11 @@ export async function POST(request: NextRequest) {
         console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
       }
 
+      // Merge freshly auto-extracted clues so step reminders don't re-ask for data just provided this turn
+      if (tradeInLeadDetail && autoExtractedClues) {
+        tradeInLeadDetail = { ...tradeInLeadDetail, ...autoExtractedClues };
+      }
+
       if (tradeInLeadDetail) {
         const guardrails = buildMemoryGuardrailMessages(
           tradeInLeadDetail,
@@ -2941,7 +2990,7 @@ export async function POST(request: NextRequest) {
           messages.push({
             role: "system",
             content:
-              "You've locked device, condition, accessories, contact, and payout. Now ask once: 'Got photos? Helps us speed inspection.' If they decline, save 'Photos: Not provided — final quote upon inspection' and continue—do not block submission.",
+              "You've locked device, condition, accessories, contact, and payout. Ask ONCE, clearly yes/no: 'Got photos to speed inspection? Say yes to upload now, or no if you can't.' If they say yes, invite the upload briefly. If they say no, save 'Photos: Not provided — final quote upon inspection' and continue. Do not block submission; do not repeat this ask.",
           });
         }
 
@@ -3402,6 +3451,34 @@ export async function POST(request: NextRequest) {
 
               if (!tradeInLeadId) {
                 throw new Error("Unable to obtain trade-in lead ID");
+              }
+
+              // Block submission if photos haven't been acknowledged yet.
+              try {
+                const detailBeforeSubmit =
+                  await getTradeInLeadDetail(tradeInLeadId);
+                const photosOk = isPhotoStepAcknowledged(
+                  detailBeforeSubmit,
+                  truncatedHistory,
+                );
+                if (!photosOk) {
+                  // Auto-mark photos as not provided to avoid blocking submission.
+                  await updateTradeInLead(tradeInLeadId, {
+                    notes:
+                      "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
+                  });
+                  toolSummaries.push({
+                    name: functionName,
+                    args: { ...functionArgs, leadId: tradeInLeadId },
+                    resultPreview:
+                      'Auto-marked photos as "Not provided" before submitting.',
+                  });
+                }
+              } catch (photoCheckError) {
+                console.warn(
+                  "[ChatKit] Failed to verify photo acknowledgement before submit",
+                  photoCheckError,
+                );
               }
 
               const submitArgs = functionArgs as {

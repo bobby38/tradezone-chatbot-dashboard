@@ -171,6 +171,8 @@ export interface EnsureTradeInLeadResult {
 
 export interface TradeInUpdateInput {
   [key: string]: unknown;
+  // Note: we accept both the canonical contact_* keys and common aliases ("email", "phone", "name").
+  // Aliases are normalized inside normalizePatch() so upstream tools can be forgiving.
   category?: string;
   brand?: string;
   model?: string;
@@ -272,6 +274,36 @@ export async function ensureTradeInLead(
 }
 
 function normalizePatch(patch: TradeInUpdateInput) {
+  // Normalize common aliases to the canonical field names used in the DB
+  if (
+    typeof patch.email === "string" &&
+    !("contact_email" in patch) &&
+    !("contactEmail" in patch)
+  ) {
+    patch.contact_email = patch.email;
+  }
+  if ("email" in patch) {
+    delete patch.email;
+  }
+  if (typeof patch.contactEmail === "string" && !("contact_email" in patch)) {
+    patch.contact_email = patch.contactEmail;
+  }
+  if ("contactEmail" in patch) {
+    delete patch.contactEmail;
+  }
+  if (typeof patch.phone === "string" && !("contact_phone" in patch)) {
+    patch.contact_phone = patch.phone;
+  }
+  if ("phone" in patch) {
+    delete patch.phone;
+  }
+  if (typeof patch.name === "string" && !("contact_name" in patch)) {
+    patch.contact_name = patch.name;
+  }
+  if ("name" in patch) {
+    delete patch.name;
+  }
+
   const updatePayload: Record<string, any> = {};
   const invalidFields: string[] = [];
   const actions: Array<{ type: string; payload: Record<string, any> }> = [];
@@ -320,6 +352,12 @@ function normalizePatch(patch: TradeInUpdateInput) {
         }
         updatePayload[key] = date.toISOString();
       }
+      return;
+    }
+
+    // Trim whitespace for text fields; prevents " bobby@example.com " from being treated as a new value
+    if (TEXT_FIELDS.has(key) && typeof value === "string") {
+      updatePayload[key] = value.trim();
       return;
     }
 
