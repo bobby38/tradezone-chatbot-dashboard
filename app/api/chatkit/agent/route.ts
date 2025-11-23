@@ -844,6 +844,15 @@ function detectTradeInIntent(query: string): boolean {
   );
 }
 
+// Detects explicit two-device trade/upgrade phrasing ("trade X for Y", "upgrade X to Y")
+function detectTradeUpPair(query: string): boolean {
+  const normalized = query.toLowerCase();
+  if (!normalized) return false;
+  const tradePairPattern =
+    /(trade|upgrade|swap|exchange)\s+.+\s+(for|to)\s+.+/i;
+  return tradePairPattern.test(normalized);
+}
+
 // PRODUCT_KEYWORDS: Used to detect when user is asking about products
 // Note: Catalog JSON doesn't include keywords, they're only in build script
 // TODO: Extract to shared constants file for consistency
@@ -2696,6 +2705,7 @@ export async function POST(request: NextRequest) {
   let tradeInLeadId: string | null = null;
   let tradeInLeadStatus: string | null = null;
   let tradeInIntent = false;
+  let tradeUpPairIntent = false;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
@@ -2822,6 +2832,7 @@ export async function POST(request: NextRequest) {
     messages.push(userMessage);
 
     tradeInIntent = detectTradeInIntent(message);
+    tradeUpPairIntent = detectTradeUpPair(message);
 
     // Check if there's an existing trade-in lead for this session
     // This ensures we don't lose context mid-conversation
@@ -3061,7 +3072,10 @@ export async function POST(request: NextRequest) {
     }
 
     const shouldForceCatalog =
-      isTradeInPricingQuery || isProductInfoQuery || Boolean(productSlug);
+      tradeUpPairIntent ||
+      isTradeInPricingQuery ||
+      isProductInfoQuery ||
+      Boolean(productSlug);
 
     const toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
@@ -3083,6 +3097,15 @@ export async function POST(request: NextRequest) {
         role: "system",
         content:
           "Installment request: Offer rough monthly estimates (3/6/12 months) using top-up ÷ months, rounded, and say it's an estimate subject to checkout. Keep the price + installment reply to MAX 2 short sentences (≤25 words total). Set preferred_payout=installment when confirmed.",
+      });
+    }
+
+    // Trade-up pair guardrail: math-first, two sentences, no extra products
+    if (tradeUpPairIntent) {
+      messages.push({
+        role: "system",
+        content:
+          "User is trading one device for another. Default to NEW target pricing unless the user explicitly says preowned/used/open-box—in that case use the preowned price. Respond with ONLY the two numbers and the top-up: '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences, no other products or lists.",
       });
     }
 
