@@ -3,8 +3,8 @@
 ## ✅ What's Ready
 
 ### 1. **Environment Files Created**
-- ✅ `.env.local` - Updated with real API keys
-- ✅ `.env.coolify` - Ready to copy to Coolify
+- ✅ `.env.local` - Updated with real API keys (canonical source for Coolify)
+- ✅ `docs/COOLIFY_ENV_MANIFEST.md` - Sanitized manifest referencing `.env.local`
 
 ### 2. **API Keys Generated** (Secure & Unique)
 ```
@@ -36,7 +36,7 @@ Dashboard API Key: tzck_dashboard_YOUR_DASHBOARD_KEY_HERE
 
 **1. Copy Environment Variables**
 ```bash
-# Copy ALL variables from .env.coolify to Coolify dashboard
+# Copy ALL variables from .env.local to Coolify dashboard
 # Go to: Project → Environment Variables → Bulk Edit → Paste
 ```
 
@@ -72,8 +72,8 @@ curl https://trade.rezult.co/api/chatkit/agent
 
 | File | Purpose |
 |------|---------|
-| `.env.local` | ✅ Local development (updated with keys) |
-| `.env.coolify` | ✅ Production deployment (copy to Coolify) |
+| `.env.local` | ✅ Local + production source (copy into Coolify) |
+| `docs/COOLIFY_ENV_MANIFEST.md` | ✅ Env checklist (no secrets, describes required keys) |
 | `COOLIFY_DEPLOYMENT.md` | 📖 Full deployment guide |
 | `SECURITY.md` | 📖 Security documentation |
 | `CHATKIT_SECURITY_SETUP.md` | 📖 Quick setup guide |
@@ -150,7 +150,7 @@ done
 
 ### Security:
 - ✅ API keys are auto-generated and secure
-- ✅ Never commit `.env.local` or `.env.coolify` to git (already in .gitignore)
+- ✅ Never commit `.env.local` (or any raw env file) to git (already in .gitignore)
 - ✅ Use `NEXT_PUBLIC_*` keys in frontend only
 - ✅ Keep `CHATKIT_API_KEY` server-side only
 
@@ -214,7 +214,7 @@ done
 
 ## ✅ Deployment Checklist
 
-- [ ] Copy `.env.coolify` to Coolify environment
+- [ ] Copy `.env.local` to Coolify environment
 - [ ] Run database migration in Supabase
 - [ ] Deploy to Coolify
 - [ ] Update widget with API key

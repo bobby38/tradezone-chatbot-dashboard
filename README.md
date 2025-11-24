@@ -137,7 +137,7 @@ fetch('/api/chatkit/agent', {
 
 ### Coolify Deployment
 
-1. **Copy environment variables** from `.env.coolify`
+1. **Copy environment variables** from `.env.local` (see `docs/COOLIFY_ENV_MANIFEST.md` for the list)
 2. **Run database migration** in Supabase
 3. **Deploy** via Coolify dashboard
 4. **Verify** security endpoints
@@ -190,7 +190,7 @@ WC_KEY=ck_...
 WC_SECRET=cs_...
 ```
 
-📖 **Full List:** See [.env.coolify](./.env.coolify)
+📖 **Full List:** See [`docs/COOLIFY_ENV_MANIFEST.md`](./docs/COOLIFY_ENV_MANIFEST.md)
 
 ---
 

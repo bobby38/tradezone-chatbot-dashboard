@@ -2,7 +2,7 @@
 
 ## Quick Deploy Checklist
 
-- [ ] Copy environment variables from `.env.coolify`
+- [ ] Mirror environment variables from `.env.local` (Coolify already matches; treat `.env.local` as the canonical source — see `docs/COOLIFY_ENV_MANIFEST.md`)
 - [ ] Run database migration in Supabase
 - [ ] Upload Google credentials JSON file
 - [ ] Deploy to Coolify
@@ -13,9 +13,9 @@
 
 ## Step 1: Copy Environment Variables to Coolify
 
-### Method A: Copy from `.env.coolify` file
+### Method A: Copy from `.env.local`
 
-1. Open `.env.coolify` file in your project
+1. Open `.env.local` in your project (this file is the source of truth for trade.rezult.co)
 2. Copy ALL variables
 3. In Coolify dashboard:
    - Go to your project → **Environment Variables**

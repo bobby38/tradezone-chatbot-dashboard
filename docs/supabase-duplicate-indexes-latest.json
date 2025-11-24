@@ -1,0 +1,74 @@
+[
+  {
+    "schema_name": "public",
+    "table_name": "chat_logs",
+    "column_signature": "2",
+    "index_names": [
+      "chat_logs_session_idx",
+      "idx_chat_logs_session_id"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_logs",
+    "column_signature": "3",
+    "index_names": [
+      "chat_logs_user_idx",
+      "idx_chat_logs_user_id"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_logs",
+    "column_signature": "10",
+    "index_names": [
+      "chat_logs_created_idx",
+      "idx_chat_logs_created_at"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_sessions",
+    "column_signature": "2",
+    "index_names": [
+      "chat_sessions_session_id_key",
+      "idx_chat_sessions_session_id"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "form_submissions",
+    "column_signature": "7",
+    "index_names": [
+      "form_submissions_form_type_idx",
+      "idx_form_submissions_form_type"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "form_submissions",
+    "column_signature": "9",
+    "index_names": [
+      "form_submissions_status_idx",
+      "idx_form_submissions_status"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ga_daily",
+    "column_signature": "2",
+    "index_names": [
+      "ga_daily_date_key",
+      "idx_ga_daily_date"
+    ]
+  },
+  {
+    "schema_name": "public",
+    "table_name": "sc_daily",
+    "column_signature": "2",
+    "index_names": [
+      "idx_sc_daily_date",
+      "sc_daily_date_key"
+    ]
+  }
+]

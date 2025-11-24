@@ -2727,9 +2727,12 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
 #### Git Security
 
 **Protected** (gitignored):
-- `.env.local` - Contains real API keys
-- `.env.coolify` - Contains all production secrets
-- Never committed to repository
+- `.env.local` - Canonical list of production secrets (mirrored into Coolify)
+- `.env.sc` - Supabase CLI helpers (contains tokens)
+- Never commit raw env files to the repository
+
+**Documented** (safe to commit):
+- `docs/COOLIFY_ENV_MANIFEST.md` - Sanitized env checklist (no values)
 
 **Safe** (in git):
 - All documentation uses placeholder keys

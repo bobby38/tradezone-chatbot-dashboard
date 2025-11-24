@@ -3,7 +3,11 @@
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.sc' });
+
+// Load .env.sc first (if present) and fall back to .env.local for missing values
+const dotenv = require('dotenv');
+dotenv.config({ path: '.env.sc' });
+dotenv.config({ path: '.env.local', override: false });
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

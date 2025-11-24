@@ -1,0 +1,494 @@
+[
+  {
+    "schema_name": "public",
+    "table_name": "chat_logs",
+    "policy_name": "Insert logs (n8n service role)",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_logs",
+    "policy_name": "chat_logs_select",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "((session_user_id IS NULL) OR (session_user_id = ( SELECT auth.uid() AS uid)) OR (( SELECT auth.role() AS role) = 'authenticated'::text))",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_security_events",
+    "policy_name": "Authenticated users read security events",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_security_events",
+    "policy_name": "Service role full access to security events",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "service_role"
+    ],
+    "using_expression": "true",
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_sessions",
+    "policy_name": "Allow authenticated users to insert chat sessions",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_sessions",
+    "policy_name": "Allow authenticated users to read chat sessions",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_sessions",
+    "policy_name": "Allow authenticated users to update chat sessions",
+    "command": "w",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_usage_metrics",
+    "policy_name": "Authenticated users read usage metrics",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "chat_usage_metrics",
+    "policy_name": "Service role full access to usage metrics",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "service_role"
+    ],
+    "using_expression": "true",
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "email_logs",
+    "policy_name": "Allow authenticated users to read email logs",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "feedback",
+    "policy_name": "Allow authenticated users to insert feedback",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "feedback",
+    "policy_name": "Allow authenticated users to read feedback",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "fluent_forms_contacts",
+    "policy_name": "Allow authenticated users to manage fluent forms contacts",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "form_submissions",
+    "policy_name": "Allow authenticated users to update form submissions",
+    "command": "w",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "form_submissions",
+    "policy_name": "Allow authenticated users to view form submissions",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(( SELECT auth.role() AS role) = 'authenticated'::text)",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "form_submissions",
+    "policy_name": "Allow service role to insert form submissions",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "service_role"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "form_submissions",
+    "policy_name": "Allow webhook to insert form submissions",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "ga_daily",
+    "policy_name": "Allow authenticated users to read GA daily",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "gsc_daily_summary",
+    "policy_name": "Allow authenticated users to read GSC daily summary",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "gsc_performance",
+    "policy_name": "Allow authenticated users to read GSC performance",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "insights",
+    "policy_name": "Allow authenticated users to insert insights",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "insights",
+    "policy_name": "Allow authenticated users to read insights",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "insights_history",
+    "policy_name": "insights_delete_own",
+    "command": "d",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "insights_history",
+    "policy_name": "insights_read_own",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "insights_history",
+    "policy_name": "insights_write_own",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": null,
+    "check_expression": "true"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "prompts",
+    "policy_name": "prompts_admin_delete",
+    "command": "d",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = ( SELECT auth.uid() AS uid)) AND (u.role = 'admin'::text))))",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "prompts",
+    "policy_name": "prompts_admin_insert",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": null,
+    "check_expression": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = ( SELECT auth.uid() AS uid)) AND (u.role = 'admin'::text))))"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "prompts",
+    "policy_name": "prompts_admin_update",
+    "command": "w",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = ( SELECT auth.uid() AS uid)) AND (u.role = 'admin'::text))))",
+    "check_expression": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = ( SELECT auth.uid() AS uid)) AND (u.role = 'admin'::text))))"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "prompts",
+    "policy_name": "prompts_read",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "sc_daily",
+    "policy_name": "Allow authenticated users to read SC daily",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "settings",
+    "policy_name": "Allow authenticated users to manage settings",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(( SELECT auth.role() AS role) = 'authenticated'::text)",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "submission_drafts",
+    "policy_name": "Allow authenticated users to manage submission drafts",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "submissions",
+    "policy_name": "Allow authenticated reads",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "submissions",
+    "policy_name": "Allow webhook submissions",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": null,
+    "check_expression": "(content_type = 'Form Submission'::text)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "trade_in_actions",
+    "policy_name": "trade_in_actions_service_access",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)",
+    "check_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "trade_in_leads",
+    "policy_name": "trade_in_leads_service_access",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)",
+    "check_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "trade_in_media",
+    "policy_name": "trade_in_media_service_access",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)",
+    "check_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "trade_in_tags",
+    "policy_name": "trade_in_tags_service_access",
+    "command": "*",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)",
+    "check_expression": "(( SELECT auth.role() AS role) = 'service_role'::text)"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "users",
+    "policy_name": "Insert own user row",
+    "command": "a",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": null,
+    "check_expression": "((auth.role() = 'service_role'::text) OR (id = ( SELECT auth.uid() AS uid)))"
+  },
+  {
+    "schema_name": "public",
+    "table_name": "users",
+    "policy_name": "Users can see their own row",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "unknown (OID=0)"
+    ],
+    "using_expression": "((auth.role() = 'service_role'::text) OR (id = ( SELECT auth.uid() AS uid)))",
+    "check_expression": null
+  },
+  {
+    "schema_name": "public",
+    "table_name": "wc_snapshots",
+    "policy_name": "Allow authenticated users to read WC snapshots",
+    "command": "r",
+    "permissive": true,
+    "roles": [
+      "authenticated"
+    ],
+    "using_expression": "true",
+    "check_expression": null
+  }
+]

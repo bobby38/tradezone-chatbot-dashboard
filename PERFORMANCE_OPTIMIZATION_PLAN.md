@@ -83,6 +83,16 @@ Add logging for:
 - [ ] Cache hit/miss rates
 - [ ] User-perceived response time
 
+## November 24, 2025 — Supabase Lint Follow-up
+
+- Exported the Supabase Performance/Security lint report (`docs/supabase-lint-report-2025-11-24.md`).
+- 11 policies flagged for `auth_rls_initplan` (wrap `auth.*` calls in subqueries per Supabase guidance to avoid per-row re-evaluation).
+- 8 tables flagged for multiple permissive RLS policies (merge logic per role/action to keep evaluation cost low and rules understandable).
+- 6 duplicate index pairs detected (`chat_logs`, `form_submissions`, `settings`). Drop redundant indexes after verifying no unique constraints rely on them.
+- Track remediation + validation steps alongside Phase 2 deployments so deterministic trade-in replies stay unaffected.
+- New helpers: `supabase/migrations/20251124_supabase_introspection.sql` + `tsx scripts/export-supabase-lint-data.ts` snapshot live policies/indexes into `docs/supabase-*-latest.json` so we can diff before any destructive SQL.
+- Supabase GA/Search Console hot spots recorded in `docs/supabase-query-performance-2025-11-24.md`; prioritize composite index + ingestion batching before expanding analytics features.
+
 ---
 Generated: $(date)
 Priority: HIGH
