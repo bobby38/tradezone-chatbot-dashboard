@@ -176,14 +176,14 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         setStatus("Connected");
 
         const sessionConfig = config.config.sessionConfig || {};
-        const sessionPayload = {
-          ...sessionConfig,
-          modalities: sessionConfig.modalities || ["text", "audio"],
-          voice: sessionConfig.voice || config.config.voice || "verse",
-          output_audio_format: sessionConfig.output_audio_format || "pcm16",
-          instructions:
-            sessionConfig.instructions ||
-            "You are Amara, TradeZone.sg's voice assistant. As soon as the call starts, greet with 'Hi, Amara here. I’m listening.' then wait. Keep answers under 12 words and pause so the caller can interrupt.",
+          const sessionPayload = {
+            ...sessionConfig,
+            modalities: sessionConfig.modalities || ["text", "audio"],
+            voice: sessionConfig.voice || config.config.voice || "verse",
+            output_audio_format: sessionConfig.output_audio_format || "pcm16",
+            instructions:
+              sessionConfig.instructions ||
+              "You are Amara, TradeZone.sg's voice assistant. Start with 'Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?' then wait. Keep answers under 12 words and pause so the caller can interrupt.",
           tools: sessionConfig.tools || [],
           tool_choice: sessionConfig.tool_choice || "auto",
           input_audio_transcription:
