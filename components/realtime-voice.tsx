@@ -42,6 +42,40 @@ function formatMatchesMarkdown(
   return `**Quick Links**\n${lines.join("\n")}`;
 }
 
+function buildVoiceSummaryFromMatches(
+  matches?: CatalogMatchEntry[] | null,
+  queryText?: string,
+): string | null {
+  if (!matches || matches.length === 0) return null;
+
+  const topMatches = matches
+    .filter((match) => Boolean(match?.name))
+    .slice(0, 2);
+
+  if (!topMatches.length) return null;
+
+  const summaries = topMatches.map((match) => {
+    const cleanedName = (match?.name || "").replace(/\*\*/g, "").trim();
+    const numericPrice = (() => {
+      if (typeof match?.price === "number") return match.price;
+      if (typeof match?.price === "string") {
+        const parsed = parseFloat(match.price);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    })();
+    const priceText =
+      typeof numericPrice === "number"
+        ? ` around S$${numericPrice.toFixed(0)}`
+        : "";
+    return `${cleanedName}${priceText}`;
+  });
+
+  const subject = (queryText || "").trim();
+  const intro = subject ? `For ${subject}, ` : "";
+  return `${intro}I found ${summaries.join(" and ")}. Want more details?`;
+}
+
 const TRADE_IN_KEYWORD_PATTERNS = [
   /\btrade[- ]?in\b/i,
   /\bbuy[- ]?back\b/i,
@@ -481,7 +515,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           });
           const data = await response.json();
 
-          result =
+          const rawResult =
             typeof data.result === "string" && data.result.trim().length > 0
               ? data.result
               : "";
@@ -500,6 +534,12 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           } else {
             pendingAssistantLinksRef.current = null;
           }
+
+          const voiceSummary =
+            !isTradeInIntent &&
+            buildVoiceSummaryFromMatches(data.matches, queryText);
+
+          result = voiceSummary || rawResult;
 
           if (!result) {
             result = isTradeInIntent
