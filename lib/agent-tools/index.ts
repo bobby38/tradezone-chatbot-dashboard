@@ -289,6 +289,11 @@ export async function searchWooProducts(
       keywords: ["tablet", "ipad", "galaxy tab"],
       category: "tablet",
     },
+    {
+      pattern: /\b(360\s+camera|camera|gopro|insta360|osmo|pocket\s*3)\b/i,
+      keywords: ["camera", "gopro", "insta", "osmo", "pocket"],
+      category: "camera",
+    },
   ];
 
   let familyFilter: string[] | null = null;
@@ -380,6 +385,39 @@ export async function searchWooProducts(
             score += 500; // Heavy bonus for matching the requested brand
           }
         });
+      } else if (categoryFilter === "camera") {
+        const matchesCategory = familyFilter!.some((keyword) =>
+          name.includes(keyword),
+        );
+        if (!matchesCategory) {
+          return { product, score: 0 };
+        }
+
+        const userAskingAccessory = /\b(filter|case|warranty|bag|mount|tripod|strap|battery|accessor(y|ies))\b/i.test(
+          normalized,
+        );
+        const accessoryKeywords = [
+          "filter",
+          "warranty",
+          "extension",
+          "case",
+          "pouch",
+          "bag",
+          "strap",
+          "mount",
+          "tripod",
+          "adapter",
+          "cable",
+          "charger",
+        ];
+        const isAccessory = accessoryKeywords.some((keyword) =>
+          name.includes(keyword),
+        );
+        if (isAccessory && !userAskingAccessory) {
+          return { product, score: 0 };
+        }
+
+        score += 100;
       }
       // Apply family filter if detected (gaming products)
       else if (familyFilter && tokens.length > 1) {
