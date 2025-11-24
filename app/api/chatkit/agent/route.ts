@@ -4395,16 +4395,27 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       const targetName = normalizeProductName(tradeUpParts.target);
 
       // Use captured values if present, otherwise fall back to precomputed, last tool prices, then hints
+      const hintedTradeValue = pickHintPrice(
+        sourceName,
+        TRADE_IN_PRICE_HINTS,
+      );
+      const hintedRetailPrice = pickHintPrice(
+        targetName,
+        RETAIL_PRICE_HINTS,
+      );
+
       let tradeValue =
-        forcedTradeUpMath?.tradeValue ??
         precomputedTradeUp.tradeValue ??
         lastTradeInPrice ??
-        pickHintPrice(sourceName, TRADE_IN_PRICE_HINTS);
+        hintedTradeValue ??
+        forcedTradeUpMath?.tradeValue ??
+        null;
       let retailPrice =
-        forcedTradeUpMath?.retailPrice ??
         precomputedTradeUp.retailPrice ??
         lastRetailPrice ??
-        pickHintPrice(targetName, RETAIL_PRICE_HINTS);
+        hintedRetailPrice ??
+        forcedTradeUpMath?.retailPrice ??
+        null;
 
       console.log("[TradeUp] Deterministic override check:", {
         tradeUpPairIntent,
