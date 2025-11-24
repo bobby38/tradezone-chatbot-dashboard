@@ -73,7 +73,9 @@ function buildVoiceSummaryFromMatches(
 
   const subject = (queryText || "").trim();
   const intro = subject ? `For ${subject}, ` : "";
-  return `${intro}I found ${summaries.join(" and ")}. Want more details?`;
+  const cta =
+    "Tap the View Product link in the chat or ask me for more details.";
+  return `${intro}I found ${summaries.join(" and ")}. ${cta}`;
 }
 
 const TRADE_IN_KEYWORD_PATTERNS = [
