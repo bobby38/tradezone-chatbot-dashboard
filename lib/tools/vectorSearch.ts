@@ -400,13 +400,66 @@ export async function handleVectorSearch(
   const wantsFullList = /\b(any|all|everything|list|show\s+me\s+all)\b/i.test(
     query,
   );
-  const wooLimit = wantsFullList ? 20 : 5;
+  const wooLimit = wantsFullList ? 20 : 12;
   const isTradeIntentContext =
     resolvedStore.label === "trade_in" ||
     (context?.intent && context.intent.toLowerCase() === "trade_in") ||
     (context?.toolUsed && context.toolUsed.startsWith("tradein_"));
   const tradeSnippet =
     priceListText && isTradeIntentContext ? priceListText : null;
+
+  const prependTradeSnippet = (text: string) =>
+    tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
+
+  const detectPlatform = (name?: string) => {
+    if (!name) return "other";
+    const lower = name.toLowerCase();
+    if (/\bps5\b|playstation\s*5/.test(lower)) return "ps5";
+    if (/\bps4\b|playstation\s*4/.test(lower)) return "ps4";
+    if (/\bxbox\b|series\s+[xs]/.test(lower)) return "xbox";
+    if (/\bswitch\b|nintendo/.test(lower)) return "switch";
+    if (/\bpc\b|\bsteam\b|\bwindows\b/.test(lower)) return "pc";
+    if (/\bquest\b|psvr|vr\b/.test(lower)) return "vr";
+    return "other";
+  };
+
+  const summarizePlatforms = (
+    products: Awaited<
+      ReturnType<typeof import("@/lib/agent-tools").searchWooProducts>
+    >,
+  ): string | null => {
+    if (!products.length) return null;
+    const counts: Record<string, number> = {
+      ps5: 0,
+      ps4: 0,
+      xbox: 0,
+      switch: 0,
+      pc: 0,
+      vr: 0,
+      other: 0,
+    };
+    products.forEach((product) => {
+      const key = detectPlatform(product.name);
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const labels: Record<string, string> = {
+      ps5: "PS5",
+      ps4: "PS4",
+      xbox: "Xbox",
+      switch: "Switch",
+      pc: "PC",
+      vr: "VR",
+      other: "Other",
+    };
+    const entries = Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .filter(([key]) => key !== "other" || Object.entries(counts).length === 1)
+      .map(([key, count]) => `${labels[key] || key} (${count})`);
+    if (entries.length <= 1) {
+      return null;
+    }
+    return `Platforms available: ${entries.join(", ")}. Want a specific platform or title?`;
+  };
 
   if (resolvedStore.label === "catalog") {
     try {
@@ -545,9 +598,6 @@ export async function handleVectorSearch(
       // Continue to vector search even if WooCommerce fails
     }
   }
-
-  const prependTradeSnippet = (text: string) =>
-    tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
   // PRIORITY 2: Fall back to Vector DB search
   try {
@@ -914,6 +964,7 @@ export async function handleVectorSearch(
     }
 
     const trimmedEnriched = enriched.trim();
+    const totalWooCount = wooProducts.length;
 
     if (trimmedEnriched.length === 0) {
       if (label === "trade_in") {
@@ -953,7 +1004,12 @@ export async function handleVectorSearch(
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
       );
+      const displayLimit = Math.min(
+        wooProducts.length,
+        wantsFullList ? wooProducts.length : 8,
+      );
       const wooSection = wooProducts
+        .slice(0, displayLimit)
         .map((r, idx) => {
           const price = formatSGDPrice(r.price_sgd);
           const url = r.permalink || `https://tradezone.sg`;
@@ -976,12 +1032,25 @@ export async function handleVectorSearch(
         "\n\n🔒 MANDATORY RESPONSE FORMAT - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
         wooSection +
         '\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: You MUST copy the above product list EXACTLY as shown. Do NOT modify names, prices, or add products. Only add a brief intro line like "Here\'s what we have:" before the list.';
+      const hiddenCount = totalWooCount - displayLimit;
+      const platformSummary =
+        totalWooCount > 6 ? summarizePlatforms(wooProducts) : null;
+      const listNotes: string[] = [];
+      if (hiddenCount > 0) {
+        listNotes.push(
+          `Showing ${displayLimit} of ${totalWooCount} items. Ask for a platform or title if you want the rest.`,
+        );
+      }
+      if (platformSummary) {
+        listNotes.push(platformSummary);
+      }
 
       finalText =
         "**WooCommerce Live Data (" +
-        wooProducts.length +
+        totalWooCount +
         " products found):**\n\n" +
         antiHallucinationNote +
+        (listNotes.length ? "\n\n" + listNotes.join(" ") : "") +
         vectorEnrichment;
     } else {
       // No WooCommerce products, just use vector/enrichment
