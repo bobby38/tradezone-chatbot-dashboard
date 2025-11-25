@@ -1098,6 +1098,10 @@
           transform: scale(0.95);
         }
 
+        .tz-voice-button.idle {
+          animation: tzVoiceIdle 2s infinite;
+        }
+
         .tz-voice-button.recording {
           animation: tzVoicePulse 1.5s infinite;
           background: #ef4444;
@@ -1113,6 +1117,12 @@
         @keyframes tzVoicePulse {
           0%, 100% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4); }
           50% { box-shadow: 0 8px 32px rgba(239, 68, 68, 0.8); }
+        }
+
+        @keyframes tzVoiceIdle {
+          0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.35); transform: scale(1); }
+          60% { box-shadow: 0 0 0 14px rgba(139, 92, 246, 0); transform: scale(1.02); }
+          100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); transform: scale(1); }
         }
 
         .tz-voice-status {
@@ -1851,6 +1861,8 @@
       const voiceContainer = document.getElementById("tz-voice-container");
       const chatWindow = document.getElementById("tz-chat-window");
       const chatHero = document.querySelector(".tz-chat-hero");
+      const voiceBtn = document.getElementById("tz-voice-btn");
+      const voiceStatus = document.getElementById("tz-voice-status");
 
       if (mode === "voice") {
         this.hideTypingIndicator();
@@ -1861,6 +1873,8 @@
         }
         if (chatWindow) chatWindow.classList.add("tz-voice-active", "tz-voice-compact");
         if (chatHero) chatHero.classList.add("hidden");
+        if (voiceBtn) voiceBtn.classList.add("idle");
+        if (voiceStatus) voiceStatus.textContent = "Tap the mic to start";
       } else {
         if (this.isRecording) this.stopVoice();
         if (chatContent) chatContent.style.display = "flex";
@@ -1872,6 +1886,8 @@
         if (chatHero && !chatWindow?.classList.contains("tz-mobile-compact")) {
           chatHero.classList.remove("hidden");
         }
+        if (voiceBtn) voiceBtn.classList.remove("idle", "recording");
+        if (voiceStatus) voiceStatus.textContent = "Ready to start";
       }
       this.updateWidgetHeight();
     },
@@ -2315,6 +2331,8 @@
         case "response.created":
           this.voiceState.isResponding = true;
           this.updateVoiceStatus("Thinking...");
+          const btnStart = document.getElementById("tz-voice-btn");
+          if (btnStart) btnStart.classList.remove("idle");
           break;
 
         case "response.audio_transcript.done":
@@ -2341,6 +2359,12 @@
           this.voiceState.isResponding = false;
           this.updateVoiceStatus("Listening...");
           this.flushVoiceTurn("success");
+          {
+            const btnStart = document.getElementById("tz-voice-btn");
+            if (btnStart && !this.isRecording) {
+              btnStart.classList.add("idle");
+            }
+          }
           break;
 
         case "response.function_call_arguments.done":
@@ -2371,6 +2395,8 @@
           }
           this.clearAssistantAudio();
           this.voicePendingLinksMarkdown = null;
+          const btnStart = document.getElementById("tz-voice-btn");
+          if (btnStart) btnStart.classList.remove("idle");
           break;
 
         case "input_audio_buffer.speech_stopped":
