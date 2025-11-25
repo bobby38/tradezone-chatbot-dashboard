@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       text: result,
       store,
       matches,
+      wooProducts,
     } = await handleVectorSearch(
       query,
       context && typeof context === "object" ? context : undefined,
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(
-      { result, store, matches },
+      { result, store, matches, wooProducts },
       { headers: corsHeaders },
     );
   } catch (error) {

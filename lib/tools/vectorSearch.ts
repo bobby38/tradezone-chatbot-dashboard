@@ -10,6 +10,7 @@ import {
   formatSGDPrice,
   formatSGDPriceShortOrNull,
 } from "@/lib/tools/priceFormatter";
+import type { WooProductSearchResult } from "@/lib/agent-tools";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -198,6 +199,7 @@ export interface VectorSearchResult {
   text: string;
   store: VectorStoreLabel;
   matches?: CatalogMatch[];
+  wooProducts?: WooProductSearchResult[];
 }
 
 /**
@@ -428,6 +430,7 @@ export async function handleVectorSearch(
           })),
         );
         if (wantsFullList) {
+          const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;
           const listText = wooProducts
             .map((product, idx) => {
               const priceLabel =
@@ -451,6 +454,7 @@ export async function handleVectorSearch(
             ),
             store: "product_catalog",
             matches: [],
+            wooProducts: wooPayload,
           };
         }
 
@@ -465,6 +469,7 @@ export async function handleVectorSearch(
             `[VectorSearch] 🚫 Phone/tablet query - returning WooCommerce ONLY (no vector contamination)`,
           );
 
+          const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;
           const wooSection = wooProducts
             .map((r, idx) => {
               const priceStr = formatSGDPrice(r.price_sgd);
@@ -511,6 +516,7 @@ export async function handleVectorSearch(
             text: prependTradeSnippet(finalText),
             store: "product_catalog",
             matches: [],
+            wooProducts: wooPayload,
           };
         }
 
@@ -684,6 +690,7 @@ export async function handleVectorSearch(
                         " products currently available. For more options, visit https://tradezone.sg",
                       store: label,
                       matches: [],
+                      wooProducts: wooResults,
                     };
                   } else {
                     console.log(
@@ -722,6 +729,8 @@ export async function handleVectorSearch(
                     text: perplexityResult,
                     store: label,
                     matches: [],
+                    wooProducts:
+                      wooProducts.length > 0 ? wooProducts : undefined,
                   };
                 }
               } catch (perplexityError) {
@@ -736,6 +745,7 @@ export async function handleVectorSearch(
                 text: `I don't have ${detectedCategory === "phone" ? "phones" : detectedCategory === "laptop" ? "laptops" : detectedCategory + "s"} in my current product database. Please check our website at https://tradezone.sg for our latest ${detectedCategory} inventory, or I can help you with gaming consoles and accessories instead.`,
                 store: label,
                 matches: [],
+                wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
               };
             }
           }
@@ -873,7 +883,7 @@ export async function handleVectorSearch(
       { regex: /basketball|nba|2k/i, tokens: ["nba", "2k"] },
       {
         regex: /football|soccer|fifa|fc ?24|ea sports fc/i,
-        tokens: ["fifa", "fc", "football"] ,
+        tokens: ["fifa", "fc", "football"],
       },
       { regex: /wrestling|wwe|wwf/i, tokens: ["wwe", "wrestling", "2k"] },
     ];
@@ -918,14 +928,19 @@ export async function handleVectorSearch(
           "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
         ].join("\n");
 
-        return { text: noMatchGuidance, store: label, matches: [] };
+        return {
+          text: noMatchGuidance,
+          store: label,
+          matches: [],
+          wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
+        };
       }
 
       return {
-        text:
-          "No matching products found. I can note this for staff and check availability for you—want me to do that?",
+        text: "No matching products found. I can note this for staff and check availability for you—want me to do that?",
         store: label,
         matches: label === "catalog" ? [] : undefined,
+        wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
       };
     }
 
@@ -980,6 +995,7 @@ export async function handleVectorSearch(
       text: prependTradeSnippet(finalText),
       store: label,
       matches: label === "catalog" ? catalogMatches : undefined,
+      wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
     };
   } catch (error) {
     console.error("Error in vector search:", error);
@@ -990,6 +1006,7 @@ export async function handleVectorSearch(
       text: errorText,
       store: resolvedStore.label,
       matches: resolvedStore.label === "catalog" ? [] : undefined,
+      wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
     };
   }
 }

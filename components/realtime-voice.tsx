@@ -16,6 +16,31 @@ interface CatalogMatchEntry {
   stockStatus?: string;
 }
 
+interface WooProductResult {
+  productId: number;
+  name: string;
+  permalink?: string;
+  price_sgd: number | null;
+  image?: string;
+}
+
+interface VectorSearchApiResponse {
+  result: string;
+  store?: string;
+  matches?: CatalogMatchEntry[] | null;
+  wooProducts?: WooProductResult[] | null;
+}
+
+function formatSGDPrice(value: number | null | undefined): string {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "S$—";
+  }
+  return `S$${value.toLocaleString("en-SG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+}
+
 function formatMatchesMarkdown(
   matches?: CatalogMatchEntry[] | null,
 ): string | null {
@@ -76,6 +101,46 @@ function buildVoiceSummaryFromMatches(
   const cta =
     "Tap the View Product link in the chat or ask me for more details.";
   return `${intro}I found ${summaries.join(" and ")}. ${cta}`;
+}
+
+function buildVoiceSummaryFromWooProducts(
+  wooProducts?: WooProductResult[] | null,
+  queryText?: string,
+): string | null {
+  if (!wooProducts || wooProducts.length === 0) return null;
+  const topMatches = wooProducts.slice(0, 2);
+  const summaries = topMatches.map((product) => {
+    const price = formatSGDPrice(product.price_sgd);
+    return `${product.name} — ${price}`;
+  });
+  if (!summaries.length) return null;
+  const subject = (queryText || "").trim();
+  const intro = subject ? `For ${subject}, ` : "";
+  return `${intro}I found ${summaries.join(" and ")}. Need details on any of these?`;
+}
+
+function buildWooProductListBlock(
+  wooProducts?: WooProductResult[] | null,
+): string | null {
+  if (!wooProducts || wooProducts.length === 0) return null;
+  const lines = wooProducts.map((product, idx) => {
+    const price = formatSGDPrice(product.price_sgd);
+    const url = product.permalink || "https://tradezone.sg";
+    const imageLine =
+      idx === 0 && product.image
+        ? `\n   ![${product.name}](${product.image})`
+        : "";
+    return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}${imageLine}`;
+  });
+  return `---START PRODUCT LIST---\n${lines.join("\n\n")}\n---END PRODUCT LIST---`;
+}
+
+function extractProductListBlock(rawText?: string): string | null {
+  if (!rawText) return null;
+  const match = rawText.match(
+    /---START PRODUCT LIST---[\s\S]+?---END PRODUCT LIST---/i,
+  );
+  return match ? match[0] : null;
 }
 
 const TRADE_IN_KEYWORD_PATTERNS = [
@@ -178,14 +243,14 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
         setStatus("Connected");
 
         const sessionConfig = config.config.sessionConfig || {};
-          const sessionPayload = {
-            ...sessionConfig,
-            modalities: sessionConfig.modalities || ["text", "audio"],
-            voice: sessionConfig.voice || config.config.voice || "verse",
-            output_audio_format: sessionConfig.output_audio_format || "pcm16",
-            instructions:
-              sessionConfig.instructions ||
-              "You are Amara, TradeZone.sg's voice assistant. Start with 'Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?' then wait. Keep answers under 12 words and pause so the caller can interrupt.",
+        const sessionPayload = {
+          ...sessionConfig,
+          modalities: sessionConfig.modalities || ["text", "audio"],
+          voice: sessionConfig.voice || config.config.voice || "verse",
+          output_audio_format: sessionConfig.output_audio_format || "pcm16",
+          instructions:
+            sessionConfig.instructions ||
+            "You are Amara, TradeZone.sg's voice assistant. Start with 'Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?' then wait. Keep answers under 12 words and pause so the caller can interrupt.",
           tools: sessionConfig.tools || [],
           tool_choice: sessionConfig.tool_choice || "auto",
           input_audio_transcription:
@@ -515,7 +580,7 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
                 : { toolUsed: name },
             }),
           });
-          const data = await response.json();
+          const data: VectorSearchApiResponse = await response.json();
 
           const rawResult =
             typeof data.result === "string" && data.result.trim().length > 0
@@ -525,23 +590,51 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
           const storeLabel =
             typeof data.store === "string" ? data.store : "unknown";
 
-          if (storeLabel === "catalog") {
-            const linksMarkdown = formatMatchesMarkdown(data.matches);
-            if (linksMarkdown) {
-              pendingAssistantLinksRef.current = linksMarkdown;
-              console.log("[Tool] Captured product links for transcript");
-            } else {
-              pendingAssistantLinksRef.current = null;
-            }
+          const wooProductsFromApi = Array.isArray(data.wooProducts)
+            ? (data.wooProducts as WooProductResult[]).filter(
+                (item) => item && item.name,
+              )
+            : [];
+
+          const wooBlock =
+            wooProductsFromApi.length > 0
+              ? buildWooProductListBlock(wooProductsFromApi)
+              : extractProductListBlock(rawResult);
+
+          const voiceSummaryFromWoo =
+            !isTradeInIntent && wooProductsFromApi.length > 0
+              ? buildVoiceSummaryFromWooProducts(wooProductsFromApi, queryText)
+              : null;
+
+          const voiceSummaryFromMatches =
+            !isTradeInIntent && !voiceSummaryFromWoo
+              ? buildVoiceSummaryFromMatches(data.matches, queryText)
+              : null;
+
+          const transcriptBlock =
+            wooBlock ||
+            (storeLabel === "catalog"
+              ? formatMatchesMarkdown(data.matches)
+              : null);
+
+          if (transcriptBlock) {
+            pendingAssistantLinksRef.current = transcriptBlock;
+            console.log("[Tool] Captured product list for transcript");
           } else {
             pendingAssistantLinksRef.current = null;
           }
 
-          const voiceSummary =
-            !isTradeInIntent &&
-            buildVoiceSummaryFromMatches(data.matches, queryText);
-
-          result = voiceSummary || rawResult;
+          const summaryToUse =
+            voiceSummaryFromWoo || voiceSummaryFromMatches || "";
+          if (summaryToUse && wooBlock) {
+            result = `${summaryToUse}\n\n${wooBlock}`;
+          } else if (summaryToUse) {
+            result = summaryToUse;
+          } else if (wooBlock) {
+            result = wooBlock;
+          } else {
+            result = rawResult;
+          }
 
           if (!result) {
             result = isTradeInIntent
