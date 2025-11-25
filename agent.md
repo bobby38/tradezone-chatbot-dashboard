@@ -570,6 +570,10 @@ Apply helper scripts in `/scripts`:
 - **Phase 2 (High Priority)** — deployment tasks, production verification, migrations (see `plan.md`).
 - **Phase 3 (Medium)** — n8n automation expansion, AI enhancements (sentiment, summarization, predictive analytics).
 - **Phase 4-6 (Low)** — inventory/operations management, mobile app, marketplace integrations (`CLIENT_FEATURES_OVERVIEW.md`).
+- **Phase 4.4 (New)** — Price Grid Automation
+  - Publish the trade-in / retail price list on a dedicated TradeZone page (CSV/JSON) so ops can edit it without touching the repo.
+  - Wire a lightweight fetch + converter script (reusing `tradein_price_tool.py`) that ingests the live price grid into `data/tradezone_price_grid.jsonl` and pushes to the OpenAI vector store.
+  - Longer term, store the grid in Supabase and have the agent read from that table so price updates are instant and auditable.
 - **Notification system** — follow detailed blueprint in `docs/notification-system.md` to wire n8n webhooks, priority routing, Telegram/WhatsApp actions.
 - **Session analytics** — implement metrics called out in `CLAUDE.md` next steps (request logging, performance monitoring).
 - **Trade-in workflow automation** — refine queue/priority-based notifications (Docs + plan).
