@@ -149,8 +149,15 @@ async function main() {
   if (!entries.length) {
     throw new Error("No entries parsed from the trade page");
   }
+  // Deduplicate entries to avoid ON CONFLICT multiple updates
+  const uniqueMap = new Map<string, ParsedEntry>();
+  for (const entry of entries) {
+    const key = `${entry.product_family}__${entry.product_model}__${entry.variant || ''}__${entry.condition}`;
+    uniqueMap.set(key, entry);
+  }
+  const uniqueEntries = Array.from(uniqueMap.values());
   console.log(`[Grid] Parsed ${entries.length} entries. Upserting…`);
-  await upsertEntries(entries);
+  await upsertEntries(uniqueEntries);
   console.log("[Grid] Upsert complete.");
 }
 
