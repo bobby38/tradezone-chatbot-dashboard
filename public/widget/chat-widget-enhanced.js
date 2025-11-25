@@ -1157,11 +1157,8 @@
           font-size: 14px;
           line-height: 1.6;
           color: #e5e7eb;
-          max-height: 260px;
+          max-height: 360px;
         }
-
-        .tz-voice-transcript.expanded { max-height: 360px; }
-        .tz-voice-transcript.collapsed { max-height: 64px; overflow-y: hidden; }
 
         .tz-voice-transcript img {
           max-width: 150px;
@@ -1642,10 +1639,6 @@
                   <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                 </svg>
               </button>
-              <div class="tz-voice-transcript-header">
-                <span>Transcript</span>
-                <button class="tz-voice-transcript-toggle" id="tz-voice-transcript-toggle">Hide transcript</button>
-              </div>
               <div class="tz-voice-transcript" id="tz-voice-transcript"></div>
               <div class="tz-voice-footer">
                 <div class="tz-voice-footer-inner">
