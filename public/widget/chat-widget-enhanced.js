@@ -133,6 +133,13 @@
       { regex: /nintendo switch|\bswitch\b/i, keyword: "Switch" },
       { regex: /steam deck/i, keyword: "Steam Deck" },
     ],
+    voiceSportHints: [
+      { regex: /basketball/i, tokens: ["nba", "nba 2k", "2k"] },
+      {
+        regex: /football|soccer|fifa|fc ?24|ea sports fc/i,
+        tokens: ["fifa", "fc 24", "ea sports fc", "football"],
+      },
+    ],
 
     init: function (options) {
       this.config = { ...this.config, ...options };
@@ -175,6 +182,7 @@
       const normalizedQuery = (queryText || "").toLowerCase();
       let refinedQuery = queryText.trim();
       const platforms = [];
+      const sportTokens = new Set();
 
       this.voicePlatformHints.forEach(({ regex, keyword }) => {
         if (regex.test(transcript) || regex.test(normalizedQuery)) {
@@ -185,6 +193,16 @@
           platforms.push(keywordLower);
         }
       });
+
+      this.voiceSportHints.forEach(({ regex, tokens }) => {
+        if (regex.test(transcript) || regex.test(normalizedQuery)) {
+          tokens.forEach((t) => sportTokens.add(t.toLowerCase()));
+        }
+      });
+
+      if (sportTokens.size) {
+        refinedQuery = `${refinedQuery} ${Array.from(sportTokens).join(" ")}`.trim();
+      }
 
       const extraKeywords = new Set();
       const combined = `${normalizedQuery} ${transcript}`.trim();
@@ -207,6 +225,7 @@
         });
 
       platforms.forEach((platform) => extraKeywords.add(platform));
+      sportTokens.forEach((token) => extraKeywords.add(token));
 
       return {
         refinedQuery: refinedQuery.trim(),
@@ -2376,7 +2395,10 @@
                     }
                     vectorOk = true;
                   } else {
-                    result = "No results match those details right now.";
+                    result = `No results match those details right now.`;
+                    if (voiceContext.keywords.length) {
+                      vectorOk = true; // prevent fallback from spilling unrelated items
+                    }
                   }
                 }
 
