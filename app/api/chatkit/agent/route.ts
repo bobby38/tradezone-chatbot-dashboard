@@ -124,6 +124,12 @@ type TradeGridEntry = {
   trade_in_value_min?: number | null;
   trade_in_value_max?: number | null;
   brand_new_price?: number | null;
+  price_grid_version?: string | null;
+};
+
+type PriceLookupResult = {
+  amount: number | null;
+  version?: string | null;
 };
 
 let tradeGridEntriesCache: TradeGridEntry[] | null = null;
@@ -134,6 +140,32 @@ function normalizeText(input: string | null | undefined): string {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function formatCurrency(amount: number | null | undefined): string {
+  if (amount == null || Number.isNaN(amount)) return "S$0";
+  return `S$${Number(amount).toFixed(0)}`;
+}
+
+function formatTradeUpSummary(
+  summary: {
+    source?: string;
+    target?: string;
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+    topUp?: number | null;
+  } | null,
+  options?: { includeLeadIn?: boolean },
+): string | null {
+  if (!summary || summary.tradeValue == null || summary.retailPrice == null) {
+    return null;
+  }
+  const topUpValue =
+    summary.topUp != null
+      ? summary.topUp
+      : Math.max(0, summary.retailPrice - summary.tradeValue);
+  const base = `${summary.source || "Trade-in"} ~${formatCurrency(summary.tradeValue)} → ${summary.target || "Target"} ${formatCurrency(summary.retailPrice)} → Top-up ~${formatCurrency(topUpValue)}`;
+  return options?.includeLeadIn ? `Trade-up summary: ${base}.` : base;
 }
 
 function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
@@ -150,11 +182,12 @@ function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
         return {
           product_family: meta.product_family || "",
           product_model: meta.product_model || entry.text || "",
-          variant: meta.variant || null,
+          variant: meta.variant || "",
           condition: (meta.condition || "").toLowerCase() || "unspecified",
           trade_in_value_min: meta.trade_in_value_min_sgd ?? null,
           trade_in_value_max: meta.trade_in_value_max_sgd ?? null,
           brand_new_price: meta.brand_new_price_sgd ?? null,
+          price_grid_version: meta.price_grid_version || null,
         } as TradeGridEntry;
       });
   } catch (err) {
@@ -172,7 +205,7 @@ async function loadTradeGridEntries(): Promise<TradeGridEntry[]> {
     const { data, error } = await supabase
       .from("trade_price_grid")
       .select(
-        "product_family, product_model, variant, condition, trade_in_value_min, trade_in_value_max, brand_new_price",
+        "product_family, product_model, variant, condition, trade_in_value_min, trade_in_value_max, brand_new_price, price_grid_version",
       );
     if (error) {
       if (error.code !== "42P01") {
@@ -206,15 +239,15 @@ function resolveTradeValue(entry: TradeGridEntry): number | null {
 async function lookupPriceFromGrid(
   query: string,
   intent: "trade_in" | "retail",
-): Promise<number | null> {
+): Promise<PriceLookupResult> {
   const tokens = normalizeText(query)
     .split(" ")
     .filter((token) => token.length >= 3);
-  if (!tokens.length) return null;
+  if (!tokens.length) return { amount: null };
 
   const entries = await loadTradeGridEntries();
   let bestScore = 0;
-  let bestValue: number | null = null;
+  let bestEntry: TradeGridEntry | null = null;
 
   for (const entry of entries) {
     const haystack = entrySearchText(entry);
@@ -228,11 +261,18 @@ async function lookupPriceFromGrid(
 
     if (score >= bestScore) {
       bestScore = score;
-      bestValue = candidate;
+      bestEntry = entry;
     }
   }
 
-  return bestValue;
+  return {
+    amount: bestEntry
+      ? intent === "trade_in"
+        ? resolveTradeValue(bestEntry)
+        : bestEntry.brand_new_price ?? null
+      : null,
+    version: bestEntry?.price_grid_version || null,
+  };
 }
 
 function getCorsHeaders(origin: string | null): HeadersInit {
@@ -1065,11 +1105,15 @@ function normalizeProductName(name: string | undefined | null): string {
 async function fetchApproxPrice(
   query: string,
   contextIntent: "trade_in" | "retail",
-): Promise<number | null> {
+): Promise<PriceLookupResult> {
   try {
     const gridPrice = await lookupPriceFromGrid(query, contextIntent);
-    if (gridPrice != null) {
-      console.log("[TradeUp] Grid price hit", { query, contextIntent, gridPrice });
+    if (gridPrice.amount != null) {
+      console.log("[TradeUp] Grid price hit", {
+        query,
+        contextIntent,
+        gridPrice,
+      });
       return gridPrice;
     }
   } catch (err) {
@@ -1088,10 +1132,10 @@ async function fetchApproxPrice(
       resultPreview: result.result?.substring(0, 200),
       extractedNumber: num,
     });
-    return num ?? null;
+    return { amount: num ?? null };
   } catch (err) {
     console.warn("[TradeUp] fetchApproxPrice failed", { query, err });
-    return null;
+    return { amount: null };
   }
 }
 
@@ -1916,17 +1960,47 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       );
     }
 
+    if (
+      tradeUpPricingSummary &&
+      (tradeUpPricingSummary.tradeValue != null ||
+        tradeUpPricingSummary.retailPrice != null)
+    ) {
+      const pricePatch: TradeInUpdateInput = {
+        price_hint: tradeUpPricingSummary.tradeValue ?? undefined,
+        range_min: tradeUpPricingSummary.retailPrice ?? undefined,
+        range_max: tradeUpPricingSummary.retailPrice ?? undefined,
+        pricing_version:
+          tradeUpPricingSummary.tradeVersion ||
+          tradeUpPricingSummary.retailVersion ||
+          undefined,
+      };
+      try {
+        await updateTradeInLead(params.leadId, pricePatch);
+        detail = await getTradeInLeadDetail(params.leadId);
+      } catch (pricePatchError) {
+        console.warn("[ChatKit] Failed to persist trade-up pricing", pricePatchError);
+      }
+    }
+
     console.log(
       "[ChatKit] Auto-submit conditions met, submitting trade-in lead...",
     );
 
     const summary = await buildTradeInSummary(params.leadId, params.history);
+    const tradeSummaryLine = formatTradeUpSummary(tradeUpPricingSummary);
+    const summaryWithPricing = summary
+      ? tradeSummaryLine
+        ? `Trade-up: ${tradeSummaryLine}\n${summary}`
+        : summary
+      : tradeSummaryLine
+        ? `Trade-up: ${tradeSummaryLine}`
+        : undefined;
     const newStatus =
       detail.status && detail.status !== "new" ? detail.status : "in_review";
 
     const { lead, emailSent } = await submitTradeInLead({
       leadId: params.leadId,
-      summary: summary || undefined,
+      summary: summaryWithPricing,
       notify: true,
       status: newStatus,
     });
@@ -2946,10 +3020,12 @@ export async function POST(request: NextRequest) {
   let lastSearchProductsResult: string | null = null;
   let lastTradeInPrice: number | null = null;
   let lastRetailPrice: number | null = null;
-  let precomputedTradeUp: {
-    tradeValue?: number | null;
-    retailPrice?: number | null;
-  } = {};
+let precomputedTradeUp: {
+  tradeValue?: number | null;
+  retailPrice?: number | null;
+  tradeVersion?: string | null;
+  retailVersion?: string | null;
+} = {};
   let errorMessage: string | null = null;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -2958,13 +3034,15 @@ export async function POST(request: NextRequest) {
   let tradeInIntent = false;
   let tradeUpPairIntent = false;
   let tradeUpParts: { source?: string; target?: string } | null = null;
-  let forcedTradeUpMath: {
-    source?: string;
-    target?: string;
-    tradeValue?: number | null;
-    retailPrice?: number | null;
-    confirmed?: boolean;
-  } | null = null;
+let forcedTradeUpMath: {
+  source?: string;
+  target?: string;
+  tradeValue?: number | null;
+  retailPrice?: number | null;
+  confirmed?: boolean;
+  tradeVersion?: string | null;
+  retailVersion?: string | null;
+} | null = null;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
@@ -2978,9 +3056,18 @@ export async function POST(request: NextRequest) {
   let latestTopUp: TopUpResult | null = null;
   let tradeInNeedsPayoutPrompt = false;
   let tradeInReadyForPhotoPrompt = false;
-  let tradeInPhotoAcknowledged = false;
-  let tradeDeviceQuery: string | null = null;
-  let tradeInPriceShared = false;
+let tradeInPhotoAcknowledged = false;
+let tradeDeviceQuery: string | null = null;
+let tradeInPriceShared = false;
+let tradeUpPricingSummary: {
+  source?: string;
+  target?: string;
+  tradeValue?: number | null;
+  tradeVersion?: string | null;
+  retailPrice?: number | null;
+  retailVersion?: string | null;
+  topUp?: number | null;
+} | null = null;
 
   try {
     // Load settings and system prompt
@@ -3118,10 +3205,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       // Pre-fetch prices server-side to avoid LLM gaps
       if (tradeUpParts?.source) {
-        precomputedTradeUp.tradeValue = await fetchApproxPrice(
+        const tradeResult = await fetchApproxPrice(
           `trade-in ${tradeUpParts.source}`,
           "trade_in",
         );
+        precomputedTradeUp.tradeValue = tradeResult.amount;
+        precomputedTradeUp.tradeVersion = tradeResult.version ?? null;
         console.log("[TradeUp] Precomputed trade-in value:", {
           query: `trade-in ${tradeUpParts.source}`,
           value: precomputedTradeUp.tradeValue,
@@ -3129,10 +3218,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
       if (tradeUpParts?.target) {
         // CRITICAL: Use "buy price" or "new price" to get RETAIL price, not trade-in value
-        precomputedTradeUp.retailPrice = await fetchApproxPrice(
+        const retailResult = await fetchApproxPrice(
           `buy price ${tradeUpParts.target}`,
           "retail",
         );
+        precomputedTradeUp.retailPrice = retailResult.amount;
+        precomputedTradeUp.retailVersion = retailResult.version ?? null;
         console.log("[TradeUp] Precomputed retail price:", {
           query: `buy price ${tradeUpParts.target}`,
           value: precomputedTradeUp.retailPrice,
@@ -4449,6 +4540,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       finalResponse = assistantMessage.content || "";
     }
 
+    const tradeSummaryForResponse = formatTradeUpSummary(
+      tradeUpPricingSummary,
+      { includeLeadIn: true },
+    );
+    if (tradeSummaryForResponse) {
+      finalResponse = `${tradeSummaryForResponse}\n\n${finalResponse}`;
+    }
+
+    if (finalResponse.includes("Next, you can visit us at 21 Hougang St 51")) {
+      finalResponse = finalResponse.replace(
+        "Next, you can visit us at 21 Hougang St 51, #02-09 for inspection.",
+        "We’ll email you a confirmation shortly. You can also visit us at 21 Hougang St 51, #02-09 for inspection.",
+      );
+    }
+
+    if (tradeInReadyForPhotoPrompt && !tradeInPhotoAcknowledged) {
+      finalResponse = `${finalResponse}\n\nGot photos to speed inspection? Say "Yes" to upload now, or "No photos" if you don't have them on hand.`;
+    }
+
     verificationData.reply_text = finalResponse;
     const computedConfidence = computeConfidence(
       priceConfidence,
@@ -4542,16 +4652,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       );
 
       let tradeValue =
+        forcedTradeUpMath?.tradeValue ??
         precomputedTradeUp.tradeValue ??
         lastTradeInPrice ??
         hintedTradeValue ??
-        forcedTradeUpMath?.tradeValue ??
         null;
       let retailPrice =
+        forcedTradeUpMath?.retailPrice ??
         precomputedTradeUp.retailPrice ??
         lastRetailPrice ??
         hintedRetailPrice ??
-        forcedTradeUpMath?.retailPrice ??
+        null;
+
+      const tradeVersion =
+        forcedTradeUpMath?.tradeVersion ??
+        precomputedTradeUp.tradeVersion ??
+        null;
+      const retailVersion =
+        forcedTradeUpMath?.retailVersion ??
+        precomputedTradeUp.retailVersion ??
         null;
 
       console.log("[TradeUp] Deterministic override check:", {
@@ -4573,10 +4692,31 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
         // Store topUp for installment calculation later
         latestTopUp = { top_up_sgd: topUp };
+        tradeUpPricingSummary = {
+          source: sourceName,
+          target: targetName,
+          tradeValue,
+          tradeVersion,
+          retailPrice,
+          retailVersion,
+          topUp,
+        };
       } else if (tradeValue != null && retailPrice == null) {
         finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
+        tradeUpPricingSummary = {
+          source: sourceName,
+          target: targetName,
+          tradeValue,
+          tradeVersion,
+        };
       } else if (tradeValue == null && retailPrice != null) {
         finalResponse = `${targetName} S$${retailPrice}. I need your trade-in device model to compute the top-up.`;
+        tradeUpPricingSummary = {
+          source: sourceName,
+          target: targetName,
+          retailPrice,
+          retailVersion,
+        };
       } else {
         finalResponse =
           "I need both your device (trade-in) and the target product to compute the top-up.";
