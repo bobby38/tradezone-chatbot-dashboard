@@ -13,6 +13,58 @@ import {
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
+const QUERY_STOP_WORDS = new Set([
+  "any",
+  "the",
+  "this",
+  "that",
+  "with",
+  "please",
+  "thanks",
+  "thank",
+  "you",
+  "got",
+  "have",
+  "need",
+  "want",
+  "for",
+  "from",
+  "your",
+  "their",
+  "its",
+  "buy",
+  "sell",
+  "price",
+  "prices",
+  "gaming",
+  "game",
+  "games",
+  "console",
+  "consoles",
+  "ps5",
+  "ps4",
+  "xbox",
+  "series",
+  "edition",
+  "bundle",
+]);
+
+const GENERIC_QUERY_TOKENS = new Set([
+  "gaming",
+  "game",
+  "games",
+  "console",
+  "consoles",
+  "ps5",
+  "ps4",
+  "xbox",
+  "series",
+  "edition",
+  "bundle",
+  "pc",
+  "gear",
+]);
+
 export interface VectorSearchContext {
   intent?: string;
   toolUsed?: string;
@@ -254,6 +306,30 @@ function cleanQueryForSearch(query: string): string {
   return cleaned || query; // Return original if cleaning results in empty string
 }
 
+function extractQueryTokens(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9+]+/)
+    .filter((token) => token.length >= 3 && !QUERY_STOP_WORDS.has(token));
+}
+
+function selectFilteringTokens(tokens: string[]): string[] {
+  if (!tokens.length) return [];
+  const specific = tokens.filter((token) => !GENERIC_QUERY_TOKENS.has(token));
+  return specific.length ? specific : tokens;
+}
+
+function filterWooResultsByTokens<T extends { name?: string }>(
+  items: T[],
+  tokens: string[],
+): T[] {
+  if (!tokens.length) return items;
+  return items.filter((item) => {
+    const hay = (item.name || "").toLowerCase();
+    return tokens.some((token) => hay.includes(token));
+  });
+}
+
 /**
  * Sort products by price when user explicitly wants cheap/affordable options
  */
@@ -300,6 +376,8 @@ export async function handleVectorSearch(
 ): Promise<VectorSearchResult> {
   const resolvedStore = resolveVectorStore(context);
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
+  const queryTokens = extractQueryTokens(query);
+  const filteringTokens = selectFilteringTokens(queryTokens);
   const tradeQueryOverride = context?.tradeDeviceQuery?.trim();
   let priceListMatch = tradeQueryOverride
     ? findTradeInPriceMatch(tradeQueryOverride)
