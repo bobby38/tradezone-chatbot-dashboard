@@ -853,7 +853,9 @@ export async function handleVectorSearch(
     // Step 4: Combine WooCommerce (source of truth) + Vector/Zep enrichment
     let finalText = "";
 
-    if (wooProducts.length > 0) {
+    if (sportFilters.length && wooProducts.length === 0) {
+      finalText = `No matching products found for "${query}".`;
+    } else if (wooProducts.length > 0) {
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
       );

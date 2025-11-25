@@ -3270,6 +3270,13 @@ After user confirms devices, show the pricing using the precomputed values, then
 Only after user says yes/proceed, start collecting details (condition, accessories, contact info, photos, payout). If they say no or hesitate, offer to help with something else.`,
       });
 
+      // Keep conversation locked on trade-up until user cancels
+      messages.push({
+        role: "system",
+        content:
+          "Stay in trade-up flow until customer cancels. Do NOT answer unrelated questions until trade-up is finished or they say cancel/stop.",
+      });
+
       // Pre-fetch prices server-side to avoid LLM gaps
       if (tradeUpParts?.source) {
         const tradeResult = await fetchApproxPrice(
@@ -3821,6 +3828,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             lastHybridSource = source;
             lastHybridQuery = searchQuery;
             lastHybridMatches = matches;
+            if (tradeUpPairIntent) {
+              // In trade-up mode, suppress verbose catalog lists; keep only numeric captures
+              toolResult = "";
+              lastHybridResult = null;
+              lastHybridMatches = [];
+            }
             // Capture generic price hints for fallback
             const parsed = pickFirstNumber(resolvedResult);
             if (parsed) {
