@@ -139,6 +139,10 @@
         regex: /football|soccer|fifa|fc ?24|ea sports fc/i,
         tokens: ["fifa", "fc 24", "ea sports fc", "football"],
       },
+      {
+        regex: /wrestling|wwe|wwf| smackdown/i,
+        tokens: ["wwe", "wrestling", "2k"],
+      },
     ],
 
     init: function (options) {
