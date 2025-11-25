@@ -1402,15 +1402,19 @@
             font-size: 14px;
           }
 
-          .tz-voice-container {
-            padding: 30px 16px;
-          }
+        .tz-voice-container {
+          padding: 16px 14px;
+        }
 
-          .tz-voice-button {
-            width: 64px;
-            height: 64px;
-            aspect-ratio: 1 / 1;
-          }
+        #tz-chat-window.tz-voice-compact .tz-voice-button {
+          width: 56px;
+          height: 56px;
+          aspect-ratio: 1 / 1;
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+        }
 
           .tz-voice-button svg {
             width: 32px;
@@ -1456,10 +1460,6 @@
           .tz-chat-hero {
             display: none;
           }
-
-        .tz-chat-hero-title {
-          font-size: 18px;
-        }
 
           .tz-voice-button {
             width: 58px;
@@ -1859,7 +1859,7 @@
           voiceContainer.classList.remove("hidden");
           voiceContainer.classList.add("active");
         }
-        if (chatWindow) chatWindow.classList.add("tz-voice-active");
+        if (chatWindow) chatWindow.classList.add("tz-voice-active", "tz-voice-compact");
         if (chatHero) chatHero.classList.add("hidden");
       } else {
         if (this.isRecording) this.stopVoice();
@@ -1868,7 +1868,7 @@
           voiceContainer.classList.add("hidden");
           voiceContainer.classList.remove("active");
         }
-        if (chatWindow) chatWindow.classList.remove("tz-voice-active");
+        if (chatWindow) chatWindow.classList.remove("tz-voice-active", "tz-voice-compact");
         if (chatHero && !chatWindow?.classList.contains("tz-mobile-compact")) {
           chatHero.classList.remove("hidden");
         }
