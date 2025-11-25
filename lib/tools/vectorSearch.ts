@@ -788,6 +788,39 @@ export async function handleVectorSearch(
       }
     }
 
+    // Sports keyword filter to avoid generic console listings
+    const lowerQuery = query.toLowerCase();
+    const sportFilters: string[] = [];
+    const SPORT_TOKEN_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
+      { regex: /basketball|nba|2k/i, tokens: ["nba", "2k"] },
+      {
+        regex: /football|soccer|fifa|fc ?24|ea sports fc/i,
+        tokens: ["fifa", "fc", "football"] ,
+      },
+      { regex: /wrestling|wwe|wwf/i, tokens: ["wwe", "wrestling", "2k"] },
+    ];
+
+    SPORT_TOKEN_MAP.forEach(({ regex, tokens }) => {
+      if (regex.test(lowerQuery)) {
+        sportFilters.push(...tokens.map((t) => t.toLowerCase()));
+      }
+    });
+
+    const applySportFilter = <T extends { name?: string }>(items: T[]) => {
+      if (!sportFilters.length) return items;
+      return items.filter((item) => {
+        const hay = (item.name || "").toLowerCase();
+        return sportFilters.some((tok) => hay.includes(tok));
+      });
+    };
+
+    if (sportFilters.length && wooProducts.length) {
+      wooProducts = applySportFilter(wooProducts);
+    }
+    if (sportFilters.length && catalogMatches.length) {
+      catalogMatches = applySportFilter(catalogMatches);
+    }
+
     const trimmedEnriched = enriched.trim();
 
     if (trimmedEnriched.length === 0) {
