@@ -117,39 +117,16 @@ const RETAIL_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
 ];
 
 type TradeGridEntry = {
-  text: string;
-  metadata?: {
-    product_family?: string | null;
-    product_model?: string | null;
-    variant?: string | null;
-    condition?: string | null;
-    trade_in_value_min_sgd?: number | null;
-    trade_in_value_max_sgd?: number | null;
-    brand_new_price_sgd?: number | null;
-  };
+  product_family: string;
+  product_model: string;
+  variant?: string | null;
+  condition: string;
+  trade_in_value_min?: number | null;
+  trade_in_value_max?: number | null;
+  brand_new_price?: number | null;
 };
 
 let tradeGridEntriesCache: TradeGridEntry[] | null = null;
-
-function loadTradeGridEntries(): TradeGridEntry[] {
-  if (tradeGridEntriesCache) return tradeGridEntriesCache;
-  const gridPath = path.join(process.cwd(), "data", "tradezone_price_grid.jsonl");
-  try {
-    const raw = fs.readFileSync(gridPath, "utf8");
-    tradeGridEntriesCache = raw
-      .split(/\n+/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
-  } catch (err) {
-    console.warn("[TradeUp] Unable to load price grid", {
-      gridPath,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    tradeGridEntriesCache = [];
-  }
-  return tradeGridEntriesCache;
-}
 
 function normalizeText(input: string | null | undefined): string {
   return (input || "")
@@ -159,43 +136,97 @@ function normalizeText(input: string | null | undefined): string {
     .trim();
 }
 
-function lookupPriceFromGrid(
+function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
+  const gridPath = path.join(process.cwd(), "data", "tradezone_price_grid.jsonl");
+  try {
+    const raw = fs.readFileSync(gridPath, "utf8");
+    return raw
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+      .map((entry: any) => {
+        const meta = entry?.metadata || {};
+        return {
+          product_family: meta.product_family || "",
+          product_model: meta.product_model || entry.text || "",
+          variant: meta.variant || null,
+          condition: (meta.condition || "").toLowerCase() || "unspecified",
+          trade_in_value_min: meta.trade_in_value_min_sgd ?? null,
+          trade_in_value_max: meta.trade_in_value_max_sgd ?? null,
+          brand_new_price: meta.brand_new_price_sgd ?? null,
+        } as TradeGridEntry;
+      });
+  } catch (err) {
+    console.warn("[TradeUp] Unable to load price grid fallback", {
+      gridPath,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
+async function loadTradeGridEntries(): Promise<TradeGridEntry[]> {
+  if (tradeGridEntriesCache) return tradeGridEntriesCache;
+  try {
+    const { data, error } = await supabase
+      .from("trade_price_grid")
+      .select(
+        "product_family, product_model, variant, condition, trade_in_value_min, trade_in_value_max, brand_new_price",
+      );
+    if (error) {
+      if (error.code !== "42P01") {
+        console.warn("[TradeUp] trade_price_grid query failed", error);
+      }
+    } else if (data && data.length) {
+      tradeGridEntriesCache = data as TradeGridEntry[];
+      return tradeGridEntriesCache;
+    }
+  } catch (err) {
+    console.warn("[TradeUp] trade_price_grid fetch error", err);
+  }
+  tradeGridEntriesCache = loadTradeGridEntriesFromFile();
+  return tradeGridEntriesCache;
+}
+
+function entrySearchText(entry: TradeGridEntry): string {
+  return normalizeText(
+    [entry.product_family, entry.product_model, entry.variant]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+function resolveTradeValue(entry: TradeGridEntry): number | null {
+  if (entry.trade_in_value_max != null) return entry.trade_in_value_max;
+  if (entry.trade_in_value_min != null) return entry.trade_in_value_min;
+  return null;
+}
+
+async function lookupPriceFromGrid(
   query: string,
   intent: "trade_in" | "retail",
-): number | null {
+): Promise<number | null> {
   const tokens = normalizeText(query)
     .split(" ")
     .filter((token) => token.length >= 3);
   if (!tokens.length) return null;
 
-  const entries = loadTradeGridEntries();
+  const entries = await loadTradeGridEntries();
   let bestScore = 0;
   let bestValue: number | null = null;
 
   for (const entry of entries) {
-    const haystack = normalizeText(
-      [
-        entry.text,
-        entry.metadata?.product_model,
-        entry.metadata?.variant,
-        entry.metadata?.product_family,
-      ]
-        .filter(Boolean)
-        .join(" "),
-    );
+    const haystack = entrySearchText(entry);
     if (!haystack) continue;
     const score = tokens.filter((token) => haystack.includes(token)).length;
     if (score === 0) continue;
 
-    if (score >= bestScore) {
-      const tradeValue =
-        entry.metadata?.trade_in_value_max_sgd ??
-        entry.metadata?.trade_in_value_min_sgd ??
-        null;
-      const retailValue = entry.metadata?.brand_new_price_sgd ?? null;
+    const candidate =
+      intent === "trade_in" ? resolveTradeValue(entry) : entry.brand_new_price ?? null;
+    if (candidate == null) continue;
 
-      const candidate = intent === "trade_in" ? tradeValue : retailValue;
-      if (candidate == null) continue;
+    if (score >= bestScore) {
       bestScore = score;
       bestValue = candidate;
     }
@@ -1036,7 +1067,7 @@ async function fetchApproxPrice(
   contextIntent: "trade_in" | "retail",
 ): Promise<number | null> {
   try {
-    const gridPrice = lookupPriceFromGrid(query, contextIntent);
+    const gridPrice = await lookupPriceFromGrid(query, contextIntent);
     if (gridPrice != null) {
       console.log("[TradeUp] Grid price hit", { query, contextIntent, gridPrice });
       return gridPrice;

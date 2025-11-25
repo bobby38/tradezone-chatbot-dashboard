@@ -13,7 +13,8 @@
     "test": "playwright test",
     "test:critical": "./tests/run-critical-tests.sh",
     "test:ui": "playwright test --ui",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "grid:sync": "tsx scripts/fetch-price-grid.ts"
   },
   "dependencies": {
     "@getzep/zep-cloud": "^3.10.0",
@@ -43,6 +44,7 @@
     "he": "^1.2.0",
     "lucide-react": "^0.344.0",
     "next": "14.1.0",
+    "node-html-parser": "^7.0.1",
     "nodemailer": "^7.0.5",
     "openai": "^6.3.0",
     "react": "^18",
