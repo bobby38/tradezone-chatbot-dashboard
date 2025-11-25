@@ -300,11 +300,24 @@
       this.currentTranscript = "";
       this.voicePendingAssistantTranscript = "";
       this.voicePendingLinksMarkdown = null;
-      if (this.playbackContext && this.playbackContext.state === "running") {
+      if (this.playbackContext) {
         try {
-          this.playbackContext.suspend().then(() => this.playbackContext.resume());
+          const ctx = this.playbackContext;
+          if (this.playbackNode) {
+            this.playbackNode.disconnect();
+            ctx.resume().then(() => {
+              // Reconnect node to keep future playback working
+              try {
+                this.playbackNode.connect(ctx.destination);
+              } catch (err) {
+                console.warn("[Voice] Failed to reconnect playback node", err);
+              }
+            });
+          } else {
+            ctx.suspend().then(() => ctx.resume());
+          }
         } catch (err) {
-          console.warn("[Voice] Failed to nudge playback context", err);
+          console.warn("[Voice] Failed to reset playback context", err);
         }
       }
     },
