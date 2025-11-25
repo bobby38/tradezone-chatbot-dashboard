@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import fs from "fs";
+import path from "path";
 import { createGeminiChatCompletion } from "@/lib/gemini-client";
 import {
   handleVectorSearch,
@@ -113,6 +115,94 @@ const RETAIL_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
   { pattern: /ps4\s*pro/i, value: 250 },
   { pattern: /osmo\s+pocket\s*3/i, value: 600 },
 ];
+
+type TradeGridEntry = {
+  text: string;
+  metadata?: {
+    product_family?: string | null;
+    product_model?: string | null;
+    variant?: string | null;
+    condition?: string | null;
+    trade_in_value_min_sgd?: number | null;
+    trade_in_value_max_sgd?: number | null;
+    brand_new_price_sgd?: number | null;
+  };
+};
+
+let tradeGridEntriesCache: TradeGridEntry[] | null = null;
+
+function loadTradeGridEntries(): TradeGridEntry[] {
+  if (tradeGridEntriesCache) return tradeGridEntriesCache;
+  const gridPath = path.join(process.cwd(), "data", "tradezone_price_grid.jsonl");
+  try {
+    const raw = fs.readFileSync(gridPath, "utf8");
+    tradeGridEntriesCache = raw
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch (err) {
+    console.warn("[TradeUp] Unable to load price grid", {
+      gridPath,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    tradeGridEntriesCache = [];
+  }
+  return tradeGridEntriesCache;
+}
+
+function normalizeText(input: string | null | undefined): string {
+  return (input || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function lookupPriceFromGrid(
+  query: string,
+  intent: "trade_in" | "retail",
+): number | null {
+  const tokens = normalizeText(query)
+    .split(" ")
+    .filter((token) => token.length >= 3);
+  if (!tokens.length) return null;
+
+  const entries = loadTradeGridEntries();
+  let bestScore = 0;
+  let bestValue: number | null = null;
+
+  for (const entry of entries) {
+    const haystack = normalizeText(
+      [
+        entry.text,
+        entry.metadata?.product_model,
+        entry.metadata?.variant,
+        entry.metadata?.product_family,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+    if (!haystack) continue;
+    const score = tokens.filter((token) => haystack.includes(token)).length;
+    if (score === 0) continue;
+
+    if (score >= bestScore) {
+      const tradeValue =
+        entry.metadata?.trade_in_value_max_sgd ??
+        entry.metadata?.trade_in_value_min_sgd ??
+        null;
+      const retailValue = entry.metadata?.brand_new_price_sgd ?? null;
+
+      const candidate = intent === "trade_in" ? tradeValue : retailValue;
+      if (candidate == null) continue;
+      bestScore = score;
+      bestValue = candidate;
+    }
+  }
+
+  return bestValue;
+}
 
 function getCorsHeaders(origin: string | null): HeadersInit {
   const allowedOrigin =
@@ -945,6 +1035,15 @@ async function fetchApproxPrice(
   query: string,
   contextIntent: "trade_in" | "retail",
 ): Promise<number | null> {
+  try {
+    const gridPrice = lookupPriceFromGrid(query, contextIntent);
+    if (gridPrice != null) {
+      console.log("[TradeUp] Grid price hit", { query, contextIntent, gridPrice });
+      return gridPrice;
+    }
+  } catch (err) {
+    console.warn("[TradeUp] Grid price lookup failed", { query, err });
+  }
   try {
     const ctx: VectorSearchContext = {
       intent: contextIntent === "trade_in" ? "trade_in" : "product",
