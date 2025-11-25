@@ -810,7 +810,11 @@ export async function handleVectorSearch(
       if (!sportFilters.length) return items;
       return items.filter((item) => {
         const hay = (item.name || "").toLowerCase();
-        return sportFilters.some((tok) => hay.includes(tok));
+        const hasSport = sportFilters.some((tok) => hay.includes(tok));
+        const isGameLike = /\b(game|edition|2k|fc|fifa|nba|wwe)\b/i.test(
+          item.name || "",
+        );
+        return hasSport && isGameLike;
       });
     };
 

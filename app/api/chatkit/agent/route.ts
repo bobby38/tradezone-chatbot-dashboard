@@ -4637,7 +4637,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           completionTokens += finalCompletion.usage.completion_tokens || 0;
         }
 
-        if (lastHybridResult && lastHybridSource && lastHybridQuery) {
+        if (
+          lastHybridResult &&
+          lastHybridSource &&
+          lastHybridQuery &&
+          !tradeUpPairIntent
+        ) {
           const hasLink = /https?:\/\//i.test(finalResponse);
           const toolResultHasProducts =
             /WooCommerce Live Data|Product Link:|Product ID:/i.test(
