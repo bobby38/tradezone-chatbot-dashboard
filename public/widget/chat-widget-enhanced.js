@@ -1074,8 +1074,8 @@
         }
 
         .tz-voice-button {
-          width: 120px;
-          height: 120px;
+          width: 80px;
+          height: 80px;
           aspect-ratio: 1 / 1;
           border-radius: 50%;
           background: linear-gradient(135deg, ${this.config.primaryColor} 0%, ${this.config.secondaryColor} 100%);
@@ -1407,8 +1407,8 @@
           }
 
           .tz-voice-button {
-            width: 72px;
-            height: 72px;
+            width: 64px;
+            height: 64px;
             aspect-ratio: 1 / 1;
           }
 
@@ -1450,24 +1450,20 @@
           #tz-chat-window {
             width: 95vw;
             max-width: none;
-            height: 80vh;
+            height: 88vh;
           }
 
           .tz-chat-hero {
-            height: 120px;
+            display: none;
           }
 
         .tz-chat-hero-title {
           font-size: 18px;
         }
 
-        #tz-chat-window.tz-voice-active .tz-chat-hero {
-          display: none;
-        }
-
           .tz-voice-button {
-            width: 64px;
-            height: 64px;
+            width: 58px;
+            height: 58px;
             aspect-ratio: 1 / 1;
           }
 
@@ -1832,6 +1828,9 @@
         backdrop.classList.add("open");
         button.style.display = "none";
         document.body.classList.add("tz-widget-open"); // Lock body scroll on mobile
+        if (window.innerWidth <= 768) {
+          window.classList.add("tz-mobile-compact");
+        }
         this.updateWidgetHeight();
 
         // Render loaded history on first open
@@ -1870,7 +1869,9 @@
           voiceContainer.classList.remove("active");
         }
         if (chatWindow) chatWindow.classList.remove("tz-voice-active");
-        if (chatHero) chatHero.classList.remove("hidden");
+        if (chatHero && !chatWindow?.classList.contains("tz-mobile-compact")) {
+          chatHero.classList.remove("hidden");
+        }
       }
       this.updateWidgetHeight();
     },
