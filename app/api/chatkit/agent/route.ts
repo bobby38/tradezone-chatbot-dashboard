@@ -1866,6 +1866,15 @@ async function autoSubmitTradeInLeadIfComplete(params: {
   requestId: string;
   sessionId: string;
   history?: Array<{ role: string; content: string }>;
+  tradeUpPricingSummary?: {
+    source?: string;
+    target?: string;
+    tradeValue?: number | null;
+    tradeVersion?: string | null;
+    retailPrice?: number | null;
+    retailVersion?: string | null;
+    topUp?: number | null;
+  } | null;
 }): Promise<{ status?: string } | null> {
   try {
     let detail = await getTradeInLeadDetail(params.leadId);
@@ -1964,17 +1973,17 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     }
 
     if (
-      tradeUpPricingSummary &&
-      (tradeUpPricingSummary.tradeValue != null ||
-        tradeUpPricingSummary.retailPrice != null)
+      params.tradeUpPricingSummary &&
+      (params.tradeUpPricingSummary.tradeValue != null ||
+        params.tradeUpPricingSummary.retailPrice != null)
     ) {
       const pricePatch: TradeInUpdateInput = {
-        price_hint: tradeUpPricingSummary.tradeValue ?? undefined,
-        range_min: tradeUpPricingSummary.retailPrice ?? undefined,
-        range_max: tradeUpPricingSummary.retailPrice ?? undefined,
+        price_hint: params.tradeUpPricingSummary.tradeValue ?? undefined,
+        range_min: params.tradeUpPricingSummary.retailPrice ?? undefined,
+        range_max: params.tradeUpPricingSummary.retailPrice ?? undefined,
         pricing_version:
-          tradeUpPricingSummary.tradeVersion ||
-          tradeUpPricingSummary.retailVersion ||
+          params.tradeUpPricingSummary.tradeVersion ||
+          params.tradeUpPricingSummary.retailVersion ||
           undefined,
       };
       try {
@@ -1993,7 +2002,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     );
 
     const summary = await buildTradeInSummary(params.leadId, params.history);
-    const tradeSummaryLine = formatTradeUpSummary(tradeUpPricingSummary);
+    const tradeSummaryLine = formatTradeUpSummary(params.tradeUpPricingSummary);
     const summaryWithPricing = summary
       ? tradeSummaryLine
         ? `Trade-up: ${tradeSummaryLine}\n${summary}`
@@ -4619,6 +4628,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         requestId,
         sessionId,
         history: truncatedHistory,
+        tradeUpPricingSummary,
       });
       if (autoSubmitResult?.status) {
         tradeInLeadStatus = autoSubmitResult.status;
