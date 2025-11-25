@@ -3732,6 +3732,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             functionName === "searchProducts" ||
             functionName === "searchtool"
           ) {
+            // When trade flow is locked, skip further catalog searches to avoid derailment
+            if (tradeUpPairIntent) {
+              toolSummaries.push({
+                name: functionName,
+                args: functionArgs,
+                resultPreview: "Skipped during locked trade-up flow",
+              });
+              continue;
+            }
             const toolStart = Date.now();
             const rawQuery =
               typeof functionArgs.query === "string"
