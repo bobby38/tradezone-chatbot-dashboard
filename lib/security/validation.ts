@@ -161,6 +161,12 @@ export function validateChatMessage(input: any): ValidationResult {
     return ValidationResult.failure(errors);
   }
 
+  // Optional mode hint (e.g., "voice")
+  let sanitizedMode: string | undefined;
+  if (input.mode && typeof input.mode === "string") {
+    sanitizedMode = input.mode.trim().toLowerCase();
+  }
+
   // Sanitize and return
   const sanitized = {
     message: input.message.trim(),
@@ -169,6 +175,7 @@ export function validateChatMessage(input: any): ValidationResult {
       ? input.history.slice(-VALIDATION_LIMITS.MAX_HISTORY_LENGTH) // Keep only last N turns
       : [],
     image: sanitizedImage,
+    mode: sanitizedMode,
   };
 
   return ValidationResult.success(sanitized);

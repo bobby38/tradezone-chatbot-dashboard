@@ -101,6 +101,38 @@
       '- If they confirm, collect name, phone, and email, then call sendemail with emailType:"contact" and include a note like "Manual trade-in review needed" plus the device details.',
       "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
     ].join("\n"),
+    voiceStopWords: new Set([
+      "a",
+      "an",
+      "the",
+      "and",
+      "or",
+      "of",
+      "any",
+      "thanks",
+      "thank",
+      "you",
+      "please",
+      "need",
+      "want",
+      "got",
+      "have",
+      "for",
+      "like",
+      "just",
+      "that",
+      "this",
+      "those",
+      "these",
+    ]),
+    voicePlatformHints: [
+      { regex: /\bps5\b|playstation 5/i, keyword: "PS5" },
+      { regex: /\bps4\b|playstation 4/i, keyword: "PS4" },
+      { regex: /xbox series x|\bseries x\b/i, keyword: "Xbox Series X" },
+      { regex: /xbox series s|\bseries s\b/i, keyword: "Xbox Series S" },
+      { regex: /nintendo switch|\bswitch\b/i, keyword: "Switch" },
+      { regex: /steam deck/i, keyword: "Steam Deck" },
+    ],
 
     init: function (options) {
       this.config = { ...this.config, ...options };
@@ -136,6 +168,103 @@
         this.tradeInDeviceHints.test(normalized) &&
         this.tradeInActionHints.test(normalized)
       );
+    },
+
+    buildVoiceSearchContext: function (queryText) {
+      const transcript = (this.voicePendingUserTranscript || "").toLowerCase();
+      const normalizedQuery = (queryText || "").toLowerCase();
+      let refinedQuery = queryText.trim();
+      const platforms = [];
+
+      this.voicePlatformHints.forEach(({ regex, keyword }) => {
+        if (regex.test(transcript) || regex.test(normalizedQuery)) {
+          const keywordLower = keyword.toLowerCase();
+          if (!normalizedQuery.includes(keywordLower)) {
+            refinedQuery = `${refinedQuery} ${keyword}`.trim();
+          }
+          platforms.push(keywordLower);
+        }
+      });
+
+      const extraKeywords = new Set();
+      const combined = `${normalizedQuery} ${transcript}`.trim();
+      combined
+        .split(/[^a-z0-9+]+/i)
+        .filter((token) => {
+          if (!token) return false;
+          const lower = token.toLowerCase();
+          if (lower.length < 3) return false;
+          if (this.voiceStopWords.has(lower)) return false;
+          return true;
+        })
+        .slice(0, 6)
+        .forEach((token) => {
+          const lower = token.toLowerCase();
+          if (!normalizedQuery.includes(lower)) {
+            refinedQuery = `${refinedQuery} ${token}`.trim();
+          }
+          extraKeywords.add(lower);
+        });
+
+      platforms.forEach((platform) => extraKeywords.add(platform));
+
+      return {
+        refinedQuery: refinedQuery.trim(),
+        keywords: Array.from(extraKeywords),
+      };
+    },
+
+    filterMatchesByVoiceContext: function (matches, context) {
+      if (!Array.isArray(matches) || !matches.length) return [];
+      if (!context || !context.keywords.length) return matches;
+      return matches.filter((match) => {
+        const text = this.normalizeMatchText(match);
+        if (!text) return false;
+        return context.keywords.every((keyword) => text.includes(keyword));
+      });
+    },
+
+    normalizeMatchText: function (match) {
+      const chunks = [];
+      if (match?.name) chunks.push(match.name);
+      if (match?.familyTitle) chunks.push(match.familyTitle);
+      if (match?.price) chunks.push(String(match.price));
+      if (match?.description) chunks.push(match.description);
+      if (Array.isArray(match?.categories)) chunks.push(match.categories.join(" "));
+      return chunks
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+    },
+
+    buildVoiceProductSummary: function (matches) {
+      if (!Array.isArray(matches) || !matches.length) return "";
+      const lines = matches.slice(0, 4).map((match, index) => {
+        const priceLabel =
+          match?.flagshipCondition?.basePrice !== undefined &&
+          match?.flagshipCondition?.basePrice !== null
+            ? `S$${Math.round(match.flagshipCondition.basePrice)}`
+            : match?.price
+              ? match.price.toString().replace(/^(s\$)?/i, "S$")
+              : "Price on request";
+        return `${index + 1}. ${match?.name || "Product"} — ${priceLabel}`;
+      });
+      return lines.join("\n\n");
+    },
+
+    clearAssistantAudio: function () {
+      this.audioQueue = [];
+      this.currentTranscript = "";
+      this.voicePendingAssistantTranscript = "";
+      this.voicePendingLinksMarkdown = null;
+      if (this.playbackContext && this.playbackContext.state === "running") {
+        try {
+          this.playbackContext.suspend().then(() => this.playbackContext.resume());
+        } catch (err) {
+          console.warn("[Voice] Failed to nudge playback context", err);
+        }
+      }
     },
 
     updateWidgetHeight: function () {
@@ -2130,6 +2259,7 @@
             this.voiceState.isResponding = false;
             this.updateVoiceStatus("Listening…");
           }
+          this.clearAssistantAudio();
           this.voicePendingLinksMarkdown = null;
           break;
 
@@ -2169,7 +2299,9 @@
               parsedArgs,
             );
           } else {
-            const isTradeInIntent = this.detectTradeInIntent(queryText);
+            const voiceContext = this.buildVoiceSearchContext(queryText);
+            const resolvedQuery = voiceContext.refinedQuery || queryText;
+            const isTradeInIntent = this.detectTradeInIntent(resolvedQuery);
             this.voicePendingLinksMarkdown = null;
             let vectorOk = false;
 
@@ -2183,7 +2315,7 @@
                     "X-API-Key": this.config.apiKey || "",
                   },
                   body: JSON.stringify({
-                    query: queryText,
+                    query: resolvedQuery,
                     context: isTradeInIntent
                       ? { intent: "trade_in", toolUsed: name }
                       : { toolUsed: name },
@@ -2196,6 +2328,29 @@
                 result = typeof data.result === "string" ? data.result : "";
                 source =
                   typeof data.store === "string" ? data.store : "vector_store";
+
+                if (Array.isArray(data.matches) && data.matches.length) {
+                  const filteredMatches = this.filterMatchesByVoiceContext(
+                    data.matches,
+                    voiceContext,
+                  );
+                  if (filteredMatches.length) {
+                    const summary = this.buildVoiceProductSummary(
+                      filteredMatches,
+                    );
+                    if (summary) {
+                      result = `${summary}\n\nNeed details on any of these?`;
+                    }
+                    const linksMarkdown =
+                      this.formatMatchesMarkdown(filteredMatches);
+                    if (linksMarkdown) {
+                      this.voicePendingLinksMarkdown = linksMarkdown;
+                    }
+                    vectorOk = true;
+                  } else if (result && result.trim().length > 0) {
+                    vectorOk = true;
+                  }
+                }
 
                 if (source === "catalog") {
                   const linksMarkdown = this.formatMatchesMarkdown(
@@ -2242,11 +2397,24 @@
                     result = data.result;
                     source = data.source || "perplexity";
                   }
-                  const linksMarkdown = this.formatMatchesMarkdown(
-                    data.matches,
-                  );
-                  if (linksMarkdown) {
-                    this.voicePendingLinksMarkdown = linksMarkdown;
+                  if (Array.isArray(data.matches) && data.matches.length) {
+                    const filteredMatches = this.filterMatchesByVoiceContext(
+                      data.matches,
+                      voiceContext,
+                    );
+                    if (filteredMatches.length) {
+                      const summary = this.buildVoiceProductSummary(
+                        filteredMatches,
+                      );
+                      if (summary) {
+                        result = `${summary}\n\nNeed details on any of these?`;
+                      }
+                      const linksMarkdown =
+                        this.formatMatchesMarkdown(filteredMatches);
+                      if (linksMarkdown) {
+                        this.voicePendingLinksMarkdown = linksMarkdown;
+                      }
+                    }
                   }
                 } else {
                   console.warn(
@@ -2273,6 +2441,8 @@
                   store: source,
                   length: result.length,
                   isTradeInIntent,
+                  refinedQuery: resolvedQuery,
+                  keywords: voiceContext.keywords,
                   hasLinks: Boolean(this.voicePendingLinksMarkdown),
                 },
                 null,

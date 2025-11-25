@@ -135,9 +135,9 @@ export async function POST(req: NextRequest) {
         },
         turn_detection: {
           type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500, // Increased from 200ms to 500ms to prevent interruptions
+          threshold: 0.55,
+          prefix_padding_ms: 500,
+          silence_duration_ms: 1200,
         },
         tools: VOICE_TOOL_DEFINITIONS,
         tool_choice: "auto",

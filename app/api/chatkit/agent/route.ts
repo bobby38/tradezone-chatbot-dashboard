@@ -351,6 +351,26 @@ function renderCatalogMatches(
   return lines.join("\n");
 }
 
+function formatProductQuickLinks(matches: CatalogMatches, limit = 3) {
+  if (!matches || !matches.length) return null;
+  const lines = matches.slice(0, limit).map((match) => {
+    const link = match.permalink
+      ? `[${match.name}](${match.permalink})`
+      : match.name;
+    const flagshipPrice = match.flagshipCondition?.basePrice;
+    const labelPrice =
+      typeof flagshipPrice === "number"
+        ? formatCurrency(flagshipPrice)
+        : match.price
+          ? `S$${String(match.price).replace(/[^0-9.]/g, "")}`
+          : match.priceRange?.min
+            ? formatCurrency(match.priceRange.min)
+            : null;
+    return labelPrice ? `- ${link} — ${labelPrice}` : `- ${link}`;
+  });
+  return lines.length ? lines.join("\n") : null;
+}
+
 function formatRangeSummary(
   range?: { min: number | null; max: number | null } | null,
 ) {
@@ -1892,7 +1912,20 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     let hasContactPhone = Boolean(detail.contact_phone);
     let hasEmail = Boolean(detail.contact_email);
     let hasContactName = Boolean(detail.contact_name);
-    const hasPayout = Boolean(detail.preferred_payout);
+    // For trade-up (customer pays us), treat payout as satisfied even if not set yet
+    let hasPayout = Boolean(detail.preferred_payout);
+    const isTradeUp = Boolean(
+      params.tradeUpPricingSummary?.source && params.tradeUpPricingSummary?.target,
+    );
+    if (isTradeUp && !hasPayout) {
+      try {
+        await updateTradeInLead(params.leadId, { preferred_payout: "top_up" });
+        detail = await getTradeInLeadDetail(params.leadId);
+        hasPayout = Boolean(detail.preferred_payout);
+      } catch (payoutError) {
+        console.warn("[ChatKit] Failed to set trade-up payout placeholder", payoutError);
+      }
+    }
 
     // Check if photos step acknowledged (encouraged but no longer blocking email)
     let photoStepAcknowledged = isPhotoStepAcknowledged(detail, params.history);
@@ -1986,6 +2019,17 @@ async function autoSubmitTradeInLeadIfComplete(params: {
           params.tradeUpPricingSummary.retailVersion ||
           undefined,
       };
+      const tradeSummaryLine = formatTradeUpSummary(params.tradeUpPricingSummary);
+      if (tradeSummaryLine) {
+        const stampedSummary = `Trade-up: ${tradeSummaryLine}`;
+        pricePatch.source_message_summary = detail?.source_message_summary
+          ? `${stampedSummary}\n${detail.source_message_summary}`
+          : stampedSummary;
+        pricePatch.notes = detail?.notes
+          ? `${stampedSummary}\n${detail.notes}`
+          : stampedSummary;
+      }
+
       try {
         await updateTradeInLead(params.leadId, pricePatch);
         detail = await getTradeInLeadDetail(params.leadId);
@@ -2980,7 +3024,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { message, sessionId, history, image } = validation.sanitized!;
+  const { message, sessionId, history, image, mode } = validation.sanitized!;
   if (CONVERSATION_EXIT_PATTERNS.test(message.toLowerCase())) {
     const exitResponse =
       "No problem—I'll stop here. Just message me again if you need help.";
@@ -3105,6 +3149,14 @@ export async function POST(request: NextRequest) {
           "Skip greetings and get to the answer quickly. No 'Hi/Hello', no repeated clarifications—respond directly to the latest user ask.",
       },
     ];
+
+    if (mode === "voice") {
+      messages.push({
+        role: "system",
+        content:
+          "VOICE MODE: Keep replies under 12 words, one short sentence, pause for user. Do not repeat closings or long lists.",
+      });
+    }
 
     // ⚠️ Zep.ai memory DISABLED (quota exceeded, $25/month not viable)
     // TODO: Evaluate Graphiti as alternative later
@@ -3393,6 +3445,36 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         guardrails.forEach((content) =>
           messages.push({ role: "system", content }),
         );
+
+        // In trade-up mode, mark payout as top-up so auto-submit isn't blocked later
+        if (
+          tradeUpPairIntent &&
+          tradeInLeadId &&
+          !tradeInLeadDetail.preferred_payout
+        ) {
+          try {
+            const { lead } = await updateTradeInLead(tradeInLeadId!, {
+              preferred_payout: "top_up",
+            });
+            tradeInLeadDetail = lead;
+          } catch (payoutError) {
+            console.warn(
+              "[ChatKit] Failed to prefill payout for trade-up",
+              payoutError,
+            );
+          }
+        }
+
+        if (
+          Array.isArray(tradeInLeadDetail.trade_in_media) &&
+          tradeInLeadDetail.trade_in_media.length > 0
+        ) {
+          messages.push({
+            role: "system",
+            content:
+              "Photos already uploaded. Acknowledge receipt once, do NOT ask for more photos unless user offers.",
+          });
+        }
       }
 
       if (tradeInLeadDetail && autoExtractedClues) {
@@ -4036,24 +4118,65 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   }
                 }
 
-                if (!photosOk) {
-                  // Auto-mark photos as not provided to avoid blocking submission.
-                  await updateTradeInLead(tradeInLeadId, {
-                    notes:
-                      "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
-                  });
+              if (!photosOk) {
+                // Auto-mark photos as not provided to avoid blocking submission.
+                await updateTradeInLead(tradeInLeadId, {
+                  notes:
+                    "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
+                });
+                toolSummaries.push({
+                  name: functionName,
+                  args: { ...functionArgs, leadId: tradeInLeadId },
+                  resultPreview:
+                    'Auto-marked photos as "Not provided" before submitting.',
+                });
+              }
+            } catch (photoCheckError) {
+              console.warn(
+                "[ChatKit] Failed to verify photo acknowledgement before submit",
+                photoCheckError,
+              );
+            }
+
+              // Block premature submit when required details are missing
+              try {
+                const latest = await getTradeInLeadDetail(tradeInLeadId);
+                const missing: string[] = [];
+                if (!latest.brand) missing.push("device brand");
+                if (!latest.model) missing.push("device model");
+                if (!latest.condition) missing.push("condition");
+                if (!latest.contact_name) missing.push("contact name");
+                if (!latest.contact_phone) missing.push("contact phone");
+                if (!latest.contact_email) missing.push("contact email");
+                if (!tradeUpPairIntent && !latest.preferred_payout) {
+                  missing.push("payout method");
+                }
+
+                if (missing.length) {
+                  toolResult =
+                    "Need more details before submitting: " +
+                    missing.join(", ") +
+                    ". Please confirm these, save with tradein_update_lead, then submit again.";
                   toolSummaries.push({
                     name: functionName,
                     args: { ...functionArgs, leadId: tradeInLeadId },
-                    resultPreview:
-                      'Auto-marked photos as "Not provided" before submitting.',
+                    resultPreview: toolResult,
                   });
+                  await logToolRun({
+                    request_id: requestId,
+                    session_id: sessionId,
+                    tool_name: functionName,
+                    args: { ...functionArgs, leadId: tradeInLeadId },
+                    result_preview: toolResult.slice(0, 280),
+                    source: "trade_in_lead",
+                    success: false,
+                    latency_ms: 0,
+                    error_message: "Missing required fields",
+                  });
+                  break;
                 }
-              } catch (photoCheckError) {
-                console.warn(
-                  "[ChatKit] Failed to verify photo acknowledgement before submit",
-                  photoCheckError,
-                );
+              } catch (guardError) {
+                console.warn("[ChatKit] Submit guard check failed", guardError);
               }
 
               const submitArgs = functionArgs as {
@@ -4721,6 +4844,29 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           retailVersion,
           topUp,
         };
+
+        // Persist deterministic trade-up summary to the lead for dashboard/email
+        if (tradeInLeadId) {
+          const stamped = formatTradeUpSummary(tradeUpPricingSummary);
+          const patch: TradeInUpdateInput = {
+            price_hint: tradeValue,
+            range_min: retailPrice,
+            range_max: retailPrice,
+            pricing_version: tradeVersion || retailVersion || undefined,
+          };
+          if (stamped) {
+            patch.source_message_summary = stamped;
+            patch.notes = stamped;
+          }
+          try {
+            await updateTradeInLead(tradeInLeadId, patch);
+          } catch (summaryPersistError) {
+            console.warn(
+              "[TradeUp] Failed to persist trade-up summary to lead",
+              summaryPersistError,
+            );
+          }
+        }
       } else if (tradeValue != null && retailPrice == null) {
         finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
         tradeUpPricingSummary = {
@@ -4746,6 +4892,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     const userMessageLooksLikeFreshTradeIntent =
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
+
+    if (
+      !tradeUpPairIntent &&
+      lastHybridMatches &&
+      lastHybridMatches.length > 0 &&
+      lastHybridSource &&
+      lastHybridSource !== "trade_in_vector_store"
+    ) {
+      const quickLinks = formatProductQuickLinks(lastHybridMatches);
+      if (quickLinks && !/quick links/i.test(finalResponse)) {
+        finalResponse = `${finalResponse}\n\nQuick Links\n${quickLinks}`;
+      }
+    }
 
     // In trade-up mode: Skip payout prompt initially, but allow photo prompt after user confirms
     const tradeUpConfirmed =
