@@ -1026,6 +1026,7 @@ lib/
   - `to-jsonl` command converts the CSV into `data/tradezone_price_grid.jsonl` for OpenAI vector-store uploads.
   - Usage examples documented at the top of the script.
 - ✅ **Prompt/Retriever Notes**: `docs/tradein_prompt_flow.md` captures vector IDs, JSON schema, price-first conversational flow, and update steps.
+- ✅ **Conversation Flow Guide**: `docs/conversation-flow-guide.md` documents the unified WooCommerce-first flow, deterministic trade-up cadence, fallback-to-staff script, and regression checklist for both text and voice.
 - ✅ **Vector Store Upload Flow**: run `python scripts/tradein_price_tool.py to-jsonl --csv 'Tradezone Price Grid Nov 12 2025.csv' --out data/tradezone_price_grid.jsonl --price-grid-version YYYY-MM-DD`, then upload the JSONL + `data/tradein_synonyms.json` to `vs_68f3ab92f57c8191846cb6d643e4cb85`.
 - ⚠️ **Next**: integrate the `quote` command into ChatKit so every trade-in reply includes the JSON payload in logs, and automate vector uploads (CI or scheduled job) when the CSV changes.
 
