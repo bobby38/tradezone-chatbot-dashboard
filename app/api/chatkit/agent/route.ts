@@ -1322,7 +1322,9 @@ function enforceTradeInResponseOverrides(response: string): string {
     return updated;
   }
 
-  return response;
+  // Strip markdown markers that shouldn't be shown to end users
+  let cleaned = response.replace(/---START PRODUCT LIST---/gi, "").replace(/---END PRODUCT LIST---/gi, "");
+  return cleaned;
 }
 
 function enforceFamilyContentFilter(response: string, userMessage: string) {
