@@ -135,7 +135,7 @@ function extractEntries(html: string): ParsedEntry[] {
 
 async function upsertEntries(entries: ParsedEntry[]) {
   const { error } = await supabase.from("trade_price_grid").upsert(entries, {
-    onConflict: "product_family,product_model,condition",
+    onConflict: "product_family,product_model,variant,condition",
   });
   if (error) {
     throw new Error(`Supabase upsert failed: ${error.message}`);
