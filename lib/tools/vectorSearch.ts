@@ -854,7 +854,7 @@ export async function handleVectorSearch(
     let finalText = "";
 
     if (sportFilters.length && wooProducts.length === 0) {
-      finalText = `No matching products found for "${query}".`;
+      finalText = `No matching products found for "${query}" right now. Want me to note it for staff and check availability for you?`;
     } else if (wooProducts.length > 0) {
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
