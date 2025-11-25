@@ -1460,9 +1460,13 @@
             height: 120px;
           }
 
-          .tz-chat-hero-title {
-            font-size: 18px;
-          }
+        .tz-chat-hero-title {
+          font-size: 18px;
+        }
+
+        #tz-chat-window.tz-voice-active .tz-chat-hero {
+          display: none;
+        }
 
           .tz-voice-button {
             width: 64px;
@@ -1853,6 +1857,8 @@
 
       const chatContent = document.getElementById("tz-chat-content");
       const voiceContainer = document.getElementById("tz-voice-container");
+      const chatWindow = document.getElementById("tz-chat-window");
+      const chatHero = document.querySelector(".tz-chat-hero");
 
       if (mode === "voice") {
         this.hideTypingIndicator();
@@ -1861,6 +1867,8 @@
           voiceContainer.classList.remove("hidden");
           voiceContainer.classList.add("active");
         }
+        if (chatWindow) chatWindow.classList.add("tz-voice-active");
+        if (chatHero) chatHero.classList.add("hidden");
       } else {
         if (this.isRecording) this.stopVoice();
         if (chatContent) chatContent.style.display = "flex";
@@ -1868,6 +1876,8 @@
           voiceContainer.classList.add("hidden");
           voiceContainer.classList.remove("active");
         }
+        if (chatWindow) chatWindow.classList.remove("tz-voice-active");
+        if (chatHero) chatHero.classList.remove("hidden");
       }
       this.updateWidgetHeight();
     },
