@@ -835,10 +835,6 @@ async function detectGraphConflictsFromNodes(
   return conflicts;
 }
 
-function formatCurrency(value: number | null): string {
-  if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
-  return "S$" + value.toFixed(0);
-}
 
 function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
   const lines = conflicts.slice(0, 3).map((conflict) => {
