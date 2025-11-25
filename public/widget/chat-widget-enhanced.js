@@ -1122,6 +1122,30 @@
           font-weight: 500;
         }
 
+        .tz-voice-transcript-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          margin-top: 12px;
+          color: #e5e7eb;
+          font-size: 14px;
+        }
+
+        .tz-voice-transcript-toggle {
+          background: rgba(139, 92, 246, 0.18);
+          color: #c4b5fd;
+          border: 1px solid rgba(139, 92, 246, 0.35);
+          border-radius: 6px;
+          padding: 6px 10px;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        .tz-voice-transcript-toggle:hover {
+          background: rgba(139, 92, 246, 0.28);
+        }
+
         .tz-voice-transcript {
           flex-grow: 1;
           overflow-y: auto;
@@ -1133,7 +1157,11 @@
           font-size: 14px;
           line-height: 1.6;
           color: #e5e7eb;
+          max-height: 260px;
         }
+
+        .tz-voice-transcript.expanded { max-height: 360px; }
+        .tz-voice-transcript.collapsed { max-height: 64px; overflow-y: hidden; }
 
         .tz-voice-transcript img {
           max-width: 150px;
@@ -1400,8 +1428,10 @@
 
         .tz-voice-transcript {
             font-size: 13px;
-            max-height: 150px;
+            max-height: 220px;
           }
+        .tz-voice-transcript.expanded { max-height: 300px; }
+        .tz-voice-transcript.collapsed { max-height: 60px; }
 
           .tz-chat-input-container {
             padding: 12px;
@@ -1608,6 +1638,10 @@
                   <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                 </svg>
               </button>
+              <div class="tz-voice-transcript-header">
+                <span>Transcript</span>
+                <button class="tz-voice-transcript-toggle" id="tz-voice-transcript-toggle">Hide transcript</button>
+              </div>
               <div class="tz-voice-transcript" id="tz-voice-transcript"></div>
               <div class="tz-voice-footer">
                 <div class="tz-voice-footer-inner">
@@ -1742,6 +1776,22 @@
             event.preventDefault();
             this.sendVoiceNote();
           }
+        });
+      }
+
+      const transcriptToggle = document.getElementById(
+        "tz-voice-transcript-toggle",
+      );
+      const transcriptBox = document.getElementById("tz-voice-transcript");
+      if (transcriptToggle && transcriptBox) {
+        transcriptToggle.addEventListener("click", () => {
+          transcriptBox.classList.toggle("collapsed");
+          transcriptBox.classList.toggle("expanded");
+          transcriptToggle.textContent = transcriptBox.classList.contains(
+            "collapsed",
+          )
+            ? "Show transcript"
+            : "Hide transcript";
         });
       }
 
@@ -2920,6 +2970,7 @@
 
     addTranscript: function (text, role) {
       const transcript = document.getElementById("tz-voice-transcript");
+      if (!transcript) return;
       const div = document.createElement("div");
       div.style.marginBottom = "8px";
 
@@ -2938,6 +2989,7 @@
 
       div.innerHTML = `<strong style="color: ${labelColor};">${labelText}:</strong> <span style="color: #e5e7eb;">${formattedText}</span>`;
       transcript.appendChild(div);
+      transcript.classList.add("expanded");
       transcript.scrollTop = transcript.scrollHeight;
     },
 
