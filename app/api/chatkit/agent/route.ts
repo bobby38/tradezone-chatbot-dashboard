@@ -1,4 +1,3 @@
-import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -148,13 +147,7 @@ function formatCurrency(amount: number | null | undefined): string {
 }
 
 function formatTradeUpSummary(
-  summary: {
-    source?: string;
-    target?: string;
-    tradeValue?: number | null;
-    retailPrice?: number | null;
-    topUp?: number | null;
-  } | null,
+  summary: TradeUpPricingSummary | null,
   options?: { includeLeadIn?: boolean },
 ): string | null {
   if (!summary || summary.tradeValue == null || summary.retailPrice == null) {
@@ -166,6 +159,70 @@ function formatTradeUpSummary(
       : Math.max(0, summary.retailPrice - summary.tradeValue);
   const base = `${summary.source || "Trade-in"} ~${formatCurrency(summary.tradeValue)} → ${summary.target || "Target"} ${formatCurrency(summary.retailPrice)} → Top-up ~${formatCurrency(topUpValue)}`;
   return options?.includeLeadIn ? `Trade-up summary: ${base}.` : base;
+}
+
+function deriveTradeUpPricingSummary(params: {
+  existing?: TradeUpPricingSummary | null;
+  parts?: { source?: string; target?: string } | null;
+  forced?: {
+    source?: string;
+    target?: string;
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+    tradeVersion?: string | null;
+    retailVersion?: string | null;
+  } | null;
+  precomputed?: {
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+    tradeVersion?: string | null;
+    retailVersion?: string | null;
+  };
+  lastTradeInPrice?: number | null;
+  lastRetailPrice?: number | null;
+}): TradeUpPricingSummary | null {
+  const existing = params.existing;
+  if (
+    existing &&
+    existing.tradeValue != null &&
+    existing.retailPrice != null &&
+    existing.source &&
+    existing.target
+  ) {
+    return existing;
+  }
+
+  const sourceName = normalizeProductName(
+    existing?.source || params.forced?.source || params.parts?.source || "",
+  );
+  const targetName = normalizeProductName(
+    existing?.target || params.forced?.target || params.parts?.target || "",
+  );
+  if (!sourceName || !targetName) return null;
+
+  const tradeValue =
+    params.forced?.tradeValue ??
+    params.precomputed?.tradeValue ??
+    params.lastTradeInPrice ??
+    null;
+  const retailPrice =
+    params.forced?.retailPrice ??
+    params.precomputed?.retailPrice ??
+    params.lastRetailPrice ??
+    null;
+  if (tradeValue == null || retailPrice == null) return null;
+
+  return {
+    source: sourceName,
+    target: targetName,
+    tradeValue,
+    retailPrice,
+    topUp: Math.max(0, retailPrice - tradeValue),
+    tradeVersion:
+      params.forced?.tradeVersion ?? params.precomputed?.tradeVersion ?? null,
+    retailVersion:
+      params.forced?.retailVersion ?? params.precomputed?.retailVersion ?? null,
+  };
 }
 
 function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
@@ -1426,6 +1483,16 @@ function detectProductInfoIntent(query: string): boolean {
   return PRODUCT_NEED_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
+type TradeUpPricingSummary = {
+  source?: string;
+  target?: string;
+  tradeValue?: number | null;
+  retailPrice?: number | null;
+  topUp?: number | null;
+  tradeVersion?: string | null;
+  retailVersion?: string | null;
+};
+
 const TRADE_IN_PRICE_OVERRIDES: Array<{
   patterns: RegExp[];
   range: string;
@@ -1886,15 +1953,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
   requestId: string;
   sessionId: string;
   history?: Array<{ role: string; content: string }>;
-  tradeUpPricingSummary?: {
-    source?: string;
-    target?: string;
-    tradeValue?: number | null;
-    tradeVersion?: string | null;
-    retailPrice?: number | null;
-    retailVersion?: string | null;
-    topUp?: number | null;
-  } | null;
+  tradeUpPricingSummary?: TradeUpPricingSummary | null;
 }): Promise<{ status?: string } | null> {
   try {
     let detail = await getTradeInLeadDetail(params.leadId);
@@ -1915,7 +1974,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     // For trade-up (customer pays us), treat payout as satisfied even if not set yet
     let hasPayout = Boolean(detail.preferred_payout);
     const isTradeUp = Boolean(
-      params.tradeUpPricingSummary?.source && params.tradeUpPricingSummary?.target,
+      params.tradeUpPricingSummary?.source &&
+        params.tradeUpPricingSummary?.target,
     );
     if (isTradeUp && !hasPayout) {
       try {
@@ -1923,7 +1983,10 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         detail = await getTradeInLeadDetail(params.leadId);
         hasPayout = Boolean(detail.preferred_payout);
       } catch (payoutError) {
-        console.warn("[ChatKit] Failed to set trade-up payout placeholder", payoutError);
+        console.warn(
+          "[ChatKit] Failed to set trade-up payout placeholder",
+          payoutError,
+        );
       }
     }
 
@@ -1958,23 +2021,6 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         } catch (backfillError) {
           console.warn("[ChatKit] Contact backfill failed", backfillError);
         }
-      }
-    }
-
-    // Photos are strongly encouraged but never block auto-submit.
-    // If not acknowledged, we still auto-mark a note so downstream summary is clear.
-    if (!photoStepAcknowledged) {
-      try {
-        await updateTradeInLead(params.leadId, {
-          notes:
-            "Photos: Not provided — final quote upon inspection (auto-marked)",
-        });
-        photoStepAcknowledged = true;
-      } catch (markPhotoError) {
-        console.warn(
-          "[ChatKit] Failed to auto-mark photo acknowledgement",
-          markPhotoError,
-        );
       }
     }
 
@@ -2019,7 +2065,9 @@ async function autoSubmitTradeInLeadIfComplete(params: {
           params.tradeUpPricingSummary.retailVersion ||
           undefined,
       };
-      const tradeSummaryLine = formatTradeUpSummary(params.tradeUpPricingSummary);
+      const tradeSummaryLine = formatTradeUpSummary(
+        params.tradeUpPricingSummary,
+      );
       if (tradeSummaryLine) {
         const stampedSummary = `Trade-up: ${tradeSummaryLine}`;
         pricePatch.source_message_summary = detail?.source_message_summary
@@ -3118,15 +3166,7 @@ export async function POST(request: NextRequest) {
   let tradeInPhotoAcknowledged = false;
   let tradeDeviceQuery: string | null = null;
   let tradeInPriceShared = false;
-  let tradeUpPricingSummary: {
-    source?: string;
-    target?: string;
-    tradeValue?: number | null;
-    tradeVersion?: string | null;
-    retailPrice?: number | null;
-    retailVersion?: string | null;
-    topUp?: number | null;
-  } | null = null;
+  let tradeUpPricingSummary: TradeUpPricingSummary | null = null;
 
   try {
     // Load settings and system prompt
@@ -3732,15 +3772,6 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             functionName === "searchProducts" ||
             functionName === "searchtool"
           ) {
-            // When trade flow is locked, skip further catalog searches to avoid derailment
-            if (tradeUpPairIntent) {
-              toolSummaries.push({
-                name: functionName,
-                args: functionArgs,
-                resultPreview: "Skipped during locked trade-up flow",
-              });
-              continue;
-            }
             const toolStart = Date.now();
             const rawQuery =
               typeof functionArgs.query === "string"
@@ -4140,25 +4171,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   }
                 }
 
-              if (!photosOk) {
-                // Auto-mark photos as not provided to avoid blocking submission.
-                await updateTradeInLead(tradeInLeadId, {
-                  notes:
-                    "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
-                });
-                toolSummaries.push({
-                  name: functionName,
-                  args: { ...functionArgs, leadId: tradeInLeadId },
-                  resultPreview:
-                    'Auto-marked photos as "Not provided" before submitting.',
-                });
+                if (!photosOk) {
+                  // Auto-mark photos as not provided to avoid blocking submission.
+                  await updateTradeInLead(tradeInLeadId, {
+                    notes:
+                      "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
+                  });
+                  toolSummaries.push({
+                    name: functionName,
+                    args: { ...functionArgs, leadId: tradeInLeadId },
+                    resultPreview:
+                      'Auto-marked photos as "Not provided" before submitting.',
+                  });
+                }
+              } catch (photoCheckError) {
+                console.warn(
+                  "[ChatKit] Failed to verify photo acknowledgement before submit",
+                  photoCheckError,
+                );
               }
-            } catch (photoCheckError) {
-              console.warn(
-                "[ChatKit] Failed to verify photo acknowledgement before submit",
-                photoCheckError,
-              );
-            }
 
               // Block premature submit when required details are missing
               try {
@@ -4768,6 +4799,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     );
     // Auto-submit whenever there's an active trade-in lead
     // (even if the model just called a tool such as searchProducts).
+    if (!tradeUpPricingSummary) {
+      tradeUpPricingSummary = deriveTradeUpPricingSummary({
+        existing: tradeUpPricingSummary,
+        parts: tradeUpParts,
+        forced: forcedTradeUpMath,
+        precomputed: precomputedTradeUp,
+        lastTradeInPrice,
+        lastRetailPrice,
+      });
+    }
+
     if (tradeInLeadId) {
       console.log("[ChatKit] Evaluating auto-submit for lead", {
         tradeInLeadId,
@@ -4814,6 +4856,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
     // Deterministic trade-up math override (prevents hallucinations)
     if (tradeUpPairIntent && tradeUpParts) {
+      const derivedSummary =
+        deriveTradeUpPricingSummary({
+          existing: tradeUpPricingSummary,
+          parts: tradeUpParts,
+          forced: forcedTradeUpMath,
+          precomputed: precomputedTradeUp,
+          lastTradeInPrice,
+          lastRetailPrice,
+        }) || tradeUpPricingSummary;
+
       const sourceName = normalizeProductName(tradeUpParts.source);
       const targetName = normalizeProductName(tradeUpParts.target);
 
@@ -4822,12 +4874,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       const hintedRetailPrice = pickHintPrice(targetName, RETAIL_PRICE_HINTS);
 
       let tradeValue =
+        derivedSummary?.tradeValue ??
         forcedTradeUpMath?.tradeValue ??
         precomputedTradeUp.tradeValue ??
         lastTradeInPrice ??
         hintedTradeValue ??
         null;
       let retailPrice =
+        derivedSummary?.retailPrice ??
         forcedTradeUpMath?.retailPrice ??
         precomputedTradeUp.retailPrice ??
         lastRetailPrice ??
@@ -4835,10 +4889,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         null;
 
       const tradeVersion =
+        derivedSummary?.tradeVersion ??
         forcedTradeUpMath?.tradeVersion ??
         precomputedTradeUp.tradeVersion ??
         null;
       const retailVersion =
+        derivedSummary?.retailVersion ??
         forcedTradeUpMath?.retailVersion ??
         precomputedTradeUp.retailVersion ??
         null;
@@ -4856,7 +4912,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       });
 
       if (tradeValue != null && retailPrice != null) {
-        const topUp = Math.max(0, retailPrice - tradeValue);
+        const topUp =
+          derivedSummary?.topUp ?? Math.max(0, retailPrice - tradeValue);
         finalResponse = `Your ${sourceName} trades for ~S$${tradeValue}. The ${targetName} is S$${retailPrice}. Top-up: ~S$${topUp}.`;
         console.log("[TradeUp] Set finalResponse:", finalResponse);
 
@@ -4920,7 +4977,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
 
-    // Quick Links disabled unless future logic scopes them to current query category
+    if (
+      !tradeUpPairIntent &&
+      lastHybridMatches &&
+      lastHybridMatches.length > 0 &&
+      lastHybridSource &&
+      lastHybridSource !== "trade_in_vector_store"
+    ) {
+      const quickLinks = formatProductQuickLinks(lastHybridMatches);
+      if (quickLinks && !/quick links/i.test(finalResponse)) {
+        finalResponse = `${finalResponse}\n\nQuick Links\n${quickLinks}`;
+      }
+    }
 
     // In trade-up mode: Skip payout prompt initially, but allow photo prompt after user confirms
     const tradeUpConfirmed =
