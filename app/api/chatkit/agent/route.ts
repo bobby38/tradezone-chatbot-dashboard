@@ -4348,11 +4348,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
     }
 
-    const noToolCalls =
-      !assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0;
-    // Auto-submit whenever there's an active trade-in lead, regardless of current message intent
-    // This ensures we catch final steps like "cash" (payout) that don't contain trade-in keywords
-    if (tradeInLeadId && noToolCalls) {
+    const pendingToolCalls = Boolean(
+      assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0,
+    );
+    // Auto-submit whenever there's an active trade-in lead
+    // (even if the model just called a tool such as searchProducts).
+    if (tradeInLeadId) {
+      console.log("[ChatKit] Evaluating auto-submit for lead", {
+        tradeInLeadId,
+        pendingToolCalls,
+      });
       const autoSubmitResult = await autoSubmitTradeInLeadIfComplete({
         leadId: tradeInLeadId,
         requestId,
