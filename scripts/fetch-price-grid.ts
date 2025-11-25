@@ -113,7 +113,7 @@ function extractEntries(html: string): ParsedEntry[] {
       const entry: ParsedEntry = {
         product_family: currentFamily || "Unknown",
         product_model: namePart.trim(),
-        variant: null,
+        variant: "",
         condition: normalizedCondition,
         trade_in_value_min:
           normalizedCondition === "preowned" ? min : null,
