@@ -844,7 +844,8 @@ export async function handleVectorSearch(
       }
 
       return {
-        text: "No product information found. Please try rephrasing your query.",
+        text:
+          "No matching products found. I can note this for staff and check availability for you—want me to do that?",
         store: label,
         matches: label === "catalog" ? [] : undefined,
       };
