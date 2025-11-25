@@ -169,7 +169,11 @@ function formatTradeUpSummary(
 }
 
 function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
-  const gridPath = path.join(process.cwd(), "data", "tradezone_price_grid.jsonl");
+  const gridPath = path.join(
+    process.cwd(),
+    "data",
+    "tradezone_price_grid.jsonl",
+  );
   try {
     const raw = fs.readFileSync(gridPath, "utf8");
     return raw
@@ -256,7 +260,9 @@ async function lookupPriceFromGrid(
     if (score === 0) continue;
 
     const candidate =
-      intent === "trade_in" ? resolveTradeValue(entry) : entry.brand_new_price ?? null;
+      intent === "trade_in"
+        ? resolveTradeValue(entry)
+        : (entry.brand_new_price ?? null);
     if (candidate == null) continue;
 
     if (score >= bestScore) {
@@ -269,7 +275,7 @@ async function lookupPriceFromGrid(
     amount: bestEntry
       ? intent === "trade_in"
         ? resolveTradeValue(bestEntry)
-        : bestEntry.brand_new_price ?? null
+        : (bestEntry.brand_new_price ?? null)
       : null,
     version: bestEntry?.price_grid_version || null,
   };
@@ -833,11 +839,6 @@ async function detectGraphConflictsFromNodes(
     }
   }
   return conflicts;
-}
-
-function formatCurrency(value: number | null): string {
-  if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
-  return "S$" + value.toFixed(0);
 }
 
 function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
@@ -1497,7 +1498,9 @@ function enforceTradeInResponseOverrides(response: string): string {
   }
 
   // Strip markdown markers that shouldn't be shown to end users
-  let cleaned = response.replace(/---START PRODUCT LIST---/gi, "").replace(/---END PRODUCT LIST---/gi, "");
+  let cleaned = response
+    .replace(/---START PRODUCT LIST---/gi, "")
+    .replace(/---END PRODUCT LIST---/gi, "");
   return cleaned;
 }
 
@@ -1978,7 +1981,10 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         await updateTradeInLead(params.leadId, pricePatch);
         detail = await getTradeInLeadDetail(params.leadId);
       } catch (pricePatchError) {
-        console.warn("[ChatKit] Failed to persist trade-up pricing", pricePatchError);
+        console.warn(
+          "[ChatKit] Failed to persist trade-up pricing",
+          pricePatchError,
+        );
       }
     }
 
@@ -3020,12 +3026,12 @@ export async function POST(request: NextRequest) {
   let lastSearchProductsResult: string | null = null;
   let lastTradeInPrice: number | null = null;
   let lastRetailPrice: number | null = null;
-let precomputedTradeUp: {
-  tradeValue?: number | null;
-  retailPrice?: number | null;
-  tradeVersion?: string | null;
-  retailVersion?: string | null;
-} = {};
+  let precomputedTradeUp: {
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+    tradeVersion?: string | null;
+    retailVersion?: string | null;
+  } = {};
   let errorMessage: string | null = null;
   let promptTokens = 0;
   let completionTokens = 0;
@@ -3034,15 +3040,15 @@ let precomputedTradeUp: {
   let tradeInIntent = false;
   let tradeUpPairIntent = false;
   let tradeUpParts: { source?: string; target?: string } | null = null;
-let forcedTradeUpMath: {
-  source?: string;
-  target?: string;
-  tradeValue?: number | null;
-  retailPrice?: number | null;
-  confirmed?: boolean;
-  tradeVersion?: string | null;
-  retailVersion?: string | null;
-} | null = null;
+  let forcedTradeUpMath: {
+    source?: string;
+    target?: string;
+    tradeValue?: number | null;
+    retailPrice?: number | null;
+    confirmed?: boolean;
+    tradeVersion?: string | null;
+    retailVersion?: string | null;
+  } | null = null;
   let tradeInLeadDetail: any = null;
   let autoExtractedClues: TradeInUpdateInput | null = null;
   let productSlug: string | null = null;
@@ -3056,18 +3062,18 @@ let forcedTradeUpMath: {
   let latestTopUp: TopUpResult | null = null;
   let tradeInNeedsPayoutPrompt = false;
   let tradeInReadyForPhotoPrompt = false;
-let tradeInPhotoAcknowledged = false;
-let tradeDeviceQuery: string | null = null;
-let tradeInPriceShared = false;
-let tradeUpPricingSummary: {
-  source?: string;
-  target?: string;
-  tradeValue?: number | null;
-  tradeVersion?: string | null;
-  retailPrice?: number | null;
-  retailVersion?: string | null;
-  topUp?: number | null;
-} | null = null;
+  let tradeInPhotoAcknowledged = false;
+  let tradeDeviceQuery: string | null = null;
+  let tradeInPriceShared = false;
+  let tradeUpPricingSummary: {
+    source?: string;
+    target?: string;
+    tradeValue?: number | null;
+    tradeVersion?: string | null;
+    retailPrice?: number | null;
+    retailVersion?: string | null;
+    topUp?: number | null;
+  } | null = null;
 
   try {
     // Load settings and system prompt
@@ -4642,14 +4648,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       const targetName = normalizeProductName(tradeUpParts.target);
 
       // Use captured values if present, otherwise fall back to precomputed, last tool prices, then hints
-      const hintedTradeValue = pickHintPrice(
-        sourceName,
-        TRADE_IN_PRICE_HINTS,
-      );
-      const hintedRetailPrice = pickHintPrice(
-        targetName,
-        RETAIL_PRICE_HINTS,
-      );
+      const hintedTradeValue = pickHintPrice(sourceName, TRADE_IN_PRICE_HINTS);
+      const hintedRetailPrice = pickHintPrice(targetName, RETAIL_PRICE_HINTS);
 
       let tradeValue =
         forcedTradeUpMath?.tradeValue ??
