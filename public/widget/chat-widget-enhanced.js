@@ -2328,12 +2328,13 @@
           this.voicePendingAssistantTranscript += event.delta || "";
           break;
 
-        case "response.created":
+        case "response.created": {
           this.voiceState.isResponding = true;
           this.updateVoiceStatus("Thinking...");
           const btnStart = document.getElementById("tz-voice-btn");
           if (btnStart) btnStart.classList.remove("idle");
           break;
+        }
 
         case "response.audio_transcript.done":
           // Add complete transcript when done
@@ -2354,18 +2355,17 @@
           this.updateVoiceStatus("Speaking...");
           break;
 
-        case "response.done":
+        case "response.done": {
           console.log("[Voice] Response complete");
           this.voiceState.isResponding = false;
           this.updateVoiceStatus("Listening...");
           this.flushVoiceTurn("success");
-          {
-            const btnStart = document.getElementById("tz-voice-btn");
-            if (btnStart && !this.isRecording) {
-              btnStart.classList.add("idle");
-            }
+          const btnStartDone = document.getElementById("tz-voice-btn");
+          if (btnStartDone && !this.isRecording) {
+            btnStartDone.classList.add("idle");
           }
           break;
+        }
 
         case "response.function_call_arguments.done":
           // Tool execution (CRITICAL - was missing!)
@@ -2384,7 +2384,7 @@
           }
           break;
 
-        case "input_audio_buffer.speech_started":
+        case "input_audio_buffer.speech_started": {
           console.log("[Voice] User started speaking");
           if (this.voiceState.isResponding) {
             this.ws.send(JSON.stringify({ type: "response.cancel" }));
@@ -2395,9 +2395,10 @@
           }
           this.clearAssistantAudio();
           this.voicePendingLinksMarkdown = null;
-          const btnStart = document.getElementById("tz-voice-btn");
-          if (btnStart) btnStart.classList.remove("idle");
+          const btnStartSpeak = document.getElementById("tz-voice-btn");
+          if (btnStartSpeak) btnStartSpeak.classList.remove("idle");
           break;
+        }
 
         case "input_audio_buffer.speech_stopped":
           console.log("[Voice] User stopped speaking");
