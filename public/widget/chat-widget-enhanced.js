@@ -214,6 +214,25 @@
       };
     },
 
+    waitForStableTranscript: async function (initialTranscript) {
+      let last = initialTranscript || "";
+      const deadline = Date.now() + 1200;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 200));
+        const current = (this.voicePendingUserTranscript || "").trim();
+        if (current && current !== last) {
+          last = current;
+          continue;
+        }
+        if (Date.now() - deadline < -600) {
+          // allow a short extra wait for completion words
+          continue;
+        }
+        break;
+      }
+      return last;
+    },
+
     filterMatchesByVoiceContext: function (matches, context) {
       if (!Array.isArray(matches) || !matches.length) return [];
       if (!context || !context.keywords.length) return matches;
@@ -2258,6 +2277,7 @@
             this.audioQueue = [];
             this.voiceState.isResponding = false;
             this.updateVoiceStatus("Listening…");
+            this.flushVoiceTurn("interrupted");
           }
           this.clearAssistantAudio();
           this.voicePendingLinksMarkdown = null;
@@ -2286,10 +2306,18 @@
         let source = "unknown";
 
         if (name === "searchProducts") {
-          const queryText =
+          let queryText =
             typeof parsedArgs.query === "string"
               ? parsedArgs.query.trim()
               : String(parsedArgs.query ?? "");
+
+          // Wait briefly if the transcript may still be growing
+          const stableTranscript = await this.waitForStableTranscript(
+            this.voicePendingUserTranscript || queryText,
+          );
+          if (stableTranscript && stableTranscript.length > queryText.length) {
+            queryText = stableTranscript;
+          }
 
           if (!queryText) {
             result = "Need the exact device model to check pricing.";
@@ -2347,8 +2375,8 @@
                       this.voicePendingLinksMarkdown = linksMarkdown;
                     }
                     vectorOk = true;
-                  } else if (result && result.trim().length > 0) {
-                    vectorOk = true;
+                  } else {
+                    result = "No results match those details right now.";
                   }
                 }
 
@@ -2791,7 +2819,7 @@
         : undefined;
       const latencyMs = startedAt ? Date.now() - startedAt : undefined;
 
-      if (!userText || !assistantText) {
+      if (!userText) {
         this.voicePendingUserTranscript = null;
         this.voicePendingAssistantTranscript = "";
         this.voicePendingLinksMarkdown = null;
@@ -2803,7 +2831,7 @@
         ? `${assistantText}${assistantText ? "\n\n" : ""}${linksMarkdown}`
         : assistantText;
 
-      if (linksMarkdown) {
+      if (linksMarkdown && assistantText) {
         this.addTranscript(linksMarkdown, "assistant");
       }
 
