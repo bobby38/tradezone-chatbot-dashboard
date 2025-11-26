@@ -467,7 +467,41 @@ export async function handleVectorSearch(
         `[VectorSearch] Step 1: Checking WooCommerce (source of truth)...`,
       );
       const { searchWooProducts } = await import("@/lib/agent-tools");
-      const cleanedQuery = cleanQueryForSearch(query);
+
+      // Sport query mapping: rewrite query to canonical terms BEFORE searching
+      // basketball → nba, football/soccer → fifa, skateboard → tony hawk
+      let searchQuery = query;
+      const lowerQuery = query.toLowerCase();
+
+      if (/basketball|nba/i.test(lowerQuery)) {
+        searchQuery = "nba 2k";
+        console.log(
+          `[VectorSearch] Basketball detected, searching for: "${searchQuery}"`,
+        );
+      } else if (
+        /football|soccer/i.test(lowerQuery) &&
+        !/american football/i.test(lowerQuery)
+      ) {
+        searchQuery = "fifa fc";
+        console.log(
+          `[VectorSearch] Football/soccer detected, searching for: "${searchQuery}"`,
+        );
+      } else if (
+        /skateboard|skate/i.test(lowerQuery) &&
+        !/ice skate/i.test(lowerQuery)
+      ) {
+        searchQuery = "tony hawk";
+        console.log(
+          `[VectorSearch] Skateboard detected, searching for: "${searchQuery}"`,
+        );
+      } else if (/wrestling|wwe/i.test(lowerQuery)) {
+        searchQuery = "wwe 2k";
+        console.log(
+          `[VectorSearch] Wrestling detected, searching for: "${searchQuery}"`,
+        );
+      }
+
+      const cleanedQuery = cleanQueryForSearch(searchQuery);
       wooProducts = await searchWooProducts(cleanedQuery, wooLimit);
 
       // Sort by price if user wants cheap options
