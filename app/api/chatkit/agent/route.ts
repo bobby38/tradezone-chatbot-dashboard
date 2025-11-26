@@ -4978,8 +4978,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
 
+    const hasStructuredWooList = /---START PRODUCT LIST---/.test(
+      finalResponse,
+    );
+
     if (
       !tradeUpPairIntent &&
+      !hasStructuredWooList &&
       lastHybridMatches &&
       lastHybridMatches.length > 0 &&
       lastHybridSource &&
