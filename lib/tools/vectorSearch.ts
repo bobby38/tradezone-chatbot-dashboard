@@ -483,7 +483,7 @@ export async function handleVectorSearch(
 
       // Query rewriting: map user terms to actual product names
       // Sports: basketball → nba, football → fifa, skateboard → tony hawk
-      // Hardware: gpu → graphic card
+      // Hardware: gpu → graphic card, console → playstation
       let searchQuery = query;
       const lowerQuery = query.toLowerCase();
 
@@ -491,6 +491,14 @@ export async function handleVectorSearch(
         searchQuery = searchQuery.replace(/\bgpu\b/gi, "graphic card");
         console.log(
           `[VectorSearch] GPU detected, searching for: "${searchQuery}"`,
+        );
+      } else if (
+        /\bconsole\b/i.test(lowerQuery) &&
+        !/\bps\d|playstation|xbox|nintendo|switch/i.test(lowerQuery)
+      ) {
+        searchQuery = "playstation";
+        console.log(
+          `[VectorSearch] Generic console query detected, searching for: "${searchQuery}"`,
         );
       } else if (/basketball|nba/i.test(lowerQuery)) {
         searchQuery = "nba 2k";
