@@ -629,9 +629,14 @@ export async function handleVectorSearch(
             ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
             : "";
 
+          const antiHallucinationNote =
+            "\n\n🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
+            listText +
+            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list.";
+
           return {
             text: prependTradeSnippet(
-              `Here's what I have for "${query}":\n\n${listText}${moreText}\n\nPick one for details.`,
+              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}${moreText}`,
             ),
             store: "product_catalog",
             matches: [],
@@ -707,8 +712,54 @@ export async function handleVectorSearch(
           };
         }
 
+        // Skip vector enrichment for simple list queries when WooCommerce has results
+        // Vector search is SLOW - only use for: (1) 0 results fallback, (2) specific product detail queries
+        const isSimpleListQuery =
+          /\b(any|all|some|show|list|best|top|good|cheap)\b/i.test(query);
+        const hasEnoughResults = wooProducts.length >= 3;
+
+        if (isSimpleListQuery && hasEnoughResults) {
+          console.log(
+            `[VectorSearch] ✅ Simple list query with ${wooProducts.length} WooCommerce results - returning WITHOUT vector enrichment (fast path)`,
+          );
+
+          const displayLimit = 8;
+          const productsToShow = wooProducts.slice(0, displayLimit);
+          const hasMore = wooProducts.length > displayLimit;
+
+          const listText = productsToShow
+            .map((product, idx) => {
+              const price = formatSGDPrice(product.price_sgd);
+              const url = product.permalink || `https://tradezone.sg`;
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
+              return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${product.productId}${imageStr}`;
+            })
+            .join("\n\n");
+
+          const moreText = hasMore
+            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
+            : "";
+
+          const antiHallucinationNote =
+            "\n\n🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
+            listText +
+            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list.";
+
+          return {
+            text: prependTradeSnippet(
+              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}${moreText}`,
+            ),
+            store: "product_catalog",
+            matches: [],
+            wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
+          };
+        }
+
         console.log(
-          `[VectorSearch] Non-phone query - continuing to vector enrichment`,
+          `[VectorSearch] Specific query or few results (${wooProducts.length}) - continuing to vector enrichment for details`,
         );
         // Continue to vector/zep/perplexity for enrichment
       } else {
