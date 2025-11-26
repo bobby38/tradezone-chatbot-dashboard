@@ -1469,6 +1469,11 @@ const PRODUCT_NEED_PATTERNS: RegExp[] = [
   /\bunder\b/i,
   /\bbelow\b/i,
   /\bless than\b/i,
+  /\bbest\b/i,
+  /\btop\b/i,
+  /\bpremium\b/i,
+  /\bhigh-end\b/i,
+  /\bexpensive\b/i,
 ];
 
 function detectProductInfoIntent(query: string): boolean {
