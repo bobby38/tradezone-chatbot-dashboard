@@ -473,18 +473,43 @@ export async function handleVectorSearch(
       // Sort by price if user wants cheap options
       sortProductsByPrice(wooProducts, query);
 
-      if (sportIntent && wooProducts.length) {
+      // Sport query canonical prioritization (Nov 26, 2025 - agent.md)
+      // football/soccer → FIFA, basketball → NBA 2K, skateboard → Tony Hawk
+      const lowerQuery = query.toLowerCase();
+      const SPORT_CANONICAL_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
+        { regex: /basketball|nba|2k/i, tokens: ["nba", "2k"] },
+        {
+          regex: /football|soccer|fifa|fc|ea sports/i,
+          tokens: ["fifa", "fc", "football"],
+        },
+        { regex: /skateboard|skate|tony hawk/i, tokens: ["tony hawk", "thps"] },
+        { regex: /wrestling|wwe|wwf/i, tokens: ["wwe", "wrestling", "2k"] },
+      ];
+
+      let sportTokens: string[] = [];
+      SPORT_CANONICAL_MAP.forEach(({ regex, tokens }) => {
+        if (regex.test(lowerQuery)) {
+          sportTokens.push(...tokens.map((t) => t.toLowerCase()));
+        }
+      });
+
+      if (sportTokens.length > 0 && wooProducts.length > 0) {
+        console.log(
+          `[VectorSearch] Sport query detected, prioritizing canonical titles:`,
+          sportTokens,
+        );
         const prioritized = wooProducts.filter((product) => {
           const hay = (product.name || "").toLowerCase();
-          return sportIntent.filterTokens.some((token) =>
-            hay.includes(token.toLowerCase()),
-          );
+          return sportTokens.some((token) => hay.includes(token));
         });
-        if (prioritized.length) {
+        if (prioritized.length > 0) {
           const remainder = wooProducts.filter(
             (product) => !prioritized.includes(product),
           );
           wooProducts = [...prioritized, ...remainder];
+          console.log(
+            `[VectorSearch] ✅ Re-ordered ${wooProducts.length} products, ${prioritized.length} canonical titles first`,
+          );
         }
       }
 
