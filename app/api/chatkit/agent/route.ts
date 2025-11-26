@@ -3634,10 +3634,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           tradeInLeadDetail?.source_device_name &&
           tradeInLeadDetail?.target_device_name;
         if (isTradeUp) {
+          const sourceName = tradeInLeadDetail.source_device_name;
+          const sourcePrice = tradeInLeadDetail.source_price_quoted;
+          const targetName = tradeInLeadDetail.target_device_name;
+          const targetPrice = tradeInLeadDetail.target_price_quoted;
+          const topUp = tradeInLeadDetail.top_up_amount;
+
           messages.push({
             role: "system",
             content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, use this format:
-"Trade-up submitted! Trading ${tradeInLeadDetail.source_device_name} (~S$${tradeInLeadDetail.source_price_quoted}) for ${tradeInLeadDetail.target_device_name} (S$${tradeInLeadDetail.target_price_quoted}). Top-up: S$${tradeInLeadDetail.top_up_amount}. We'll contact you to arrange. Visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?"`,
+"Trade-up submitted! Trading ${sourceName} (~S$${sourcePrice}) for ${targetName} (S$${targetPrice}). Top-up: S$${topUp}. We'll contact you to arrange. Visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?"`,
           });
         }
       }
