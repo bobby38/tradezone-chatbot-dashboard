@@ -2431,12 +2431,27 @@ function buildTradeInUserSummary(detail: any): string | null {
     ? detail.accessories.join(", ")
     : detail.accessories;
 
+  // 🔴 TRADE-UP: Include both devices and top-up in summary
+  const isTradeUp = detail.source_device_name && detail.target_device_name;
+
   const lines = [
-    "Saved trade-in info so far:",
-    deviceParts.length ? `Device: ${deviceParts.join(" ")}` : null,
+    isTradeUp ? "Trade-Up Summary:" : "Saved trade-in info so far:",
+    // For trade-ups, show source → target with prices
+    isTradeUp && detail.source_device_name && detail.source_price_quoted
+      ? `Trading: ${detail.source_device_name} (trade-in ~S$${detail.source_price_quoted})`
+      : deviceParts.length
+        ? `Device: ${deviceParts.join(" ")}`
+        : null,
+    isTradeUp && detail.target_device_name && detail.target_price_quoted
+      ? `For: ${detail.target_device_name} (retail S$${detail.target_price_quoted})`
+      : null,
+    isTradeUp && detail.top_up_amount
+      ? `Top-up needed: S$${detail.top_up_amount}`
+      : null,
     detail.condition ? `Condition: ${detail.condition}` : null,
     accessories ? `Accessories: ${accessories}` : null,
-    detail.preferred_payout
+    // Only show payout for non-trade-ups (cash trade-ins)
+    !isTradeUp && detail.preferred_payout
       ? `Payout preference: ${detail.preferred_payout}`
       : null,
     detail.contact_name || detail.contact_phone || detail.contact_email
@@ -2451,7 +2466,11 @@ function buildTradeInUserSummary(detail: any): string | null {
   ].filter(Boolean);
 
   if (lines.length <= 1) return null;
-  lines.push("Ask the customer if anything needs updating before proceeding.");
+  lines.push(
+    isTradeUp
+      ? "Confirm these details before we proceed."
+      : "Ask the customer if anything needs updating before proceeding.",
+  );
   return lines.join("\n");
 }
 
@@ -2500,7 +2519,10 @@ function formatHybridFallback(
   ].join("\n");
 }
 
-function buildMissingTradeInFieldPrompt(detail: any): string | null {
+function buildMissingTradeInFieldPrompt(
+  detail: any,
+  isTradeUp?: boolean,
+): string | null {
   if (!detail) return null;
 
   const hasDevice = Boolean(detail.brand && detail.model);
@@ -2690,6 +2712,10 @@ function determineNextTradeInQuestion(detail: any): string | null {
   if (!accessoriesCaptured) {
     return "Any box or accessories included?";
   }
+  // 🔴 PHOTO PROMPT: Ask BEFORE contact info
+  if (!photoAcknowledged) {
+    return "Got photos to speed inspection? Optional—note 'Photos: Not provided' if they can't send any.";
+  }
   if (!hasContactEmail) {
     return "What's the best email for your quote?";
   }
@@ -2699,10 +2725,8 @@ function determineNextTradeInQuestion(detail: any): string | null {
   if (!hasContactName) {
     return "Whose name should I note down?";
   }
-  if (!photoAcknowledged) {
-    return "Got photos to speed inspection? Optional—note 'Photos: Not provided' if they can't send any.";
-  }
-  if (!hasPayout) {
+  // 🔴 CRITICAL: Skip payout question for trade-ups - customer pays top-up, doesn't receive money
+  if (!hasPayout && !isTradeUp) {
     return "Which payout suits you best: cash, PayNow, or bank transfer? Skip this if they already picked installment—just set preferred_payout=installment.";
   }
 
@@ -3598,9 +3622,24 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
       }
 
-      const missingPrompt = buildMissingTradeInFieldPrompt(tradeInLeadDetail);
+      const missingPrompt = buildMissingTradeInFieldPrompt(
+        tradeInLeadDetail,
+        tradeUpPairIntent,
+      );
       if (missingPrompt) {
         messages.push({ role: "system", content: missingPrompt });
+      } else {
+        // 🔴 TRADE-UP: All fields complete - provide context for submission message
+        const isTradeUp =
+          tradeInLeadDetail?.source_device_name &&
+          tradeInLeadDetail?.target_device_name;
+        if (isTradeUp) {
+          messages.push({
+            role: "system",
+            content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, use this format:
+"Trade-up submitted! Trading ${tradeInLeadDetail.source_device_name} (~S$${tradeInLeadDetail.source_price_quoted}) for ${tradeInLeadDetail.target_device_name} (S$${tradeInLeadDetail.target_price_quoted}). Top-up: S$${tradeInLeadDetail.top_up_amount}. We'll contact you to arrange. Visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?"`,
+          });
+        }
       }
     }
 
@@ -3623,16 +3662,30 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       });
     }
 
-    // Trade-up pairs should always pull catalog/trade data
-    if (tradeUpPairIntent) {
+    // 🔴 CRITICAL: Check if quote already given - prevent re-searching during qualification
+    const quoteAlreadyGiven = tradeInLeadDetail?.initial_quote_given === true;
+
+    if (quoteAlreadyGiven) {
+      console.log(
+        "[ChatKit] Quote already given - blocking further product searches during qualification",
+      );
+      messages.push({
+        role: "system",
+        content: `CRITICAL: Initial price quote already given. DO NOT call searchProducts again. You are now in QUALIFICATION mode - only collect condition, accessories, contact info. Use tradein_update_lead to save details. Reference the already-quoted prices when confirming with customer.`,
+      });
+    }
+
+    // Trade-up pairs should always pull catalog/trade data (ONLY if quote not already given)
+    if (tradeUpPairIntent && !quoteAlreadyGiven) {
       isTradeInPricingQuery = true;
     }
 
     const shouldForceCatalog =
-      tradeUpPairIntent ||
-      isTradeInPricingQuery ||
-      isProductInfoQuery ||
-      Boolean(productSlug);
+      !quoteAlreadyGiven && // Don't force search if quote already given
+      (tradeUpPairIntent ||
+        isTradeInPricingQuery ||
+        isProductInfoQuery ||
+        Boolean(productSlug));
 
     const toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
@@ -3644,6 +3697,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         role: "system",
         content:
           "User asked for Samsung Galaxy Tab tablets. Recommend only Samsung tablets (Tab A7/A8/A9/S6/S7/S8/S9, etc.). Exclude phones (Fold/Flip/S series), games, and non-tablet items. Prefer affordable options first if they said cheap. Provide price + product link; keep response under 3 bullet points plus one closing line if needed.",
+      });
+    }
+
+    // 🔴 CONTROLLER/GAMEPAD GUARDRAIL: Only show controllers/gamepads, not consoles or bundles
+    if (/\b(gamepad|controller|pro\s*controller)\b/i.test(message)) {
+      messages.push({
+        role: "system",
+        content:
+          "User wants a CONTROLLER/GAMEPAD (the handheld input device), NOT a console or bundle. ONLY show products with 'Controller', 'Gamepad', or 'Pro Controller' in the name. NEVER show console bundles (Switch 2 + Pokemon, etc.) or standalone consoles. If WooCommerce returns controllers, show ONLY those exact products with their exact names and prices. Do NOT add products that aren't in the search results.",
       });
     }
 
@@ -4945,6 +5007,23 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           }
           try {
             await updateTradeInLead(tradeInLeadId, patch);
+
+            // 🔴 CRITICAL: Set quote cache to prevent re-searching during qualification
+            console.log(
+              "[TradeUp] Setting initial_quote_given flag to block re-searches",
+            );
+            await updateTradeInLead(tradeInLeadId, {
+              initial_quote_given: true,
+              source_device_name: sourceName,
+              source_price_quoted: tradeValue,
+              target_device_name: targetName,
+              target_price_quoted: retailPrice,
+              top_up_amount: topUp,
+              quote_timestamp: new Date().toISOString(),
+            });
+            console.log(
+              "[TradeUp] Quote cached successfully - future searches blocked",
+            );
           } catch (summaryPersistError) {
             console.warn(
               "[TradeUp] Failed to persist trade-up summary to lead",
@@ -4978,9 +5057,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
 
-    const hasStructuredWooList = /---START PRODUCT LIST---/.test(
-      finalResponse,
-    );
+    const hasStructuredWooList = /---START PRODUCT LIST---/.test(finalResponse);
 
     if (
       !tradeUpPairIntent &&

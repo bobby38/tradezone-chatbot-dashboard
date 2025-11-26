@@ -526,15 +526,21 @@ export async function handleVectorSearch(
           };
         }
 
-        // 🔴 CRITICAL FIX: For phone/tablet queries, skip vector enrichment
-        // Vector store contains games (Hades) that contaminate phone results
+        // 🔴 CRITICAL FIX: For phone/tablet/controller queries, skip vector enrichment
+        // Vector store contains games/consoles that contaminate specific accessory results
         const detectedCategory = extractProductCategory(query);
+        const isControllerQuery =
+          /\b(gamepad|controller|pro\s*controller)\b/i.test(query);
         const isPhoneOrTabletQuery =
           detectedCategory === "phone" || detectedCategory === "tablet";
+        const skipVectorEnrichment = isPhoneOrTabletQuery || isControllerQuery;
 
-        if (isPhoneOrTabletQuery) {
+        if (skipVectorEnrichment) {
+          const categoryLabel = isControllerQuery
+            ? "controller/gamepad"
+            : detectedCategory;
           console.log(
-            `[VectorSearch] 🚫 Phone/tablet query - returning WooCommerce ONLY (no vector contamination)`,
+            `[VectorSearch] 🚫 ${categoryLabel} query - returning WooCommerce ONLY (no vector contamination)`,
           );
 
           const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;

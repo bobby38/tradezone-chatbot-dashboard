@@ -1078,6 +1078,38 @@ lib/
 - SMTP test evidence (`info@rezult.co` receipt).
 - Updated `agent.md`, `TRADEIN_SETUP.md`, and smoke-test checklist.
 
+### January 26, 2025 - Controller/Gamepad Search Fix
+
+**Status**: ✅ Controller search now shows ONLY controllers (no console bundles)
+
+**Problem**: User searches "gamepad for switch" or "controller" → Agent showed console bundles (Switch 2 + Pokemon) instead of actual controllers (Nintendo Switch Pro Controller).
+
+**Root Cause**: Vector enrichment layer was contaminating WooCommerce results with console products from the catalog vector store.
+
+**Fixes Applied**:
+
+1. **Skip Vector Enrichment** (`lib/tools/vectorSearch.ts:530`)
+   - Detect controller/gamepad queries: `/\b(gamepad|controller|pro\s*controller)\b/i`
+   - Return WooCommerce-only results (same as phone/tablet queries)
+   - Prevents vector store from injecting console bundles
+
+2. **Agent Guardrail** (`app/api/chatkit/agent/route.ts:3704`)
+   - Added system message forcing LLM to show ONLY controllers
+   - Blocks console bundles and standalone consoles from responses
+   - Enforces exact product names from WooCommerce results
+
+**Result**: 
+- ✅ Search "controller" → Shows all 24 controllers from WooCommerce
+- ✅ Built-in filtering: "ps5 controller", "xbox controller", "switch controller"
+- ✅ Built-in sorting: "cheap controller" sorts by price
+- ❌ No more console bundles contaminating results
+
+**Files Modified**:
+- `lib/tools/vectorSearch.ts` (lines 530-538)
+- `app/api/chatkit/agent/route.ts` (lines 3704-3712)
+
+---
+
 ### November 23, 2025 - Trade-Up Flow Complete Overhaul
 
 **Status**: ✅ Trade-up flow now 100% working with correct pricing, order, and photo prompts

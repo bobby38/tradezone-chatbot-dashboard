@@ -258,6 +258,14 @@ export class EmailService {
 
     const isTradeIn = type === "trade-in";
 
+    // 🔴 TRADE-UP: Detect and format trade-up information
+    const sourceDevice = formData.source_device_name || null;
+    const targetDevice = formData.target_device_name || null;
+    const sourcePrice = formData.source_price_quoted || null;
+    const targetPrice = formData.target_price_quoted || null;
+    const topUpAmount = formData.top_up_amount || null;
+    const isTradeUp = Boolean(sourceDevice && targetDevice && topUpAmount);
+
     return `
       <!DOCTYPE html>
       <html>
@@ -396,6 +404,19 @@ export class EmailService {
                 <div class="field-value">${defects}</div>
               </div>
 
+              ${
+                isTradeUp
+                  ? `
+              <div class="field-group" style="background: #fff3cd; border-left-color: #ffc107;">
+                <div class="field-label">🔄 TRADE-UP REQUEST:</div>
+                <div class="field-value">
+                  <strong>Trading:</strong> ${sourceDevice} (~S$${sourcePrice})<br>
+                  <strong>For:</strong> ${targetDevice} (S$${targetPrice})<br>
+                  <strong>Top-Up Required:</strong> <span style="color: #d32f2f; font-weight: bold;">S$${topUpAmount}</span>
+                </div>
+              </div>
+              `
+                  : `
               <div class="field-group">
                 <div class="field-label">Price Hint / Range:</div>
                 <div class="field-value">${priceHint}</div>
@@ -405,6 +426,8 @@ export class EmailService {
                 <div class="field-label">Preferred Payout:</div>
                 <div class="field-value">${payout}</div>
               </div>
+              `
+              }
 
               <div class="field-group">
                 <div class="field-label">Preferred Fulfilment:</div>
