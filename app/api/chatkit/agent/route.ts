@@ -5063,21 +5063,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       detectTradeInIntent(message) &&
       !/cash|paynow|bank|installment|photo|email|phone/i.test(message);
 
-    const hasStructuredWooList = /---START PRODUCT LIST---/.test(finalResponse);
-
-    if (
-      !tradeUpPairIntent &&
-      !hasStructuredWooList &&
-      lastHybridMatches &&
-      lastHybridMatches.length > 0 &&
-      lastHybridSource &&
-      lastHybridSource !== "trade_in_vector_store"
-    ) {
-      const quickLinks = formatProductQuickLinks(lastHybridMatches);
-      if (quickLinks && !/quick links/i.test(finalResponse)) {
-        finalResponse = `${finalResponse}\n\nQuick Links\n${quickLinks}`;
-      }
-    }
+    // Quick Links removed - they're redundant and not clickable (Nov 26, 2025)
 
     // In trade-up mode: Skip payout prompt initially, but allow photo prompt after user confirms
     const tradeUpConfirmed =
