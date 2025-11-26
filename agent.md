@@ -1015,6 +1015,17 @@ lib/
 - ✅ **Shared Prompt Module**: Consolidated text/voice trade-in playbooks in `lib/chatkit/tradeInPrompts.ts` for reuse across ChatKit Agent and Realtime voice.
 - ⚠️ **To Do**: Extend automated coverage (trade-in smoke tests), enable attachment previews/downloads from dashboard via signed URLs in UI, and wire Telegram/WhatsApp notifications once baseline stabilises. Keep the voice flow in parity with these prompts (photos optional, confirm submission) and add Appwrite bucket sync once ready.
 
+### November 26, 2025 - Catalog Sport Guardrails
+
+- ✅ **WooCommerce-first, same query**: We still send the user's literal text (`football game`, `basketball`, `skateboard`) to WooCommerce—no rewriting, so nothing downstream breaks.
+- ✅ **Canonical prioritisation**: After WooCommerce returns results, we re-order the list so SKUs whose names contain the canonical keyword float to the top:
+  - football/soccer/FC → FIFA titles
+  - basketball/2K/NBA → NBA 2K titles
+  - skate/skateboard → Tony Hawk titles
+  This logic lives entirely in `lib/tools/vectorSearch.ts`; trade flows, prompts, and vector lookups remain untouched.
+- ✅ **Quick-links guard**: If WooCommerce already produced a structured list (the `---START PRODUCT LIST---` section), we suppress the legacy Quick Links footer so users only see the real stock list. When WooCommerce has nothing, we show the existing “no stock, want staff to help?” message.
+- ✅ **Smoke prompts**: Manual QA list now includes `any football game`, `basketball game`, `skateboard game`, and `final fantasy` to confirm the canonical re-ordering before each release. (Automated coverage can be restored via the catalog-sports Playwright spec once we have a shared API key again.)
+
 ### November 15, 2025 - Trade-In Deterministic Toolkit
 
 - ✅ **Canonical Grid Assets**:
