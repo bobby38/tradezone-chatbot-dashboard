@@ -557,26 +557,35 @@ export async function handleVectorSearch(
         );
         if (wantsFullList) {
           const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;
-          const listText = wooProducts
+          
+          // Detect series/franchise: if 3+ products share base name, limit to 5
+          const baseNames = wooProducts.map(p => {
+            const name = (p.name || "").toLowerCase();
+            return name.replace(/\s+(i{1,3}|iv|v|vi{1,3}|ix|x{1,3}|xl|l|\d+|edition|deluxe|standard|ps\d|xbox|switch|pc).*$/i, "").trim();
+          });
+          const baseNameCounts: Record<string, number> = {};
+          baseNames.forEach(bn => { if (bn) baseNameCounts[bn] = (baseNameCounts[bn] || 0) + 1; });
+          const maxCount = Math.max(...Object.values(baseNameCounts));
+          const isSeries = maxCount >= 3;
+          
+          const displayLimit = isSeries ? 5 : 8;
+          const productsToShow = wooProducts.slice(0, displayLimit);
+          const hasMore = wooProducts.length > displayLimit;
+          
+          const listText = productsToShow
             .map((product, idx) => {
-              const priceLabel =
-                typeof product.price_sgd === "number"
-                  ? " — " + formatSGDPrice(product.price_sgd)
-                  : "";
-              const link = product.permalink
-                ? ` ([View Product](${product.permalink}))`
-                : "";
-              // Include image for first product only
-              const imageStr =
-                idx === 0 && product.image
-                  ? `\n   ![${product.name}](${product.image})`
-                  : "";
-              return `${idx + 1}. ${product.name}${priceLabel}${link}${imageStr}`;
+              const price = formatSGDPrice(product.price_sgd);
+              const url = product.permalink || `https://tradezone.sg`;
+              const imageStr = idx === 0 && product.image ? `\n   ![${product.name}](${product.image})` : "";
+              return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${product.productId}${imageStr}`;
             })
-            .join("\n");
+            .join("\n\n");
+          
+          const moreText = hasMore ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.` : "";
+          
           return {
             text: prependTradeSnippet(
-              `Here’s everything I have for “${query}” right now:\n\n${listText}\n\nPick one and I’ll pull the specs or availability.`,
+              `Here's what I have for "${query}":\n\n${listText}${moreText}\n\nPick one for details.`,
             ),
             store: "product_catalog",
             matches: [],
