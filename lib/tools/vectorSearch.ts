@@ -483,7 +483,7 @@ export async function handleVectorSearch(
 
       // Query rewriting: map user terms to actual product names
       // Sports: basketball → nba, football → fifa, skateboard → tony hawk
-      // Hardware: gpu → graphic card, console → playstation
+      // Hardware: gpu → graphic card, console → playstation, gamepad → controller
       let searchQuery = query;
       const lowerQuery = query.toLowerCase();
 
@@ -491,6 +491,11 @@ export async function handleVectorSearch(
         searchQuery = searchQuery.replace(/\bgpu\b/gi, "graphic card");
         console.log(
           `[VectorSearch] GPU detected, searching for: "${searchQuery}"`,
+        );
+      } else if (/\bgamepad\b/i.test(lowerQuery)) {
+        searchQuery = searchQuery.replace(/\bgamepad\b/gi, "controller");
+        console.log(
+          `[VectorSearch] Gamepad detected, searching for: "${searchQuery}"`,
         );
       } else if (/\bconsole\b/i.test(lowerQuery)) {
         // Replace "console" with brand name if specified, otherwise default to "playstation"
