@@ -473,6 +473,21 @@ export async function handleVectorSearch(
       // Sort by price if user wants cheap options
       sortProductsByPrice(wooProducts, query);
 
+      if (sportIntent && wooProducts.length) {
+        const prioritized = wooProducts.filter((product) => {
+          const hay = (product.name || "").toLowerCase();
+          return sportIntent.filterTokens.some((token) =>
+            hay.includes(token.toLowerCase()),
+          );
+        });
+        if (prioritized.length) {
+          const remainder = wooProducts.filter(
+            (product) => !prioritized.includes(product),
+          );
+          wooProducts = [...prioritized, ...remainder];
+        }
+      }
+
       if (wooProducts.length > 0) {
         console.log(
           `[VectorSearch] ✅ WooCommerce found ${wooProducts.length} products - continuing to enrichment layers`,
