@@ -333,7 +333,9 @@ function filterWooResultsByTokens<T extends { name?: string }>(
 }
 
 /**
- * Sort products by price when user explicitly wants cheap/affordable options
+ * Sort products by price based on user intent
+ * "best/premium/expensive" → most expensive first
+ * "cheap/affordable/budget" → cheapest first
  */
 function sortProductsByPrice(
   products: Awaited<
@@ -343,6 +345,7 @@ function sortProductsByPrice(
 ): void {
   const wantsCheapest =
     /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive)\b/i.test(query);
+  const wantsBest = /\b(best|premium|expensive|high-end|top)\b/i.test(query);
 
   if (wantsCheapest && products.length > 0) {
     // Sort by price ascending (cheapest first)
@@ -353,6 +356,16 @@ function sortProductsByPrice(
     });
     console.log(
       `[VectorSearch] ✅ Sorted ${products.length} products by price (cheapest first)`,
+    );
+  } else if (wantsBest && products.length > 0) {
+    // Sort by price descending (most expensive first)
+    products.sort((a, b) => {
+      const priceA = typeof a.price_sgd === "number" ? a.price_sgd : -Infinity;
+      const priceB = typeof b.price_sgd === "number" ? b.price_sgd : -Infinity;
+      return priceB - priceA;
+    });
+    console.log(
+      `[VectorSearch] ✅ Sorted ${products.length} products by price (most expensive first)`,
     );
   }
 }
@@ -468,12 +481,18 @@ export async function handleVectorSearch(
       );
       const { searchWooProducts } = await import("@/lib/agent-tools");
 
-      // Sport query mapping: rewrite query to canonical terms BEFORE searching
-      // basketball → nba, football/soccer → fifa, skateboard → tony hawk
+      // Query rewriting: map user terms to actual product names
+      // Sports: basketball → nba, football → fifa, skateboard → tony hawk
+      // Hardware: gpu → graphic card
       let searchQuery = query;
       const lowerQuery = query.toLowerCase();
 
-      if (/basketball|nba/i.test(lowerQuery)) {
+      if (/\bgpu\b|graphics?\s*card/i.test(lowerQuery)) {
+        searchQuery = searchQuery.replace(/\bgpu\b/gi, "graphic card");
+        console.log(
+          `[VectorSearch] GPU detected, searching for: "${searchQuery}"`,
+        );
+      } else if (/basketball|nba/i.test(lowerQuery)) {
         searchQuery = "nba 2k";
         console.log(
           `[VectorSearch] Basketball detected, searching for: "${searchQuery}"`,
@@ -557,32 +576,44 @@ export async function handleVectorSearch(
         );
         if (wantsFullList) {
           const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;
-          
+
           // Detect series/franchise: if 3+ products share base name, limit to 5
-          const baseNames = wooProducts.map(p => {
+          const baseNames = wooProducts.map((p) => {
             const name = (p.name || "").toLowerCase();
-            return name.replace(/\s+(i{1,3}|iv|v|vi{1,3}|ix|x{1,3}|xl|l|\d+|edition|deluxe|standard|ps\d|xbox|switch|pc).*$/i, "").trim();
+            return name
+              .replace(
+                /\s+(i{1,3}|iv|v|vi{1,3}|ix|x{1,3}|xl|l|\d+|edition|deluxe|standard|ps\d|xbox|switch|pc).*$/i,
+                "",
+              )
+              .trim();
           });
           const baseNameCounts: Record<string, number> = {};
-          baseNames.forEach(bn => { if (bn) baseNameCounts[bn] = (baseNameCounts[bn] || 0) + 1; });
+          baseNames.forEach((bn) => {
+            if (bn) baseNameCounts[bn] = (baseNameCounts[bn] || 0) + 1;
+          });
           const maxCount = Math.max(...Object.values(baseNameCounts));
           const isSeries = maxCount >= 3;
-          
+
           const displayLimit = isSeries ? 5 : 8;
           const productsToShow = wooProducts.slice(0, displayLimit);
           const hasMore = wooProducts.length > displayLimit;
-          
+
           const listText = productsToShow
             .map((product, idx) => {
               const price = formatSGDPrice(product.price_sgd);
               const url = product.permalink || `https://tradezone.sg`;
-              const imageStr = idx === 0 && product.image ? `\n   ![${product.name}](${product.image})` : "";
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
               return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${product.productId}${imageStr}`;
             })
             .join("\n\n");
-          
-          const moreText = hasMore ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.` : "";
-          
+
+          const moreText = hasMore
+            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
+            : "";
+
           return {
             text: prependTradeSnippet(
               `Here's what I have for "${query}":\n\n${listText}${moreText}\n\nPick one for details.`,
