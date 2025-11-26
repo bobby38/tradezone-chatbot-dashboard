@@ -712,13 +712,15 @@ export async function handleVectorSearch(
           };
         }
 
-        // Skip vector enrichment for simple list queries when WooCommerce has results
-        // Vector search is SLOW - only use for: (1) 0 results fallback, (2) specific product detail queries
-        const isSimpleListQuery =
-          /\b(any|all|some|show|list|best|top|good|cheap)\b/i.test(query);
+        // Skip vector enrichment when WooCommerce has good results
+        // Vector search is SLOW - only use for specific detail queries (specs, reviews, comparisons)
+        const isDetailQuery =
+          /\b(spec|specs|specification|review|reviews|compare|comparison|feature|features|detail|details|difference|vs|versus)\b/i.test(
+            query,
+          );
         const hasEnoughResults = wooProducts.length >= 3;
 
-        if (isSimpleListQuery && hasEnoughResults) {
+        if (!isDetailQuery && hasEnoughResults) {
           console.log(
             `[VectorSearch] ✅ Simple list query with ${wooProducts.length} WooCommerce results - returning WITHOUT vector enrichment (fast path)`,
           );
