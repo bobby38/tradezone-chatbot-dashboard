@@ -492,13 +492,20 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] GPU detected, searching for: "${searchQuery}"`,
         );
-      } else if (
-        /\bconsole\b/i.test(lowerQuery) &&
-        !/\bps\d|playstation|xbox|nintendo|switch/i.test(lowerQuery)
-      ) {
-        searchQuery = "playstation";
+      } else if (/\bconsole\b/i.test(lowerQuery)) {
+        // Replace "console" with brand name if specified, otherwise default to "playstation"
+        if (/nintendo|switch/i.test(lowerQuery)) {
+          searchQuery = searchQuery.replace(/\bconsole\b/gi, "nintendo");
+        } else if (/xbox/i.test(lowerQuery)) {
+          searchQuery = searchQuery.replace(/\bconsole\b/gi, "xbox");
+        } else if (/playstation|ps\d/i.test(lowerQuery)) {
+          searchQuery = searchQuery.replace(/\bconsole\b/gi, "playstation");
+        } else {
+          // Generic "console" without brand - default to playstation
+          searchQuery = "playstation";
+        }
         console.log(
-          `[VectorSearch] Generic console query detected, searching for: "${searchQuery}"`,
+          `[VectorSearch] Console query detected, searching for: "${searchQuery}"`,
         );
       } else if (/basketball|nba/i.test(lowerQuery)) {
         searchQuery = "nba 2k";
