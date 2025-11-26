@@ -509,7 +509,6 @@ export async function handleVectorSearch(
 
       // Sport query canonical prioritization (Nov 26, 2025 - agent.md)
       // football/soccer → FIFA, basketball → NBA 2K, skateboard → Tony Hawk
-      const lowerQuery = query.toLowerCase();
       const SPORT_CANONICAL_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
         { regex: /basketball|nba|2k/i, tokens: ["nba", "2k"] },
         {
