@@ -19,6 +19,11 @@ const PRICE_GRID_SOURCE = "products_master.json";
 const REVIEW_TABLE = "agent_review_queue";
 const ORDER_TABLE = "agent_orders";
 const INSPECTION_TABLE = "agent_inspections";
+const CATEGORY_SLUG_MAP: Record<string, string[]> = {
+  laptop: ["laptop"],
+  phone: ["handphone", "handphone-tablet", "smartphone", "phones"],
+  tablet: ["tablet", "handphone-tablet"],
+};
 
 let wooProductsCache: {
   loadedAt: number;
@@ -34,6 +39,7 @@ interface WooProduct {
   stock_status?: string;
   stock_quantity?: number | null;
   images?: Array<{ id: number; src: string; alt?: string }>;
+  categories?: Array<{ id: number; name: string; slug: string }>;
 }
 
 export interface WooProductSearchResult {
@@ -149,6 +155,14 @@ function parseMoney(value?: string | null): number | null {
   if (!cleaned) return null;
   const parsed = parseFloat(cleaned);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isInCategory(product: WooProduct, category: string): boolean {
+  const slugs = CATEGORY_SLUG_MAP[category];
+  if (!slugs || !product.categories || !product.categories.length) {
+    return false;
+  }
+  return product.categories.some((cat) => slugs.includes(cat.slug));
 }
 
 async function loadWooProducts(): Promise<Map<number, WooProduct>> {
@@ -294,6 +308,11 @@ export async function searchWooProducts(
       keywords: ["camera", "gopro", "insta", "osmo", "pocket"],
       category: "camera",
     },
+    {
+      pattern: /\b(laptops?|notebooks?|ultrabooks?|gaming\s*laptops?)\b/i,
+      keywords: [],
+      category: "laptop",
+    },
   ];
 
   let familyFilter: string[] | null = null;
@@ -418,6 +437,13 @@ export async function searchWooProducts(
         }
 
         score += 100;
+      } else if (categoryFilter === "laptop") {
+        // Laptops are identified via Woo categories since product names may omit "laptop"
+        const inLaptopCategory = isInCategory(product, "laptop");
+        if (!inLaptopCategory) {
+          return { product, score: 0 };
+        }
+        score += 100;
       }
       // Apply family filter if detected (gaming products)
       else if (familyFilter && tokens.length > 1) {
@@ -441,7 +467,7 @@ export async function searchWooProducts(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  const results = scored.map(({ product }) => ({
+  let results = scored.map(({ product }) => ({
     productId: product.id,
     name: product.name,
     permalink: product.permalink,
@@ -449,6 +475,28 @@ export async function searchWooProducts(
     stock_status: product.stock_status,
     image: product.images?.[0]?.src, // Include first image
   }));
+
+  if (results.length === 0 && categoryFilter && CATEGORY_SLUG_MAP[categoryFilter]) {
+    const fallbackProducts = products
+      .filter((product) => isInCategory(product, categoryFilter))
+      .sort((a, b) => {
+        const priceA = parseMoney(a.price) ?? Number.POSITIVE_INFINITY;
+        const priceB = parseMoney(b.price) ?? Number.POSITIVE_INFINITY;
+        return priceA - priceB;
+      })
+      .slice(0, limit);
+
+    if (fallbackProducts.length) {
+      results = fallbackProducts.map((product) => ({
+        productId: product.id,
+        name: product.name,
+        permalink: product.permalink,
+        price_sgd: parseMoney(product.price),
+        stock_status: product.stock_status,
+        image: product.images?.[0]?.src,
+      }));
+    }
+  }
 
   // Debug logging to check if permalinks exist
   if (results.length > 0) {

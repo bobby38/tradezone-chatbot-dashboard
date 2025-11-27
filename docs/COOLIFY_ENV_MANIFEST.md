@@ -72,10 +72,10 @@ Values are intentionally omitted here. Reference `.env.local` (encrypted + versi
 - `CHATKIT_ALERT_WEBHOOK` *(optional — leave empty if not used)*
 - `CHATKIT_DISABLE_AUTH` *(development override; ensure **false** in Coolify)*
 
-### Trade-In Intelligence / Zep
-- `ZEP_API_KEY`
-- `ZEP_CATALOG_GRAPH_ID`
-- `ZEP_USER_ID`
+### Trade-In Intelligence / Graphiti
+- `GRAPHTI_BASE_URL`
+- `GRAPHTI_API_KEY`
+- `GRAPHTI_DEFAULT_GROUP_ID` *(optional — limits catalog searches to a specific graph group)*
 
 ### Additional Tooling
 - `N8N_WEBHOOK_BASE`

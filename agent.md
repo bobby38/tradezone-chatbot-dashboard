@@ -8,6 +8,7 @@
 - **Nov 23, 2025 – Trade-up determinism**: For “trade/upgrade X for Y”, the backend now pre-fetches the trade-in price of **X** and the retail price of **Y** (preowned only if the user says so) and synthesizes a fixed reply:  
   `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`  
   LLM wording is ignored for this step; contact must be captured before payout; photo is a single yes/no prompt and never blocks submission.
+- **Nov 27, 2025 – Graphiti rollout**: The legacy Zep memory/graph endpoints are replaced with Graphiti. Configure `GRAPHTI_BASE_URL` + `GRAPHTI_API_KEY` (and optional `GRAPHTI_DEFAULT_GROUP_ID`) so `/api/chatkit/agent` uses Graphiti for structured catalog lookups. Zep references below remain for historical context only.
 
 ### Development Workflow Expectations
 - For every incoming request, produce a numbered task list before touching code, keep it updated, and check off each item only after verifying the fix.
@@ -37,7 +38,12 @@ Configure the following before running locally or deploying (see `plan.md` and `
    - `WOOCOMMERCE_PRODUCT_JSON_PATH` - URL or local path to product catalog JSON (supports HTTP/HTTPS URLs or file paths)
      - Production: `https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json`
      - Used by vector search to enrich product results with live pricing and availability
-7. **Misc**
+7. **Graphiti Knowledge Graph**
+   - `GRAPHTI_BASE_URL` (e.g. `https://graphiti-production-…railway.app`)
+   - `GRAPHTI_API_KEY` (provided by Graphiti dashboard)
+   - `GRAPHTI_DEFAULT_GROUP_ID` *(optional — limits catalog searches to a specific graph group)*
+   - Graphiti replaces the legacy Zep integration; historical references below remain for context but the live agent now uses Graphiti for structured search.
+8. **Misc**
    - `GOOGLE_SERVICE_ACCOUNT_KEY` also powers Search Console sync scripts in `scripts/`.
 
 Keep service-role secrets server-side only; do **not** expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. Several API routes still instantiate Supabase with `NEXT_PUBLIC_SUPABASE_ANON_KEY`; harden them during fixes (see §6).
@@ -3389,7 +3395,7 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 - `validation_report.json`: per-family counts + price ranges, factor outlier list (currently 3: Switch Lite preowned, DJI Osmo 360 Adventure, Legion Go 2 1TB), unmatched trade grid rows (56) so ops can patch synonyms or catalog gaps.
 - Script auto-flags instalment factors outside 1.04–1.07 and captures all warranty blurbs it finds inside product cards; warnings show up in `validation_report` and on each model entry.
 - Future data refresh: run `npm run refresh:catalog` first (updates WooCommerce snapshot) then `npm run catalog:build`. Commit refreshed `/data/catalog/*` alongside any plan notes so the agent + dashboards stay in sync with price cycles.
-- Zep memory integration:
+- *Legacy (replaced by Graphiti memory; keep for historical context).* Zep memory integration:
   - Set `ZEP_API_KEY` (project key) and `ZEP_CATALOG_GRAPH_ID` (target graph) in env.
   - If the catalog graph doesn’t exist yet, run `npx tsx scripts/create-zep-graph.ts` once; the script now prints the canonical ID even if the API returns `graphId` instead of `graph_id`. Copy the logged `ZEP_CATALOG_GRAPH_ID=...` into `.env.local` before syncing.
   - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`. Successful runs log ten batches (182 records currently) with no 404s—rerun whenever catalog data changes.

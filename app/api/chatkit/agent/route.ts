@@ -33,11 +33,13 @@ import {
 } from "@/lib/chatkit/telemetry";
 import { ensureSession, getNextTurnIndex } from "@/lib/chatkit/sessionManager";
 import {
-  addZepMemoryTurn,
-  fetchZepContext,
-  queryZepGraphContext,
-  type ZepGraphNodeSummary,
-} from "@/lib/zep";
+  addGraphitiMemoryTurn,
+  fetchGraphitiContext,
+  queryGraphitiContext,
+  type GraphitiContextResult,
+  type GraphitiNodeSummary,
+  type GraphitiQueryResult,
+} from "@/lib/graphiti";
 import {
   normalizeProduct,
   priceLookup,
@@ -810,8 +812,8 @@ function normalizeNameCase(value: string): string {
     .join(" ");
 }
 
-function buildMemoryHintsFromZep(zep: ZepContextResult): MemoryHints {
-  const blob = [zep.userSummary, zep.context]
+function buildMemoryHintsFromGraphiti(graphiti: GraphitiContextResult): MemoryHints {
+  const blob = [graphiti.userSummary, graphiti.context]
     .filter((value) => typeof value === "string" && value.trim().length > 0)
     .join("\n");
   if (!blob) {
@@ -926,7 +928,7 @@ function extractGraphNodePrice(payload: Record<string, any>): number | null {
 }
 
 function pushGraphProvenanceEntries(params: {
-  nodes: ZepGraphNodeSummary[];
+  nodes: GraphitiNodeSummary[];
   verificationData: VerificationPayload;
 }): void {
   const { nodes, verificationData } = params;
@@ -963,7 +965,7 @@ function pushGraphProvenanceEntries(params: {
 }
 
 async function detectGraphConflictsFromNodes(
-  nodes: ZepGraphNodeSummary[],
+  nodes: GraphitiNodeSummary[],
 ): Promise<GraphConflict[]> {
   const conflicts: GraphConflict[] = [];
   for (const node of nodes) {
@@ -998,14 +1000,14 @@ function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
     return `${conflict.nodeName}: graph ${formatCurrency(conflict.graphPrice)} vs catalog ${formatCurrency(conflict.catalogPrice)} (Δ ${formatCurrency(conflict.delta ?? null)})`;
   });
   return [
-    "⚠️ Catalog mismatch detected between Zep graph and local master file.",
+    "⚠️ Catalog mismatch detected between Graphiti graph and local master file.",
     ...lines,
     "Respond with provisional language, cite both sources, and offer a human review before locking pricing.",
   ].join("\n");
 }
 
 function summarizeGraphNodesForPrompt(
-  nodes: ZepGraphNodeSummary[],
+  nodes: GraphitiNodeSummary[],
 ): string | null {
   if (!nodes.length) return null;
   const lines = nodes.slice(0, 3).map((node) => {
@@ -1017,7 +1019,7 @@ function summarizeGraphNodesForPrompt(
     return `• ${node.name || payload.title || payload.modelId || "node"} (${label}) ${priceLabel}`;
   });
   return [
-    "Use these Zep graph facts as cited sources in your reply (e.g., 'from Zep graph: ...').",
+    "Use these Graphiti graph facts as cited sources in your reply (e.g., 'from Graphiti: ...').",
     ...lines,
   ].join("\n");
 }
@@ -1081,14 +1083,14 @@ const MODIFIER_FILLER_TOKENS = new Set([
   "50%",
 ]);
 
-const ZEP_GRAPH_CACHE_TTL_MS = 60 * 1000;
-const ZEP_GRAPH_CACHE_LIMIT = 200;
-const ZEP_GRAPH_RATE_LIMIT_COOLDOWN_MS = 30 * 1000;
-const zepGraphCache = new Map<
+const GRAPHITI_GRAPH_CACHE_TTL_MS = 60 * 1000;
+const GRAPHITI_GRAPH_CACHE_LIMIT = 200;
+const GRAPHITI_GRAPH_RATE_LIMIT_COOLDOWN_MS = 30 * 1000;
+const graphitiGraphCache = new Map<
   string,
-  { result: ZepGraphQueryResult; expiresAt: number }
+  { result: GraphitiQueryResult; expiresAt: number }
 >();
-const zepGraphSessionCooldowns = new Map<string, number>();
+const graphitiGraphSessionCooldowns = new Map<string, number>();
 
 function normalizeGraphQuestion(question: string): string {
   return question.trim().toLowerCase().replace(/\s+/g, " ");
@@ -1097,14 +1099,14 @@ function normalizeGraphQuestion(question: string): string {
 function getCachedGraphResult(
   sessionId: string,
   normalizedQuestion: string,
-): ZepGraphQueryResult | null {
+): GraphitiQueryResult | null {
   const cacheKey = `${sessionId}:${normalizedQuestion}`;
-  const cached = zepGraphCache.get(cacheKey);
+  const cached = graphitiGraphCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.result;
   }
   if (cached) {
-    zepGraphCache.delete(cacheKey);
+    graphitiGraphCache.delete(cacheKey);
   }
   return null;
 }
@@ -1112,17 +1114,17 @@ function getCachedGraphResult(
 function storeGraphResult(
   sessionId: string,
   normalizedQuestion: string,
-  result: ZepGraphQueryResult,
+  result: GraphitiQueryResult,
 ) {
   const cacheKey = `${sessionId}:${normalizedQuestion}`;
-  zepGraphCache.set(cacheKey, {
+  graphitiGraphCache.set(cacheKey, {
     result,
-    expiresAt: Date.now() + ZEP_GRAPH_CACHE_TTL_MS,
+    expiresAt: Date.now() + GRAPHITI_GRAPH_CACHE_TTL_MS,
   });
-  if (zepGraphCache.size > ZEP_GRAPH_CACHE_LIMIT) {
-    const oldest = zepGraphCache.keys().next().value;
+  if (graphitiGraphCache.size > GRAPHITI_GRAPH_CACHE_LIMIT) {
+    const oldest = graphitiGraphCache.keys().next().value;
     if (oldest) {
-      zepGraphCache.delete(oldest);
+      graphitiGraphCache.delete(oldest);
     }
   }
 }
@@ -3302,42 +3304,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ⚠️ Zep.ai memory DISABLED (quota exceeded, $25/month not viable)
-    // TODO: Evaluate Graphiti as alternative later
-    let zepContext: Awaited<ReturnType<typeof fetchZepContext>> = {
-      userSummary: null,
-      context: null,
+    // ⚠️ Graphiti memory disabled for now (pending durability plan)
+    let graphitiContext: Awaited<ReturnType<typeof fetchGraphitiContext>> = {
+      userSummary: "",
+      context: "",
     };
     // try {
-    //   zepContext = await fetchZepContext(sessionId);
-    //   console.log("[ChatKit] Zep context loaded", {
+    //   graphitiContext = await fetchGraphitiContext(sessionId);
+    //   console.log("[ChatKit] Graphiti context loaded", {
     //     sessionId,
-    //     hasUserSummary: Boolean(zepContext.userSummary),
-    //     hasContext: Boolean(zepContext.context),
+    //     hasUserSummary: Boolean(graphitiContext.userSummary),
+    //     hasContext: Boolean(graphitiContext.context),
     //   });
-    // } catch (zepError: any) {
-    //   // Graceful fallback when Zep is unavailable (rate limits, quota exceeded, etc.)
+    // } catch (graphitiError: any) {
     //   console.warn(
-    //     "[ChatKit] Zep unavailable, continuing without memory context",
+    //     "[ChatKit] Graphiti unavailable, continuing without memory context",
     //     {
-    //       error: zepError?.message || String(zepError),
-    //       statusCode: zepError?.statusCode,
+    //       error: graphitiError?.message || String(graphitiError),
+    //       statusCode: graphitiError?.statusCode,
     //     },
     //   );
     // }
-    const memoryHints = buildMemoryHintsFromZep(zepContext);
+    const memoryHints = buildMemoryHintsFromGraphiti(graphitiContext);
     let contextInsertIndex = 1;
-    if (zepContext.userSummary) {
+    if (graphitiContext.userSummary) {
       messages.splice(contextInsertIndex, 0, {
         role: "system",
-        content: `Customer summary:\n${zepContext.userSummary}`,
+        content: `Customer summary:\n${graphitiContext.userSummary}`,
       });
       contextInsertIndex += 1;
     }
-    if (zepContext.context) {
+    if (graphitiContext.context) {
       messages.splice(contextInsertIndex, 0, {
         role: "system",
-        content: `Context from memory:\n${zepContext.context}`,
+        content: `Context from memory:\n${graphitiContext.context}`,
       });
       contextInsertIndex += 1;
     }
@@ -4107,22 +4107,22 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
               const now = Date.now();
               const cooldownUntil =
-                zepGraphSessionCooldowns.get(sessionId) || 0;
+                graphitiGraphSessionCooldowns.get(sessionId) || 0;
 
               if (!graphResult) {
                 if (now < cooldownUntil) {
                   toolResult =
                     "Structured catalog is cooling down—try again in a few seconds.";
                 } else {
-                  zepGraphSessionCooldowns.set(sessionId, now);
-                  const freshResult = await queryZepGraphContext(
+                  graphitiGraphSessionCooldowns.set(sessionId, now);
+                  const freshResult = await queryGraphitiContext(
                     question,
                     sessionId,
                   );
                   if (freshResult.rateLimited) {
-                    zepGraphSessionCooldowns.set(
+                    graphitiGraphSessionCooldowns.set(
                       sessionId,
-                      now + ZEP_GRAPH_RATE_LIMIT_COOLDOWN_MS,
+                      now + GRAPHITI_GRAPH_RATE_LIMIT_COOLDOWN_MS,
                     );
                     toolResult =
                       "Structured catalog is cooling down—reusing recent info.";
@@ -4983,11 +4983,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
     }
 
-    // ⚠️ Zep.ai memory DISABLED (quota exceeded, $25/month not viable)
+    // ⚠️ Graphiti memory currently disabled (pending volume tuning)
     // try {
-    //   await addZepMemoryTurn(sessionId, message, finalResponse);
+    //   await addGraphitiMemoryTurn(sessionId, message, finalResponse);
     // } catch (memoryError) {
-    //   console.warn("[ChatKit] Failed to persist Zep memory", memoryError);
+    //   console.warn("[ChatKit] Failed to persist Graphiti memory", memoryError);
     // }
   } catch (error) {
     console.error("[ChatKit] Error in POST handler:", error);

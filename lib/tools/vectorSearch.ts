@@ -527,9 +527,9 @@ export async function handleVectorSearch(
     ? formatTradeInResponse(priceListMatch)
     : null;
 
-  // SEARCH FLOW: WooCommerce → Vector → Zep → Perplexity
+  // SEARCH FLOW: WooCommerce → Vector → Graphiti → Perplexity
   // WooCommerce = source of truth (what we sell)
-  // Vector/Zep/Perplexity = enrichment layers (add details/context)
+  // Vector/Graphiti/Perplexity = enrichment layers (add details/context)
   let wooProducts: Awaited<
     ReturnType<typeof import("@/lib/agent-tools").searchWooProducts>
   > = [];
@@ -1396,7 +1396,7 @@ export async function handleVectorSearch(
       };
     }
 
-    // Step 4: Combine WooCommerce (source of truth) + Vector/Zep enrichment
+    // Step 4: Combine WooCommerce (source of truth) + Vector/Graphiti enrichment
     let finalText = "";
 
     if (sportFilters.length && wooProducts.length === 0) {
