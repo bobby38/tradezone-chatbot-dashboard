@@ -936,9 +936,48 @@ export async function handleVectorSearch(
         }
 
         console.log(
-          `[VectorSearch] Specific query or few results (${wooProducts.length}) - continuing to vector enrichment for details`,
+          `[VectorSearch] Specific query or few results (${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
         );
-        // Continue to vector/zep/perplexity for enrichment
+        const fallbackBudgetContext =
+          budgetContext || createBudgetContext(query, wooProducts);
+        const displayLimit = Math.min(wooProducts.length, 6);
+        const productsToShow = wooProducts.slice(0, displayLimit);
+        const listText = productsToShow
+          .map((product, idx) => {
+            const price = formatPriceWithBudget(
+              product.price_sgd,
+              fallbackBudgetContext,
+            );
+            const url = product.permalink || `https://tradezone.sg`;
+            return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}`;
+          })
+          .join("\n\n");
+        const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
+        const budgetSummaryLine = buildBudgetSummaryLine(
+          fallbackBudgetContext,
+          budgetCategoryLabel,
+        );
+        const summaryPrefix = budgetSummaryLine
+          ? `${budgetSummaryLine}\n\n`
+          : "";
+        const budgetInstruction = buildBudgetInstructionText(
+          fallbackBudgetContext,
+          budgetCategoryLabel,
+        );
+        const fallbackNote =
+          `\n\n${summaryPrefix}🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n` +
+          listText +
+          "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list." +
+          (budgetInstruction ? `\n${budgetInstruction}` : "");
+
+        return {
+          text: prependTradeSnippet(
+            `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${fallbackNote}`,
+          ),
+          store: "product_catalog",
+          matches: [],
+          wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
+        };
       } else {
         console.log(
           `[VectorSearch] ❌ No WooCommerce matches - continuing to vector search for enrichment`,
