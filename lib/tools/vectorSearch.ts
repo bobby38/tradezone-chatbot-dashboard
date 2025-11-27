@@ -321,6 +321,128 @@ function selectFilteringTokens(tokens: string[]): string[] {
   return specific.length ? specific : tokens;
 }
 
+type BudgetContext = {
+  wantsCheap: boolean;
+  maxBudget: number | null;
+  cheapestPrice: number | null;
+  cheapestWithinBudget: number | null;
+  hasWithinBudget: boolean;
+};
+
+function parseMaxBudget(query: string): number | null {
+  const lowered = query.toLowerCase();
+  const patterns = [
+    /(?:under|below|less than|underneath|upto|up to|<=)\s*(?:s?\$)?\s*(\d{2,5})/i,
+    /(?:max|budget|cap)\s*(?:is|:)?\s*(?:s?\$)?\s*(\d{2,5})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = lowered.match(pattern);
+    if (match && match[1]) {
+      const value = Number(match[1]);
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  const betweenMatch = lowered.match(
+    /between\s+(?:s?\$)?\s*(\d{2,5})\s+(?:and|-|to)\s+(?:s?\$)?\s*(\d{2,5})/i,
+  );
+  if (betweenMatch) {
+    const upper = Number(betweenMatch[2]);
+    if (Number.isFinite(upper)) return upper;
+  }
+  return null;
+}
+
+function getProductPrice(product: WooProductSearchResult): number | null {
+  const raw = product.price_sgd;
+  if (raw == null) return null;
+  const price = Number(raw);
+  return Number.isFinite(price) ? price : null;
+}
+
+function createBudgetContext(
+  query: string,
+  products: WooProductSearchResult[],
+): BudgetContext {
+  const wantsCheap = /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive)\b/i.test(
+    query,
+  );
+  const maxBudget = parseMaxBudget(query);
+  const prices = products
+    .map((product) => getProductPrice(product))
+    .filter((price): price is number => price != null);
+  const cheapestPrice = prices.length ? Math.min(...prices) : null;
+  let cheapestWithinBudget: number | null = null;
+  let hasWithinBudget = false;
+  if (maxBudget != null && prices.length) {
+    const within = prices.filter((price) => price <= maxBudget);
+    if (within.length) {
+      hasWithinBudget = true;
+      cheapestWithinBudget = Math.min(...within);
+    }
+  }
+  return {
+    wantsCheap,
+    maxBudget,
+    cheapestPrice,
+    cheapestWithinBudget,
+    hasWithinBudget,
+  };
+}
+
+function buildCategoryLabel(category: string | null): string {
+  if (!category) return "options";
+  return category.endsWith("s") ? category : `${category}s`;
+}
+
+function buildBudgetSummaryLine(
+  ctx: BudgetContext,
+  categoryLabel: string,
+): string {
+  if (!ctx.cheapestPrice) return "";
+  if (ctx.maxBudget != null) {
+    if (ctx.hasWithinBudget && ctx.cheapestWithinBudget != null) {
+      return `Cheapest ${categoryLabel} within S$${ctx.maxBudget} start at ${formatSGDPrice(ctx.cheapestWithinBudget)}.`;
+    }
+    return `Cheapest ${categoryLabel} currently start at ${formatSGDPrice(ctx.cheapestPrice)}, which is above the requested S$${ctx.maxBudget} budget.`;
+  }
+  if (ctx.wantsCheap) {
+    return `Cheapest ${categoryLabel} currently start at ${formatSGDPrice(ctx.cheapestPrice)}.`;
+  }
+  return "";
+}
+
+function buildBudgetInstructionText(
+  ctx: BudgetContext,
+  categoryLabel: string,
+): string {
+  if (ctx.maxBudget != null) {
+    if (ctx.hasWithinBudget) {
+      return `- Highlight only the ${categoryLabel} priced at or below S$${ctx.maxBudget} (already listed above).\n`;
+    }
+    if (ctx.cheapestPrice != null) {
+      return `- NONE of the ${categoryLabel} are within S$${ctx.maxBudget}. Explicitly state the cheapest option is ${formatSGDPrice(ctx.cheapestPrice)} and ask if that's acceptable.\n`;
+    }
+  } else if (ctx.wantsCheap && ctx.cheapestPrice != null) {
+    return `- Emphasize these are the cheapest ${categoryLabel} available (starting at ${formatSGDPrice(ctx.cheapestPrice)}).\n`;
+  }
+  return "";
+}
+
+function formatPriceWithBudget(
+  price: number | null | undefined,
+  ctx: BudgetContext,
+): string {
+  const formatted = formatSGDPrice(price);
+  if (
+    ctx.maxBudget != null &&
+    typeof price === "number" &&
+    Number(price) > ctx.maxBudget
+  ) {
+    return `${formatted} (above S$${ctx.maxBudget})`;
+  }
+  return formatted;
+}
+
 function filterWooResultsByTokens<T extends { name?: string }>(
   items: T[],
   tokens: string[],
@@ -393,6 +515,7 @@ export async function handleVectorSearch(
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
   const queryTokens = extractQueryTokens(query);
   const filteringTokens = selectFilteringTokens(queryTokens);
+  const detectedCategory = extractProductCategory(query);
   const tradeQueryOverride = context?.tradeDeviceQuery?.trim();
   let priceListMatch = tradeQueryOverride
     ? findTradeInPriceMatch(tradeQueryOverride)
@@ -585,6 +708,7 @@ export async function handleVectorSearch(
         }
       }
 
+      let budgetContext: BudgetContext | null = null;
       if (wooProducts.length > 0) {
         console.log(
           `[VectorSearch] ✅ WooCommerce found ${wooProducts.length} products - continuing to enrichment layers`,
@@ -594,6 +718,17 @@ export async function handleVectorSearch(
             price: r.price_sgd,
           })),
         );
+        budgetContext = createBudgetContext(query, wooProducts);
+        if (budgetContext.maxBudget != null) {
+          const within = wooProducts.filter((product) => {
+            const price = getProductPrice(product);
+            return price != null && price <= budgetContext.maxBudget!;
+          });
+          const above = wooProducts.filter((product) => !within.includes(product));
+          if (within.length > 0) {
+            wooProducts = [...within, ...above];
+          }
+        }
         if (wantsFullList) {
           const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;
 
@@ -620,7 +755,10 @@ export async function handleVectorSearch(
 
           const listText = productsToShow
             .map((product, idx) => {
-              const price = formatSGDPrice(product.price_sgd);
+              const price = formatPriceWithBudget(
+                product.price_sgd,
+                budgetContext!,
+              );
               const url = product.permalink || `https://tradezone.sg`;
               const imageStr =
                 idx === 0 && product.image
@@ -634,10 +772,23 @@ export async function handleVectorSearch(
             ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
             : "";
 
+          const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
+          const budgetSummaryLine = buildBudgetSummaryLine(
+            budgetContext!,
+            budgetCategoryLabel,
+          );
+          const budgetInstruction = buildBudgetInstructionText(
+            budgetContext!,
+            budgetCategoryLabel,
+          );
+          const summaryPrefix = budgetSummaryLine
+            ? `${budgetSummaryLine}\n\n`
+            : "";
           const antiHallucinationNote =
-            "\n\n🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
+            `\n\n${summaryPrefix}🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n` +
             listText +
-            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list.";
+            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list." +
+            (budgetInstruction ? `\n${budgetInstruction}` : "");
 
           return {
             text: prependTradeSnippet(
@@ -651,12 +802,12 @@ export async function handleVectorSearch(
 
         // 🔴 CRITICAL FIX: For phone/tablet/controller queries, skip vector enrichment
         // Vector store contains games/consoles that contaminate specific accessory results
-        const detectedCategory = extractProductCategory(query);
         const isControllerQuery =
           /\b(gamepad|controller|pro\s*controller)\b/i.test(query);
-        const isPhoneOrTabletQuery =
-          detectedCategory === "phone" || detectedCategory === "tablet";
-        const skipVectorEnrichment = isPhoneOrTabletQuery || isControllerQuery;
+        const skipVectorCategories = new Set(["phone", "tablet", "laptop"]);
+        const isCategoryBlocked =
+          !!detectedCategory && skipVectorCategories.has(detectedCategory);
+        const skipVectorEnrichment = isCategoryBlocked || isControllerQuery;
 
         if (skipVectorEnrichment) {
           const categoryLabel = isControllerQuery
@@ -667,9 +818,14 @@ export async function handleVectorSearch(
           );
 
           const wooPayload = wooProducts.length > 0 ? wooProducts : undefined;
+          const activeBudgetContext =
+            budgetContext || createBudgetContext(query, wooProducts);
           const wooSection = wooProducts
             .map((r, idx) => {
-              const priceStr = formatSGDPrice(r.price_sgd);
+              const priceStr = formatPriceWithBudget(
+                r.price_sgd,
+                activeBudgetContext,
+              );
               const urlStr = r.permalink || `https://tradezone.sg`;
               // Include image for first product only (not all products to avoid clutter)
               const imageStr =
@@ -684,6 +840,7 @@ export async function handleVectorSearch(
             query,
           );
 
+
           const affordableHint = hasAffordableKeyword
             ? "- User wants AFFORDABLE options - highlight the LOWEST PRICED items first\n"
             : "";
@@ -691,18 +848,31 @@ export async function handleVectorSearch(
             ? "- User specified price range - show products within that range\n"
             : "";
 
+          const budgetCategoryLabel = buildCategoryLabel(categoryLabel || null);
+          const budgetSummaryLine = buildBudgetSummaryLine(
+            activeBudgetContext,
+            budgetCategoryLabel,
+          );
+          const budgetInstruction = buildBudgetInstructionText(
+            activeBudgetContext,
+            budgetCategoryLabel,
+          );
+          const summaryPrefix = budgetSummaryLine
+            ? `${budgetSummaryLine}\n\n`
+            : "";
+
           const antiHallucinationNote =
-            "\n\n🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n" +
+            `\n\n${summaryPrefix}🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n` +
             wooSection +
             "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- User's original query: \"" +
             query +
-            '"\n- Show ALL ' +
+            "\"\n- Show ALL " +
             wooProducts.length +
             " products from the list above\n" +
             affordableHint +
             priceRangeHint +
-            '- NEVER say "no products found" or "couldn\'t find" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted';
-
+            (budgetInstruction ? budgetInstruction : "") +
+            '- NEVER say \"no products found\" or \"couldn\'t find\" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted';
           const finalText =
             "**WooCommerce Live Data (" +
             wooProducts.length +

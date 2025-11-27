@@ -14,7 +14,8 @@
     "test:critical": "./tests/run-critical-tests.sh",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "grid:sync": "tsx scripts/fetch-price-grid.ts"
+    "grid:sync": "tsx scripts/fetch-price-grid.ts",
+    "test:trade-grid": "tsx tests/trade-grid-smoke.ts"
   },
   "dependencies": {
     "@getzep/zep-cloud": "^3.10.0",

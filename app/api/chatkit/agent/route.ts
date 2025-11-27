@@ -263,24 +263,9 @@ function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
 
 async function loadTradeGridEntries(): Promise<TradeGridEntry[]> {
   if (tradeGridEntriesCache) return tradeGridEntriesCache;
-  try {
-    const { data, error } = await supabase
-      .from("trade_price_grid")
-      .select(
-        "product_family, product_model, variant, condition, trade_in_value_min, trade_in_value_max, brand_new_price, price_grid_version",
-      );
-    if (error) {
-      if (error.code !== "42P01") {
-        console.warn("[TradeUp] trade_price_grid query failed", error);
-      }
-    } else if (data && data.length) {
-      tradeGridEntriesCache = data as TradeGridEntry[];
-      return tradeGridEntriesCache;
-    }
-  } catch (err) {
-    console.warn("[TradeUp] trade_price_grid fetch error", err);
-  }
+
   tradeGridEntriesCache = loadTradeGridEntriesFromFile();
+
   return tradeGridEntriesCache;
 }
 
@@ -292,17 +277,54 @@ function entrySearchText(entry: TradeGridEntry): string {
   );
 }
 
+function buildEntrySignature(entry: TradeGridEntry): {
+  familyAndModel: string;
+  variant: string;
+} {
+  const familyAndModel = normalizeText(
+    [entry.product_family, entry.product_model].filter(Boolean).join(" "),
+  );
+  const variant = normalizeText(entry.variant || "");
+  return { familyAndModel, variant };
+}
+
+function computeGridMatchScore(params: {
+  entry: TradeGridEntry;
+  tokens: string[];
+  normalizedQuery: string;
+}): number {
+  const { entry, tokens, normalizedQuery } = params;
+  const haystack = entrySearchText(entry);
+  if (!haystack) return 0;
+
+  let score = tokens.filter((token) => haystack.includes(token)).length;
+  if (!score) return 0;
+
+  const { familyAndModel, variant } = buildEntrySignature(entry);
+
+  if (familyAndModel && normalizedQuery.includes(familyAndModel)) {
+    score += familyAndModel.split(" ").length || 1;
+  }
+
+  if (variant && normalizedQuery.includes(variant)) {
+    score += Math.max(1, variant.split(" ").length);
+  }
+
+  return score;
+}
+
 function resolveTradeValue(entry: TradeGridEntry): number | null {
   if (entry.trade_in_value_max != null) return entry.trade_in_value_max;
   if (entry.trade_in_value_min != null) return entry.trade_in_value_min;
   return null;
 }
 
-async function lookupPriceFromGrid(
+export async function lookupPriceFromGrid(
   query: string,
   intent: "trade_in" | "retail",
 ): Promise<PriceLookupResult> {
-  const tokens = normalizeText(query)
+  const normalizedQuery = normalizeText(query);
+  const tokens = normalizedQuery
     .split(" ")
     .filter((token) => token.length >= 3);
   if (!tokens.length) return { amount: null };
@@ -312,18 +334,24 @@ async function lookupPriceFromGrid(
   let bestEntry: TradeGridEntry | null = null;
 
   for (const entry of entries) {
-    const haystack = entrySearchText(entry);
-    if (!haystack) continue;
-    const score = tokens.filter((token) => haystack.includes(token)).length;
-    if (score === 0) continue;
-
     const candidate =
       intent === "trade_in"
         ? resolveTradeValue(entry)
         : (entry.brand_new_price ?? null);
     if (candidate == null) continue;
 
-    if (score >= bestScore) {
+    const score = computeGridMatchScore({
+      entry,
+      tokens,
+      normalizedQuery,
+    });
+
+    if (!score) continue;
+
+    if (
+      score > bestScore ||
+      (score === bestScore && isPreferredGridEntry(entry, bestEntry, normalizedQuery))
+    ) {
       bestScore = score;
       bestEntry = entry;
     }
@@ -337,6 +365,52 @@ async function lookupPriceFromGrid(
       : null,
     version: bestEntry?.price_grid_version || null,
   };
+}
+
+function isPreferredGridEntry(
+  candidate: TradeGridEntry,
+  currentBest: TradeGridEntry | null,
+  normalizedQuery: string,
+): boolean {
+  if (!currentBest) return true;
+
+  const candidateSig = buildEntrySignature(candidate);
+  const currentSig = buildEntrySignature(currentBest);
+
+  const candidateNameMatch =
+    candidateSig.familyAndModel &&
+    normalizedQuery.includes(candidateSig.familyAndModel);
+  const currentNameMatch =
+    currentSig.familyAndModel &&
+    normalizedQuery.includes(currentSig.familyAndModel);
+
+  if (candidateNameMatch && !currentNameMatch) {
+    return true;
+  }
+  if (!candidateNameMatch && currentNameMatch) {
+    return false;
+  }
+
+  const candidateVariantMatch =
+    candidateSig.variant && normalizedQuery.includes(candidateSig.variant);
+  const currentVariantMatch =
+    currentSig.variant && normalizedQuery.includes(currentSig.variant);
+
+  if (candidateVariantMatch && !currentVariantMatch) {
+    return true;
+  }
+  if (!candidateVariantMatch && currentVariantMatch) {
+    return false;
+  }
+
+  // Prefer shorter signatures (closer to exact wording) to avoid matching superset models
+  const candidateSignatureLength = entrySearchText(candidate).length;
+  const currentSignatureLength = entrySearchText(currentBest).length;
+  if (candidateSignatureLength && currentSignatureLength) {
+    return candidateSignatureLength < currentSignatureLength;
+  }
+
+  return false;
 }
 
 function getCorsHeaders(origin: string | null): HeadersInit {
@@ -3359,6 +3433,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           query: `trade-in ${tradeUpParts.source}`,
           value: precomputedTradeUp.tradeValue,
         });
+        if (forcedTradeUpMath && tradeResult.amount != null) {
+          forcedTradeUpMath.tradeValue = tradeResult.amount;
+          forcedTradeUpMath.tradeVersion = tradeResult.version ?? null;
+        }
       }
       if (tradeUpParts?.target) {
         // CRITICAL: Use "buy price" or "new price" to get RETAIL price, not trade-in value
@@ -3372,6 +3450,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           query: `buy price ${tradeUpParts.target}`,
           value: precomputedTradeUp.retailPrice,
         });
+        if (forcedTradeUpMath && retailResult.amount != null) {
+          forcedTradeUpMath.retailPrice = retailResult.amount;
+          forcedTradeUpMath.retailVersion = retailResult.version ?? null;
+        }
       }
     }
 
