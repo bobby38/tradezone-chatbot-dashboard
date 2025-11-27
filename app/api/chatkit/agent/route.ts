@@ -1006,6 +1006,27 @@ function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
   ].join("\n");
 }
 
+function renderWooProductResponse(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const startMarker = "---START PRODUCT LIST---";
+  const endMarker = "---END PRODUCT LIST---";
+  if (!raw.includes(startMarker) || !raw.includes(endMarker)) return null;
+
+  const [prefixPart] = raw.split("🔒");
+  const prefix = prefixPart?.trim() || "**WooCommerce Live Data:**";
+  const listSection = raw
+    .split(startMarker)[1]
+    ?.split(endMarker)[0]
+    ?.trim();
+  if (!listSection) return null;
+  const cleanedList = listSection
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+  return `${prefix}\n\n${cleanedList}`.trim();
+}
+
 function summarizeGraphNodesForPrompt(
   nodes: GraphitiNodeSummary[],
 ): string | null {
@@ -4728,11 +4749,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         });
       }
 
-      // Skip LLM call if we have a deterministic trade-up response (it will be set later)
+      // Skip LLM call if we already have a deterministic response (trade-up or Woo list)
       const skipLLMForTradeUp =
         tradeUpPairIntent &&
         (precomputedTradeUp.tradeValue != null ||
           precomputedTradeUp.retailPrice != null);
+
+      if (!finalResponse) {
+        const wooResponse = renderWooProductResponse(lastSearchProductsResult);
+        if (wooResponse) {
+          finalResponse = wooResponse;
+        }
+      }
 
       if (!finalResponse && !skipLLMForTradeUp) {
         // If no suggestion was made
