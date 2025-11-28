@@ -941,7 +941,7 @@ export async function handleVectorSearch(
                 idx === 0 && product.image
                   ? `\n   ![${product.name}](${product.image})`
                   : "";
-              return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${product.productId}${imageStr}`;
+              return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
 

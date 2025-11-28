@@ -130,7 +130,7 @@ function buildWooProductListBlock(
       idx === 0 && product.image
         ? `\n   ![${product.name}](${product.image})`
         : "";
-    return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}${imageLine}`;
+    return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageLine}`;
   });
   return `---START PRODUCT LIST---\n${lines.join("\n\n")}\n---END PRODUCT LIST---`;
 }
