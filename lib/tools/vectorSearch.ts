@@ -632,6 +632,18 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] Gamepad detected, searching for: "${searchQuery}"`,
         );
+      } else if (/\b(handphone|phone|mobile|smartphone)\b/i.test(lowerQuery)) {
+        // Map handphone/phone to actual phone brands in catalog
+        searchQuery = "iphone galaxy oppo";
+        console.log(
+          `[VectorSearch] Handphone/phone detected, searching for: "${searchQuery}"`,
+        );
+      } else if (/\btablet\b/i.test(lowerQuery)) {
+        // Map tablet to actual tablet products
+        searchQuery = "galaxy tab ipad";
+        console.log(
+          `[VectorSearch] Tablet detected, searching for: "${searchQuery}"`,
+        );
       } else if (/\bconsole\b/i.test(lowerQuery)) {
         // Replace "console" with brand name if specified, otherwise default to "playstation"
         if (/nintendo|switch/i.test(lowerQuery)) {
