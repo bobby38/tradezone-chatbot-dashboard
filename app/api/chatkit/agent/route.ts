@@ -1018,7 +1018,7 @@ function renderWooProductResponse(
   if (!raw.includes(startMarker) || !raw.includes(endMarker)) return null;
 
   const [prefixPart] = raw.split("🔒");
-  const prefix = prefixPart?.trim() || "**WooCommerce Live Data:**";
+  const prefix = prefixPart?.trim() || "";
   const listSection = raw.split(startMarker)[1]?.split(endMarker)[0]?.trim();
   if (!listSection) return null;
   const cleanedList = listSection
@@ -1026,7 +1026,7 @@ function renderWooProductResponse(
     .map((line) => line.trim())
     .filter(Boolean)
     .join("\n");
-  return `${prefix}\n\n${cleanedList}`.trim();
+  return prefix ? `${prefix}\n\n${cleanedList}`.trim() : cleanedList;
 }
 
 function summarizeGraphNodesForPrompt(
