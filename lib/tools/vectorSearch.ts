@@ -798,8 +798,21 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
+          // Category link mapping
+          const categoryLinks: Record<string, string> = {
+            laptop: "https://tradezone.sg/product-category/laptop/",
+            phone: "https://tradezone.sg/product-category/phones/",
+            tablet: "https://tradezone.sg/product-category/tablet/",
+            console: "https://tradezone.sg/product-category/console-games/",
+            gpu: "https://tradezone.sg/product-category/graphic-card/",
+            handheld: "https://tradezone.sg/product-category/gaming-handheld/",
+          };
+
+          const categoryLink = detectedCategory
+            ? categoryLinks[detectedCategory]
+            : null;
           const moreText = hasMore
-            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
+            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. ${categoryLink ? `[View all ${detectedCategory}s](${categoryLink})` : "Ask for a specific title for more."}`
             : "";
 
           const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
