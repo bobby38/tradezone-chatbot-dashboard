@@ -812,7 +812,7 @@ export async function handleVectorSearch(
             ? categoryLinks[detectedCategory]
             : null;
           const moreText = hasMore
-            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. ${categoryLink ? `[View all ${detectedCategory}s](${categoryLink})` : "Ask for a specific title for more."}`
+            ? `\n\n**Showing ${displayLimit} of ${wooProducts.length} results.** ${categoryLink ? `[View all ${detectedCategory}s on website](${categoryLink}) or ask for a specific title.` : "Ask for a specific title to see more."}`
             : "";
 
           const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
@@ -834,9 +834,7 @@ export async function handleVectorSearch(
             (budgetInstruction ? `\n${budgetInstruction}` : "");
 
           return {
-            text: prependTradeSnippet(
-              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`,
-            ),
+            text: prependTradeSnippet(antiHallucinationNote),
             store: "product_catalog",
             matches: [],
             wooProducts: wooPayload,
@@ -915,14 +913,8 @@ export async function handleVectorSearch(
             priceRangeHint +
             (budgetInstruction ? budgetInstruction : "") +
             '- NEVER say \"no products found\" or \"couldn\'t find\" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted';
-          const finalText =
-            "**WooCommerce Live Data (" +
-            wooProducts.length +
-            " products found):**\n\n" +
-            antiHallucinationNote;
-
           return {
-            text: prependTradeSnippet(finalText),
+            text: prependTradeSnippet(antiHallucinationNote),
             store: "product_catalog",
             matches: [],
             wooProducts: wooPayload,
@@ -969,9 +961,7 @@ export async function handleVectorSearch(
             "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above (including the 'Showing X of Y' message if present). Do NOT modify names, prices, or add products not in the list.";
 
           return {
-            text: prependTradeSnippet(
-              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`,
-            ),
+            text: prependTradeSnippet(antiHallucinationNote),
             store: "product_catalog",
             matches: [],
             wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
@@ -1014,9 +1004,7 @@ export async function handleVectorSearch(
           (budgetInstruction ? `\n${budgetInstruction}` : "");
 
         return {
-          text: prependTradeSnippet(
-            `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${fallbackNote}`,
-          ),
+          text: prependTradeSnippet(fallbackNote),
           store: "product_catalog",
           matches: [],
           wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
@@ -1490,9 +1478,6 @@ export async function handleVectorSearch(
       }
 
       finalText =
-        "**WooCommerce Live Data (" +
-        totalWooCount +
-        " products found):**\n\n" +
         antiHallucinationNote +
         (listNotes.length ? "\n\n" + listNotes.join(" ") : "") +
         vectorEnrichment;
