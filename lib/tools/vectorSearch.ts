@@ -822,7 +822,7 @@ export async function handleVectorSearch(
 
           return {
             text: prependTradeSnippet(
-              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}${moreText}`,
+              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`,
             ),
             store: "product_catalog",
             matches: [],
@@ -952,11 +952,12 @@ export async function handleVectorSearch(
           const antiHallucinationNote =
             "\n\n🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
             listText +
-            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list.";
+            moreText +
+            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above (including the 'Showing X of Y' message if present). Do NOT modify names, prices, or add products not in the list.";
 
           return {
             text: prependTradeSnippet(
-              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}${moreText}`,
+              `**WooCommerce Live Data (${wooProducts.length} products found):**\n\n${antiHallucinationNote}`,
             ),
             store: "product_catalog",
             matches: [],
