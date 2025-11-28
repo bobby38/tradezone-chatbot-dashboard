@@ -211,6 +211,10 @@ function extractProductCategory(query: string): string | null {
   // Category detection patterns (order matters - check specific before general)
   const categoryPatterns = [
     {
+      pattern: /\b(games?|gaming\s*titles?)\b/i,
+      category: "games",
+    },
+    {
       pattern: /\b(laptops?|notebooks?|ultrabooks?|gaming\s*laptops?)\b/i,
       category: "laptop",
     },
@@ -800,6 +804,7 @@ export async function handleVectorSearch(
 
           // Category link mapping
           const categoryLinks: Record<string, string> = {
+            games: "https://tradezone.sg/product-category/console-games/",
             laptop: "https://tradezone.sg/product-category/laptop/",
             phone: "https://tradezone.sg/product-category/phones/",
             tablet: "https://tradezone.sg/product-category/tablet/",
