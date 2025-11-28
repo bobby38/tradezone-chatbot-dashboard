@@ -363,9 +363,8 @@ function createBudgetContext(
   query: string,
   products: WooProductSearchResult[],
 ): BudgetContext {
-  const wantsCheap = /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive)\b/i.test(
-    query,
-  );
+  const wantsCheap =
+    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive)\b/i.test(query);
   const maxBudget = parseMaxBudget(query);
   const prices = products
     .map((product) => getProductPrice(product))
@@ -712,11 +711,6 @@ export async function handleVectorSearch(
       if (wooProducts.length > 0) {
         console.log(
           `[VectorSearch] ✅ WooCommerce found ${wooProducts.length} products - continuing to enrichment layers`,
-          wooProducts.map((r) => ({
-            name: r.name,
-            permalink: r.permalink,
-            price: r.price_sgd,
-          })),
         );
         budgetContext = createBudgetContext(query, wooProducts);
         if (budgetContext.maxBudget != null) {
@@ -724,7 +718,9 @@ export async function handleVectorSearch(
             const price = getProductPrice(product);
             return price != null && price <= budgetContext.maxBudget!;
           });
-          const above = wooProducts.filter((product) => !within.includes(product));
+          const above = wooProducts.filter(
+            (product) => !within.includes(product),
+          );
           if (within.length > 0) {
             wooProducts = [...within, ...above];
           }
@@ -764,7 +760,7 @@ export async function handleVectorSearch(
                 idx === 0 && product.image
                   ? `\n   ![${product.name}](${product.image})`
                   : "";
-              return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${product.productId}${imageStr}`;
+              return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
 
@@ -830,7 +826,7 @@ export async function handleVectorSearch(
               // Include image for first product only (not all products to avoid clutter)
               const imageStr =
                 idx === 0 && r.image ? `\n   ![${r.name}](${r.image})` : "";
-              return `${idx + 1}. **${r.name}** — ${priceStr}\n   Product Link: ${urlStr}${imageStr}`;
+              return `${idx + 1}. **${r.name}** — ${priceStr}\n   [View Product](${urlStr})${imageStr}`;
             })
             .join("\n\n");
 
@@ -839,7 +835,6 @@ export async function handleVectorSearch(
           const hasPriceRange = /\b(under|below|less than)\s+\$?\d+/i.test(
             query,
           );
-
 
           const affordableHint = hasAffordableKeyword
             ? "- User wants AFFORDABLE options - highlight the LOWEST PRICED items first\n"
@@ -866,7 +861,7 @@ export async function handleVectorSearch(
             wooSection +
             "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- User's original query: \"" +
             query +
-            "\"\n- Show ALL " +
+            '"\n- Show ALL ' +
             wooProducts.length +
             " products from the list above\n" +
             affordableHint +
@@ -949,7 +944,7 @@ export async function handleVectorSearch(
               fallbackBudgetContext,
             );
             const url = product.permalink || `https://tradezone.sg`;
-            return `${idx + 1}. **${product.name}** — ${price}\n   Product Link: ${url}`;
+            return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})`;
           })
           .join("\n\n");
         const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
@@ -1418,7 +1413,7 @@ export async function handleVectorSearch(
           const imageStr =
             idx === 0 && r.image ? `\n   ![${r.name}](${r.image})` : "";
           // CRITICAL: Include product ID to force exact name usage
-          return `${idx + 1}. **${r.name}** — ${price}\n   Product Link: ${url}\n   Product ID: ${r.productId}${imageStr}`;
+          return `${idx + 1}. **${r.name}** — ${price}\n   [View Product](${url})${imageStr}`;
         })
         .join("\n\n");
 
