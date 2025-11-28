@@ -707,6 +707,40 @@ export async function handleVectorSearch(
         }
       }
 
+      // GPU/Graphics Card filtering (Nov 28, 2025)
+      // When user asks for GPU/graphic card, ONLY return standalone cards, NOT full PCs
+      if (detectedCategory === "gpu" && wooProducts.length > 0) {
+        const beforeFilter = wooProducts.length;
+        wooProducts = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+
+          // Must contain GPU/graphics card indicators
+          const hasGPUKeyword =
+            /\b(graphic\s*card|graphics\s*card|gpu|video\s*card)\b/i.test(name);
+
+          // Exclude if it's a full PC/system (even if it mentions GPU spec)
+          const isFullPC =
+            /\b(pc|desktop|computer|system|mini\s*itx|gaming\s*rig|tower|build|setup)\b/i.test(
+              name,
+            );
+
+          // Exclude if product name contains CPU + RAM + Storage pattern (indicates full PC)
+          const hasFullPCPattern =
+            /\b(i[3579]-\d+|ryzen\s*[3579])\b.*\b\d+gb\b.*\b\d+tb\b/i.test(
+              name,
+            );
+
+          // Keep ONLY if:
+          // 1. Has GPU keyword AND
+          // 2. NOT a full PC AND
+          // 3. NOT a full PC config pattern
+          return hasGPUKeyword && !isFullPC && !hasFullPCPattern;
+        });
+        console.log(
+          `[VectorSearch] 🎮 GPU filter - ${beforeFilter} found, ${beforeFilter - wooProducts.length} full PCs excluded, ${wooProducts.length} graphic cards kept`,
+        );
+      }
+
       let budgetContext: BudgetContext | null = null;
       if (wooProducts.length > 0) {
         console.log(
