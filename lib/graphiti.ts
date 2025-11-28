@@ -25,6 +25,13 @@ interface GraphitiSearchResponse {
   facts: GraphitiFact[];
 }
 
+interface GraphitiEpisodeResponse {
+  uuid?: string;
+  content?: string;
+  source_description?: string;
+  created_at?: string;
+}
+
 export type GraphitiNodeSummary = {
   id?: string;
   name?: string;
@@ -81,10 +88,37 @@ async function graphitiFetch<T>(path: string, init: RequestInit): Promise<T> {
 }
 
 export async function fetchGraphitiContext(
-  _sessionId: string,
+  sessionId: string,
 ): Promise<GraphitiContextResult> {
-  // Memory is currently disabled – return empty context to keep compatibility.
-  return { context: "", userSummary: "" };
+  const config = resolveGraphitiConfig();
+  if (!config) {
+    return { context: "", userSummary: "" };
+  }
+  try {
+    const episodes = await graphitiFetch<GraphitiEpisodeResponse[]>(
+      `/episodes/${encodeURIComponent(sessionId)}?last_n=8`,
+      { method: "GET" },
+    );
+    if (!Array.isArray(episodes) || episodes.length === 0) {
+      return { context: "", userSummary: "" };
+    }
+    const lines = episodes
+      .map((episode) => {
+        const content = episode.content?.trim();
+        if (!content) return null;
+        const stamp = episode.created_at
+          ? ` (${new Date(episode.created_at).toISOString()})`
+          : "";
+        return `${content}${stamp}`.trim();
+      })
+      .filter(Boolean) as string[];
+    const context = lines.join("\n");
+    const summary = lines.slice(-3).join("\n");
+    return { context, userSummary: summary || context };
+  } catch (error) {
+    console.warn("[Graphiti] Failed to fetch memory context", error);
+    return { context: "", userSummary: "" };
+  }
 }
 
 export async function addGraphitiMemoryTurn(

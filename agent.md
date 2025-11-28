@@ -3395,14 +3395,14 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 - `validation_report.json`: per-family counts + price ranges, factor outlier list (currently 3: Switch Lite preowned, DJI Osmo 360 Adventure, Legion Go 2 1TB), unmatched trade grid rows (56) so ops can patch synonyms or catalog gaps.
 - Script auto-flags instalment factors outside 1.04–1.07 and captures all warranty blurbs it finds inside product cards; warnings show up in `validation_report` and on each model entry.
 - Future data refresh: run `npm run refresh:catalog` first (updates WooCommerce snapshot) then `npm run catalog:build`. Commit refreshed `/data/catalog/*` alongside any plan notes so the agent + dashboards stay in sync with price cycles.
-- *Legacy (replaced by Graphiti memory; keep for historical context).* Zep memory integration:
-  - Set `ZEP_API_KEY` (project key) and `ZEP_CATALOG_GRAPH_ID` (target graph) in env.
-  - If the catalog graph doesn’t exist yet, run `npx tsx scripts/create-zep-graph.ts` once; the script now prints the canonical ID even if the API returns `graphId` instead of `graph_id`. Copy the logged `ZEP_CATALOG_GRAPH_ID=...` into `.env.local` before syncing.
-  - Run `npm run catalog:sync-zep` after `catalog:build` to push products/trade rows into Zep’s graph for `tradezone_graph_query`. Successful runs log ten batches (182 records currently) with no 404s—rerun whenever catalog data changes.
-  - `/api/chatkit/agent` automatically fetches `context` + `user_summary` from Zep, stores each turn via `addZepMemoryTurn`, and exposes the new `tradezone_graph_query` tool so GPT can pull structured bundle/trade relationships when vector search is noisy.
-  - Catalog nodes now carry `kind`, `tags`, `categories`, warranty notes, BNPL context, and live Woo identifiers. Always run `npm run catalog:build && npm run catalog:sync-zep` together so the graph stays in lockstep with `/data/catalog`.
-  - The agent parses Zep summaries for contact info + device clues. If memory already has the user’s email/phone/name, the prompt now says “Still using …?” instead of re-interrogating. Verify with a multi-field utterance (`"joe doe 8448 9068 sample@mail.com"`) to confirm it acknowledges all three before moving on.
-  - `tradezone_graph_query` responses now log provenance into the verification payload and compare graph prices against `products_master`. If the delta is ≥S$25, the reply is forced into provisional language and the bot must cite both Zep and catalog before offering to escalate.
+- **Graphiti catalog + memory integration (live)**:
+  - Set `GRAPHTI_BASE_URL`, `GRAPHTI_API_KEY`, and optionally `GRAPHTI_DEFAULT_GROUP_ID` (default `tradezone-main`) in env before running any sync.
+  - After `npm run refresh:catalog && npm run catalog:build`, run `npm run catalog:sync-graphiti` to push the normalized catalog + trade grid into Graphiti. The script batches `/messages` uploads (25 facts per request), tags each payload with `CatalogSync`/`trade_grid_sync`, and supports `--dry-run` for validation.
+  - Weekly automation: the Coolify cron now executes `cd /app && npm run refresh:catalog && npm run catalog:build && npm run catalog:sync-graphiti` so Woo snapshot, master build, and Graphiti ingestion stay aligned without manual intervention.
+  - `/api/chatkit/agent` now fetches `context` + `user_summary` from Graphiti, stores each turn via `addGraphitiMemoryTurn`, and exposes `tradezone_graph_query` to pull structured bundle/trade relationships straight from the Graphiti facts.
+  - Catalog facts carry `kind`, `tags`, `categories`, warranty notes, BNPL context, Woo identifiers, and the latest trade grid numbers. Always run `npm run catalog:build && npm run catalog:sync-graphiti` in sequence so Graphiti stays aligned with `/data/catalog`.
+  - Memory summaries from Graphiti seed contact info + device clues. If we already know email/phone/name, the prompt says “Still using …?” instead of interrogating again—verify with `"joe doe 8448 9068 sample@mail.com"` to confirm it echoes all fields.
+  - `tradezone_graph_query` provenance is logged into the verification payload and cross-checked against `products_master`. ≥S$25 deltas force provisional wording, cite Graphiti + catalog, and flag the reply for human review before escalation.
 - **Upcoming agent hardening checkpoints (do not skip before rollout):**
   1. **Expose deterministic tools** for every numeric fact: `normalize_product`, `price_lookup`, `calculate_top_up`, `inventory_check`, `schedule_inspection`, `ocr_and_extract`, `enqueue_human_review`. The LLM must never emit a number we didn’t fetch from these tools.
   2. **Require a verification payload** with each numeric reply. Shape:
@@ -3442,11 +3442,11 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 - Voice/text prompts now stress short, user-led replies: follow the user’s topic switches, stop talking the instant they speak, and end each reply with a single next-step prompt.
 - Broad category queries (“soccer games”) return cross-platform suggestions; only after the user specifies a platform do we narrow the list. When a user shares a product link, treat it as available and offer confirmation instead of refusing.
 
-### 2025-11-21 Zep Graph Hardening
-- `npm run catalog:build` now emits model `kind` (product/accessory/bundle/service/warranty/game), graph tags, and warranty snippets; `npm run catalog:sync-zep` pushes those fields plus BNPL + alias metadata so `tradezone_graph_query` can answer combo questions (“PS5 + DualSense + warranty”) deterministically.
-- `/api/chatkit/agent` reads Zep user summaries before planning its checklist. When memory already holds contact info, it confirms (“Still using ___?”) instead of re-asking, and the acknowledgement template repeats all three values whenever the customer dumps them in a single turn.
-- Graph queries feed provenance into the verification payload, and prices are cross-checked against the fresh `products_master`. If the delta ≥ S$25 the bot is forced into provisional wording, flags the reply for human review, and cites both Zep + catalog before offering escalation.
-- Testing loop: (1) Run `npm run catalog:build && npm run catalog:sync-zep`, (2) ask “Bundle PS5 with two controllers + warranty” and confirm the response cites Zep graph, (3) give a stale price in the Woo snapshot to trigger a ≥S$25 mismatch and verify the agent marks it provisional, and (4) send “john smith 8888 9999 demo@tradezone.sg” to ensure memory-driven confirmations fire without re-asking.
+### 2025-11-21 Graphiti Graph Hardening
+- `npm run catalog:build` now emits model `kind` (product/accessory/bundle/service/warranty/game), graph tags, and warranty snippets; `npm run catalog:sync-graphiti` pushes those fields plus BNPL + alias metadata so `tradezone_graph_query` can answer combo questions (“PS5 + DualSense + warranty”) deterministically.
+- `/api/chatkit/agent` reads Graphiti user summaries before planning its checklist. When memory already holds contact info, it confirms (“Still using ___?”) instead of re-asking, and the acknowledgement template repeats all three values whenever the customer dumps them in a single turn.
+- Graphiti queries feed provenance into the verification payload, and prices are cross-checked against the fresh `products_master`. If the delta ≥ S$25 the bot is forced into provisional wording, flags the reply for human review, and cites both Graphiti + catalog before offering escalation.
+- Testing loop: (1) Run `npm run catalog:build && npm run catalog:sync-graphiti`, (2) ask “Bundle PS5 with two controllers + warranty” and confirm the response cites Graphiti facts, (3) give a stale price in the Woo snapshot to trigger a ≥S$25 mismatch and verify the agent marks it provisional, and (4) send “john smith 8888 9999 demo@tradezone.sg” to ensure memory-driven confirmations fire without re-asking.
 
 ---
 

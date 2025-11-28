@@ -352,7 +352,8 @@ export async function lookupPriceFromGrid(
 
     if (
       score > bestScore ||
-      (score === bestScore && isPreferredGridEntry(entry, bestEntry, normalizedQuery))
+      (score === bestScore &&
+        isPreferredGridEntry(entry, bestEntry, normalizedQuery))
     ) {
       bestScore = score;
       bestEntry = entry;
@@ -812,7 +813,9 @@ function normalizeNameCase(value: string): string {
     .join(" ");
 }
 
-function buildMemoryHintsFromGraphiti(graphiti: GraphitiContextResult): MemoryHints {
+function buildMemoryHintsFromGraphiti(
+  graphiti: GraphitiContextResult,
+): MemoryHints {
   const blob = [graphiti.userSummary, graphiti.context]
     .filter((value) => typeof value === "string" && value.trim().length > 0)
     .join("\n");
@@ -940,7 +943,7 @@ function pushGraphProvenanceEntries(params: {
       payload.kind === "trade_in" ? "trade_in_value_sgd" : "target_price_sgd";
     verificationData.provenance.push({
       field,
-      source: `zep_graph:${payload.modelId || payload.kind || node.name || "node"}`,
+      source: `graphiti_graph:${payload.modelId || payload.kind || node.name || "node"}`,
       confidence: 0.7,
     });
     if (
@@ -1006,7 +1009,9 @@ function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
   ].join("\n");
 }
 
-function renderWooProductResponse(raw: string | null | undefined): string | null {
+function renderWooProductResponse(
+  raw: string | null | undefined,
+): string | null {
   if (!raw) return null;
   const startMarker = "---START PRODUCT LIST---";
   const endMarker = "---END PRODUCT LIST---";
@@ -1014,10 +1019,7 @@ function renderWooProductResponse(raw: string | null | undefined): string | null
 
   const [prefixPart] = raw.split("🔒");
   const prefix = prefixPart?.trim() || "**WooCommerce Live Data:**";
-  const listSection = raw
-    .split(startMarker)[1]
-    ?.split(endMarker)[0]
-    ?.trim();
+  const listSection = raw.split(startMarker)[1]?.split(endMarker)[0]?.trim();
   if (!listSection) return null;
   const cleanedList = listSection
     .split("\n")
@@ -1120,8 +1122,9 @@ function normalizeGraphQuestion(question: string): string {
 function getCachedGraphResult(
   sessionId: string,
   normalizedQuestion: string,
+  groupId?: string | null,
 ): GraphitiQueryResult | null {
-  const cacheKey = `${sessionId}:${normalizedQuestion}`;
+  const cacheKey = `${sessionId}:${groupId || "default"}:${normalizedQuestion}`;
   const cached = graphitiGraphCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.result;
@@ -1136,8 +1139,9 @@ function storeGraphResult(
   sessionId: string,
   normalizedQuestion: string,
   result: GraphitiQueryResult,
+  groupId?: string | null,
 ) {
-  const cacheKey = `${sessionId}:${normalizedQuestion}`;
+  const cacheKey = `${sessionId}:${groupId || "default"}:${normalizedQuestion}`;
   graphitiGraphCache.set(cacheKey, {
     result,
     expiresAt: Date.now() + GRAPHITI_GRAPH_CACHE_TTL_MS,
@@ -3325,27 +3329,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ⚠️ Graphiti memory disabled for now (pending durability plan)
     let graphitiContext: Awaited<ReturnType<typeof fetchGraphitiContext>> = {
       userSummary: "",
       context: "",
     };
-    // try {
-    //   graphitiContext = await fetchGraphitiContext(sessionId);
-    //   console.log("[ChatKit] Graphiti context loaded", {
-    //     sessionId,
-    //     hasUserSummary: Boolean(graphitiContext.userSummary),
-    //     hasContext: Boolean(graphitiContext.context),
-    //   });
-    // } catch (graphitiError: any) {
-    //   console.warn(
-    //     "[ChatKit] Graphiti unavailable, continuing without memory context",
-    //     {
-    //       error: graphitiError?.message || String(graphitiError),
-    //       statusCode: graphitiError?.statusCode,
-    //     },
-    //   );
-    // }
+    try {
+      graphitiContext = await fetchGraphitiContext(sessionId);
+      if (graphitiContext.userSummary || graphitiContext.context) {
+        console.log("[ChatKit] Graphiti context loaded", {
+          sessionId,
+          hasUserSummary: Boolean(graphitiContext.userSummary),
+          hasContext: Boolean(graphitiContext.context),
+        });
+      }
+    } catch (graphitiError: any) {
+      console.warn(
+        "[ChatKit] Graphiti unavailable, continuing without memory",
+        {
+          error: graphitiError?.message || String(graphitiError),
+          statusCode: graphitiError?.statusCode,
+        },
+      );
+    }
     const memoryHints = buildMemoryHintsFromGraphiti(graphitiContext);
     let contextInsertIndex = 1;
     if (graphitiContext.userSummary) {
@@ -4119,9 +4124,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 "I need a specific pricing or bundle question to query the TradeZone graph.";
             } else {
               const normalizedQuestion = normalizeGraphQuestion(question);
+              const catalogGroupId =
+                process.env.GRAPHTI_DEFAULT_GROUP_ID || null;
               const cachedResult = getCachedGraphResult(
                 sessionId,
                 normalizedQuestion,
+                catalogGroupId,
               );
               let graphResult = cachedResult;
               let usedCache = Boolean(cachedResult);
@@ -4136,10 +4144,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                     "Structured catalog is cooling down—try again in a few seconds.";
                 } else {
                   graphitiGraphSessionCooldowns.set(sessionId, now);
-                  const freshResult = await queryGraphitiContext(
-                    question,
-                    sessionId,
-                  );
+                  const freshResult = await queryGraphitiContext(question, {
+                    groupId: catalogGroupId || undefined,
+                  });
                   if (freshResult.rateLimited) {
                     graphitiGraphSessionCooldowns.set(
                       sessionId,
@@ -4150,6 +4157,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                     const fallbackCached = getCachedGraphResult(
                       sessionId,
                       normalizedQuestion,
+                      catalogGroupId,
                     );
                     if (fallbackCached) {
                       graphResult = fallbackCached;
@@ -4161,6 +4169,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                       sessionId,
                       normalizedQuestion,
                       freshResult,
+                      catalogGroupId,
                     );
                   }
                 }
@@ -5011,12 +5020,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
     }
 
-    // ⚠️ Graphiti memory currently disabled (pending volume tuning)
-    // try {
-    //   await addGraphitiMemoryTurn(sessionId, message, finalResponse);
-    // } catch (memoryError) {
-    //   console.warn("[ChatKit] Failed to persist Graphiti memory", memoryError);
-    // }
+    try {
+      await addGraphitiMemoryTurn(sessionId, message, finalResponse);
+    } catch (memoryError) {
+      console.warn("[ChatKit] Failed to persist Graphiti memory", memoryError);
+    }
   } catch (error) {
     console.error("[ChatKit] Error in POST handler:", error);
     finalResponse =
