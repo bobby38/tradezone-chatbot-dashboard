@@ -211,6 +211,11 @@ function extractProductCategory(query: string): string | null {
   // Category detection patterns (order matters - check specific before general)
   const categoryPatterns = [
     {
+      pattern:
+        /\b(vr|virtual\s*reality|vr\s*headsets?|vr\s*glasses?|meta\s*quest|pico)\b/i,
+      category: "vr",
+    },
+    {
       pattern: /\b(games?|gaming\s*titles?)\b/i,
       category: "games",
     },
@@ -711,6 +716,31 @@ export async function handleVectorSearch(
         }
       }
 
+      // VR filtering - move warranties/accessories to end
+      if (detectedCategory === "vr" && wooProducts.length > 0) {
+        const mainProducts: typeof wooProducts = [];
+        const accessories: typeof wooProducts = [];
+
+        wooProducts.forEach((product) => {
+          const name = (product.name || "").toLowerCase();
+          const isAccessory =
+            /\b(warranty|extension|charging\s*station|demo\s*disc|controller|cable|case)\b/i.test(
+              name,
+            );
+
+          if (isAccessory) {
+            accessories.push(product);
+          } else {
+            mainProducts.push(product);
+          }
+        });
+
+        wooProducts = [...mainProducts, ...accessories];
+        console.log(
+          `[VectorSearch] VR: Reordered ${mainProducts.length} main products, ${accessories.length} accessories`,
+        );
+      }
+
       // GPU/Graphics Card filtering (Nov 28, 2025)
       // When user asks for GPU/graphic card, ONLY return standalone cards, NOT full PCs
       if (detectedCategory === "gpu" && wooProducts.length > 0) {
@@ -829,6 +859,7 @@ export async function handleVectorSearch(
 
           // Category link mapping
           const categoryLinks: Record<string, string> = {
+            vr: "https://tradezone.sg/product-category/gadgets/virtual-reality-headset/",
             games: getGamesCategoryLink(query),
             laptop: "https://tradezone.sg/product-category/laptop/",
             phone: "https://tradezone.sg/product-category/phones/",
