@@ -802,9 +802,34 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
+          // Platform-specific game category links with new/pre-owned
+          const getGamesCategoryLink = (query: string): string => {
+            const lower = query.toLowerCase();
+            const isPreOwned =
+              /\b(pre[-\s]?owned|used|second[-\s]?hand)\b/i.test(lower);
+
+            if (/\bps5\b|playstation\s*5/i.test(lower)) {
+              return isPreOwned
+                ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games-playstation-5/"
+                : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games-playstation-5/";
+            }
+            if (/\bps4\b|playstation\s*4/i.test(lower)) {
+              return isPreOwned
+                ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games-playstation-4/"
+                : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games-playstation-4/";
+            }
+            if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
+              return "https://tradezone.sg/product-category/xbox-item/";
+            }
+            if (/\bswitch\b|nintendo/i.test(lower)) {
+              return "https://tradezone.sg/product-category/nintendo-switch/";
+            }
+            return "https://tradezone.sg/product-category/console-games/";
+          };
+
           // Category link mapping
           const categoryLinks: Record<string, string> = {
-            games: "https://tradezone.sg/product-category/console-games/",
+            games: getGamesCategoryLink(query),
             laptop: "https://tradezone.sg/product-category/laptop/",
             phone: "https://tradezone.sg/product-category/phones/",
             tablet: "https://tradezone.sg/product-category/tablet/",
