@@ -232,6 +232,10 @@ function extractProductCategory(query: string): string | null {
       category: "gpu",
     },
     {
+      pattern: /\b(motherboards?|mobos?|mainboards?)\b/i,
+      category: "motherboard",
+    },
+    {
       pattern: /\b(consoles?|playstation|ps[1-5]|xbox|nintendo|switch)\b/i,
       category: "console",
     },
@@ -866,6 +870,7 @@ export async function handleVectorSearch(
             tablet: "https://tradezone.sg/product-category/tablet/",
             console: "https://tradezone.sg/product-category/console-games/",
             gpu: "https://tradezone.sg/product-category/graphic-card/",
+            motherboard: "https://tradezone.sg/product-category/motherboard/",
             handheld: "https://tradezone.sg/product-category/gaming-handheld/",
           };
 
