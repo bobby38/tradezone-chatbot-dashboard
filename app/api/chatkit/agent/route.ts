@@ -2316,17 +2316,19 @@ async function runHybridSearch(
       const wooFallback = await searchWooProducts(query, 3);
       if (wooFallback.length) {
         const lines = wooFallback
-          .map((product) => {
-            const priceLabel =
+          .map((product, idx) => {
+            const price =
               typeof product.price_sgd === "number"
-                ? " — S$" + product.price_sgd.toFixed(2)
+                ? "S$" + product.price_sgd.toFixed(2)
+                : "Price TBA";
+            const url = product.permalink || "https://tradezone.sg";
+            const imageStr =
+              idx === 0 && product.image
+                ? `\n   ![${product.name}](${product.image})`
                 : "";
-            const link = product.permalink
-              ? ` (View: ${product.permalink})`
-              : "";
-            return `- ${product.name}${priceLabel}${link}`;
+            return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
           })
-          .join("\n");
+          .join("\n\n");
         const wooMessage = `I spotted these on TradeZone.sg:\n\n${lines}\n\nI can double-check any of these for you—just ask.`;
         return {
           result: wooMessage,
