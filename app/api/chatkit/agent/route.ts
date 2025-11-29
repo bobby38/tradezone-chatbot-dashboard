@@ -4824,58 +4824,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
         finalResponse = finalCompletion.choices[0].message.content || "";
 
-        // 🔴 ANTI-HALLUCINATION VALIDATOR: Detect if LLM invented products
-        if (lastHybridResult && lastHybridSource === "product_catalog") {
-          // Extract product names from tool result
-          const productListMatch = lastHybridResult.match(
-            /---START PRODUCT LIST---\n([\s\S]*?)\n---END PRODUCT LIST---/,
-          );
-          if (productListMatch) {
-            const productList = productListMatch[1];
-            const actualProducts = Array.from(
-              productList.matchAll(/\*\*(.*?)\*\*/g),
-            ).map((m) => m[1].toLowerCase());
-
-            // Check if response mentions products not in the list
-            const suspiciousTerms = [
-              /\bhades\b/i,
-              /iphone se/i,
-              /s\$40(?!\d)/i, // Suspiciously low price
-              /s\$50(?!\d)/i,
-            ];
-
-            const mentionsSuspiciousProduct = suspiciousTerms.some((term) =>
-              term.test(finalResponse),
-            );
-
-            if (mentionsSuspiciousProduct && actualProducts.length > 0) {
-              // Check if suspicious term is actually in the product list
-              const isSuspiciousTermInActualProducts = suspiciousTerms.some(
-                (term) => actualProducts.some((product) => term.test(product)),
-              );
-
-              if (!isSuspiciousTermInActualProducts) {
-                console.warn(
-                  "[ChatKit] 🚨 HALLUCINATION DETECTED - Replacing with safe response",
-                  {
-                    suspiciousResponse: finalResponse,
-                    actualProducts,
-                  },
-                );
-
-                // Replace with safe, direct product list
-                const safeResponse = productList
-                  .split("\n")
-                  .filter((line) => line.trim())
-                  .slice(0, 5)
-                  .map((line) => line.replace(/^\d+\.\s*/, "• "))
-                  .join("\n");
-
-                finalResponse = `Here's what we have in stock:\n\n${safeResponse}\n\nWant details on any of these?`;
-              }
-            }
-          }
-        }
+        // Note: Removed anti-hallucination validator - games like Hades, Anthem are real products
 
         // Track second call token usage
         if (finalCompletion.usage) {
@@ -5448,30 +5397,6 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       console.error("[ChatKit] Supabase logging error:", logError);
     }
   } // end finally
-
-  // 🔴 ANTI-HALLUCINATION FILTER: Block known hallucinated products
-  const KNOWN_HALLUCINATIONS = ["Anthem", "Hades", "Ether", "Vampyr", "Test"];
-
-  let hasHallucination = false;
-  for (const fake of KNOWN_HALLUCINATIONS) {
-    // Check if fake product name appears (word boundary check)
-    const regex = new RegExp(`\\b${fake}\\b`, "i");
-    if (regex.test(finalResponse)) {
-      hasHallucination = true;
-      console.log(
-        `[ChatKit] ⚠️  HALLUCINATION DETECTED: "${fake}" in response`,
-      );
-      break;
-    }
-  }
-
-  if (hasHallucination && lastSearchProductsResult) {
-    // Replace hallucinated response with actual search results
-    console.log(
-      "[ChatKit] 🔴 Replacing hallucinated response with tool results",
-    );
-    finalResponse = lastSearchProductsResult;
-  }
 
   console.log("[ChatKit] FINAL RESPONSE BEFORE RETURN:", finalResponse);
 

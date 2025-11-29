@@ -166,7 +166,10 @@ function isInCategory(product: WooProduct, category: string): boolean {
 }
 
 async function loadWooProducts(): Promise<Map<number, WooProduct>> {
+  // Cache for 5 minutes (or force reload if FORCE_RELOAD_WOO env is set)
+  const forceReload = process.env.FORCE_RELOAD_WOO === "true";
   if (
+    !forceReload &&
     wooProductsCache &&
     Date.now() - wooProductsCache.loadedAt < 5 * 60 * 1000
   ) {
@@ -201,20 +204,13 @@ async function loadWooProducts(): Promise<Map<number, WooProduct>> {
 
     const parsed = JSON.parse(raw) as WooProduct[];
 
-    // 🔴 FILTER OUT HALLUCINATED/TEST PRODUCTS
-    const HALLUCINATED_PRODUCTS = [
-      "Anthem",
-      "Hades",
-      "Ether",
-      "Vampyr",
-      "Test",
-      "Chorvs",
-    ];
+    // 🔴 FILTER OUT TEST PRODUCTS ONLY (price = $1)
     const filtered = parsed.filter((product) => {
-      const name = product.name || "";
-      return !HALLUCINATED_PRODUCTS.some((fake) =>
-        new RegExp(`\\b${fake}\\b`, "i").test(name),
-      );
+      // Remove test products with $1 price
+      if (product.name === "Test" && product.price === "1") {
+        return false;
+      }
+      return true;
     });
 
     const map = new Map<number, WooProduct>();
@@ -224,7 +220,7 @@ async function loadWooProducts(): Promise<Map<number, WooProduct>> {
     const removedCount = parsed.length - filtered.length;
     if (removedCount > 0) {
       console.log(
-        `[agent-tools] 🔴 Filtered out ${removedCount} hallucinated/test products`,
+        `[agent-tools] 🔴 Filtered out ${removedCount} test products`,
       );
     }
     console.log(
@@ -279,6 +275,7 @@ export async function searchWooProducts(
   query: string,
   limit = 5,
 ): Promise<WooProductSearchResult[]> {
+  console.log(`[searchWooProducts] START - query: "${query}", limit: ${limit}`);
   if (!query) return [];
   const normalized = query.toLowerCase();
   const tokens = normalized.split(/\s+/).filter(Boolean);
@@ -354,19 +351,51 @@ export async function searchWooProducts(
     }
   }
 
+  console.log(`[searchWooProducts] Loading WooCommerce products...`);
   const products = Array.from((await loadWooProducts()).values());
+  console.log(
+    `[searchWooProducts] Loaded ${products.length} products, starting scoring...`,
+  );
+
+  // Debug: Check if we have any products with "handphone" category
+  if (categoryFilter === "phone") {
+    const phoneProducts = products.filter((p) =>
+      (p.categories || []).some((c) => /handphone/i.test(c.name)),
+    );
+    console.log(
+      `[searchWooProducts] DEBUG: Found ${phoneProducts.length} products in Handphone category`,
+    );
+    if (phoneProducts.length > 0) {
+      console.log(`[searchWooProducts] DEBUG: Sample phone product:`, {
+        name: phoneProducts[0].name,
+        categories: phoneProducts[0].categories.map((c) => c.name),
+      });
+    }
+  }
+
   const scored = products
     .map((product) => {
       const name = (product.name || "").toLowerCase();
       let score = 0;
 
-      // Apply category filter for phones/tablets (stricter matching)
+      // Apply category filter for phones/tablets (use WooCommerce categories)
       if (categoryFilter === "phone" || categoryFilter === "tablet") {
-        // For phones: must match at least one phone keyword
-        const matchesCategory = familyFilter!.some((keyword) =>
-          name.includes(keyword),
-        );
-        if (!matchesCategory) {
+        // Check if product is in the correct WooCommerce category
+        const productCategories = (product.categories || [])
+          .map((c) => c.name.toLowerCase())
+          .join(" ");
+
+        // For phone searches, require "Handphone" category (includes "Handphone & Tablet")
+        if (categoryFilter === "phone") {
+          const hasHandphoneCategory = /handphone/i.test(productCategories);
+          if (!hasHandphoneCategory) {
+            return { product, score: 0 };
+          }
+          // Products in "Handphone & Tablet" category ARE valid for phone searches
+        }
+
+        // For tablet searches, require "Tablet" category
+        if (categoryFilter === "tablet" && !/tablet/i.test(productCategories)) {
           return { product, score: 0 };
         }
 
@@ -497,6 +526,10 @@ export async function searchWooProducts(
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
+
+  console.log(
+    `[searchWooProducts] Scored ${scored.length} products after filtering`,
+  );
 
   let results = scored.map(({ product }) => ({
     productId: product.id,
