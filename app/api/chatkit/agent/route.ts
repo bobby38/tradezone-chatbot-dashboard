@@ -4878,8 +4878,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
         finalResponse = finalCompletion.choices[0].message.content || "";
 
-        // 🔴 VALIDATE: For phone/tablet queries, check for known hallucinated products
-        if (lastHybridQuery && /\b(phone|handphone|mobile|smartphone|tablet|ipad)\b/i.test(lastHybridQuery)) {
+        // 🔴 VALIDATE: For phone/tablet/laptop queries, check for known hallucinated products
+        if (lastHybridQuery && /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop|notebook|computer)\b/i.test(lastHybridQuery)) {
           const hallucinatedProducts = ["chorvs", "anthem", "hades"];
           const responseL = finalResponse.toLowerCase();
 
