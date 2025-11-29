@@ -2103,16 +2103,9 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         params.tradeUpPricingSummary?.target,
     );
     if (isTradeUp && !hasPayout) {
-      try {
-        await updateTradeInLead(params.leadId, { preferred_payout: "top_up" });
-        detail = await getTradeInLeadDetail(params.leadId);
-        hasPayout = Boolean(detail.preferred_payout);
-      } catch (payoutError) {
-        console.warn(
-          "[ChatKit] Failed to set trade-up payout placeholder",
-          payoutError,
-        );
-      }
+      // Do NOT write to DB with a non-enum value; just mark as satisfied in-memory
+      hasPayout = true;
+      detail = { ...detail, preferred_payout: "top_up" };
     }
 
     // Check if photos step acknowledged (encouraged but no longer blocking email)
@@ -3672,17 +3665,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           tradeInLeadId &&
           !tradeInLeadDetail.preferred_payout
         ) {
-          try {
-            const { lead } = await updateTradeInLead(tradeInLeadId!, {
-              preferred_payout: "top_up",
-            });
-            tradeInLeadDetail = lead;
-          } catch (payoutError) {
-            console.warn(
-              "[ChatKit] Failed to prefill payout for trade-up",
-              payoutError,
-            );
-          }
+          // Keep it in-memory only to avoid enum write conflicts; auto-submit logic already treats trade-up as satisfied
+          tradeInLeadDetail = {
+            ...tradeInLeadDetail,
+            preferred_payout: "top_up",
+          };
         }
 
         if (
