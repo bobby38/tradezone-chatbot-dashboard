@@ -3975,19 +3975,29 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       completionTokens += response.usage.completion_tokens || 0;
     }
 
-    if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-      messages.push(assistantMessage);
+      if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+        messages.push(assistantMessage);
 
-      for (const toolCall of assistantMessage.tool_calls) {
-        const functionName = toolCall.function.name;
-        const functionArgs = JSON.parse(toolCall.function.arguments);
-        let toolResult = "";
+        for (const toolCall of assistantMessage.tool_calls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+          let toolResult = "";
 
-        let toolSource: HybridSearchSource | undefined;
-        try {
-          if (
-            functionName === "searchProducts" ||
-            functionName === "searchtool"
+          // 🚫 Trade-up intent: skip product/vector search tools to avoid catalog lists
+          const isProductSearchTool =
+            /searchProducts|searchtool|vectorSearch|woo/i.test(functionName);
+          if (tradeUpPairIntent && isProductSearchTool) {
+            console.log(
+              `[ChatKit] Skipping ${functionName} during trade-up flow (avoid WooCommerce listing)`,
+            );
+            continue;
+          }
+
+          let toolSource: HybridSearchSource | undefined;
+          try {
+            if (
+              functionName === "searchProducts" ||
+              functionName === "searchtool"
           ) {
             const toolStart = Date.now();
             const rawQuery =
