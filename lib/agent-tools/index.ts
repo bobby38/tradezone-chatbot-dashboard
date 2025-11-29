@@ -283,6 +283,12 @@ export async function searchWooProducts(
       keywords: ["steam deck", "rog ally", "legion", "claw"],
     },
     { pattern: /\b(quest|psvr|vr)\b/i, keywords: ["quest", "psvr", "vr"] },
+    // IMPORTANT: Check tablet BEFORE phone pattern (galaxy tab must not match phone category)
+    {
+      pattern: /\b(tablets?|ipads?|galaxy\s*tab)\b/i,
+      keywords: ["tablet", "ipad", "galaxy tab"],
+      category: "tablet",
+    },
     // Phone/tablet patterns - match generic + specific brands (with plurals)
     {
       pattern:
@@ -297,11 +303,6 @@ export async function searchWooProducts(
         "oppo",
       ],
       category: "phone",
-    },
-    {
-      pattern: /\b(tablets?|ipads?|galaxy\s*tab)\b/i,
-      keywords: ["tablet", "ipad", "galaxy tab"],
-      category: "tablet",
     },
     {
       pattern: /\b(360\s+camera|camera|gopro|insta360|osmo|pocket\s*3)\b/i,
@@ -412,9 +413,10 @@ export async function searchWooProducts(
           return { product, score: 0 };
         }
 
-        const userAskingAccessory = /\b(filter|case|warranty|bag|mount|tripod|strap|battery|accessor(y|ies))\b/i.test(
-          normalized,
-        );
+        const userAskingAccessory =
+          /\b(filter|case|warranty|bag|mount|tripod|strap|battery|accessor(y|ies))\b/i.test(
+            normalized,
+          );
         const accessoryKeywords = [
           "filter",
           "warranty",
@@ -476,7 +478,11 @@ export async function searchWooProducts(
     image: product.images?.[0]?.src, // Include first image
   }));
 
-  if (results.length === 0 && categoryFilter && CATEGORY_SLUG_MAP[categoryFilter]) {
+  if (
+    results.length === 0 &&
+    categoryFilter &&
+    CATEGORY_SLUG_MAP[categoryFilter]
+  ) {
     const fallbackProducts = products
       .filter((product) => isInCategory(product, categoryFilter))
       .sort((a, b) => {

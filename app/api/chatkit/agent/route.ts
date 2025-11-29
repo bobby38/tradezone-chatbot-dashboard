@@ -2621,8 +2621,6 @@ function formatHybridFallback(
     "",
     result,
     "",
-    `_(source: ${sourceLabel})_`,
-    "",
     callToAction,
   ].join("\n");
 }
