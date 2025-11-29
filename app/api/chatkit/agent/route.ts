@@ -5454,7 +5454,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
   let hasHallucination = false;
   for (const fake of KNOWN_HALLUCINATIONS) {
-    if (finalResponse.includes(fake) && !finalResponse.includes("http")) {
+    // Check if fake product name appears (word boundary check)
+    const regex = new RegExp(`\\b${fake}\\b`, "i");
+    if (regex.test(finalResponse)) {
       hasHallucination = true;
       console.log(
         `[ChatKit] ⚠️  HALLUCINATION DETECTED: "${fake}" in response`,
