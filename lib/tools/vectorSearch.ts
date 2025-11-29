@@ -566,7 +566,7 @@ export async function handleVectorSearch(
 
   // Early sale/promo/latest intent: use Perplexity live lookup, skip Woo/vector
   const saleIntentEarly =
-    /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+    /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount)\b/i.test(
       query.toLowerCase(),
     );
   if (saleIntentEarly) {
