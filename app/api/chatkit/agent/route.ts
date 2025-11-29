@@ -5449,6 +5449,28 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
   } // end finally
 
+  // 🔴 ANTI-HALLUCINATION FILTER: Block known hallucinated products
+  const KNOWN_HALLUCINATIONS = ["Anthem", "Hades", "Ether", "Vampyr", "Test"];
+
+  let hasHallucination = false;
+  for (const fake of KNOWN_HALLUCINATIONS) {
+    if (finalResponse.includes(fake) && !finalResponse.includes("http")) {
+      hasHallucination = true;
+      console.log(
+        `[ChatKit] ⚠️  HALLUCINATION DETECTED: "${fake}" in response`,
+      );
+      break;
+    }
+  }
+
+  if (hasHallucination && lastSearchProductsResult) {
+    // Replace hallucinated response with actual search results
+    console.log(
+      "[ChatKit] 🔴 Replacing hallucinated response with tool results",
+    );
+    finalResponse = lastSearchProductsResult;
+  }
+
   console.log("[ChatKit] FINAL RESPONSE BEFORE RETURN:", finalResponse);
 
   return NextResponse.json(
