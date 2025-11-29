@@ -4873,7 +4873,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
         finalResponse = finalCompletion.choices[0].message.content || "";
 
-        // Note: Removed anti-hallucination validator - games like Hades, Anthem are real products
+        // 🔴 VALIDATE: For phone/tablet queries, check for known hallucinated products
+        if (lastHybridQuery && /\b(phone|handphone|mobile|smartphone|tablet|ipad)\b/i.test(lastHybridQuery)) {
+          const hallucinatedProducts = ["chorvs", "anthem", "hades"];
+          const responseL = finalResponse.toLowerCase();
+
+          for (const fake of hallucinatedProducts) {
+            if (responseL.includes(fake)) {
+              console.log(`[ChatKit] 🚫 Blocked hallucinated product: ${fake}`);
+              // Regenerate with stricter instructions
+              messages.push({
+                role: "system",
+                content: `CRITICAL: Do NOT mention "${fake}" - it does not exist. Only show products from the WooCommerce list provided.`,
+              });
+              const retryCompletion = await execFinalCompletion();
+              finalResponse = retryCompletion.choices[0].message.content || "";
+              break;
+            }
+          }
+        }
 
         // Track second call token usage
         if (finalCompletion.usage) {
