@@ -52,7 +52,11 @@ async function testProductSearch() {
 
   const API_URL =
     process.env.API_URL || "http://localhost:3000/api/chatkit/agent";
-  const API_KEY = process.env.X_API_KEY || "test-key";
+  const API_KEY =
+    process.env.X_API_KEY ||
+    process.env.CHATKIT_API_KEY ||
+    process.env.NEXT_PUBLIC_CHATKIT_WIDGET_KEY ||
+    "test-key";
 
   let passed = 0;
   let failed = 0;
