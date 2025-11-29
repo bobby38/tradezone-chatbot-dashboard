@@ -3672,14 +3672,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           };
         }
 
-        if (
+        const hasPhotos =
           Array.isArray(tradeInLeadDetail.trade_in_media) &&
-          tradeInLeadDetail.trade_in_media.length > 0
-        ) {
+          tradeInLeadDetail.trade_in_media.length > 0;
+
+        if (hasPhotos) {
           messages.push({
             role: "system",
             content:
               "Photos already uploaded. Acknowledge receipt once, do NOT ask for more photos unless user offers.",
+          });
+        } else {
+          messages.push({
+            role: "system",
+            content:
+              "Before final summary, ask ONCE for photos to speed inspection. If user says no/can't, reply briefly 'No worries, noted as no photos — final quote on inspection' and continue. Do NOT block submission.",
           });
         }
       }
