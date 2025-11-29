@@ -3915,39 +3915,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     const userMessageIndex = messages.length - 1;
     let imageStrippedForTimeout = false;
 
-    const execChatCompletion = async () => {
-      const isGemini = textModel.toLowerCase().includes("gemini");
-      const hasTools = Array.isArray(tools) && tools.length > 0;
-
-      // If tools are present, skip Gemini to avoid schema issues
-      if (!(hasTools || !process.env.GEMINI_API_KEY || !isGemini)) {
-        try {
-          console.log(`[ChatKit] Using Gemini model: ${textModel}`);
-          return await createGeminiChatCompletion({
-            model: textModel,
+        const execChatCompletion = async () => {
+          return openai.chat.completions.create({
+            model: "gpt-4o-mini",
             messages,
             tools,
             tool_choice: toolChoice,
             temperature: 0.7,
             max_tokens: 800,
-          });
-        } catch (geminiError) {
-          console.error(
-            `[ChatKit] Gemini failed, falling back to OpenAI:`,
-            geminiError,
-          );
-          // Fall through to OpenAI
-        }
-      }
-
-      // Default: OpenAI
-      return openai.chat.completions.create({
-        model: textModel.includes("gemini") ? "gpt-4o-mini" : textModel,
-        messages,
-        tools,
-        tool_choice: toolChoice,
-        temperature: 0.7,
-        max_tokens: 800,
       });
     };
 
