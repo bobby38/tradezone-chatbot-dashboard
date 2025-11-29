@@ -997,9 +997,10 @@ export async function handleVectorSearch(
           const deterministicResponse = wooProducts.length > 0
             ? `${summaryPrefix}${intro}${wooSection}`
             : intro;
+          const wrappedResponse = `<<<DETERMINISTIC_START>>>${deterministicResponse}<<<DETERMINISTIC_END>>>`;
 
           return {
-            text: prependTradeSnippet(deterministicResponse),
+            text: prependTradeSnippet(wrappedResponse),
             store: "product_catalog",
             matches: [],
             wooProducts: wooPayload,
@@ -1027,10 +1028,10 @@ export async function handleVectorSearch(
             .map((product, idx) => {
               const price = formatSGDPrice(product.price_sgd);
               const url = product.permalink || `https://tradezone.sg`;
-              const imageStr =
-                idx === 0 && product.image
-                  ? `\n   ![${product.name}](${product.image})`
-                  : "";
+              // Include image on ALL products for better UX
+              const imageStr = product.image
+                ? `\n   ![${product.name}](${product.image})`
+                : "";
               return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
@@ -1039,20 +1040,13 @@ export async function handleVectorSearch(
             ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
             : "";
 
-          const antiHallucinationNote =
-            `\n\n🔴 INSTRUCTIONS FOR YOU (DO NOT SHOW TO USER):\n` +
-            `- User asked: "${query}"\n` +
-            `- Below are ${productsToShow.length} products from WooCommerce (our ONLY inventory)\n` +
-            `- Show ALL products to the user with a brief intro (e.g., "Here's what we have:")\n` +
-            `- NEVER add products not in this list - they don't exist (no Anthem, Hades, etc.)\n` +
-            `- Copy product names and prices EXACTLY as written below\n\n` +
-            `PRODUCT DATA TO SHOW USER:\n---START PRODUCT LIST---\n` +
-            listText +
-            moreText +
-            "\n---END PRODUCT LIST---";
+          // DETERMINISTIC RESPONSE - wrap in special markers so route.ts can extract and use directly
+          const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
+          const deterministicResponse = intro + listText + moreText;
+          const wrappedResponse = `<<<DETERMINISTIC_START>>>${deterministicResponse}<<<DETERMINISTIC_END>>>`;
 
           return {
-            text: prependTradeSnippet(antiHallucinationNote),
+            text: prependTradeSnippet(wrappedResponse),
             store: "product_catalog",
             matches: [],
             wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
@@ -1064,8 +1058,10 @@ export async function handleVectorSearch(
         );
         const fallbackBudgetContext =
           budgetContext || createBudgetContext(query, wooProducts);
-        const displayLimit = Math.min(wooProducts.length, 6);
+        const displayLimit = Math.min(wooProducts.length, 8);
         const productsToShow = wooProducts.slice(0, displayLimit);
+        const hasMore = wooProducts.length > displayLimit;
+
         const listText = productsToShow
           .map((product, idx) => {
             const price = formatPriceWithBudget(
@@ -1073,9 +1069,18 @@ export async function handleVectorSearch(
               fallbackBudgetContext,
             );
             const url = product.permalink || `https://tradezone.sg`;
-            return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})`;
+            // Include image on ALL products for better UX
+            const imageStr = product.image
+              ? `\n   ![${product.name}](${product.image})`
+              : "";
+            return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
           })
           .join("\n\n");
+
+        const moreText = hasMore
+          ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
+          : "";
+
         const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
         const budgetSummaryLine = buildBudgetSummaryLine(
           fallbackBudgetContext,
@@ -1084,18 +1089,14 @@ export async function handleVectorSearch(
         const summaryPrefix = budgetSummaryLine
           ? `${budgetSummaryLine}\n\n`
           : "";
-        const budgetInstruction = buildBudgetInstructionText(
-          fallbackBudgetContext,
-          budgetCategoryLabel,
-        );
-        const fallbackNote =
-          `\n\n${summaryPrefix}🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n` +
-          listText +
-          "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above. Do NOT modify names, prices, or add products not in the list." +
-          (budgetInstruction ? `\n${budgetInstruction}` : "");
+
+        // DETERMINISTIC RESPONSE - return directly to user without LLM rewriting
+        const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
+        const deterministicResponse = summaryPrefix + intro + listText + moreText;
+        const wrappedResponse = `<<<DETERMINISTIC_START>>>${deterministicResponse}<<<DETERMINISTIC_END>>>`;
 
         return {
-          text: prependTradeSnippet(fallbackNote),
+          text: prependTradeSnippet(wrappedResponse),
           store: "product_catalog",
           matches: [],
           wooProducts: wooProducts.length > 0 ? wooProducts : undefined,

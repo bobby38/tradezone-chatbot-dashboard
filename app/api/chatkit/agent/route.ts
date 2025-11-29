@@ -1009,26 +1009,7 @@ function formatGraphConflictSystemMessage(conflicts: GraphConflict[]): string {
   ].join("\n");
 }
 
-function renderWooProductResponse(
-  raw: string | null | undefined,
-): string | null {
-  if (!raw) return null;
-  const startMarker = "---START PRODUCT LIST---";
-  const endMarker = "---END PRODUCT LIST---";
-  if (!raw.includes(startMarker) || !raw.includes(endMarker)) return null;
-
-  // Extract only the product list, skip all instruction text
-  const listSection = raw.split(startMarker)[1]?.split(endMarker)[0]?.trim();
-  if (!listSection) return null;
-
-  const cleanedList = listSection
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join("\n");
-
-  return cleanedList;
-}
+// ✅ REMOVED: renderWooProductResponse - no longer needed with deterministic responses in vectorSearch.ts
 
 function summarizeGraphNodesForPrompt(
   nodes: GraphitiNodeSummary[],
@@ -3270,7 +3251,7 @@ export async function POST(request: NextRequest) {
 
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gemini-2.5-flash-002"; // Default model (text) - Gemini 2.5 Flash for better reasoning and instruction following
+  let textModel = "gemini-2.5-flash"; // Default model (text) - Gemini 2.5 Flash for better reasoning and instruction following
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
@@ -4726,6 +4707,23 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
 
         lastSearchProductsResult = toolResult;
+
+        // ✅ CRITICAL: Extract deterministic response BEFORE sending to LLM
+        if (toolResult && toolResult.includes("<<<DETERMINISTIC_START>>>")) {
+          const startMarker = "<<<DETERMINISTIC_START>>>";
+          const endMarker = "<<<DETERMINISTIC_END>>>";
+          const startIdx = toolResult.indexOf(startMarker);
+          const endIdx = toolResult.indexOf(endMarker);
+
+          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+            const extracted = toolResult.substring(startIdx + startMarker.length, endIdx).trim();
+            console.log(`[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars) - setting finalResponse immediately`);
+            finalResponse = extracted;
+            // Don't add this tool result to messages - we already have the final response
+            continue; // Skip adding to messages and move to next tool call
+          }
+        }
+
         // Capture trade-up prices deterministically based on the query
         if (tradeUpPairIntent && forcedTradeUpMath) {
           const rawQuery =
@@ -4798,37 +4796,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         console.log("[ChatKit] 🔒 Deterministic trade-up response:", finalResponse);
       }
 
-      // 🔴 CRITICAL: For phone/tablet/laptop queries, bypass LLM to prevent hallucination
-      // Extract clean WooCommerce list and return directly (no LLM processing)
-      console.log(`[ChatKit] 🔍 Bypass check: finalResponse=${!!finalResponse}, lastSearchProductsResult=${!!lastSearchProductsResult}, lastHybridQuery="${lastHybridQuery}"`);
+      // ✅ DETERMINISTIC: Extract and use deterministic responses from vectorSearch.ts
+      // Check if any tool result contains a deterministic response marker
+      if (!finalResponse && lastSearchProductsResult && lastSearchProductsResult.includes("<<<DETERMINISTIC_START>>>")) {
+        const startMarker = "<<<DETERMINISTIC_START>>>";
+        const endMarker = "<<<DETERMINISTIC_END>>>";
+        const startIdx = lastSearchProductsResult.indexOf(startMarker);
+        const endIdx = lastSearchProductsResult.indexOf(endMarker);
 
-      if (!finalResponse && lastSearchProductsResult) {
-        const wooResponse = renderWooProductResponse(lastSearchProductsResult);
-        console.log(`[ChatKit] 🔍 Rendered wooResponse: ${!!wooResponse}, length=${wooResponse?.length || 0}`);
-
-        if (wooResponse) {
-          // Check if this is a phone/tablet/laptop query (categories prone to hallucination)
-          const isPhoneTabletLaptop =
-            /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop)\b/i.test(
-              lastHybridQuery || "",
-            );
-          console.log(`[ChatKit] 🔍 isPhoneTabletLaptop=${isPhoneTabletLaptop} for query="${lastHybridQuery}"`);
-
-          if (isPhoneTabletLaptop) {
-            console.log(
-              "[ChatKit] 🚫 Phone/tablet/laptop query - returning WooCommerce list directly (skip LLM)",
-            );
-
-            // Add friendly intro based on query context
-            const hasCheapKeyword = /\b(cheap|affordable|budget)\b/i.test(lastHybridQuery || "");
-            const productCount = (wooResponse.match(/^\d+\./gm) || []).length;
-            const intro = hasCheapKeyword
-              ? `Here are our most affordable options (${productCount} products):\n\n`
-              : `Here's what we have in stock (${productCount} products):\n\n`;
-
-            finalResponse = intro + wooResponse;
-            console.log(`[ChatKit] ✅ Set finalResponse directly, length=${finalResponse.length}`);
-          }
+        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+          const extracted = lastSearchProductsResult.substring(startIdx + startMarker.length, endIdx).trim();
+          console.log(`[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars, bypassing LLM)`);
+          finalResponse = extracted;
         }
       }
 
@@ -4885,15 +4864,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
         finalResponse = finalCompletion.choices[0].message.content || "";
 
-        // 🔴 VALIDATE: For phone/tablet/laptop queries, check for known hallucinated products
+        // ✅ FAILSAFE: Catch hallucinations if they somehow bypass deterministic responses
+        // This should rarely trigger now that vectorSearch.ts returns pre-formatted responses
         if (lastHybridQuery && /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop|notebook|computer)\b/i.test(lastHybridQuery)) {
           const hallucinatedProducts = ["chorvs", "anthem", "hades"];
           const responseL = finalResponse.toLowerCase();
 
           for (const fake of hallucinatedProducts) {
             if (responseL.includes(fake)) {
-              console.log(`[ChatKit] 🚫 Blocked hallucinated product: ${fake}`);
-              // Regenerate with stricter instructions
+              console.log(`[ChatKit] 🚨 FAILSAFE TRIGGERED - Blocked hallucinated product: ${fake}`);
+              // This shouldn't happen with deterministic responses, but regenerate if it does
               messages.push({
                 role: "system",
                 content: `CRITICAL: Do NOT mention "${fake}" - it does not exist. Only show products from the WooCommerce list provided.`,
