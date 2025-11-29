@@ -3430,15 +3430,19 @@ export async function POST(request: NextRequest) {
           "Skip the canned greeting. The user already asked a question, so reply directly to it.",
       });
     }
-    const userMessage: OpenAI.Chat.ChatCompletionMessageParam = image
-      ? {
-          role: "user",
-          content: [
-            { type: "text", text: message },
-            { type: "image_url", image_url: { url: image } },
-          ],
-        }
-      : { role: "user", content: message };
+    if (image) {
+      // Do not send images to the LLM; just acknowledge receipt and keep the image for staff review
+      messages.push({
+        role: "system",
+        content:
+          "User uploaded an image. Acknowledge receipt briefly (e.g., 'Photo received'). DO NOT describe or summarize the image. The photo is stored for staff review.",
+      });
+    }
+
+    const userMessage: OpenAI.Chat.ChatCompletionMessageParam = {
+      role: "user",
+      content: message,
+    };
 
     messages.push(userMessage);
 
