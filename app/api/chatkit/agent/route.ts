@@ -3853,15 +3853,29 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
     }
 
+    // Delivery FAQ override (avoid tools & vectors)
+    const deliveryIntent =
+      /\b(same[- ]?day|express)\b.*\b(delivery|shipping)\b/i.test(message) ||
+      /\bdelivery\b.*\b(saturday|sat)\b/i.test(message);
+
+    if (deliveryIntent) {
+      messages.push({
+        role: "system",
+        content:
+          "DELIVERY FAQ: Reply directly (no tools) with: 'Yes, we offer same-day delivery, including Saturdays, subject to courier cutoff and stock. For trade-ins we still do in-store inspection. Want me to arrange or share fee/time window?' Keep it under 2 sentences.",
+      });
+    }
+
     // First call to OpenAI to determine if tools are needed
     // 🔴 CRITICAL FIX: Force searchProducts for trade-in pricing queries
     isTradeInPricingQuery =
+      !deliveryIntent &&
       detectTradeInIntent(message) &&
       /\b(price|worth|value|quote|offer|how much|goes? for|typically|payout|cash out)\b/i.test(
         message,
       );
 
-    isProductInfoQuery = detectProductInfoIntent(message);
+    isProductInfoQuery = !deliveryIntent && detectProductInfoIntent(message);
     const productLinkMatch = message.match(/tradezone\.sg\/product\/([\w-]+)/i);
     productSlug = productLinkMatch?.[1] || productSlug;
 
@@ -3891,11 +3905,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
 
     const saleIntent =
-      /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+      !deliveryIntent &&
+      (/\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
         message,
-      );
+      ) || isSaleContext);
 
     const shouldForceCatalog =
+      !deliveryIntent &&
       !quoteAlreadyGiven && // Don't force search if quote already given
       (tradeUpPairIntent ||
         isTradeInPricingQuery ||
