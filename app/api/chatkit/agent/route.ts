@@ -3327,7 +3327,7 @@ export async function POST(request: NextRequest) {
       .eq("id", DEFAULT_ORG_ID)
       .single();
     const settings = org?.settings?.chatkit || {};
-    textModel = settings.textModel || "gpt-4o-mini";
+    textModel = settings.textModel || textModel; // Use database setting or keep default (gemini-2.5-flash-002)
     const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
