@@ -633,12 +633,14 @@ export async function handleVectorSearch(
           `[VectorSearch] Gamepad detected, searching for: "${searchQuery}"`,
         );
       } else if (
-        /\b(handphone|phone|mobile|smartphone|android)\b/i.test(lowerQuery)
+        /\b(handphone|phone|mobile|smartphone|android|iphone)\b/i.test(
+          lowerQuery,
+        )
       ) {
-        // Map handphone/phone to actual phone brands in catalog
-        searchQuery = "iphone galaxy oppo";
+        // Don't rewrite query - WooCommerce category filter will detect "phone"
+        // pattern and return ALL phones, then sort by price if "cheap" in query
         console.log(
-          `[VectorSearch] Handphone/phone/android detected, searching for: "${searchQuery}"`,
+          `[VectorSearch] Phone query detected - using category filter to show all phones`,
         );
       } else if (/\btablet\b/i.test(lowerQuery)) {
         // Map tablet to actual tablet products
