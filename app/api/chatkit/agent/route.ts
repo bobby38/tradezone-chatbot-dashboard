@@ -1998,7 +1998,12 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
       const candidateName = candidateTokens.slice(0, 3).join(" ");
       if (!isPlaceholderName(candidateName)) {
         patch.contact_name = candidateName;
+        console.log(`[AutoExtract] Extracted name: "${candidateName}" from: "${scrubbed}"`);
+      } else {
+        console.log(`[AutoExtract] Rejected placeholder name: "${candidateName}"`);
       }
+    } else {
+      console.log(`[AutoExtract] No valid name tokens from: "${scrubbed}"`);
     }
   }
 
