@@ -3250,7 +3250,7 @@ export async function POST(request: NextRequest) {
 
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gpt-4.1-mini-2025-04-14"; // Default model (text)
+  let textModel = "gemini-2.0-flash-exp"; // Default model (text) - switched to Gemini 2.5 Flash for better instruction following
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
