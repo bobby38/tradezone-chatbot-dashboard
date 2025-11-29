@@ -3649,6 +3649,55 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
       }
 
+      // Backfill placeholder contact (User/user@example.com/12345678) from recent clues before continuing
+      if (tradeInLeadDetail) {
+        const contactPatch: TradeInUpdateInput = {};
+        const recentUserConcat = truncatedHistory
+          .filter((m) => m.role === "user")
+          .slice(-8)
+          .map((m) => m.content)
+          .join(" ");
+        const historyClues = extractTradeInClues(recentUserConcat);
+
+        const nameClue =
+          autoExtractedClues?.contact_name || historyClues.contact_name;
+        const phoneClue =
+          autoExtractedClues?.contact_phone || historyClues.contact_phone;
+        const emailClue =
+          autoExtractedClues?.contact_email || historyClues.contact_email;
+
+        const isPlaceholderName =
+          !tradeInLeadDetail.contact_name ||
+          tradeInLeadDetail.contact_name.toLowerCase() === "user";
+        const isPlaceholderEmail =
+          !tradeInLeadDetail.contact_email ||
+          tradeInLeadDetail.contact_email === "user@example.com";
+        const isPlaceholderPhone =
+          !tradeInLeadDetail.contact_phone ||
+          tradeInLeadDetail.contact_phone === "12345678";
+
+        if (isPlaceholderName && nameClue) contactPatch.contact_name = nameClue;
+        if (isPlaceholderEmail && emailClue)
+          contactPatch.contact_email = emailClue;
+        if (isPlaceholderPhone && phoneClue)
+          contactPatch.contact_phone = phoneClue;
+
+        if (Object.keys(contactPatch).length > 0) {
+          try {
+            const patched = await updateTradeInLead(
+              tradeInLeadId,
+              contactPatch,
+            );
+            tradeInLeadDetail = patched.lead || tradeInLeadDetail;
+          } catch (contactPatchError) {
+            console.warn(
+              "[ChatKit] Failed to patch contact before guardrails",
+              contactPatchError,
+            );
+          }
+        }
+      }
+
       // Merge freshly auto-extracted clues so step reminders don't re-ask for data just provided this turn
       if (tradeInLeadDetail && autoExtractedClues) {
         tradeInLeadDetail = { ...tradeInLeadDetail, ...autoExtractedClues };
