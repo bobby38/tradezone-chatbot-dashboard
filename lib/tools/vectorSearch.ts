@@ -260,6 +260,10 @@ function extractProductCategory(query: string): string | null {
     },
     { pattern: /\b(headsets?|headphones?|earphones?)\b/i, category: "audio" },
     {
+      pattern: /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state)\b/i,
+      category: "storage",
+    },
+    {
       pattern:
         /\b(cameras?|action\s*cams?|vlog|vlogging|youtube|dslr|mirrorless)\b/i,
       category: "camera",
@@ -872,6 +876,15 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] Camera query detected, searching for: "${searchQuery}"`,
         );
+      } else if (
+        /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state|ironwolf)\b/i.test(
+          lowerQuery,
+        )
+      ) {
+        searchQuery = "ssd hdd hard drive storage";
+        console.log(
+          `[VectorSearch] Storage query detected, searching for: "${searchQuery}"`,
+        );
       } else if (/\bdiablo\b/i.test(lowerQuery)) {
         searchQuery = "diablo";
         console.log(`[VectorSearch] Diablo detected, searching for: "${searchQuery}"`);
@@ -886,6 +899,22 @@ export async function handleVectorSearch(
       wooProducts = dedupeWooProducts(
         await searchWooProducts(cleanedQuery, wooLimit),
       );
+
+      // Storage intent: prefer storage categories and drop non-storage if possible
+      if (detectedCategory === "storage" && wooProducts.length > 0) {
+        const storageFiltered = wooProducts.filter((p) => {
+          const cats = (p as any).categories || [];
+          return cats.some((c: string) =>
+            /\b(storage|hdd|ssd|nvme|hard\s*drive|solid\s*state)\b/i.test(c),
+          );
+        });
+        if (storageFiltered.length > 0) {
+          wooProducts = storageFiltered;
+          console.log(
+            `[VectorSearch] Storage intent: filtered to ${storageFiltered.length} storage items`,
+          );
+        }
+      }
 
       // If the detected category is mouse, drop non-mouse categories and retry if empty
       if (

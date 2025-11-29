@@ -5545,7 +5545,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           ? message.substring(0, 120)
           : `Session ${nowIso.substring(0, 10)}`);
 
-      const logSource = mode === "voice" ? "chatkit_voice" : "chatkit";
+      // Use unified source for dashboard visibility; channel differentiates voice/text
+      const logSource = "chatkit";
       await supabase.from("chat_logs").insert({
         session_id: sessionId,
         user_id: sessionId,
