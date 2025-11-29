@@ -313,8 +313,9 @@ export async function searchWooProducts(
     // Phone/tablet patterns - match generic + specific brands (with plurals)
     {
       pattern:
-        /\b(phones?|mobiles?|smartphones?|iphone|samsung\s*galaxy|galaxy\s*(z|s|a|note)|pixel|oppo)\b/i,
+        /\b(handphones?|phones?|mobiles?|smartphones?|iphone|samsung\s*galaxy|galaxy\s*(z|s|a|note)|pixel|oppo)\b/i,
       keywords: [
+        "handphone",
         "phone",
         "mobile",
         "smartphone",
@@ -385,13 +386,23 @@ export async function searchWooProducts(
           .map((c) => c.name.toLowerCase())
           .join(" ");
 
-        // For phone searches, require "Handphone" category (includes "Handphone & Tablet")
+        // For phone searches, require "Handphone" category AND exclude tablet-only products
         if (categoryFilter === "phone") {
           const hasHandphoneCategory = /handphone/i.test(productCategories);
-          if (!hasHandphoneCategory) {
+          const hasOnlyTabletCategory =
+            /\btablet\b/i.test(productCategories) &&
+            !/handphone/i.test(productCategories);
+
+          // Must have "Handphone" category AND not be tablet-only
+          if (!hasHandphoneCategory || hasOnlyTabletCategory) {
             return { product, score: 0 };
           }
-          // Products in "Handphone & Tablet" category ARE valid for phone searches
+
+          // Also exclude products with "iPad" or "Tab" in the name when searching for phones
+          const isTabletProduct = /\b(ipad|galaxy\s*tab)\b/i.test(name);
+          if (isTabletProduct) {
+            return { product, score: 0 };
+          }
         }
 
         // For tablet searches, require "Tablet" category

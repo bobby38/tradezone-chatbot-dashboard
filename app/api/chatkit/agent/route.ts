@@ -1017,16 +1017,17 @@ function renderWooProductResponse(
   const endMarker = "---END PRODUCT LIST---";
   if (!raw.includes(startMarker) || !raw.includes(endMarker)) return null;
 
-  const [prefixPart] = raw.split("🔒");
-  const prefix = prefixPart?.trim() || "";
+  // Extract only the product list, skip all instruction text
   const listSection = raw.split(startMarker)[1]?.split(endMarker)[0]?.trim();
   if (!listSection) return null;
+
   const cleanedList = listSection
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .join("\n");
-  return prefix ? `${prefix}\n\n${cleanedList}`.trim() : cleanedList;
+
+  return cleanedList;
 }
 
 function summarizeGraphNodesForPrompt(
@@ -2269,6 +2270,8 @@ async function runHybridSearch(
 
   let responseMatches: CatalogMatches = [];
 
+  let hasWooProducts = false;
+
   try {
     const vectorStart = Date.now();
     const response = await handleVectorSearch(query, context);
@@ -2277,6 +2280,7 @@ async function runHybridSearch(
     vectorSource =
       response.store === "trade_in" ? "trade_in_vector_store" : "vector_store";
     responseMatches = response.matches || [];
+    hasWooProducts = (response.wooProducts || []).length > 0;
 
     if (vectorLatency > 2000) {
       console.warn(
@@ -2379,13 +2383,24 @@ async function runHybridSearch(
 
   // For trade-in queries, use vector result even if short (pricing data is concise)
   if (vectorUseful || (isTradeInQuery && vectorResult.trim().length > 0)) {
-    const combined = catalogSection
-      ? `${vectorResult}\n\n${catalogSection}`
-      : vectorResult;
+    // 🔴 CRITICAL: Don't append catalog section when WooCommerce has products
+    // Vector result already contains WooCommerce data with anti-hallucination instructions
+    const combined =
+      catalogSection && !hasWooProducts
+        ? `${vectorResult}\n\n${catalogSection}`
+        : vectorResult;
     const adjusted = applyTradeInPriceOverrides(combined, query, vectorSource);
-    console.log(
-      `[ChatKit] Using ${isTradeInQuery ? "TRADE-IN" : "vector"} result (${vectorResult.length} chars)`,
-    );
+
+    if (hasWooProducts) {
+      console.log(
+        `[ChatKit] Using WooCommerce result (${vectorResult.length} chars) - catalog section excluded`,
+      );
+    } else {
+      console.log(
+        `[ChatKit] Using ${isTradeInQuery ? "TRADE-IN" : "vector"} result (${vectorResult.length} chars)`,
+      );
+    }
+
     return {
       result: adjusted,
       source: vectorSource,
@@ -3250,7 +3265,7 @@ export async function POST(request: NextRequest) {
 
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gemini-2.0-flash-exp"; // Default model (text) - switched to Gemini 2.5 Flash for better instruction following
+  let textModel = "gpt-4o-mini"; // Default model (text)
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
@@ -4764,12 +4779,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         (precomputedTradeUp.tradeValue != null ||
           precomputedTradeUp.retailPrice != null);
 
-      if (!finalResponse) {
-        const wooResponse = renderWooProductResponse(lastSearchProductsResult);
-        if (wooResponse) {
-          finalResponse = wooResponse;
-        }
-      }
+      // Removed renderWooProductResponse shortcut - let LLM process tool results with instructions
+      // This ensures proper formatting and allows LLM to follow anti-hallucination instructions
 
       if (!finalResponse && !skipLLMForTradeUp) {
         // If no suggestion was made

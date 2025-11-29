@@ -1099,16 +1099,27 @@ export async function handleVectorSearch(
           wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
         };
       } else {
+        // For specific categories (phone/tablet/laptop), don't fall back to vector - prevent hallucination
+        const detectedCategory = extractProductCategory(query);
+        const blockVectorFallback = ["phone", "tablet", "laptop"].includes(
+          detectedCategory || "",
+        );
+
+        if (blockVectorFallback) {
+          console.log(
+            `[VectorSearch] ❌ No WooCommerce ${detectedCategory} found - returning "not in stock" (no vector fallback)`,
+          );
+          return {
+            text: `I checked our catalog and don't have any ${detectedCategory}s matching "${query}" in stock right now.`,
+            store: "product_catalog",
+            matches: [],
+            wooProducts: [],
+          };
+        }
+
         console.log(
           `[VectorSearch] ❌ No WooCommerce matches - continuing to vector search for enrichment`,
         );
-        // Flag to check if we should use Perplexity fallback later
-        const detectedCategory = extractProductCategory(query);
-        if (detectedCategory === "phone" || detectedCategory === "tablet") {
-          console.log(
-            `[VectorSearch] Detected ${detectedCategory} query with no WooCommerce results - will use Perplexity if vector search also fails`,
-          );
-        }
         // Continue to vector search - it might find related products or categories
       }
     } catch (wooError) {
