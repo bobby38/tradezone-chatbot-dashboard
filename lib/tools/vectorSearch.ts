@@ -674,12 +674,53 @@ export async function handleVectorSearch(
         `[VectorSearch] Step 1: Checking WooCommerce (source of truth)...`,
       );
       const { searchWooProducts } = await import("@/lib/agent-tools");
+      const { handlePerplexitySearch } = await import("./perplexitySearch");
 
       // Query rewriting: map user terms to actual product names
       // Sports: basketball → nba, football → fifa, skateboard → tony hawk
       // Hardware: gpu → graphic card, console → playstation, gamepad → controller
       let searchQuery = query;
       const lowerQuery = query.toLowerCase();
+
+      // Live-sale / latest intent: bypass catalog and fetch fresh via Perplexity first
+      const saleIntent = /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+        lowerQuery,
+      );
+      if (saleIntent) {
+        try {
+          const perplexityQuery = `${query} site:tradezone.sg latest prices`;
+          console.log(
+            `[VectorSearch] Sale/latest intent detected; querying Perplexity: "${perplexityQuery}"`,
+          );
+          const perplexityResult = await handlePerplexitySearch(perplexityQuery);
+          if (
+            perplexityResult &&
+            !perplexityResult.includes("No results found") &&
+            !perplexityResult.includes("error")
+          ) {
+            return {
+              text: perplexityResult,
+              store: "product_catalog",
+              matches: [],
+              wooProducts: [],
+            };
+          }
+        } catch (perplexityError) {
+          console.error(
+            "[VectorSearch] Perplexity sale/latest lookup failed:",
+            perplexityError,
+          );
+        }
+        const saleLink = "https://tradezone.sg/?s=sale";
+        const bfLink = "https://tradezone.sg/?s=black+friday";
+        const latestLink = "https://tradezone.sg/?s=new";
+        return {
+          text: `Current offers:\n- Black Friday/Cyber: ${bfLink}\n- All sales: ${saleLink}\n- New arrivals: ${latestLink}\nShare a product name/link and I'll fetch its latest price.`,
+          store: "product_catalog",
+          matches: [],
+          wooProducts: [],
+        };
+      }
 
       if (/\bgpu\b|graphics?\s*card/i.test(lowerQuery)) {
         searchQuery = searchQuery.replace(/\bgpu\b/gi, "graphic card");
@@ -758,6 +799,15 @@ export async function handleVectorSearch(
           `[VectorSearch] Headset detected, searching for: "${searchQuery}"`,
         );
       } else if (
+        /\b(mouse|mice|gaming\s*mouse|superlight|logitech|razer|steelseries|glorious|zowie|gpro|g pro)\b/i.test(
+          lowerQuery,
+        )
+      ) {
+        searchQuery = "gaming mouse superlight logitech razer steelseries";
+        console.log(
+          `[VectorSearch] Mouse query detected, searching for: "${searchQuery}"`,
+        );
+      } else if (
         /\b(camera|vlog|vlogging|youtube|action\s*cam|osmo|gopro)\b/i.test(
           lowerQuery,
         )
@@ -781,6 +831,26 @@ export async function handleVectorSearch(
         await searchWooProducts(cleanedQuery, wooLimit),
       );
 
+      // If the detected category is mouse, drop non-mouse categories and retry if empty
+      if (
+        detectedCategory === "mouse" &&
+        wooProducts.length &&
+        wooProducts.every(
+          (p) =>
+            !p.categories ||
+            !p.categories.some((c) =>
+              /\bmouse|mice|peripherals\/mouse\b/i.test(c),
+            ),
+        )
+      ) {
+        console.log(
+          `[VectorSearch] Mouse query returned no mouse-category items, retrying mouse category directly`,
+        );
+        wooProducts = dedupeWooProducts(
+          await searchWooProducts("mouse", wooLimit),
+        );
+      }
+
       // If no results and we detected entity hints, retry with boosted query tokens
       if (!wooProducts.length && entityTokens.length) {
         const boostedQuery = `${cleanedQuery} ${entityTokens.join(" ")}`.trim();
@@ -790,6 +860,34 @@ export async function handleVectorSearch(
         wooProducts = dedupeWooProducts(
           await searchWooProducts(boostedQuery, wooLimit),
         );
+
+        // If still nothing and we have entity hints, try Perplexity as a live lookup
+        if (!wooProducts.length) {
+          try {
+            const liveQuery = `${boostedQuery} site:tradezone.sg`;
+            console.log(
+              `[VectorSearch] No results after entity retry; attempting Perplexity: "${liveQuery}"`,
+            );
+            const perplexityResult = await handlePerplexitySearch(liveQuery);
+            if (
+              perplexityResult &&
+              !perplexityResult.includes("No results found") &&
+              !perplexityResult.includes("error")
+            ) {
+              return {
+                text: perplexityResult,
+                store: label,
+                matches: [],
+                wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
+              };
+            }
+          } catch (perplexityError) {
+            console.error(
+              `[VectorSearch] Perplexity search failed after zero Woo results:`,
+              perplexityError,
+            );
+          }
+        }
       }
 
       // Entity hint re-rank: if query implies an entity (e.g., Ronaldo → FIFA), bump matching products
