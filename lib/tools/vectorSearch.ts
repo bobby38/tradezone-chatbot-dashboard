@@ -624,6 +624,10 @@ export async function handleVectorSearch(
       tokens: ["marvel", "avengers", "spider-man", "batman"],
     },
     {
+      regex: /\bdiablo\b/i,
+      tokens: ["diablo", "blizzard"],
+    },
+    {
       regex: /\bpokemon|pok[eé]mon|pakiman|pikachu|eevee\b/i,
       tokens: ["pokemon", "pokémon", "switch", "nintendo"],
     },
@@ -868,6 +872,9 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] Camera query detected, searching for: "${searchQuery}"`,
         );
+      } else if (/\bdiablo\b/i.test(lowerQuery)) {
+        searchQuery = "diablo";
+        console.log(`[VectorSearch] Diablo detected, searching for: "${searchQuery}"`);
       }
 
       const cleanedQuery = cleanQueryForSearch(searchQuery);

@@ -5545,16 +5545,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           ? message.substring(0, 120)
           : `Session ${nowIso.substring(0, 10)}`);
 
+      const logSource = mode === "voice" ? "chatkit_voice" : "chatkit";
       await supabase.from("chat_logs").insert({
         session_id: sessionId,
         user_id: sessionId,
         prompt: message,
         response: finalResponse,
-        source: mode === "voice" ? "chatkit_voice" : "chatkit",
+        source: logSource,
         status: errorMessage ? "error" : "success",
         turn_index: turnIndex,
         created_at: nowIso,
         session_name: sessionDisplayName,
+        metadata: { channel: mode === "voice" ? "voice" : "text" },
       });
     } catch (logError) {
       console.error("[ChatKit] Supabase logging error:", logError);
