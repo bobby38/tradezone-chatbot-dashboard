@@ -997,7 +997,8 @@ export async function handleVectorSearch(
             (budgetInstruction ? budgetInstruction : "") +
             `- Show ALL products to the user with a brief intro\n` +
             `- NEVER add products not in this list - they don't exist (no Anthem, Hades, Chorvs, etc.)\n` +
-            `- Copy product names and prices EXACTLY as written below\n\n` +
+            `- Copy the product list EXACTLY including images ![...](url), links [View Product](url), and formatting\n` +
+            `- DO NOT rewrite or reformat - paste it directly\n\n` +
             `PRODUCT DATA TO SHOW USER:\n---START PRODUCT LIST---\n` +
             wooSection +
             "\n---END PRODUCT LIST---";
