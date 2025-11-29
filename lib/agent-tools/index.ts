@@ -200,9 +200,32 @@ async function loadWooProducts(): Promise<Map<number, WooProduct>> {
     }
 
     const parsed = JSON.parse(raw) as WooProduct[];
+
+    // 🔴 FILTER OUT HALLUCINATED/TEST PRODUCTS
+    const HALLUCINATED_PRODUCTS = [
+      "Anthem",
+      "Hades",
+      "Ether",
+      "Vampyr",
+      "Test",
+    ];
+    const filtered = parsed.filter((product) => {
+      const name = product.name || "";
+      return !HALLUCINATED_PRODUCTS.some((fake) =>
+        new RegExp(`\\b${fake}\\b`, "i").test(name),
+      );
+    });
+
     const map = new Map<number, WooProduct>();
-    parsed.forEach((product) => map.set(product.id, product));
+    filtered.forEach((product) => map.set(product.id, product));
     wooProductsCache = { map, loadedAt: Date.now() };
+
+    const removedCount = parsed.length - filtered.length;
+    if (removedCount > 0) {
+      console.log(
+        `[agent-tools] 🔴 Filtered out ${removedCount} hallucinated/test products`,
+      );
+    }
     console.log(
       `[agent-tools] ✅ Loaded ${map.size} WooCommerce products from ${WOO_PRODUCTS_PATH.startsWith("http") ? "URL" : "local file"}`,
     );
