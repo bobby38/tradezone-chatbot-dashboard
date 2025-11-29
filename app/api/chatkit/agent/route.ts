@@ -661,7 +661,7 @@ const TRADE_IN_DEVICE_HINTS =
   /\b(ps ?5|ps ?4|playstation|xbox|switch|steam deck|rog ally|legion go|msi claw|meta quest|dji osmo|iphone|ipad|samsung|mobile phone|console|handheld)\b/i;
 
 const TRADE_IN_ACTION_HINTS =
-  /\b(trade|tra[iy]n|sell|worth|value|quote|offer|top[- ]?up)\b/i;
+  /\b(trade|tra[iy]n|train|sell|worth|value|quote|offer|top[- ]?up)\b/i;
 
 const CONVERSATION_EXIT_PATTERNS =
   /\b(never\s?-?\s?mind|forget\s+it|no\s+need|cancel\s+that|stop\s+please|bye|goodbye|its\s+ok|it's\s+ok|leave\s+it|nvm)\b/i;
@@ -4859,7 +4859,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const execFinalCompletion = async () => {
           const isGemini = textModel.toLowerCase().includes("gemini");
 
-          if (isGemini && process.env.GEMINI_API_KEY) {
+          const hasTools =
+            assistantMessage.tool_calls &&
+            assistantMessage.tool_calls.length > 0 &&
+            assistantTools.length > 0;
+
+          // Gemini tools schema differs; if tools are present, skip Gemini to avoid schema errors
+          if (isGemini && process.env.GEMINI_API_KEY && !hasTools) {
             try {
               return await createGeminiChatCompletion({
                 model: textModel,
