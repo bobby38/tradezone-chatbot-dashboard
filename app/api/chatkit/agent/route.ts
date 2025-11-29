@@ -2042,6 +2042,36 @@ function isPhotoStepAcknowledged(
   return false;
 }
 
+async function syncPhotoNoteWithMedia(
+  leadId: string,
+  detail: any,
+): Promise<any> {
+  if (
+    detail &&
+    Array.isArray(detail.trade_in_media) &&
+    detail.trade_in_media.length > 0 &&
+    typeof detail.notes === "string" &&
+    /photos:\s*not provided/i.test(detail.notes)
+  ) {
+    const cleanedNotes = detail.notes
+      .replace(/photos:\s*not provided[^\n]*/i, "")
+      .trim();
+    const patch: TradeInUpdateInput = {
+      notes: cleanedNotes.length > 0 ? cleanedNotes : null,
+    };
+    try {
+      await updateTradeInLead(leadId, patch);
+      return { ...detail, notes: patch.notes };
+    } catch (noteSyncError) {
+      console.warn(
+        "[ChatKit] Failed to clear placeholder photo note after media upload",
+        { leadId, noteSyncError },
+      );
+    }
+  }
+  return detail;
+}
+
 async function autoSubmitTradeInLeadIfComplete(params: {
   leadId: string;
   requestId: string;
@@ -2051,6 +2081,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
 }): Promise<{ status?: string } | null> {
   try {
     let detail = await getTradeInLeadDetail(params.leadId);
+    detail = await syncPhotoNoteWithMedia(params.leadId, detail);
     if (!detail) return null;
 
     const alreadyNotified = Array.isArray(detail.trade_in_actions)
@@ -2467,6 +2498,9 @@ async function buildTradeInSummary(
         .maybeSingle();
       lead = fetched;
     }
+
+    // If photos arrived later, clear any stale "Photos: Not provided" note
+    lead = await syncPhotoNoteWithMedia(leadId, lead);
 
     if (!lead) return null;
 
@@ -4314,17 +4348,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               try {
                 const detailBeforeSubmit =
                   await getTradeInLeadDetail(tradeInLeadId);
-                let photosOk = isPhotoStepAcknowledged(
+                let hydratedDetail = await syncPhotoNoteWithMedia(
+                  tradeInLeadId,
                   detailBeforeSubmit,
+                );
+                let photosOk = isPhotoStepAcknowledged(
+                  hydratedDetail,
                   truncatedHistory,
                 );
 
                 // Try to backfill missing contact just before submit, in case the model forgot to call update
                 if (
-                  detailBeforeSubmit &&
-                  (!detailBeforeSubmit.contact_phone ||
-                    !detailBeforeSubmit.contact_email ||
-                    !detailBeforeSubmit.contact_name)
+                  hydratedDetail &&
+                  (!hydratedDetail.contact_phone ||
+                    !hydratedDetail.contact_email ||
+                    !hydratedDetail.contact_name)
                 ) {
                   const recentUserConcat = truncatedHistory
                     .filter((m) => m.role === "user")
@@ -4333,17 +4371,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                     .join(" ");
                   const clues = extractTradeInClues(recentUserConcat);
                   const contactPatch: TradeInUpdateInput = {};
-                  if (!detailBeforeSubmit.contact_name && clues.contact_name) {
+                  if (!hydratedDetail.contact_name && clues.contact_name) {
                     contactPatch.contact_name = clues.contact_name;
                   }
                   if (
-                    !detailBeforeSubmit.contact_phone &&
+                    !hydratedDetail.contact_phone &&
                     clues.contact_phone
                   ) {
                     contactPatch.contact_phone = clues.contact_phone;
                   }
                   if (
-                    !detailBeforeSubmit.contact_email &&
+                    !hydratedDetail.contact_email &&
                     clues.contact_email
                   ) {
                     contactPatch.contact_email = clues.contact_email;
@@ -4351,10 +4389,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   if (Object.keys(contactPatch).length > 0) {
                     await updateTradeInLead(tradeInLeadId, contactPatch);
                     const refreshed = await getTradeInLeadDetail(tradeInLeadId);
-                    photosOk = isPhotoStepAcknowledged(
+                    hydratedDetail = await syncPhotoNoteWithMedia(
+                      tradeInLeadId,
                       refreshed,
-                      truncatedHistory,
                     );
+                    photosOk = isPhotoStepAcknowledged(hydratedDetail, truncatedHistory);
                   }
                 }
 

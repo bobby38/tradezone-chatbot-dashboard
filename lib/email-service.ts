@@ -25,6 +25,12 @@ export interface EmailNotificationData {
 }
 
 export class EmailService {
+  private static mask(value?: string | null) {
+    if (!value) return "MISSING";
+    if (value.length <= 4) return "***";
+    return `${value.slice(0, 2)}***${value.slice(-2)}`;
+  }
+
   static async getSmtpConfig() {
     if (process.env.SMTP_CONFIG_SOURCE === "env") {
       return buildEnvSmtpConfig();
@@ -196,7 +202,21 @@ export class EmailService {
 
       return true;
     } catch (error) {
-      console.error("Failed to send form notification email:", error);
+      console.error("Failed to send form notification email:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        code: (error as any)?.code,
+        response: (error as any)?.response,
+        command: (error as any)?.command,
+        smtpHost: process.env.SMTP_HOST || "unset",
+        smtpPort: process.env.SMTP_PORT || "unset",
+        smtpUser: this.mask(process.env.SMTP_USER),
+        fromEmail: this.mask(process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER),
+        configSource: process.env.SMTP_CONFIG_SOURCE || "db/env",
+        defaultOrg: process.env.NEXT_PUBLIC_DEFAULT_ORG_ID || "unset",
+        referenceCode: data.referenceCode || data.submissionId,
+        type: data.type,
+      });
       return false;
     }
   }

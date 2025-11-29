@@ -259,6 +259,11 @@ function extractProductCategory(query: string): string | null {
       category: "mouse",
     },
     { pattern: /\b(headsets?|headphones?|earphones?)\b/i, category: "audio" },
+    {
+      pattern:
+        /\b(cameras?|action\s*cams?|vlog|vlogging|youtube|dslr|mirrorless)\b/i,
+      category: "camera",
+    },
   ];
 
   for (const { pattern, category } of categoryPatterns) {
@@ -559,6 +564,21 @@ export async function handleVectorSearch(
   const prependTradeSnippet = (text: string) =>
     tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
+  const dedupeWooProducts = <
+    T extends { permalink?: string | null; name?: string | null }
+  >(
+    products: T[],
+  ): T[] => {
+    const seen = new Set<string>();
+    return products.filter((p) => {
+      const key = (p.permalink || p.name || "")?.toLowerCase();
+      if (!key) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   const detectPlatform = (name?: string) => {
     if (!name) return "other";
     const lower = name.toLowerCase();
@@ -689,10 +709,33 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] Wrestling detected, searching for: "${searchQuery}"`,
         );
+      } else if (
+        /\b(headsets?|headphones?|earbuds?|earphones?|gaming\s*headset)\b/i.test(
+          lowerQuery,
+        )
+      ) {
+        searchQuery = "gaming headset";
+        console.log(
+          `[VectorSearch] Headset detected, searching for: "${searchQuery}"`,
+        );
+      } else if (
+        /\b(camera|vlog|vlogging|youtube|action\s*cam|osmo|gopro)\b/i.test(
+          lowerQuery,
+        )
+      ) {
+        // Anchor camera queries to camera terms to avoid handheld/console matches
+        if (!/osmo|gopro|insta\s*360/i.test(lowerQuery)) {
+          searchQuery = "dji osmo camera";
+        }
+        console.log(
+          `[VectorSearch] Camera query detected, searching for: "${searchQuery}"`,
+        );
       }
 
       const cleanedQuery = cleanQueryForSearch(searchQuery);
-      wooProducts = await searchWooProducts(cleanedQuery, wooLimit);
+      wooProducts = dedupeWooProducts(
+        await searchWooProducts(cleanedQuery, wooLimit),
+      );
 
       // Sort by price if user wants cheap options
       sortProductsByPrice(wooProducts, query);
@@ -732,6 +775,77 @@ export async function handleVectorSearch(
           wooProducts = [...prioritized, ...remainder];
           console.log(
             `[VectorSearch] ✅ Re-ordered ${wooProducts.length} products, ${prioritized.length} canonical titles first`,
+          );
+        }
+      }
+
+      // Camera intent filter: remove handheld/console matches from camera queries
+      const isCameraIntent =
+        /\b(camera|vlog|youtube|action\s*cam|osmo|gopro|pocket\s*3)\b/i.test(
+          lowerQuery,
+        );
+      if (isCameraIntent && wooProducts.length > 0) {
+        const cameraKeep = [/camera/, /osmo/, /gopro/, /insta\s*360/, /pocket\s*3/];
+        const cameraExclude = [/retroid/, /\bconsole\b/, /\bhandheld\b/, /neogeo/];
+        const filtered = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          if (cameraExclude.some((re) => re.test(name))) return false;
+          return cameraKeep.some((re) => re.test(name));
+        });
+        if (filtered.length > 0) {
+          wooProducts = filtered;
+          console.log(
+            `[VectorSearch] Camera intent: filtered to ${filtered.length} camera products`,
+          );
+        }
+      }
+
+      // Headset intent filter: keep audio/headset products, drop PCs/GPUs/monitors/handhelds
+      const isHeadsetIntent =
+        /\b(headsets?|headphones?|earbuds?|earphones?|gaming\s*headset)\b/i.test(
+          lowerQuery,
+        );
+      if (isHeadsetIntent && wooProducts.length > 0) {
+        const headsetKeep = [
+          /headset/,
+          /headphone/,
+          /earbud/,
+          /earphone/,
+          /pulse/,
+          /inzone/,
+          /cloud/,
+          /steelseries/,
+          /jabra/,
+          /sony/,
+          /bose/,
+          /soundcore/,
+          /logitech/,
+          /corsair/,
+          /astro/,
+        ];
+        const headsetExclude = [
+          /\bgpu\b/,
+          /\brtc\b/,
+          /\bpc\b/,
+          /\blaptop\b/,
+          /\bdesktop\b/,
+          /monitor/,
+          /retroid/,
+          /handheld/,
+          /console/,
+          /legion\s+go/,
+          /gigabyte/,
+          /zotac/,
+        ];
+        const filtered = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          if (headsetExclude.some((re) => re.test(name))) return false;
+          return headsetKeep.some((re) => re.test(name));
+        });
+        if (filtered.length > 0) {
+          wooProducts = filtered;
+          console.log(
+            `[VectorSearch] Headset intent: filtered to ${filtered.length} headset products`,
           );
         }
       }
@@ -997,10 +1111,12 @@ export async function handleVectorSearch(
           const deterministicResponse = wooProducts.length > 0
             ? `${summaryPrefix}${intro}${wooSection}`
             : intro;
-          const wrappedResponse = `<<<DETERMINISTIC_START>>>${deterministicResponse}<<<DETERMINISTIC_END>>>`;
+          const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
+            deterministicResponse,
+          )}<<<DETERMINISTIC_END>>>`;
 
           return {
-            text: prependTradeSnippet(wrappedResponse),
+            text: wrappedResponse,
             store: "product_catalog",
             matches: [],
             wooProducts: wooPayload,
@@ -1043,10 +1159,12 @@ export async function handleVectorSearch(
           // DETERMINISTIC RESPONSE - wrap in special markers so route.ts can extract and use directly
           const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
           const deterministicResponse = intro + listText + moreText;
-          const wrappedResponse = `<<<DETERMINISTIC_START>>>${deterministicResponse}<<<DETERMINISTIC_END>>>`;
+          const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
+            deterministicResponse,
+          )}<<<DETERMINISTIC_END>>>`;
 
           return {
-            text: prependTradeSnippet(wrappedResponse),
+            text: wrappedResponse,
             store: "product_catalog",
             matches: [],
             wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
@@ -1093,10 +1211,12 @@ export async function handleVectorSearch(
         // DETERMINISTIC RESPONSE - return directly to user without LLM rewriting
         const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
         const deterministicResponse = summaryPrefix + intro + listText + moreText;
-        const wrappedResponse = `<<<DETERMINISTIC_START>>>${deterministicResponse}<<<DETERMINISTIC_END>>>`;
+        const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
+          deterministicResponse,
+        )}<<<DETERMINISTIC_END>>>`;
 
         return {
-          text: prependTradeSnippet(wrappedResponse),
+          text: wrappedResponse,
           store: "product_catalog",
           matches: [],
           wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
@@ -1245,9 +1365,8 @@ export async function handleVectorSearch(
                     "@/lib/agent-tools"
                   );
                   const cleanedFallbackQuery = cleanQueryForSearch(query);
-                  const wooResults = await searchWooProducts(
-                    cleanedFallbackQuery,
-                    5,
+                  const wooResults = dedupeWooProducts(
+                    await searchWooProducts(cleanedFallbackQuery, 5),
                   );
 
                   // Sort by price if user wants cheap options
