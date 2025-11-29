@@ -5114,3 +5114,7 @@ After deployment, test:
 3. **Production Data Reveals Edge Cases**: "3 months" not matching `/installment/` pattern
 4. **Perplexity for Live Data**: Promotions/sales need real-time website crawling
 5. **Voice/Text Parity**: Both agents need identical anti-hallucination rules
+
+### Deploy / DB notes (2025-11-29)
+
+- Run `supabase/migrations/20251129_add_chatlog_metadata_channel.sql` to add `metadata` + `channel` columns to `chat_logs`. This unblocks voice transcripts from being logged and visible in the dashboard/export filters (`channel:voice`).
