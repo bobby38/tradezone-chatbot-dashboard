@@ -4861,42 +4861,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       if (!finalResponse && !skipLLMForTradeUp) {
         // If no suggestion was made
         const execFinalCompletion = async () => {
-          const isGemini = textModel.toLowerCase().includes("gemini");
-
-          const hasTools =
-            Array.isArray(assistantMessage.tool_calls) &&
-            assistantMessage.tool_calls.length > 0;
-
-          // If any tools are present, force OpenAI to avoid Gemini tool schema errors
-          if (hasTools || !process.env.GEMINI_API_KEY || !isGemini) {
-            return openai.chat.completions.create({
-              model: textModel.includes("gemini") ? "gpt-4o-mini" : textModel,
-              messages,
-              temperature: 0.7,
-              max_tokens: 800,
-            });
-          }
-
-          // Gemini path (no tools)
-          try {
-            return await createGeminiChatCompletion({
-              model: textModel,
-              messages,
-              temperature: 0.7,
-              max_tokens: 800,
-            });
-          } catch (geminiError) {
-            console.error(
-              `[ChatKit] Gemini failed, falling back to OpenAI:`,
-              geminiError,
-            );
-            return openai.chat.completions.create({
-              model: "gpt-4o-mini",
-              messages,
-              temperature: 0.7,
-              max_tokens: 800,
-            });
-          }
+          return openai.chat.completions.create({
+            model: textModel.includes("gemini") ? "gpt-4o-mini" : textModel,
+            messages,
+            temperature: 0.7,
+            max_tokens: 800,
+          });
         };
 
         let finalCompletion;
