@@ -611,7 +611,10 @@ export async function handleVectorSearch(
     { regex: /\bronald|messi|madrid|barca|barcelona|man\s*united|man\s*u\b|liverpool|premier\s+league|fifa\b|fc\s2[34]/i, tokens: ["fifa", "fc"] },
     { regex: /\bpeter\s+parker|spidey|spider-?man/i, tokens: ["spider", "spider-man"] },
     { regex: /\bhyrule|link\b/i, tokens: ["zelda"] },
-    { regex: /\bpikachu|eevee|pokemon/i, tokens: ["pokemon"] },
+    {
+      regex: /\bpikachu|eevee|pokemon|pok[eé]mon|pakiman|pakimon/i,
+      tokens: ["pokemon", "pokémon", "switch", "nintendo"],
+    },
     { regex: /\bkratos|atreus|ragnarok|god\s+of\s+war/i, tokens: ["god of war"] },
     { regex: /\bmaster\s+chief|halo\b/i, tokens: ["halo"] },
     { regex: /\bvice\s+city|san\s+andreas|gta\b/i, tokens: ["gta"] },
@@ -619,6 +622,10 @@ export async function handleVectorSearch(
       regex:
         /\bsuper\s*hero|superhero|avengers?|marvel|dc\b|batman|superman|iron\s*man|captain\s+america|wolverine|thor\b/i,
       tokens: ["marvel", "avengers", "spider-man", "batman"],
+    },
+    {
+      regex: /\bpokemon|pok[eé]mon|pakiman|pikachu|eevee\b/i,
+      tokens: ["pokemon", "pokémon", "switch", "nintendo"],
     },
   ];
 

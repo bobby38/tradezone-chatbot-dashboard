@@ -5533,7 +5533,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         sessionName,
         clientIp,
         userAgent: requestContext.user_agent,
-        metadata: { channel: "text" },
+        metadata: { channel: mode === "voice" ? "voice" : "text" },
       });
 
       const turnIndex = await getNextTurnIndex(supabase, sessionId);
@@ -5550,7 +5550,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         user_id: sessionId,
         prompt: message,
         response: finalResponse,
-        source: "chatkit",
+        source: mode === "voice" ? "chatkit_voice" : "chatkit",
         status: errorMessage ? "error" : "success",
         turn_index: turnIndex,
         created_at: nowIso,
