@@ -564,6 +564,48 @@ export async function handleVectorSearch(
   const prependTradeSnippet = (text: string) =>
     tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
+  // Early sale/promo/latest intent: use Perplexity live lookup, skip Woo/vector
+  const saleIntentEarly =
+    /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+      query.toLowerCase(),
+    );
+  if (saleIntentEarly) {
+    try {
+      const { handlePerplexitySearch } = await import("./perplexitySearch");
+      const perplexityQuery = `${query} site:tradezone.sg latest prices`;
+      console.log(
+        `[VectorSearch] Early sale/latest intent; querying Perplexity: "${perplexityQuery}"`,
+      );
+      const perplexityResult = await handlePerplexitySearch(perplexityQuery);
+      if (
+        perplexityResult &&
+        !perplexityResult.includes("No results found") &&
+        !perplexityResult.includes("error")
+      ) {
+        return {
+          text: perplexityResult,
+          store: resolvedStore.label,
+          matches: [],
+          wooProducts: [],
+        };
+      }
+    } catch (perplexityError) {
+      console.error(
+        "[VectorSearch] Early Perplexity sale/latest lookup failed:",
+        perplexityError,
+      );
+    }
+    const saleLink = "https://tradezone.sg/?s=sale";
+    const bfLink = "https://tradezone.sg/?s=black+friday";
+    const latestLink = "https://tradezone.sg/?s=new";
+    return {
+      text: `Current offers:\n- Black Friday/Cyber: ${bfLink}\n- All sales: ${saleLink}\n- New arrivals: ${latestLink}\nShare a product name/link and I'll fetch its latest price.`,
+      store: resolvedStore.label,
+      matches: [],
+      wooProducts: [],
+    };
+  }
+
   // Lightweight entity → token hints to make implicit queries smarter without LLM prompts
   const ENTITY_HINT_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
     { regex: /\bronald|messi|madrid|barca|barcelona|man\s*united|man\s*u\b|liverpool|premier\s+league|fifa\b|fc\s2[34]/i, tokens: ["fifa", "fc"] },
