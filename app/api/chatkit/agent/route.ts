@@ -4862,6 +4862,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           const hasTools =
             assistantMessage.tool_calls &&
             assistantMessage.tool_calls.length > 0 &&
+            Array.isArray(assistantTools) &&
             assistantTools.length > 0;
 
           // Gemini tools schema differs; if tools are present, skip Gemini to avoid schema errors
