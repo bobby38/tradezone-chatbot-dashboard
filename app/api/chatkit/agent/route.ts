@@ -4779,6 +4779,20 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         (precomputedTradeUp.tradeValue != null ||
           precomputedTradeUp.retailPrice != null);
 
+      // 🔴 DETERMINISTIC: Generate trade-up response without LLM
+      if (!finalResponse && skipLLMForTradeUp && tradeUpParts) {
+        const tradeValue = precomputedTradeUp.tradeValue ?? 0;
+        const retailPrice = precomputedTradeUp.retailPrice ?? 0;
+        const topUp = Math.max(0, retailPrice - tradeValue);
+
+        finalResponse =
+          `${tradeUpParts.source} ~${formatCurrency(tradeValue)}. ` +
+          `${tradeUpParts.target} ${formatCurrency(retailPrice)}. ` +
+          `Top-up ~${formatCurrency(topUp)} (subject to inspection/stock).`;
+
+        console.log("[ChatKit] 🔒 Deterministic trade-up response:", finalResponse);
+      }
+
       // 🔴 CRITICAL: For phone/tablet queries, bypass LLM to prevent hallucination
       // Extract clean WooCommerce list and return directly (no LLM processing)
       if (!finalResponse && lastSearchProductsResult) {
