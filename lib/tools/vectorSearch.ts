@@ -983,15 +983,20 @@ export async function handleVectorSearch(
             ? `${budgetSummaryLine}\n\n`
             : "";
 
+          const categoryNote = categoryLabel
+            ? `- These ARE ${categoryLabel}s from our Handphone category - show ALL of them even if product names don't contain the word "${categoryLabel}"\n`
+            : "";
+
           const antiHallucinationNote =
             `\n\n${summaryPrefix}🔴 INSTRUCTIONS FOR YOU (DO NOT SHOW TO USER):\n` +
             `- User asked: "${query}"\n` +
             `- Below are ${wooProducts.length} products from WooCommerce (our ONLY inventory)\n` +
+            categoryNote +
             affordableHint +
             priceRangeHint +
             (budgetInstruction ? budgetInstruction : "") +
             `- Show ALL products to the user with a brief intro\n` +
-            `- NEVER add products not in this list - they don't exist (no Anthem, Hades, etc.)\n` +
+            `- NEVER add products not in this list - they don't exist (no Anthem, Hades, Chorvs, etc.)\n` +
             `- Copy product names and prices EXACTLY as written below\n\n` +
             `PRODUCT DATA TO SHOW USER:\n---START PRODUCT LIST---\n` +
             wooSection +
