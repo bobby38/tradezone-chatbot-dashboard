@@ -58,6 +58,12 @@ interface ChatLog {
 }
 
 const DEFAULT_PAGE_SIZE = 25;
+const SORT_FIELDS = {
+  date: "created_at",
+  channel: "channel",
+  turns: "turn_index",
+  status: "status",
+} as const;
 
 export default function ChatLogsPage() {
   const [logs, setLogs] = useState<ChatLog[]>([]);
@@ -71,6 +77,11 @@ export default function ChatLogsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "success" | "error">(
     "all",
   );
+  const [channelFilter, setChannelFilter] = useState<"all" | "voice" | "text">(
+    "all",
+  );
+  const [sortField, setSortField] = useState<keyof typeof SORT_FIELDS>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -78,7 +89,6 @@ export default function ChatLogsPage() {
       let query = supabase
         .from("chat_logs")
         .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
         .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
 
       if (searchTerm) {
@@ -87,11 +97,19 @@ export default function ChatLogsPage() {
         );
       }
 
-      // Channel filter shortcuts: "channel:voice" shows both chatkit_voice + chatkit (some voice calls log as chatkit)
-      if (/channel:voice/i.test(searchTerm)) {
-        query = query.in("source", ["chatkit_voice", "chatkit"]);
-      } else if (/channel:text/i.test(searchTerm)) {
-        query = query.eq("source", "chatkit");
+      // Channel filter shortcuts: "channel:voice" OR dropdown filter
+      const channelFromSearch = /channel:voice/i.test(searchTerm)
+        ? "voice"
+        : /channel:text/i.test(searchTerm)
+          ? "text"
+          : null;
+
+      const channelChoice = channelFromSearch || (channelFilter !== "all" ? channelFilter : null);
+
+      if (channelChoice === "voice") {
+        query = query.in("source", ["chatkit_voice", "chatkit"]).filter("channel", "eq", "voice");
+      } else if (channelChoice === "text") {
+        query = query.in("source", ["chatkit", "chatkit_voice"]).filter("channel", "neq", "voice");
       } else {
         // Default: include both sources so voice entries are visible without a filter
         query = query.in("source", ["chatkit", "chatkit_voice"]);
@@ -99,6 +117,13 @@ export default function ChatLogsPage() {
 
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
+      }
+
+      // Sorting
+      const orderColumn = SORT_FIELDS[sortField];
+      query = query.order(orderColumn, { ascending: sortDir === "asc" });
+      if (orderColumn !== "created_at") {
+        query = query.order("created_at", { ascending: false });
       }
 
       const { data, error, count } = await query;
@@ -117,6 +142,19 @@ export default function ChatLogsPage() {
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
+
+  const toggleSort = (field: keyof typeof SORT_FIELDS) => {
+    setSortField((prevField) => {
+      if (prevField === field) {
+        // toggle direction
+        setSortDir((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
+        return prevField;
+      }
+      // new field, reset to desc
+      setSortDir("desc");
+      return field;
+    });
+  };
 
   const handleDelete = async (logIds: string[]) => {
     if (!confirm(`Are you sure you want to delete ${logIds.length} log(s)?`)) {
@@ -218,6 +256,24 @@ export default function ChatLogsPage() {
                   <SelectItem value="error">Error</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Channel filter */}
+              <Select
+                value={channelFilter}
+                onValueChange={(v) => {
+                  setChannelFilter(v as "all" | "voice" | "text");
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Channel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Channels</SelectItem>
+                  <SelectItem value="voice">Voice</SelectItem>
+                  <SelectItem value="text">Text</SelectItem>
+                </SelectContent>
+              </Select>
               {/* Page size */}
               <Select
                 value={String(pageSize)}
@@ -302,14 +358,44 @@ export default function ChatLogsPage() {
                         className="rounded"
                       />
                     </TableHead>
-                    <TableHead>Session ID</TableHead>
+                    <TableHead
+                      role="button"
+                      className="cursor-pointer"
+                      onClick={() => toggleSort("date")}
+                    >
+                      Session ID
+                    </TableHead>
                     <TableHead>
                       {showResponse ? "Response" : "Prompt"}
                     </TableHead>
-                    <TableHead>Channel</TableHead>
-                    <TableHead>Turns</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead
+                      role="button"
+                      className="cursor-pointer"
+                      onClick={() => toggleSort("channel")}
+                    >
+                      Channel
+                    </TableHead>
+                    <TableHead
+                      role="button"
+                      className="cursor-pointer"
+                      onClick={() => toggleSort("turns")}
+                    >
+                      Turns
+                    </TableHead>
+                    <TableHead
+                      role="button"
+                      className="cursor-pointer"
+                      onClick={() => toggleSort("status")}
+                    >
+                      Status
+                    </TableHead>
+                    <TableHead
+                      role="button"
+                      className="cursor-pointer"
+                      onClick={() => toggleSort("date")}
+                    >
+                      Date
+                    </TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
