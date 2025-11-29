@@ -1126,9 +1126,19 @@ export async function handleVectorSearch(
           };
 
           const categoryLink = categoryLinks[detectedCategory || ""];
-          const categoryText = categoryLink
-            ? `I don't have exact matches for "${query}" in my records, but you can browse all our ${detectedCategory}s here: [View ${detectedCategory}s](${categoryLink})`
-            : `I don't have any ${detectedCategory}s matching "${query}" in my records right now.`;
+
+          let categoryText = "";
+          if (categoryLink) {
+            // Found category - direct user to browse
+            categoryText = `I don't have exact matches for "${query}" in my records, but you can browse all our ${detectedCategory}s here: [View ${detectedCategory}s](${categoryLink})`;
+          } else {
+            // No category or unknown category - suggest popular alternatives
+            categoryText = `I don't have exact matches for "${query}" in my records. You might want to check out:\n\n` +
+              `• [Latest Games](https://tradezone.sg/product-category/console-games/)\n` +
+              `• [Gaming Consoles](https://tradezone.sg/product-category/console/)\n` +
+              `• [Popular Accessories](https://tradezone.sg/product-category/accessories/)\n\n` +
+              `Or tell me what you're looking for and I'll help you find it!`;
+          }
 
           return {
             text: categoryText,
