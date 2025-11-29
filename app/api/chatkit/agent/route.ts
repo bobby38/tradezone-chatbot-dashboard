@@ -5455,6 +5455,22 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
     }
 
+    // If the response contains numbered bullets with product names but no links, append links for voice/text parity
+    if (!/https?:\/\//i.test(finalResponse) && Array.isArray(lastSearchProductsResult)) {
+      // no-op: lastSearchProductsResult is string; keep fallback below
+    }
+    if (!/https?:\/\//i.test(finalResponse) && typeof lastSearchProductsResult === "string") {
+      // Try to extract URLs from the last tool result if present
+      const urlMatches = lastSearchProductsResult.match(/https?:\/\/\S+/g) || [];
+      if (urlMatches.length > 0) {
+        const linkLines = urlMatches
+          .slice(0, 5)
+          .map((u, idx) => `${idx + 1}. Link: ${u}`)
+          .join("\n");
+        finalResponse = `${finalResponse}\n\nLinks:\n${linkLines}`.trim();
+      }
+    }
+
     const nowIso = new Date().toISOString();
     const latencyMs = Date.now() - startedAt;
     const totalTokens = promptTokens + completionTokens;

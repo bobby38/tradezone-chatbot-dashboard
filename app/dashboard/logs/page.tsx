@@ -87,6 +87,13 @@ export default function ChatLogsPage() {
         );
       }
 
+      // Optional channel filter via search term shortcuts: "channel:voice" or "channel:text"
+      if (/channel:voice/i.test(searchTerm)) {
+        query = query.eq("source", "chatkit_voice");
+      } else if (/channel:text/i.test(searchTerm)) {
+        query = query.eq("source", "chatkit");
+      }
+
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
       }
