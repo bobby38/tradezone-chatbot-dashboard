@@ -5545,8 +5545,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           ? message.substring(0, 120)
           : `Session ${nowIso.substring(0, 10)}`);
 
-      // Use voice-specific source for dashboard filters; include channel metadata
-      const logSource = mode === "voice" ? "chatkit_voice" : "chatkit";
+      // Use unified source for dashboard visibility; channel differentiates voice/text
+      const logSource = "chatkit";
       await supabase.from("chat_logs").insert({
         session_id: sessionId,
         user_id: sessionId,
@@ -5559,6 +5559,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         session_name: sessionDisplayName,
         metadata: { channel: mode === "voice" ? "voice" : "text" },
       });
+      console.log(
+        `[ChatKit] Logged chat turn to chat_logs (source=${logSource}, channel=${mode === "voice" ? "voice" : "text"}, sessionId=${sessionId}, turn=${turnIndex})`,
+      );
     } catch (logError) {
       console.error("[ChatKit] Supabase logging error:", logError);
     }
