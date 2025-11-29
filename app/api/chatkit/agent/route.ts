@@ -3712,6 +3712,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           messages.push({ role: "system", content }),
         );
 
+        // Trade-in conversational discipline: one question at a time, full checklist, recap before submit
+        if (tradeInIntent || tradeUpPairIntent) {
+          messages.push({
+            role: "system",
+            content:
+              "Trade-in flow: ask ONE question at a time. Required fields before submit: name, phone (8+ digits), email, device brand/model/storage, condition, accessories, payout preference. After contact is captured, prompt ONCE for photos; if declined, note 'Photos: Not provided — final quote on inspection.' Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout, contact, photos line, and ask for confirmation. Do NOT submit until contact (name/phone/email) is filled. Avoid repeating already captured fields; acknowledge user when they ask to go slowly.",
+          });
+        }
+
         // In trade-up mode, mark payout as top-up so auto-submit isn't blocked later
         if (
           tradeUpPairIntent &&
