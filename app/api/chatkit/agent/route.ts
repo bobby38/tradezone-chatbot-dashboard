@@ -3832,11 +3832,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       isTradeInPricingQuery = true;
     }
 
+    const saleIntent =
+      /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+        message,
+      );
+
     const shouldForceCatalog =
       !quoteAlreadyGiven && // Don't force search if quote already given
       (tradeUpPairIntent ||
         isTradeInPricingQuery ||
         isProductInfoQuery ||
+        saleIntent ||
         Boolean(productSlug));
 
     const toolChoice = shouldForceCatalog
@@ -3910,10 +3916,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     let imageStrippedForTimeout = false;
 
     const execChatCompletion = async () => {
-      // Check if using Gemini model
       const isGemini = textModel.toLowerCase().includes("gemini");
+      const hasTools = Array.isArray(tools) && tools.length > 0;
 
-      if (isGemini && process.env.GEMINI_API_KEY) {
+      // If tools are present, skip Gemini to avoid schema issues
+      if (!(hasTools || !process.env.GEMINI_API_KEY || !isGemini)) {
         try {
           console.log(`[ChatKit] Using Gemini model: ${textModel}`);
           return await createGeminiChatCompletion({
