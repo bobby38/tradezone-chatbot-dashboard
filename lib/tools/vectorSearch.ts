@@ -308,11 +308,11 @@ function enrichQueryWithCategory(query: string): string {
 }
 
 function cleanQueryForSearch(query: string): string {
-  // Remove price-related keywords that confuse WooCommerce search
+  // Remove price-related keywords and noise words that confuse WooCommerce search
   // These keywords guide LLM response but shouldn't filter products
-  const priceKeywords =
-    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive|expensive|premium|high-end|low-end|entry-level|best|top|popular|trending|any|some|all|under|below|above|over|less than|more than|around|approximately|between)\b/gi;
-  const cleaned = query.replace(priceKeywords, "").replace(/\s+/g, " ").trim();
+  const noiseKeywords =
+    /\b(cheap|cheaper|cheapest|affordable|budget|inexpensive|expensive|premium|high-end|low-end|entry-level|best|top|popular|trending|any|some|all|under|below|above|over|less than|more than|around|approximately|between|or)\b/gi;
+  const cleaned = query.replace(noiseKeywords, "").replace(/\s+/g, " ").trim();
 
   if (cleaned !== query) {
     console.log(`[VectorSearch] Cleaned query: "${query}" → "${cleaned}"`);

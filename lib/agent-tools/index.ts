@@ -347,7 +347,7 @@ export async function searchWooProducts(
         }
 
         // CRITICAL: Exclude accessories (chargers, cases, screen protectors, etc.)
-        const accessoryKeywords = [
+        const commonAccessoryKeywords = [
           "charger",
           "charging",
           "cable",
@@ -368,7 +368,7 @@ export async function searchWooProducts(
           "extension",
           "filter",
           "lens",
-          // Exclude audio/wearables when user asked for phones
+          // Exclude audio/wearables when user asked for phones/tablets
           "headphone",
           "headphones",
           "earbud",
@@ -380,12 +380,17 @@ export async function searchWooProducts(
           "buds",
           "airpods",
           "sony wh-",
-          // Exclude tablets when explicitly in phone path
-          "tablet",
-          "tab ",
-          "galaxy tab",
         ];
-        const isAccessory = accessoryKeywords.some((keyword) =>
+
+        // Additional exclusions ONLY for phone category (not tablet)
+        const phoneOnlyExclusions =
+          categoryFilter === "phone" ? ["tablet", "tab ", "galaxy tab"] : [];
+
+        const allAccessoryKeywords = [
+          ...commonAccessoryKeywords,
+          ...phoneOnlyExclusions,
+        ];
+        const isAccessory = allAccessoryKeywords.some((keyword) =>
           name.includes(keyword),
         );
         if (isAccessory) {
