@@ -1130,16 +1130,10 @@ export async function handleVectorSearch(
           let categoryText = "";
           if (categoryLink) {
             // Found category - direct user to browse
-            categoryText = `I don't have exact matches for "${query}" in my records, but you can browse all our ${detectedCategory}s here: [View ${detectedCategory}s](${categoryLink})`;
+            categoryText = `I don't have exact matches for "${query}". Browse all ${detectedCategory}s: [View ${detectedCategory}s](${categoryLink})`;
           } else {
-            // No category or unknown category - ask clarifying questions
-            categoryText = `I don't have exact matches for "${query}" in my records. Can you help me narrow it down? What category are you looking for?\n\n` +
-              `• Gaming consoles (PlayStation, Xbox, Switch)?\n` +
-              `• Games (PS5, PS4, Xbox, Switch)?\n` +
-              `• Laptops or computers?\n` +
-              `• Phones or tablets?\n` +
-              `• Gaming accessories (controllers, headsets, etc.)?\n\n` +
-              `Let me know and I'll find what we have!`;
+            // No category - ask what they're looking for
+            categoryText = `I don't have "${query}" in my records. What are you looking for? Gaming consoles, games, laptops, phones, or accessories?`;
           }
 
           return {
