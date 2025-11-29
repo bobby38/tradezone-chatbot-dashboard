@@ -902,12 +902,18 @@ export async function handleVectorSearch(
 
       // Storage intent: prefer storage categories and drop non-storage if possible
       if (detectedCategory === "storage" && wooProducts.length > 0) {
-        const storageFiltered = wooProducts.filter((p) => {
+        let storageFiltered = wooProducts.filter((p) => {
           const cats = (p as any).categories || [];
           return cats.some((c: string) =>
             /\b(storage|hdd|ssd|nvme|hard\s*drive|solid\s*state)\b/i.test(c),
           );
         });
+        if (storageFiltered.length === 0) {
+          // Try a direct storage search if category filter failed
+          storageFiltered = dedupeWooProducts(
+            await searchWooProducts("storage hdd ssd hard drive", wooLimit),
+          );
+        }
         if (storageFiltered.length > 0) {
           wooProducts = storageFiltered;
           console.log(
