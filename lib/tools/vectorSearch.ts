@@ -982,17 +982,20 @@ export async function handleVectorSearch(
             : "";
 
           const antiHallucinationNote =
-            `\n\n${summaryPrefix}🔒 MANDATORY RESPONSE FORMAT:\n---START PRODUCT LIST---\n` +
+            `\n\n${summaryPrefix}🔴 MANDATORY - RETURN THIS RESPONSE WORD-FOR-WORD:\n---START PRODUCT LIST---\n` +
             wooSection +
-            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL INSTRUCTIONS:\n- User's original query: \"" +
+            "\n---END PRODUCT LIST---\n\n🔴 CRITICAL RULES:\n- User's original query: \"" +
             query +
-            '"\n- Show ALL ' +
+            '"\n- These ' +
             wooProducts.length +
-            " products from the list above\n" +
+            " products above are ALL we have\n" +
             affordableHint +
             priceRangeHint +
             (budgetInstruction ? budgetInstruction : "") +
-            '- NEVER say \"no products found\" or \"couldn\'t find\" - the list above IS what we have\n- NEVER add products not in the list (like Hades, iPhone SE, etc.)\n- Format: Brief intro + full product list with cheapest options highlighted';
+            "- Copy the ENTIRE product list to the user EXACTLY as written\n" +
+            '- Do NOT invent products like "Anthem", "Hades", or any product not in the list above\n' +
+            "- Do NOT say 'I found' or add commentary - just return the list with a brief intro\n" +
+            "- If you mention ANY product not in the list above, you are HALLUCINATING";
           return {
             text: prependTradeSnippet(antiHallucinationNote),
             store: "product_catalog",
@@ -1035,10 +1038,15 @@ export async function handleVectorSearch(
             : "";
 
           const antiHallucinationNote =
-            "\n\n🔒 MANDATORY - Copy this EXACTLY to user:\n---START PRODUCT LIST---\n" +
+            "\n\n🔴 MANDATORY - RETURN THIS RESPONSE WORD-FOR-WORD:\n---START PRODUCT LIST---\n" +
             listText +
             moreText +
-            "\n---END PRODUCT LIST---\n\n⚠️ CRITICAL: Copy the product list EXACTLY as shown above (including the 'Showing X of Y' message if present). Do NOT modify names, prices, or add products not in the list.";
+            "\n---END PRODUCT LIST---\n\n🔴 CRITICAL RULES:\n" +
+            `- These ${productsToShow.length} products are ALL we have for "${query}"\n` +
+            "- Copy the ENTIRE product list above to the user EXACTLY as written\n" +
+            "- Do NOT invent products like 'Anthem', 'Hades', or any product not in the list above\n" +
+            "- Do NOT say 'I found' or add commentary - just return the list with a brief intro\n" +
+            "- If you mention ANY product not in the list above, you are HALLUCINATING";
 
           return {
             text: prependTradeSnippet(antiHallucinationNote),
