@@ -5,6 +5,11 @@
 - **Top-level modules** (`app/`): auth/login, dashboard shell, analytics (chat + GA + Woo), chat logs, submissions, emails, insights, WooCommerce, Google Analytics, session detail pages.
 - **Key services**: Supabase database/auth, Google Analytics 4, Search Console (synced into Supabase), WooCommerce API, n8n webhooks, SMTP/SMTP2GO, OpenAI/OpenRouter for AI insights.
 - **Latest documented status**: Phase 1 shipped; Phase 2 deployment checklist in progress as of August 25, 2025 (see `plan.md`).
+- **Nov 29, 2025 – Hardening & UX polish**:
+  - Trade-up payout stays in-memory (no invalid enum writes), eliminating the “issue saving trade-in details” error during submit.
+  - Skip Gemini when tool calls are present to avoid schema 400s; auto-fallback to OpenAI remains.
+  - Trade-up flow always asks once for photos if none are present (non-blocking) and acknowledges when already uploaded.
+  - Woo deterministic lists unchanged; added entity hint re-rank for implicit queries (e.g., Ronaldo→FIFA/FC, Spidey→Spider-Man, Hyrule→Zelda) without adding products or risking hallucinations.
 - **Nov 23, 2025 – Trade-up determinism**: For “trade/upgrade X for Y”, the backend now pre-fetches the trade-in price of **X** and the retail price of **Y** (preowned only if the user says so) and synthesizes a fixed reply:  
   `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`  
   LLM wording is ignored for this step; contact must be captured before payout; photo is a single yes/no prompt and never blocks submission.
