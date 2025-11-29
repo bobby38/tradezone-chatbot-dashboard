@@ -511,6 +511,7 @@ export async function searchWooProducts(
       } else if (categoryFilter === "laptop") {
         // Laptops are identified via Woo categories since product names may omit "laptop"
         const inLaptopCategory = isInCategory(product, "laptop");
+        console.log(`[searchWooProducts] 🔍 Checking laptop category for "${product.name}": inCategory=${inLaptopCategory}, categories=${JSON.stringify(product.categories?.map(c => c.slug))}`);
         if (!inLaptopCategory) {
           return { product, score: 0 };
         }
@@ -541,6 +542,9 @@ export async function searchWooProducts(
   console.log(
     `[searchWooProducts] Scored ${scored.length} products after filtering`,
   );
+  if (categoryFilter) {
+    console.log(`[searchWooProducts] 📋 Category filter "${categoryFilter}" results:`, scored.map(s => s.product.name));
+  }
 
   let results = scored.map(({ product }) => ({
     productId: product.id,

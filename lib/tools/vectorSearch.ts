@@ -932,6 +932,8 @@ export async function handleVectorSearch(
           !!detectedCategory && skipVectorCategories.has(detectedCategory);
         const skipVectorEnrichment = isCategoryBlocked || isControllerQuery;
 
+        console.log(`[VectorSearch] 🔍 Category check: detectedCategory="${detectedCategory}", isCategoryBlocked=${isCategoryBlocked}, skipVectorEnrichment=${skipVectorEnrichment}`);
+
         if (skipVectorEnrichment) {
           const categoryLabel = isControllerQuery
             ? "controller/gamepad"
@@ -1113,10 +1115,23 @@ export async function handleVectorSearch(
 
         if (blockVectorFallback) {
           console.log(
-            `[VectorSearch] ❌ No WooCommerce ${detectedCategory} found - returning "not in stock" (no vector fallback)`,
+            `[VectorSearch] ❌ No WooCommerce ${detectedCategory} found - directing to category page (no vector fallback)`,
           );
+
+          // Category page links
+          const categoryLinks: Record<string, string> = {
+            laptop: "https://tradezone.sg/product-category/laptop/",
+            phone: "https://tradezone.sg/product-category/phones/",
+            tablet: "https://tradezone.sg/product-category/tablet/",
+          };
+
+          const categoryLink = categoryLinks[detectedCategory || ""];
+          const categoryText = categoryLink
+            ? `I don't have exact matches for "${query}" in my records, but you can browse all our ${detectedCategory}s here: [View ${detectedCategory}s](${categoryLink})`
+            : `I don't have any ${detectedCategory}s matching "${query}" in my records right now.`;
+
           return {
-            text: `I checked our catalog and don't have any ${detectedCategory}s matching "${query}" in stock right now.`,
+            text: categoryText,
             store: "product_catalog",
             matches: [],
             wooProducts: [],
