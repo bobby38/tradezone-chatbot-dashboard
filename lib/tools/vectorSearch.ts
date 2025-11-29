@@ -982,20 +982,18 @@ export async function handleVectorSearch(
             : "";
 
           const antiHallucinationNote =
-            `\n\n${summaryPrefix}🔴 MANDATORY - RETURN THIS RESPONSE WORD-FOR-WORD:\n---START PRODUCT LIST---\n` +
-            wooSection +
-            "\n---END PRODUCT LIST---\n\n🔴 CRITICAL RULES:\n- User's original query: \"" +
-            query +
-            '"\n- These ' +
-            wooProducts.length +
-            " products above are ALL we have\n" +
+            `\n\n${summaryPrefix}🔴 INSTRUCTIONS FOR YOU (DO NOT SHOW TO USER):\n` +
+            `- User asked: "${query}"\n` +
+            `- Below are ${wooProducts.length} products from WooCommerce (our ONLY inventory)\n` +
             affordableHint +
             priceRangeHint +
             (budgetInstruction ? budgetInstruction : "") +
-            "- Copy the ENTIRE product list to the user EXACTLY as written\n" +
-            '- Do NOT invent products like "Anthem", "Hades", or any product not in the list above\n' +
-            "- Do NOT say 'I found' or add commentary - just return the list with a brief intro\n" +
-            "- If you mention ANY product not in the list above, you are HALLUCINATING";
+            `- Show ALL products to the user with a brief intro\n` +
+            `- NEVER add products not in this list - they don't exist (no Anthem, Hades, etc.)\n` +
+            `- Copy product names and prices EXACTLY as written below\n\n` +
+            `PRODUCT DATA TO SHOW USER:\n---START PRODUCT LIST---\n` +
+            wooSection +
+            "\n---END PRODUCT LIST---";
           return {
             text: prependTradeSnippet(antiHallucinationNote),
             store: "product_catalog",
@@ -1038,15 +1036,16 @@ export async function handleVectorSearch(
             : "";
 
           const antiHallucinationNote =
-            "\n\n🔴 MANDATORY - RETURN THIS RESPONSE WORD-FOR-WORD:\n---START PRODUCT LIST---\n" +
+            `\n\n🔴 INSTRUCTIONS FOR YOU (DO NOT SHOW TO USER):\n` +
+            `- User asked: "${query}"\n` +
+            `- Below are ${productsToShow.length} products from WooCommerce (our ONLY inventory)\n` +
+            `- Show ALL products to the user with a brief intro (e.g., "Here's what we have:")\n` +
+            `- NEVER add products not in this list - they don't exist (no Anthem, Hades, etc.)\n` +
+            `- Copy product names and prices EXACTLY as written below\n\n` +
+            `PRODUCT DATA TO SHOW USER:\n---START PRODUCT LIST---\n` +
             listText +
             moreText +
-            "\n---END PRODUCT LIST---\n\n🔴 CRITICAL RULES:\n" +
-            `- These ${productsToShow.length} products are ALL we have for "${query}"\n` +
-            "- Copy the ENTIRE product list above to the user EXACTLY as written\n" +
-            "- Do NOT invent products like 'Anthem', 'Hades', or any product not in the list above\n" +
-            "- Do NOT say 'I found' or add commentary - just return the list with a brief intro\n" +
-            "- If you mention ANY product not in the list above, you are HALLUCINATING";
+            "\n---END PRODUCT LIST---";
 
           return {
             text: prependTradeSnippet(antiHallucinationNote),
