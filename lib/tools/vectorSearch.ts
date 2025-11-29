@@ -1132,12 +1132,14 @@ export async function handleVectorSearch(
             // Found category - direct user to browse
             categoryText = `I don't have exact matches for "${query}" in my records, but you can browse all our ${detectedCategory}s here: [View ${detectedCategory}s](${categoryLink})`;
           } else {
-            // No category or unknown category - suggest popular alternatives
-            categoryText = `I don't have exact matches for "${query}" in my records. You might want to check out:\n\n` +
-              `• [Latest Games](https://tradezone.sg/product-category/console-games/)\n` +
-              `• [Gaming Consoles](https://tradezone.sg/product-category/console/)\n` +
-              `• [Popular Accessories](https://tradezone.sg/product-category/accessories/)\n\n` +
-              `Or tell me what you're looking for and I'll help you find it!`;
+            // No category or unknown category - ask clarifying questions
+            categoryText = `I don't have exact matches for "${query}" in my records. Can you help me narrow it down? What category are you looking for?\n\n` +
+              `• Gaming consoles (PlayStation, Xbox, Switch)?\n` +
+              `• Games (PS5, PS4, Xbox, Switch)?\n` +
+              `• Laptops or computers?\n` +
+              `• Phones or tablets?\n` +
+              `• Gaming accessories (controllers, headsets, etc.)?\n\n` +
+              `Let me know and I'll find what we have!`;
           }
 
           return {
