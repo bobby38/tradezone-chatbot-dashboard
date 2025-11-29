@@ -4762,6 +4762,20 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
         lastSearchProductsResult = toolResult;
 
+        // Sale/promo/live intent: use tool result directly to avoid LLM rewrites
+        if (
+          saleIntent &&
+          toolResult &&
+          toolResult.trim().length > 0 &&
+          !finalResponse
+        ) {
+          finalResponse = toolResult.trim();
+          console.log(
+            `[ChatKit] ✅ Sale/promo intent - using tool result directly (length ${finalResponse.length})`,
+          );
+          continue; // Skip adding tool result to messages
+        }
+
         // ✅ CRITICAL: Extract deterministic response BEFORE sending to LLM
         if (toolResult && toolResult.includes("<<<DETERMINISTIC_START>>>")) {
           const startMarker = "<<<DETERMINISTIC_START>>>";
