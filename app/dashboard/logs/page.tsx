@@ -87,11 +87,14 @@ export default function ChatLogsPage() {
         );
       }
 
-      // Optional channel filter via search term shortcuts: "channel:voice" or "channel:text"
+      // Channel filter shortcuts: "channel:voice" shows both chatkit_voice + chatkit (some voice calls log as chatkit)
       if (/channel:voice/i.test(searchTerm)) {
-        query = query.eq("source", "chatkit_voice");
+        query = query.in("source", ["chatkit_voice", "chatkit"]);
       } else if (/channel:text/i.test(searchTerm)) {
         query = query.eq("source", "chatkit");
+      } else {
+        // Default: include both sources so voice entries are visible without a filter
+        query = query.in("source", ["chatkit", "chatkit_voice"]);
       }
 
       if (statusFilter !== "all") {
