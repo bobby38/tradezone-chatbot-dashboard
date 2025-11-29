@@ -573,6 +573,11 @@ export async function handleVectorSearch(
     { regex: /\bkratos|atreus|ragnarok|god\s+of\s+war/i, tokens: ["god of war"] },
     { regex: /\bmaster\s+chief|halo\b/i, tokens: ["halo"] },
     { regex: /\bvice\s+city|san\s+andreas|gta\b/i, tokens: ["gta"] },
+    {
+      regex:
+        /\bsuper\s*hero|superhero|avengers?|marvel|dc\b|batman|superman|iron\s*man|captain\s+america|wolverine|thor\b/i,
+      tokens: ["marvel", "avengers", "spider-man", "batman"],
+    },
   ];
 
   const prioritizeByTokens = <
@@ -698,7 +703,7 @@ export async function handleVectorSearch(
         );
       } else if (/\btablet\b/i.test(lowerQuery)) {
         // Map tablet to actual tablet products
-        searchQuery = "galaxy tab ipad";
+        searchQuery = "galaxy tab ipad tablet";
         console.log(
           `[VectorSearch] Tablet detected, searching for: "${searchQuery}"`,
         );
@@ -767,15 +772,27 @@ export async function handleVectorSearch(
       }
 
       const cleanedQuery = cleanQueryForSearch(searchQuery);
-      wooProducts = dedupeWooProducts(
-        await searchWooProducts(cleanedQuery, wooLimit),
-      );
-
-      // Entity hint re-rank: if query implies an entity (e.g., Ronaldo → FIFA), bump matching products
       const entityTokens = ENTITY_HINT_MAP.reduce<string[]>((acc, entry) => {
         if (entry.regex.test(query)) acc.push(...entry.tokens);
         return acc;
       }, []);
+
+      wooProducts = dedupeWooProducts(
+        await searchWooProducts(cleanedQuery, wooLimit),
+      );
+
+      // If no results and we detected entity hints, retry with boosted query tokens
+      if (!wooProducts.length && entityTokens.length) {
+        const boostedQuery = `${cleanedQuery} ${entityTokens.join(" ")}`.trim();
+        console.log(
+          `[VectorSearch] No results; retrying with entity hints: "${boostedQuery}"`,
+        );
+        wooProducts = dedupeWooProducts(
+          await searchWooProducts(boostedQuery, wooLimit),
+        );
+      }
+
+      // Entity hint re-rank: if query implies an entity (e.g., Ronaldo → FIFA), bump matching products
       if (entityTokens.length && wooProducts.length) {
         wooProducts = prioritizeByTokens(wooProducts, entityTokens);
         console.log(
