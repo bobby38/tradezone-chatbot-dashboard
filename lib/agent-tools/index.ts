@@ -208,6 +208,7 @@ async function loadWooProducts(): Promise<Map<number, WooProduct>> {
       "Ether",
       "Vampyr",
       "Test",
+      "Chorvs",
     ];
     const filtered = parsed.filter((product) => {
       const name = product.name || "";
