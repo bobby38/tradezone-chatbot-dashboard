@@ -564,6 +564,40 @@ export async function handleVectorSearch(
   const prependTradeSnippet = (text: string) =>
     tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
+  // Lightweight entity → token hints to make implicit queries smarter without LLM prompts
+  const ENTITY_HINT_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
+    { regex: /\bronald|messi|madrid|barca|barcelona|man\s*united|man\s*u\b|liverpool|premier\s+league|fifa\b|fc\s2[34]/i, tokens: ["fifa", "fc"] },
+    { regex: /\bpeter\s+parker|spidey|spider-?man/i, tokens: ["spider", "spider-man"] },
+    { regex: /\bhyrule|link\b/i, tokens: ["zelda"] },
+    { regex: /\bpikachu|eevee|pokemon/i, tokens: ["pokemon"] },
+    { regex: /\bkratos|atreus|ragnarok|god\s+of\s+war/i, tokens: ["god of war"] },
+    { regex: /\bmaster\s+chief|halo\b/i, tokens: ["halo"] },
+    { regex: /\bvice\s+city|san\s+andreas|gta\b/i, tokens: ["gta"] },
+  ];
+
+  const prioritizeByTokens = <
+    T extends { name?: string | null; permalink?: string | null }
+  >(
+    products: T[],
+    tokens: string[],
+  ): T[] => {
+    if (!tokens.length || !products.length) return products;
+    const tokenSet = tokens.map((t) => t.toLowerCase());
+    const scored = products.map((p) => {
+      const name = (p.name || "").toLowerCase();
+      const score = tokenSet.reduce(
+        (acc, tok) => acc + (name.includes(tok) ? 1 : 0),
+        0,
+      );
+      return { p, score };
+    });
+    const boosted = scored
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+    const rest = scored.filter(({ score }) => score === 0);
+    return [...boosted.map(({ p }) => p), ...rest.map(({ p }) => p)];
+  };
+
   const dedupeWooProducts = <
     T extends { permalink?: string | null; name?: string | null }
   >(
@@ -736,6 +770,20 @@ export async function handleVectorSearch(
       wooProducts = dedupeWooProducts(
         await searchWooProducts(cleanedQuery, wooLimit),
       );
+
+      // Entity hint re-rank: if query implies an entity (e.g., Ronaldo → FIFA), bump matching products
+      const entityTokens = ENTITY_HINT_MAP.reduce<string[]>((acc, entry) => {
+        if (entry.regex.test(query)) acc.push(...entry.tokens);
+        return acc;
+      }, []);
+      if (entityTokens.length && wooProducts.length) {
+        wooProducts = prioritizeByTokens(wooProducts, entityTokens);
+        console.log(
+          `[VectorSearch] Entity hint detected (${entityTokens.join(
+            ", ",
+          )}) - re-ranked ${wooProducts.length} products`,
+        );
+      }
 
       // Sort by price if user wants cheap options
       sortProductsByPrice(wooProducts, query);
