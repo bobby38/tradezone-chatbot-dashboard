@@ -4798,16 +4798,22 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         console.log("[ChatKit] 🔒 Deterministic trade-up response:", finalResponse);
       }
 
-      // 🔴 CRITICAL: For phone/tablet queries, bypass LLM to prevent hallucination
+      // 🔴 CRITICAL: For phone/tablet/laptop queries, bypass LLM to prevent hallucination
       // Extract clean WooCommerce list and return directly (no LLM processing)
+      console.log(`[ChatKit] 🔍 Bypass check: finalResponse=${!!finalResponse}, lastSearchProductsResult=${!!lastSearchProductsResult}, lastHybridQuery="${lastHybridQuery}"`);
+
       if (!finalResponse && lastSearchProductsResult) {
         const wooResponse = renderWooProductResponse(lastSearchProductsResult);
+        console.log(`[ChatKit] 🔍 Rendered wooResponse: ${!!wooResponse}, length=${wooResponse?.length || 0}`);
+
         if (wooResponse) {
           // Check if this is a phone/tablet/laptop query (categories prone to hallucination)
           const isPhoneTabletLaptop =
             /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop)\b/i.test(
               lastHybridQuery || "",
             );
+          console.log(`[ChatKit] 🔍 isPhoneTabletLaptop=${isPhoneTabletLaptop} for query="${lastHybridQuery}"`);
+
           if (isPhoneTabletLaptop) {
             console.log(
               "[ChatKit] 🚫 Phone/tablet/laptop query - returning WooCommerce list directly (skip LLM)",
@@ -4821,6 +4827,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               : `Here's what we have in stock (${productCount} products):\n\n`;
 
             finalResponse = intro + wooResponse;
+            console.log(`[ChatKit] ✅ Set finalResponse directly, length=${finalResponse.length}`);
           }
         }
       }

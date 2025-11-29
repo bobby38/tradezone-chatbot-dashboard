@@ -989,23 +989,17 @@ export async function handleVectorSearch(
             ? `- These ARE ${categoryLabel}s from our Handphone category - show ALL of them even if product names don't contain the word "${categoryLabel}"\n`
             : "";
 
-          const antiHallucinationNote =
-            `\n\n${summaryPrefix}🔴 INSTRUCTIONS FOR YOU (DO NOT SHOW TO USER):\n` +
-            `- User asked: "${query}"\n` +
-            `- Below are ${wooProducts.length} products from WooCommerce (our ONLY inventory)\n` +
-            categoryNote +
-            affordableHint +
-            priceRangeHint +
-            (budgetInstruction ? budgetInstruction : "") +
-            `- Show ALL products to the user with a brief intro\n` +
-            `- NEVER add products not in this list - they don't exist (no Anthem, Hades, Chorvs, etc.)\n` +
-            `- Copy the product list EXACTLY including images ![...](url), links [View Product](url), and formatting\n` +
-            `- DO NOT rewrite or reformat - paste it directly\n\n` +
-            `PRODUCT DATA TO SHOW USER:\n---START PRODUCT LIST---\n` +
-            wooSection +
-            "\n---END PRODUCT LIST---";
+          // Return DETERMINISTIC response - don't let LLM rewrite it
+          const intro = wooProducts.length > 0
+            ? `Here's what we have (${wooProducts.length} products):\n\n`
+            : `I don't have any ${categoryLabel}s matching "${query}".`;
+
+          const deterministicResponse = wooProducts.length > 0
+            ? `${summaryPrefix}${intro}${wooSection}`
+            : intro;
+
           return {
-            text: prependTradeSnippet(antiHallucinationNote),
+            text: prependTradeSnippet(deterministicResponse),
             store: "product_catalog",
             matches: [],
             wooProducts: wooPayload,
