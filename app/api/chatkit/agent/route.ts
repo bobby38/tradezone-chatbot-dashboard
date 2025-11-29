@@ -4779,8 +4779,32 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         (precomputedTradeUp.tradeValue != null ||
           precomputedTradeUp.retailPrice != null);
 
-      // Removed renderWooProductResponse shortcut - let LLM process tool results with instructions
-      // This ensures proper formatting and allows LLM to follow anti-hallucination instructions
+      // 🔴 CRITICAL: For phone/tablet queries, bypass LLM to prevent hallucination
+      // Extract clean WooCommerce list and return directly (no LLM processing)
+      if (!finalResponse && lastSearchProductsResult) {
+        const wooResponse = renderWooProductResponse(lastSearchProductsResult);
+        if (wooResponse) {
+          // Check if this is a phone/tablet/laptop query (categories prone to hallucination)
+          const isPhoneTabletLaptop =
+            /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop)\b/i.test(
+              lastHybridQuery || "",
+            );
+          if (isPhoneTabletLaptop) {
+            console.log(
+              "[ChatKit] 🚫 Phone/tablet/laptop query - returning WooCommerce list directly (skip LLM)",
+            );
+
+            // Add friendly intro based on query context
+            const hasCheapKeyword = /\b(cheap|affordable|budget)\b/i.test(lastHybridQuery || "");
+            const productCount = (wooResponse.match(/^\d+\./gm) || []).length;
+            const intro = hasCheapKeyword
+              ? `Here are our most affordable options (${productCount} products):\n\n`
+              : `Here's what we have in stock (${productCount} products):\n\n`;
+
+            finalResponse = intro + wooResponse;
+          }
+        }
+      }
 
       if (!finalResponse && !skipLLMForTradeUp) {
         // If no suggestion was made
