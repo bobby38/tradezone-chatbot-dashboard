@@ -1256,6 +1256,7 @@ export async function handleVectorSearch(
             gpu: "https://tradezone.sg/product-category/graphic-card/",
             motherboard: "https://tradezone.sg/product-category/motherboard/",
             handheld: "https://tradezone.sg/product-category/gaming-handheld/",
+            storage: "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
           };
 
           const categoryLink = detectedCategory
@@ -1295,7 +1296,7 @@ export async function handleVectorSearch(
         // Vector store contains games/consoles that contaminate specific accessory results
         const isControllerQuery =
           /\b(gamepad|controller|pro\s*controller)\b/i.test(query);
-        const skipVectorCategories = new Set(["phone", "tablet", "laptop"]);
+        const skipVectorCategories = new Set(["phone", "tablet", "laptop", "storage"]);
         const isCategoryBlocked =
           !!detectedCategory && skipVectorCategories.has(detectedCategory);
         const skipVectorEnrichment = isCategoryBlocked || isControllerQuery;
