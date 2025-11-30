@@ -3911,13 +3911,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         message,
       );
 
+    if (saleIntent) {
+      messages.push({
+        role: "system",
+        content:
+          "PROMO RESPONSE: Do NOT list random products or call tools. Reply briefly: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. For current deals (Black Friday/Cyber Monday), check https://tradezone.sg/?s=black%20friday%20deals or tell me a product and I'll check it.' Keep under 2 sentences and ask which product to apply the code to.",
+      });
+    }
+
     const shouldForceCatalog =
       !deliveryIntent &&
       !quoteAlreadyGiven && // Don't force search if quote already given
+      !saleIntent &&
       (tradeUpPairIntent ||
         isTradeInPricingQuery ||
         isProductInfoQuery ||
-        saleIntent ||
         Boolean(productSlug));
 
     const toolChoice = shouldForceCatalog
