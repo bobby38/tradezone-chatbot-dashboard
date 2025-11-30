@@ -574,36 +574,11 @@ export async function handleVectorSearch(
       query.toLowerCase(),
     );
   if (saleIntentEarly) {
-    try {
-      const { handlePerplexitySearch } = await import("./perplexitySearch");
-      const perplexityQuery = `${query} site:tradezone.sg latest prices`;
-      console.log(
-        `[VectorSearch] Early sale/latest intent; querying Perplexity: "${perplexityQuery}"`,
-      );
-      const perplexityResult = await handlePerplexitySearch(perplexityQuery);
-      if (
-        perplexityResult &&
-        !perplexityResult.includes("No results found") &&
-        !perplexityResult.includes("error")
-      ) {
-        return {
-          text: perplexityResult,
-          store: resolvedStore.label,
-          matches: [],
-          wooProducts: [],
-        };
-      }
-    } catch (perplexityError) {
-      console.error(
-        "[VectorSearch] Early Perplexity sale/latest lookup failed:",
-        perplexityError,
-      );
-    }
-    const saleLink = "https://tradezone.sg/?s=sale";
-    const bfLink = "https://tradezone.sg/?s=black+friday";
-    const latestLink = "https://tradezone.sg/?s=new";
+    const promoLine =
+      "Flash sale unlocked ⚡ 5% off with code “TZSALE”. Check promos here: https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1 or tell me a product and I'll check it.";
+
     return {
-      text: `Current offers:\n- Black Friday/Cyber: ${bfLink}\n- All sales: ${saleLink}\n- New arrivals: ${latestLink}\nShare a product name/link and I'll fetch its latest price.`,
+      text: promoLine,
       store: resolvedStore.label,
       matches: [],
       wooProducts: [],
@@ -789,23 +764,23 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] Gamepad detected, searching for: "${searchQuery}"`,
         );
-      } else if (
-        /\b(handphone|phone|mobile|smartphone|android|iphone)\b/i.test(
-          lowerQuery,
-        )
-      ) {
-        // Don't rewrite query - WooCommerce category filter will detect "phone"
-        // pattern and return ALL phones, then sort by price if "cheap" in query
-        console.log(
-          `[VectorSearch] Phone query detected - using category filter to show all phones`,
-        );
-      } else if (/\btablet\b/i.test(lowerQuery)) {
-        // Map tablet to actual tablet products
-        searchQuery = "galaxy tab ipad tablet";
-        console.log(
-          `[VectorSearch] Tablet detected, searching for: "${searchQuery}"`,
-        );
-      } else if (/\bconsole\b/i.test(lowerQuery)) {
+  } else if (
+    /\b(handphone|phone|mobile|smartphone|android|iphone)\b/i.test(
+      lowerQuery,
+    )
+  ) {
+    // Anchor to phone category to avoid tablets
+    searchQuery = "handphone phone mobile smartphone";
+    console.log(
+      `[VectorSearch] Phone query detected - forcing phone category`,
+    );
+  } else if (/\btablet\b/i.test(lowerQuery)) {
+    // Map tablet to actual tablet products
+    searchQuery = "tablet ipad galaxy tab";
+    console.log(
+      `[VectorSearch] Tablet detected, searching for: "${searchQuery}"`,
+    );
+  } else if (/\bconsole\b/i.test(lowerQuery)) {
         // Replace "console" with brand name if specified, otherwise default to "playstation"
         if (/nintendo|switch/i.test(lowerQuery)) {
           searchQuery = searchQuery.replace(/\bconsole\b/gi, "nintendo");
@@ -1201,21 +1176,21 @@ export async function handleVectorSearch(
           const maxCount = Math.max(...Object.values(baseNameCounts));
           const isSeries = maxCount >= 3;
 
-          const displayLimit = isSeries ? 5 : 8;
-          const productsToShow = wooProducts.slice(0, displayLimit);
-          const hasMore = wooProducts.length > displayLimit;
+         const displayLimit = isSeries ? 5 : 8;
+         const productsToShow = wooProducts.slice(0, displayLimit);
+         const hasMore = wooProducts.length > displayLimit;
 
-          const listText = productsToShow
-            .map((product, idx) => {
-              const price = formatPriceWithBudget(
-                product.price_sgd,
-                budgetContext!,
-              );
-              const url = product.permalink || `https://tradezone.sg`;
-              const imageStr =
-                idx === 0 && product.image
-                  ? `\n   ![${product.name}](${product.image})`
-                  : "";
+         const listText = productsToShow
+           .map((product, idx) => {
+             const price = formatPriceWithBudget(
+               product.price_sgd,
+               budgetContext!,
+             );
+             const url = product.permalink || `https://tradezone.sg`;
+             const imageStr =
+               idx === 0 && product.image
+                 ? `\n   ![${product.name}](${product.image})`
+                 : "";
               return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
@@ -1479,7 +1454,7 @@ export async function handleVectorSearch(
       } else {
         // For specific categories (phone/tablet/laptop), don't fall back to vector - prevent hallucination
         const detectedCategory = extractProductCategory(query);
-        const blockVectorFallback = ["phone", "tablet", "laptop"].includes(
+        const blockVectorFallback = ["phone", "tablet", "laptop", "storage"].includes(
           detectedCategory || "",
         );
 
@@ -1491,8 +1466,9 @@ export async function handleVectorSearch(
           // Category page links
           const categoryLinks: Record<string, string> = {
             laptop: "https://tradezone.sg/product-category/laptop/",
-            phone: "https://tradezone.sg/product-category/phones/",
-            tablet: "https://tradezone.sg/product-category/tablet/",
+            phone: "https://tradezone.sg/product-category/handphone-tablet/handphone/",
+            tablet: "https://tradezone.sg/product-category/handphone-tablet/tablet/",
+            storage: "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
           };
 
           const categoryLink = categoryLinks[detectedCategory || ""];

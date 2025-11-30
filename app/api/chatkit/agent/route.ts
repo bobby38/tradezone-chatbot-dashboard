@@ -3915,7 +3915,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       messages.push({
         role: "system",
         content:
-          "PROMO RESPONSE: Do NOT call tools or list random products. Reply briefly: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. Check promos here: https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1 or tell me a product and I'll check it.' Keep under 2 sentences and ask which product to apply the code to.",
+          "PROMO RESPONSE: Do NOT call tools or list products. Reply with ONLY: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. Check promos here: https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1 or tell me a product and I'll check it.' Keep it under 2 sentences and ask which product to apply the code to. Never invent products or prices.",
       });
     }
 
@@ -3932,9 +3932,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
-    // Sale/promo intents: prefer Perplexity (tradezone.sg only) instead of catalog
+    // Sale/promo intents: static reply only (no tools) to avoid noisy/hallucinated product lists
     if (saleIntent && !deliveryIntent) {
-      toolChoice = { type: "function" as const, function: { name: "searchtool" } };
+      toolChoice = "none" as const;
     }
 
     // Query-specific guardrails
