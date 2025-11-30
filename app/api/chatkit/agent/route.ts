@@ -3904,11 +3904,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       isTradeInPricingQuery = true;
     }
 
+    // Note: isSaleContext was removed; treat as false by default.
     const saleIntent =
       !deliveryIntent &&
-      (/\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+      /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
         message,
-      ) || isSaleContext);
+      );
 
     const shouldForceCatalog =
       !deliveryIntent &&
