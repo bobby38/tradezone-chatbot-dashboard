@@ -2415,8 +2415,12 @@
 
         case "input_audio_buffer.speech_started": {
           console.log("[Voice] User started speaking");
-          if (this.voiceState.isResponding) {
-            this.ws.send(JSON.stringify({ type: "response.cancel" }));
+          if (this.voiceState.isResponding && this.ws && this.ws.readyState === WebSocket.OPEN) {
+            try {
+              this.ws.send(JSON.stringify({ type: "response.cancel" }));
+            } catch (err) {
+              console.warn("[Voice] response.cancel failed (ignored)", err);
+            }
             this.audioQueue = [];
             this.voiceState.isResponding = false;
             this.updateVoiceStatus("Listening…");
