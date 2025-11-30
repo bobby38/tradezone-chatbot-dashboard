@@ -3921,16 +3921,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
     const shouldForceCatalog =
       !deliveryIntent &&
-      !quoteAlreadyGiven && // Don't force search if quote already given
+      !quoteAlreadyGiven &&
       !saleIntent &&
       (tradeUpPairIntent ||
         isTradeInPricingQuery ||
         isProductInfoQuery ||
         Boolean(productSlug));
 
-    const toolChoice = shouldForceCatalog
+    let toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
+
+    // Sale/promo intents: prefer Perplexity (tradezone.sg only) instead of catalog
+    if (saleIntent && !deliveryIntent) {
+      toolChoice = { type: "function" as const, function: { name: "searchtool" } };
+    }
 
     // Query-specific guardrails
     if (/\bgalaxy\s+tab\b/i.test(message)) {
