@@ -991,15 +991,24 @@ export async function handleVectorSearch(
       if (detectedCategory === "storage" && wooProducts.length > 0) {
         let storageFiltered = wooProducts.filter((p) => {
           const cats = (p as any).categories || [];
-          return cats.some((c: string) =>
+          const name = (p.name || "").toLowerCase();
+          const isStorageCat = cats.some((c: string) =>
             /\b(storage|hdd|ssd|nvme|hard\s*drive|solid\s*state)\b/i.test(c),
           );
+          const isSSDName = /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
+          const isAccessory = /case|bag|controller|fan|game|mouse|pad|cover|housing/i.test(
+            name,
+          );
+          return (isStorageCat || isSSDName) && !isAccessory;
         });
         if (storageFiltered.length === 0) {
           // Try a direct storage search if category filter failed
           storageFiltered = dedupeWooProducts(
-            await searchWooProducts("storage hdd ssd hard drive", wooLimit),
-          );
+            await searchWooProducts("ssd nvme m.2 solid state drive", wooLimit),
+          ).filter((p) => {
+            const name = (p.name || "").toLowerCase();
+            return /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
+          });
         }
         if (storageFiltered.length > 0) {
           wooProducts = storageFiltered;
