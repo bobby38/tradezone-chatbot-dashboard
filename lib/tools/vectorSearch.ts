@@ -536,7 +536,17 @@ export async function handleVectorSearch(
   const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
   const queryTokens = extractQueryTokens(query);
   const filteringTokens = selectFilteringTokens(queryTokens);
-  const detectedCategory = extractProductCategory(query);
+  let detectedCategory = extractProductCategory(query);
+  // Hard override to avoid mis-detection for critical categories
+  if (/\btablet\b/i.test(query)) detectedCategory = "tablet";
+  if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query)) detectedCategory = "phone";
+  // Hard override to avoid mis-detection
+  if (/\btablet\b/i.test(query)) {
+    detectedCategory = "tablet" as any;
+  }
+  if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query)) {
+    detectedCategory = "phone" as any;
+  }
   const tradeQueryOverride = context?.tradeDeviceQuery?.trim();
   let priceListMatch = tradeQueryOverride
     ? findTradeInPriceMatch(tradeQueryOverride)
@@ -890,6 +900,40 @@ export async function handleVectorSearch(
   wooProducts = dedupeWooProducts(
     await searchWooProducts(cleanedQuery, wooLimit),
   );
+
+  // Tablet-specific cleanup: remove phone/handphone cross-bleed
+  if (detectedCategory === "tablet" && wooProducts.length > 0) {
+    let tabletFiltered = wooProducts.filter((p) => {
+      const cats = ((p as any).categories || []).join(" ").toLowerCase();
+      const name = (p.name || "").toLowerCase();
+      const isTabletCat = /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
+      const isPhoneCat = /handphone|phone|mobile|smartphone/.test(cats) || /handphone|phone|mobile|smartphone/.test(name);
+      return isTabletCat && !isPhoneCat;
+    });
+
+    if (tabletFiltered.length === 0) {
+      tabletFiltered = dedupeWooProducts(await searchWooProducts("tablet", wooLimit)).filter((p) => {
+        const cats = ((p as any).categories || []).join(" ").toLowerCase();
+        const name = (p.name || "").toLowerCase();
+        const isTabletCat = /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
+        const isPhoneCat = /handphone|phone|mobile|smartphone/.test(cats) || /handphone|phone|mobile|smartphone/.test(name);
+        return isTabletCat && !isPhoneCat;
+      });
+    }
+
+    if (tabletFiltered.length > 0) {
+      wooProducts = tabletFiltered;
+      console.log(`[VectorSearch] Tablet filter applied: kept ${tabletFiltered.length} items`);
+    } else {
+      // Direct to tablet category page if nothing clean
+      return {
+        text: "Browse tablets here: https://tradezone.sg/?s=tablet&post_type=product&dgwt_wcas=1",
+        store: resolvedStore.label,
+        matches: [],
+        wooProducts: [],
+      };
+    }
+  }
 
   // Apply franchise filters (e.g., Spider-Man, Final Fantasy, Diablo) to keep lists tight
   const franchiseMatch = franchiseFilters.find((f) => f.regex.test(query));

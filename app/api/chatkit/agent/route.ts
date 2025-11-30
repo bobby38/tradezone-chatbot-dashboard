@@ -3278,7 +3278,7 @@ export async function POST(request: NextRequest) {
 
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gemini-2.5-flash"; // Default model (text) - Gemini 2.5 Flash for better reasoning and instruction following
+  let textModel = "gemini-2.5-flash"; // Default text model
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;
@@ -3335,7 +3335,8 @@ export async function POST(request: NextRequest) {
       .eq("id", DEFAULT_ORG_ID)
       .single();
     const settings = org?.settings?.chatkit || {};
-    textModel = settings.textModel || textModel; // Use database setting or keep default (gemini-2.5-flash-002)
+    // Allow override via settings, otherwise stay on Gemini 2.5 Flash
+    textModel = settings.textModel || textModel;
     const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -4968,8 +4969,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           }
 
           // Default / fallback: OpenAI
+          const model = textModel.includes("gemini") ? "gpt-4o-mini" : textModel;
           return openai.chat.completions.create({
-            model: textModel.includes("gemini") ? "gpt-4o-mini" : textModel,
+            model,
             messages,
             temperature: 0.7,
             max_tokens: 800,
@@ -4997,6 +4999,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           }
         }
         finalResponse = finalCompletion.choices[0].message.content || "";
+
+        // If deterministic block is present, strip everything outside it
+        if (finalResponse.includes("<<<DETERMINISTIC_START>>")) {
+          const startMarker = "<<<DETERMINISTIC_START>>>";
+          const endMarker = "<<<DETERMINISTIC_END>>>";
+          const start = finalResponse.indexOf(startMarker) + startMarker.length;
+          const end = finalResponse.indexOf(endMarker, start);
+          if (end !== -1) {
+            finalResponse = finalResponse.slice(start, end).trim();
+          }
+        }
 
         // ✅ FAILSAFE: Catch hallucinations if they somehow bypass deterministic responses
         // This should rarely trigger now that vectorSearch.ts returns pre-formatted responses
