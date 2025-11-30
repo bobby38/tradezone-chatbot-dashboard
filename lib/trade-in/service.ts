@@ -161,6 +161,8 @@ export interface EnsureTradeInLeadParams {
   organizationId?: string;
   initialMessage?: string;
   source?: string;
+  maxAgeMinutes?: number; // optional: if existing lead older than this, create a new one
+  forceNew?: boolean; // optional: always create a new lead (used for fresh trade intent)
 }
 
 export interface EnsureTradeInLeadResult {
@@ -218,7 +220,7 @@ export async function ensureTradeInLead(
 
   const { data: existingLead, error: existingError } = await supabaseAdmin
     .from("trade_in_leads")
-    .select("id, status")
+    .select("id, status, created_at")
     .eq("lead_hash", leadHash)
     .not("status", "in", "(completed,closed,archived)")
     .order("created_at", { ascending: false })
@@ -229,12 +231,26 @@ export async function ensureTradeInLead(
     throw new Error(`Trade-in lead lookup failed: ${existingError.message}`);
   }
 
-  if (existingLead) {
-    return {
-      leadId: existingLead.id,
-      status: existingLead.status,
-      created: false,
-    };
+  if (existingLead && !params.forceNew) {
+    // If a max age is provided, drop stale leads and create a fresh one
+    if (params.maxAgeMinutes && existingLead.created_at) {
+      const ageMs =
+        Date.now() - new Date(existingLead.created_at as string).getTime();
+      const maxMs = params.maxAgeMinutes * 60 * 1000;
+      if (ageMs <= maxMs) {
+        return {
+          leadId: existingLead.id,
+          status: existingLead.status,
+          created: false,
+        };
+      }
+    } else {
+      return {
+        leadId: existingLead.id,
+        status: existingLead.status,
+        created: false,
+      };
+    }
   }
 
   const insertPayload = {

@@ -3540,21 +3540,52 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         );
 
         if (!isCompleted && tradeInIntent) {
-          // Resume active trade-in
-          tradeInLeadId = existingLead.id;
-          tradeInLeadStatus = existingLead.status;
+          // For voice, start fresh if existing lead is stale or already populated
+          let reuse = true;
+          if (mode === "voice") {
+        const detail = await getTradeInLeadDetail(tradeInLeadId!);
+            const createdAt = detail?.created_at
+              ? new Date(detail.created_at as string).getTime()
+              : Date.now();
+            const ageMinutes = (Date.now() - createdAt) / 60000;
+            const hasContact =
+              detail?.contact_email && detail?.contact_phone && detail?.contact_name;
+            const hasDevice = detail?.brand && detail?.model;
+            if (ageMinutes > 60 || (hasContact && hasDevice)) {
+              reuse = false;
+            }
+          }
 
-          console.log(
-            `[ChatKit] Resuming trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
-          );
+          if (reuse) {
+            // Resume active trade-in
+            tradeInLeadId = existingLead.id;
+            tradeInLeadStatus = existingLead.status;
 
-          // Add current trade-in summary (pass recent history for photo detection)
-          const tradeInSummary = await buildTradeInSummary(
-            existingLead.id,
-            truncatedHistory,
-          );
-          if (tradeInSummary) {
-            messages.splice(2, 0, { role: "system", content: tradeInSummary });
+            console.log(
+              `[ChatKit] Resuming trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
+            );
+
+            // Add current trade-in summary (pass recent history for photo detection)
+            const tradeInSummary = await buildTradeInSummary(
+              existingLead.id,
+              truncatedHistory,
+            );
+            if (tradeInSummary) {
+              messages.splice(2, 0, { role: "system", content: tradeInSummary });
+            }
+          } else {
+            console.log(
+              `[ChatKit] Voice trade-in: forcing new lead (stale or populated)`,
+            );
+            const ensureResult = await ensureTradeInLead({
+              sessionId,
+              channel: "chat",
+              initialMessage: message,
+              source: "chatkit.agent.fresh",
+              forceNew: true,
+            });
+            tradeInLeadId = ensureResult.leadId;
+            tradeInLeadStatus = ensureResult.status;
           }
         } else if (isCompleted) {
           console.log(
@@ -3564,12 +3595,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
       } else if (tradeInIntent) {
         // Create new lead only if trade-in intent detected and no existing lead
-        const ensureResult = await ensureTradeInLead({
-          sessionId,
-          channel: "chat",
-          initialMessage: message,
-          source: "chatkit.agent",
-        });
+          const ensureResult = await ensureTradeInLead({
+            sessionId,
+            channel: "chat",
+            initialMessage: message,
+            source: "chatkit.agent",
+            maxAgeMinutes: mode === "voice" ? 60 : undefined,
+            forceNew: false,
+          });
         tradeInLeadId = ensureResult.leadId;
         tradeInLeadStatus = ensureResult.status;
 
@@ -3814,6 +3847,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             content:
               "You've locked device, condition, accessories, contact, and payout. Ask ONCE, clearly yes/no: 'Got photos to speed inspection? Say yes to upload now, or no if you can't.' If they say yes, invite the upload briefly. If they say no, save 'Photos: Not provided — final quote upon inspection' and continue. Do not block submission; do not repeat this ask.",
           });
+        }
+
+        // Recap once before submission when all required fields are present
+        const readyForRecap =
+          deviceCaptured &&
+          hasCondition &&
+          accessoriesCaptured &&
+          hasContactName &&
+          hasContactPhone &&
+          hasContactEmail &&
+          payoutSet;
+        if (readyForRecap) {
+          const summary = buildTradeInUserSummary(tradeInLeadDetail);
+          if (summary) {
+            messages.push({
+              role: "system",
+              content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
+            });
+          }
         }
 
         if (deviceCaptured && hasContactEmail && hasContactPhone) {
@@ -4503,6 +4555,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 if (!latest.brand) missing.push("device brand");
                 if (!latest.model) missing.push("device model");
                 if (!latest.condition) missing.push("condition");
+                if (!latest.storage) missing.push("storage");
+                if (
+                  !latest.accessories ||
+                  (Array.isArray(latest.accessories) &&
+                    latest.accessories.length === 0)
+                ) {
+                  missing.push("accessories");
+                }
                 if (!latest.contact_name) missing.push("contact name");
                 if (!latest.contact_phone) missing.push("contact phone");
                 if (!latest.contact_email) missing.push("contact email");
@@ -4542,6 +4602,40 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 notify?: boolean;
                 status?: string;
               };
+
+              // Require an explicit final yes/submit in the last user turn
+              const lastUserText =
+                truncatedHistory
+                  .slice()
+                  .reverse()
+                  .find((m) => m.role === "user")?.content || "";
+              const positive = /\b(yes|ya|can|submit|go ahead|proceed)\b/i.test(
+                lastUserText,
+              );
+              const negative = /\b(no|cannot|can't|dont|don't|cancel|stop)\b/i.test(
+                lastUserText,
+              );
+              if (negative || !positive) {
+                toolResult =
+                  "I’ll wait for a clear yes before submitting. Say \"yes\" or \"submit\" to proceed.";
+                toolSummaries.push({
+                  name: functionName,
+                  args: { ...submitArgs, leadId: tradeInLeadId },
+                  resultPreview: toolResult,
+                });
+                await logToolRun({
+                  request_id: requestId,
+                  session_id: sessionId,
+                  tool_name: functionName,
+                  args: { ...submitArgs, leadId: tradeInLeadId },
+                  result_preview: toolResult.slice(0, 280),
+                  source: "trade_in_lead",
+                  success: false,
+                  latency_ms: Date.now() - toolStart,
+                  error_message: "Missing explicit yes",
+                });
+                break;
+              }
 
               const { emailSent } = await submitTradeInLead({
                 leadId: tradeInLeadId,
