@@ -927,7 +927,7 @@ export async function handleVectorSearch(
     } else {
       // Direct to tablet category page if nothing clean
       return {
-        text: "Browse tablets here: https://tradezone.sg/?s=tablet&post_type=product&dgwt_wcas=1",
+        text: "Browse tablets here: https://tradezone.sg/product-category/handphone-tablet/tablet/",
         store: resolvedStore.label,
         matches: [],
         wooProducts: [],
