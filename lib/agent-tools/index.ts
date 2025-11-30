@@ -19,7 +19,7 @@ const PRICE_GRID_SOURCE = "products_master.json";
 const REVIEW_TABLE = "agent_review_queue";
 const ORDER_TABLE = "agent_orders";
 const INSPECTION_TABLE = "agent_inspections";
-const CATEGORY_SLUG_MAP: Record<string, string[]> = {
+export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   laptop: ["laptop"],
   phone: ["handphone", "handphone-tablet", "smartphone", "phones"],
   tablet: ["tablet", "handphone-tablet"],
@@ -50,6 +50,40 @@ export interface WooProductSearchResult {
   stock_status?: string;
   image?: string;
 }
+
+export async function getWooProductsByCategory(
+  slugs: string[],
+  limit = 12,
+  sort: "asc" | "desc" = "asc",
+): Promise<WooProductSearchResult[]> {
+  if (!slugs.length) {
+    return [];
+  }
+  const products = Array.from((await loadWooProducts()).values());
+  const filtered = products.filter((product) =>
+    (product.categories || []).some((cat) => slugs.includes(cat.slug)),
+  );
+
+  const mapped = filtered
+    .map((product) => ({
+      productId: product.id,
+      name: product.name,
+      permalink: product.permalink,
+      price_sgd: parseMoney(product.price),
+      stock_status: product.stock_status,
+      image: product.images?.[0]?.src,
+    }))
+    .filter((entry) => entry.price_sgd != null)
+    .sort((a, b) => {
+      if (sort === "asc") {
+        return (a.price_sgd ?? Infinity) - (b.price_sgd ?? Infinity);
+      }
+      return (b.price_sgd ?? -Infinity) - (a.price_sgd ?? -Infinity);
+    });
+
+  return mapped.slice(0, limit);
+}
+
 
 export interface NormalizeProductResult {
   query: string;

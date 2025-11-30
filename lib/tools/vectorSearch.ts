@@ -11,6 +11,7 @@ import {
   formatSGDPriceShortOrNull,
 } from "@/lib/tools/priceFormatter";
 import type { WooProductSearchResult } from "@/lib/agent-tools";
+import { CATEGORY_SLUG_MAP, getWooProductsByCategory } from "@/lib/agent-tools";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -578,6 +579,53 @@ export async function handleVectorSearch(
   const prependTradeSnippet = (text: string) =>
     tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
+  if (detectedCategory === "phone" || detectedCategory === "tablet") {
+    const slugs = CATEGORY_SLUG_MAP[detectedCategory] || [];
+    const directResults = await getWooProductsByCategory(slugs, wooLimit, "asc");
+    if (directResults.length) {
+      console.log(
+        `[VectorSearch] Direct ${detectedCategory} category load: ${directResults.length} items`,
+        directResults.map((p) => p.name),
+      );
+
+      const directBudgetContext = createBudgetContext(query, directResults);
+      const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
+      const budgetSummaryLine = buildBudgetSummaryLine(
+        directBudgetContext,
+        budgetCategoryLabel,
+      );
+      const summaryPrefix = budgetSummaryLine ? `${budgetSummaryLine}\n\n` : "";
+
+      const listText = directResults
+        .map((product, idx) => {
+          const price = formatPriceWithBudget(
+            product.price_sgd,
+            directBudgetContext,
+          );
+          const url = product.permalink || `https://tradezone.sg`;
+          const imageStr =
+            idx === 0 && product.image
+              ? `\n   ![${product.name}](${product.image})`
+              : "";
+          return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
+        })
+        .join("\n\n");
+
+      const intro = `Here's what we have (${directResults.length} products):\n\n`;
+      const deterministicResponse = `${summaryPrefix}${intro}${listText}`;
+      const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
+        deterministicResponse,
+      )}<<<DETERMINISTIC_END>>>`;
+
+      return {
+        text: wrappedResponse,
+        store: resolvedStore.label,
+        matches: [],
+        wooProducts: directResults,
+      };
+    }
+  }
+
   // Early sale/promo/latest intent: use Perplexity live lookup, skip Woo/vector
   const saleIntentEarly =
     /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount)\b/i.test(
@@ -901,6 +949,39 @@ export async function handleVectorSearch(
     await searchWooProducts(cleanedQuery, wooLimit),
   );
 
+  // Phone-specific cleanup: remove tablet cross-bleed
+  if (detectedCategory === "phone" && wooProducts.length > 0) {
+    let phoneFiltered = wooProducts.filter((p) => {
+      const cats = ((p as any).categories || []).join(" ").toLowerCase();
+      const name = (p.name || "").toLowerCase();
+      const isPhoneCat = /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(cats) || /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(name);
+      const isTabletCat = /tablet|ipad/.test(cats) || /tablet|ipad/.test(name);
+      return isPhoneCat && !isTabletCat;
+    });
+
+    if (phoneFiltered.length === 0) {
+      phoneFiltered = dedupeWooProducts(await searchWooProducts("handphone phone mobile", wooLimit)).filter((p) => {
+        const cats = ((p as any).categories || []).join(" ").toLowerCase();
+        const name = (p.name || "").toLowerCase();
+        const isPhoneCat = /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(cats) || /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(name);
+        const isTabletCat = /tablet|ipad/.test(cats) || /tablet|ipad/.test(name);
+        return isPhoneCat && !isTabletCat;
+      });
+    }
+
+    if (phoneFiltered.length > 0) {
+      wooProducts = phoneFiltered;
+      console.log(`[VectorSearch] Phone filter applied: kept ${phoneFiltered.length} items`);
+    } else {
+      return {
+        text: "Browse phones here: https://tradezone.sg/product-category/handphone-tablet/handphone/",
+        store: resolvedStore.label,
+        matches: [],
+        wooProducts: [],
+      };
+    }
+  }
+
   // Tablet-specific cleanup: remove phone/handphone cross-bleed
   if (detectedCategory === "tablet" && wooProducts.length > 0) {
     let tabletFiltered = wooProducts.filter((p) => {
@@ -996,11 +1077,14 @@ export async function handleVectorSearch(
             /\b(storage|hdd|ssd|nvme|hard\s*drive|solid\s*state)\b/i.test(c),
           );
           const isSSDName = /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
-          const isAccessory = /case|bag|controller|fan|game|mouse|pad|cover|housing/i.test(
+          // Exclude accessories, cases, games, and consoles that contain "storage" in name
+          const isAccessory = /case|bag|controller|fan|game|mouse|pad|cover|housing|expansion card|drive.*console|portal|switch|playstation|xbox|ally/i.test(
             name,
           );
           const isLaptopPc = /laptop|notebook|pc\b|desktop|gaming pc/i.test(name);
-          return (isStorageCat || isSSDName) && !isAccessory && !isLaptopPc;
+          // Require actual storage keywords in name, not just category match
+          const hasStorageKeyword = /\b(ssd|nvme|m\.?2|solid\s*state|hard\s*drive|hdd)\b/i.test(name);
+          return (isStorageCat || isSSDName) && hasStorageKeyword && !isAccessory && !isLaptopPc;
         });
         if (storageFiltered.length === 0) {
           // Try a direct storage search if category filter failed
