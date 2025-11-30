@@ -2206,11 +2206,30 @@
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 24000,
+          // Avoid forcing a sample rate; let the browser choose to prevent mismatches (Firefox)
         },
       });
 
-      this.audioContext = new AudioContext({ sampleRate: 24000 });
+      // Pick stream sample rate if available; otherwise fall back to default
+      const track = this.mediaStream.getAudioTracks()[0];
+      const trackSettings = track?.getSettings ? track.getSettings() : {};
+      let desiredSampleRate = trackSettings?.sampleRate || undefined;
+
+      try {
+        this.audioContext = desiredSampleRate
+          ? new AudioContext({ sampleRate: desiredSampleRate })
+          : new AudioContext();
+      } catch (err) {
+        console.warn(
+          "[Voice] AudioContext init failed with desired sampleRate",
+          desiredSampleRate,
+          err,
+        );
+        this.audioContext = new AudioContext();
+      }
+      // Ensure we know the actual sample rate in use
+      desiredSampleRate = this.audioContext.sampleRate || desiredSampleRate;
+
       const source = this.audioContext.createMediaStreamSource(
         this.mediaStream,
       );
@@ -2260,7 +2279,17 @@
       this.processor.connect(this.audioContext.destination);
 
       // Output (playback)
-      this.playbackContext = new AudioContext({ sampleRate: 24000 });
+      try {
+        this.playbackContext = desiredSampleRate
+          ? new AudioContext({ sampleRate: desiredSampleRate })
+          : new AudioContext();
+      } catch (err) {
+        console.warn(
+          "[Voice] Playback AudioContext init failed, falling back",
+          err,
+        );
+        this.playbackContext = new AudioContext();
+      }
       this.playbackNode = this.playbackContext.createScriptProcessor(
         2048,
         1,
