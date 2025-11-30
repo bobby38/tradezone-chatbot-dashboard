@@ -999,7 +999,8 @@ export async function handleVectorSearch(
           const isAccessory = /case|bag|controller|fan|game|mouse|pad|cover|housing/i.test(
             name,
           );
-          return (isStorageCat || isSSDName) && !isAccessory;
+          const isLaptopPc = /laptop|notebook|pc\b|desktop|gaming pc/i.test(name);
+          return (isStorageCat || isSSDName) && !isAccessory && !isLaptopPc;
         });
         if (storageFiltered.length === 0) {
           // Try a direct storage search if category filter failed
