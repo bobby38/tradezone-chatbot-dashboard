@@ -612,6 +612,22 @@ export async function handleVectorSearch(
     },
   ];
 
+  // Franchise keyword filters to keep results on-topic
+  const franchiseFilters: Array<{ regex: RegExp; predicate: (name: string) => boolean }> = [
+    {
+      regex: /spider-?man|spidey/i,
+      predicate: (name) => /spider-?man/i.test(name),
+    },
+    {
+      regex: /final\s+fantasy/i,
+      predicate: (name) => /final\s+fantasy/i.test(name),
+    },
+    {
+      regex: /diablo\b/i,
+      predicate: (name) => /diablo\b/i.test(name),
+    },
+  ];
+
   const prioritizeByTokens = <
     T extends { name?: string | null; permalink?: string | null }
   >(
@@ -871,9 +887,61 @@ export async function handleVectorSearch(
         return acc;
       }, []);
 
-      wooProducts = dedupeWooProducts(
-        await searchWooProducts(cleanedQuery, wooLimit),
+  wooProducts = dedupeWooProducts(
+    await searchWooProducts(cleanedQuery, wooLimit),
+  );
+
+  // Apply franchise filters (e.g., Spider-Man, Final Fantasy, Diablo) to keep lists tight
+  const franchiseMatch = franchiseFilters.find((f) => f.regex.test(query));
+  if (franchiseMatch && wooProducts.length > 0) {
+    const filtered = wooProducts.filter((p) =>
+      franchiseMatch.predicate((p.name || "").toLowerCase()),
+    );
+    if (filtered.length > 0) {
+      wooProducts = filtered;
+      console.log(
+        `[VectorSearch] Franchise filter applied (${franchiseMatch.regex}): kept ${filtered.length} items`,
       );
+    }
+  }
+
+  // Platform intent filtering (PS5/PS4/Switch/Xbox/PC)
+  const platformIntent = (() => {
+    const q = lowerQuery;
+    if (/ps5|playstation\s*5\b/i.test(q)) return "ps5";
+    if (/ps4|playstation\s*4\b/i.test(q)) return "ps4";
+    if (/switch|nintendo\s*switch/i.test(q)) return "switch";
+    if (/\bxbox\b|series\s*[xs]\b|xbox\s*one/i.test(q)) return "xbox";
+    if (/\bpc\b|steam|windows\b/i.test(q)) return "pc";
+    return null;
+  })();
+
+  if (platformIntent && wooProducts.length > 0) {
+    const platformFiltered = wooProducts.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const cats = ((p as any).categories || []).join(" ").toLowerCase();
+      switch (platformIntent) {
+        case "ps5":
+          return /ps5|playstation\s*5/.test(name) || /playstation\s*5/.test(cats);
+        case "ps4":
+          return /ps4|playstation\s*4/.test(name) || /playstation\s*4/.test(cats);
+        case "switch":
+          return /switch|nintendo/.test(name) || /switch/.test(cats);
+        case "xbox":
+          return /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats);
+        case "pc":
+          return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
+        default:
+          return true;
+      }
+    });
+    if (platformFiltered.length > 0) {
+      wooProducts = platformFiltered;
+      console.log(
+        `[VectorSearch] Platform filter applied (${platformIntent}): kept ${platformFiltered.length} items`,
+      );
+    }
+  }
 
       // Storage intent: prefer storage categories and drop non-storage if possible
       if (detectedCategory === "storage" && wooProducts.length > 0) {
