@@ -3266,7 +3266,8 @@ export async function POST(request: NextRequest) {
   const { message, sessionId, history, image, mode } = validation.sanitized!;
 
   // CRITICAL: Validate token budget to prevent abuse
-  const tokenValidation = validateTokenBudget(message, history || [], 800);
+  // Increased from 800 to 4000 to allow longer conversations (gpt-4o-mini context is 128k)
+  const tokenValidation = validateTokenBudget(message, history || [], 4000);
   if (!tokenValidation.valid) {
     console.warn("[ChatKit] Token budget exceeded:", tokenValidation.errors);
     return validationErrorResponse(
