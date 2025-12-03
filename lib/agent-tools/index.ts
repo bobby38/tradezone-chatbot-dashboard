@@ -21,9 +21,20 @@ const ORDER_TABLE = "agent_orders";
 const INSPECTION_TABLE = "agent_inspections";
 export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   laptop: ["laptop"],
-  phone: ["handphone", "handphone-tablet", "smartphone", "phones"],
-  tablet: ["tablet", "handphone-tablet"],
+  phone: ["handphone", "smartphone", "phones"],
+  tablet: ["tablet"],
+  chair: ["chair"],
+  cpu_cooler: ["cpu-cooler"],
 };
+
+export const DIRECT_CATEGORY_KEYS = [
+  "phone",
+  "tablet",
+  "chair",
+  "cpu_cooler",
+] as const;
+
+export const DIRECT_CATEGORY_SET = new Set<string>(DIRECT_CATEGORY_KEYS);
 
 let wooProductsCache: {
   loadedAt: number;
@@ -370,12 +381,24 @@ export async function searchWooProducts(
       keywords: [],
       category: "laptop",
     },
+    {
+      pattern:
+        /\b(gaming\s*chairs?|chairs?|seat\s*zone|seatzone|ergonomic\s*chairs?)\b/i,
+      keywords: ["chair", "gaming chair", "seatzone"],
+      category: "chair",
+    },
+    {
+      pattern:
+        /\b(cpu\s*coolers?|coolers?|cpu\s*fans?|aio\s*(coolers?|liquid)|liquid\s*coolers?|heatsinks?|radiators?)\b/i,
+      keywords: ["cpu cooler", "cooler", "aio", "liquid cooler", "heatsink"],
+      category: "cpu_cooler",
+    },
   ];
 
   let familyFilter: string[] | null = null;
   let categoryFilter: string | null = null;
   for (const { pattern, keywords, category } of familyKeywords) {
-    if (pattern.test(query)) {
+  if (pattern.test(query)) {
       familyFilter = keywords;
       categoryFilter = category || null;
       console.log(
@@ -383,6 +406,26 @@ export async function searchWooProducts(
         keywords,
       );
       break;
+    }
+  }
+
+  if (categoryFilter && DIRECT_CATEGORY_SET.has(categoryFilter)) {
+    const slugList = CATEGORY_SLUG_MAP[categoryFilter] || [];
+    if (slugList.length) {
+      const deterministicResults = await getWooProductsByCategory(
+        slugList,
+        limit,
+        "asc",
+      );
+      if (deterministicResults.length) {
+        console.log(
+          `[searchWooProducts] Direct ${categoryFilter} category hit (${deterministicResults.length} products)`,
+        );
+        return deterministicResults;
+      }
+      console.log(
+        `[searchWooProducts] Direct ${categoryFilter} category hit returned 0 products, falling back to scored search`,
+      );
     }
   }
 

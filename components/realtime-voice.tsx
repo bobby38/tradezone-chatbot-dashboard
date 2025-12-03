@@ -109,14 +109,25 @@ function buildVoiceSummaryFromWooProducts(
 ): string | null {
   if (!wooProducts || wooProducts.length === 0) return null;
   const topMatches = wooProducts.slice(0, 2);
-  const summaries = topMatches.map((product) => {
+
+  // Format first product with link, others just name + price
+  const firstProduct = topMatches[0];
+  const firstSummary = `${firstProduct.name}, ${formatSGDPrice(firstProduct.price_sgd)}`;
+  const firstLink = firstProduct.permalink || "https://tradezone.sg";
+
+  const otherSummaries = topMatches.slice(1).map((product) => {
     const price = formatSGDPrice(product.price_sgd);
-    return `${product.name} — ${price}`;
+    return `${product.name}, ${price}`;
   });
-  if (!summaries.length) return null;
+
   const subject = (queryText || "").trim();
-  const intro = subject ? `For ${subject}, ` : "";
-  return `${intro}I found ${summaries.join(" and ")}. Need details on any of these?`;
+  const intro = subject ? `For ${subject}, I found ` : "I found ";
+
+  if (topMatches.length === 1) {
+    return `${intro}${firstSummary}. Link: ${firstLink}`;
+  } else {
+    return `${intro}${firstSummary} and ${otherSummaries.join(" and ")}. First link: ${firstLink}`;
+  }
 }
 
 function buildWooProductListBlock(
@@ -387,7 +398,17 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
 
       mediaStreamRef.current = stream;
 
-      const audioContext = new AudioContext({ sampleRate: 24000 });
+      // CRITICAL: Firefox requires AudioContext sample rate to MATCH MediaStream
+      // Get the actual sample rate the browser provided
+      const streamTrack = stream.getAudioTracks()[0];
+      const streamSettings = streamTrack.getSettings();
+      const nativeSampleRate = streamSettings.sampleRate || 48000; // Most browsers use 48kHz
+
+      console.log("[Audio Capture] Using native microphone rate:", nativeSampleRate, "Hz");
+
+      // Create AudioContext with SAME rate as mic (prevents Firefox errors)
+      // Browser handles resampling internally when processing audio
+      const audioContext = new AudioContext({ sampleRate: nativeSampleRate });
       audioContextRef.current = audioContext;
 
       const source = audioContext.createMediaStreamSource(stream);
@@ -828,8 +849,11 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
     try {
       const AudioContextClass =
         window.AudioContext || (window as any).webkitAudioContext;
+      // OpenAI Realtime API uses 24kHz PCM16, so playback must match exactly
       const ctx = new AudioContextClass({ sampleRate: 24000 });
       playbackContextRef.current = ctx;
+
+      console.log("[Playback] AudioContext created with 24kHz sample rate");
 
       // Create ScriptProcessorNode for continuous playback
       const node = ctx.createScriptProcessor(2048, 1, 1);

@@ -10,6 +10,11 @@
   - Skip Gemini when tool calls are present to avoid schema 400s; auto-fallback to OpenAI remains.
   - Trade-up flow always asks once for photos if none are present (non-blocking) and acknowledges when already uploaded.
   - Woo deterministic lists unchanged; added entity hint re-rank for implicit queries (e.g., Ronaldo→FIFA/FC, Spidey→Spider-Man, Hyrule→Zelda) without adding products or risking hallucinations.
+- **Nov 30, 2025 – Deterministic category lists & trade-up cache**:
+  - All `phone`, `tablet`, `chair`, `cpu cooler` intents now call `getWooProductsByCategory` directly (Woo slugs are source of truth). Results are pre-sorted by price ascending before formatting so “cheap” queries simply pick the lead entry.
+  - `CATEGORY_SLUG_MAP` exposes `DIRECT_CATEGORY_KEYS/SET` for both `searchWooProducts` and `handleVectorSearch`, preventing duplication and keeping deterministic responses consistent across layers.
+  - Added seat/cooler keyword detection upstream so “gaming chair”/“cpu cooler” requests resolve to the correct slug even when product names omit exact words.
+  - Introduced `cacheTradeUpQuote` helper: after deterministic trade-up math we update `trade_in_leads` once with `initial_quote_given`, source/target names, numeric quote fields, and ISO timestamp plus a note entry so Supabase validations pass and quote caching no longer fails.
 - **Nov 23, 2025 – Trade-up determinism**: For “trade/upgrade X for Y”, the backend now pre-fetches the trade-in price of **X** and the retail price of **Y** (preowned only if the user says so) and synthesizes a fixed reply:  
   `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`  
   LLM wording is ignored for this step; contact must be captured before payout; photo is a single yes/no prompt and never blocks submission.

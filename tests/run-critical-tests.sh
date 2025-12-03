@@ -1,6 +1,12 @@
 #!/bin/bash
-# Run Critical Tests - January 18, 2025
-# Tests for performance optimizations and family filtering fixes
+# Run Critical Tests - November 30, 2025
+# Comprehensive test suite for all recent fixes:
+# - Storage filter improvements (accessories removal)
+# - Phone/tablet category separation
+# - Product format consistency
+# - Prompt injection security
+# - Family filtering
+# - Performance optimizations
 
 set -e
 
@@ -32,9 +38,13 @@ fi
 echo ""
 echo "📋 Test Plan:"
 echo "1. Product Family Filtering (PS5/Xbox/Switch)"
-echo "2. Trade-In Price-First Flow"
-echo "3. Performance Optimization (latency & tokens)"
-echo "4. API Security & Authentication"
+echo "2. Storage Filter (NVMe/SSD accessories removal)"
+echo "3. Phone/Tablet Category Separation"
+echo "4. Product Format Consistency"
+echo "5. Prompt Injection Security"
+echo "6. Trade-In Price-First Flow"
+echo "7. Performance Optimization (latency & tokens)"
+echo "8. API Security & Authentication"
 echo ""
 
 # Run tests with detailed output
@@ -47,24 +57,52 @@ echo "TEST 1: Product Family Filtering"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx playwright test product-family-filtering.spec.ts --reporter=list
 
-# Test 2: Trade-In Price-First Flow
+# Test 2: Storage Filter
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "TEST 2: Trade-In Price-First Flow"
+echo "TEST 2: Storage Filter (NVMe/SSD)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+npx playwright test storage-filter.spec.ts --reporter=list
+
+# Test 3: Phone/Tablet Separation
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "TEST 3: Phone/Tablet Category Separation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+npx playwright test phone-tablet-separation.spec.ts --reporter=list
+
+# Test 4: Product Format Consistency
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "TEST 4: Product Format Consistency"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+npx playwright test product-format-consistency.spec.ts --reporter=list
+
+# Test 5: Prompt Injection Security
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "TEST 5: Prompt Injection Security"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+npx playwright test prompt-injection.spec.ts --reporter=list
+
+# Test 6: Trade-In Price-First Flow
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "TEST 6: Trade-In Price-First Flow"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx playwright test trade-in-price-first.spec.ts --reporter=list
 
-# Test 3: Performance Optimization
+# Test 7: Performance Optimization
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "TEST 3: Performance Optimization"
+echo "TEST 7: Performance Optimization"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx playwright test performance-optimization.spec.ts --reporter=list
 
-# Test 4: API Security
+# Test 8: API Security
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "TEST 4: API Security & Authentication"
+echo "TEST 8: API Security & Authentication"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx playwright test api-security.spec.ts --reporter=list
 

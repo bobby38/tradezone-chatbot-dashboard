@@ -11,7 +11,11 @@ import {
   formatSGDPriceShortOrNull,
 } from "@/lib/tools/priceFormatter";
 import type { WooProductSearchResult } from "@/lib/agent-tools";
-import { CATEGORY_SLUG_MAP, getWooProductsByCategory } from "@/lib/agent-tools";
+import {
+  CATEGORY_SLUG_MAP,
+  DIRECT_CATEGORY_SET,
+  getWooProductsByCategory,
+} from "@/lib/agent-tools";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -250,6 +254,15 @@ function extractProductCategory(query: string): string | null {
       category: "phone",
     },
     { pattern: /\b(tablets?|ipads?)\b/i, category: "tablet" },
+    {
+      pattern: /\b(gaming\s*chairs?|chairs?|seatzone)\b/i,
+      category: "chair",
+    },
+    {
+      pattern:
+        /\b(cpu\s*coolers?|cpu\s*fan|aio\s*(cooler|liquid)|liquid\s*cooler|heatsink|radiator)\b/i,
+      category: "cpu_cooler",
+    },
     { pattern: /\b(monitors?|displays?|screens?)\b/i, category: "monitor" },
     {
       pattern: /\b(keyboards?|mechanical\s*keyboards?)\b/i,
@@ -413,7 +426,8 @@ function createBudgetContext(
 
 function buildCategoryLabel(category: string | null): string {
   if (!category) return "options";
-  return category.endsWith("s") ? category : `${category}s`;
+  const normalized = category.replace(/_/g, " ");
+  return normalized.endsWith("s") ? normalized : `${normalized}s`;
 }
 
 function buildBudgetSummaryLine(
@@ -579,7 +593,7 @@ export async function handleVectorSearch(
   const prependTradeSnippet = (text: string) =>
     tradeSnippet ? `${tradeSnippet}\n\n${text}`.trim() : text;
 
-  if (detectedCategory === "phone" || detectedCategory === "tablet") {
+  if (detectedCategory && DIRECT_CATEGORY_SET.has(detectedCategory)) {
     const slugs = CATEGORY_SLUG_MAP[detectedCategory] || [];
     const directResults = await getWooProductsByCategory(slugs, wooLimit, "asc");
     if (directResults.length) {

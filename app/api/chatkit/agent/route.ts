@@ -12,6 +12,7 @@ import {
   type VectorSearchContext,
 } from "@/lib/tools";
 import {
+  cacheTradeUpQuote,
   ensureTradeInLead,
   submitTradeInLead,
   TradeInValidationError,
@@ -61,6 +62,7 @@ import {
 } from "@/lib/security/rateLimit";
 import {
   validateChatMessage,
+  validateTokenBudget,
   validationErrorResponse,
   sanitizeMessage,
   estimateTokens,
@@ -1685,12 +1687,28 @@ function enforceFamilyContentFilter(response: string, userMessage: string) {
   const lines = response.split(/\n+/);
 
   let banned: string[] = [];
+
+  // Gaming console filters
   if (/xbox/.test(query)) {
     banned = ["ps5", "ps4", "playstation", "switch", "nintendo"];
   } else if (/switch|nintendo/.test(query)) {
     banned = ["ps5", "ps4", "playstation", "xbox", "series x", "series s"];
   } else if (/ps5|ps4|playstation/.test(query)) {
     banned = ["xbox", "series x", "series s", "switch", "nintendo"];
+  }
+
+  // Phone/Tablet filters
+  // When user asks for iPhone, exclude Android phones AND all tablets
+  else if (/\biphone\b/.test(query)) {
+    banned = ["ipad", "tab", "oppo", "pixel", "lenovo"]; // Tablets + Android brands
+  }
+  // When user asks for phone/android/handphone, exclude ALL tablets (iPad, Galaxy Tab, etc.)
+  else if (/\b(phone|android|handphone|smartphone|mobile)\b/.test(query)) {
+    banned = ["ipad", "tab"]; // Simple: any line with "ipad" or "tab" = tablet
+  }
+  // When user asks for tablet, exclude phones
+  else if (/\btablet\b/.test(query)) {
+    banned = ["iphone", "oppo", "pixel"]; // All phone brands
   }
 
   if (!banned.length) return response;
@@ -1704,6 +1722,7 @@ function enforceFamilyContentFilter(response: string, userMessage: string) {
   const cleaned = filtered.join("\n").trim();
   if (cleaned) return cleaned;
 
+  // Fallback messages
   if (/xbox/.test(query)) {
     return "Here are Xbox options I can help with—tell me the model or budget.";
   }
@@ -1712,6 +1731,15 @@ function enforceFamilyContentFilter(response: string, userMessage: string) {
   }
   if (/ps5|ps4|playstation/.test(query)) {
     return "Here are PlayStation options—PS5 Disc/Digital or bundles?";
+  }
+  if (/\biphone\b/.test(query)) {
+    return "Here are iPhone options—which model are you looking for?";
+  }
+  if (/\b(phone|android|handphone|smartphone|mobile)\b/.test(query)) {
+    return "Here are phone options—any specific brand or budget?";
+  }
+  if (/\btablet\b/.test(query)) {
+    return "Here are tablet options—iPad or Android tablet?";
   }
 
   return response;
@@ -1979,9 +2007,13 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
       const candidateName = candidateTokens.slice(0, 3).join(" ");
       if (!isPlaceholderName(candidateName)) {
         patch.contact_name = candidateName;
-        console.log(`[AutoExtract] Extracted name: "${candidateName}" from: "${scrubbed}"`);
+        console.log(
+          `[AutoExtract] Extracted name: "${candidateName}" from: "${scrubbed}"`,
+        );
       } else {
-        console.log(`[AutoExtract] Rejected placeholder name: "${candidateName}"`);
+        console.log(
+          `[AutoExtract] Rejected placeholder name: "${candidateName}"`,
+        );
       }
     } else {
       console.log(`[AutoExtract] No valid name tokens from: "${scrubbed}"`);
@@ -3232,6 +3264,19 @@ export async function POST(request: NextRequest) {
   }
 
   const { message, sessionId, history, image, mode } = validation.sanitized!;
+
+  // CRITICAL: Validate token budget to prevent abuse
+  const tokenValidation = validateTokenBudget(message, history || [], 800);
+  if (!tokenValidation.valid) {
+    console.warn("[ChatKit] Token budget exceeded:", tokenValidation.errors);
+    return validationErrorResponse(
+      tokenValidation.errors,
+      400,
+      getCorsHeaders(origin),
+    );
+  }
+
+  // Budget check already done at top of function (line 3198), no need to duplicate
   if (CONVERSATION_EXIT_PATTERNS.test(message.toLowerCase())) {
     const exitResponse =
       "No problem—I'll stop here. Just message me again if you need help.";
@@ -3543,13 +3588,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           // For voice, start fresh if existing lead is stale or already populated
           let reuse = true;
           if (mode === "voice") {
-        const detail = await getTradeInLeadDetail(tradeInLeadId!);
+            const detail = await getTradeInLeadDetail(tradeInLeadId!);
             const createdAt = detail?.created_at
               ? new Date(detail.created_at as string).getTime()
               : Date.now();
             const ageMinutes = (Date.now() - createdAt) / 60000;
             const hasContact =
-              detail?.contact_email && detail?.contact_phone && detail?.contact_name;
+              detail?.contact_email &&
+              detail?.contact_phone &&
+              detail?.contact_name;
             const hasDevice = detail?.brand && detail?.model;
             if (ageMinutes > 60 || (hasContact && hasDevice)) {
               reuse = false;
@@ -3571,7 +3618,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               truncatedHistory,
             );
             if (tradeInSummary) {
-              messages.splice(2, 0, { role: "system", content: tradeInSummary });
+              messages.splice(2, 0, {
+                role: "system",
+                content: tradeInSummary,
+              });
             }
           } else {
             console.log(
@@ -3595,14 +3645,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
       } else if (tradeInIntent) {
         // Create new lead only if trade-in intent detected and no existing lead
-          const ensureResult = await ensureTradeInLead({
-            sessionId,
-            channel: "chat",
-            initialMessage: message,
-            source: "chatkit.agent",
-            maxAgeMinutes: mode === "voice" ? 60 : undefined,
-            forceNew: false,
-          });
+        const ensureResult = await ensureTradeInLead({
+          sessionId,
+          channel: "chat",
+          initialMessage: message,
+          source: "chatkit.agent",
+          maxAgeMinutes: mode === "voice" ? 60 : undefined,
+          forceNew: false,
+        });
         tradeInLeadId = ensureResult.leadId;
         tradeInLeadStatus = ensureResult.status;
 
@@ -4056,14 +4106,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     const userMessageIndex = messages.length - 1;
     let imageStrippedForTimeout = false;
 
-        const execChatCompletion = async () => {
-          return openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages,
-            tools,
-            tool_choice: toolChoice,
-            temperature: 0.7,
-            max_tokens: 800,
+    const execChatCompletion = async () => {
+      return openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        tools,
+        tool_choice: toolChoice,
+        temperature: 0.7,
+        max_tokens: 800,
       });
     };
 
@@ -4096,29 +4146,29 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       completionTokens += response.usage.completion_tokens || 0;
     }
 
-      if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-        messages.push(assistantMessage);
+    if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+      messages.push(assistantMessage);
 
-        for (const toolCall of assistantMessage.tool_calls) {
-          const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-          let toolResult = "";
+      for (const toolCall of assistantMessage.tool_calls) {
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+        let toolResult = "";
 
-          // 🚫 Trade-up intent: skip product/vector search tools to avoid catalog lists
-          const isProductSearchTool =
-            /searchProducts|searchtool|vectorSearch|woo/i.test(functionName);
-          if (tradeUpPairIntent && isProductSearchTool) {
-            console.log(
-              `[ChatKit] Skipping ${functionName} during trade-up flow (avoid WooCommerce listing)`,
-            );
-            continue;
-          }
+        // 🚫 Trade-up intent: skip product/vector search tools to avoid catalog lists
+        const isProductSearchTool =
+          /searchProducts|searchtool|vectorSearch|woo/i.test(functionName);
+        if (tradeUpPairIntent && isProductSearchTool) {
+          console.log(
+            `[ChatKit] Skipping ${functionName} during trade-up flow (avoid WooCommerce listing)`,
+          );
+          continue;
+        }
 
-          let toolSource: HybridSearchSource | undefined;
-          try {
-            if (
-              functionName === "searchProducts" ||
-              functionName === "searchtool"
+        let toolSource: HybridSearchSource | undefined;
+        try {
+          if (
+            functionName === "searchProducts" ||
+            functionName === "searchtool"
           ) {
             const toolStart = Date.now();
             const rawQuery =
@@ -4505,16 +4555,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   if (!hydratedDetail.contact_name && clues.contact_name) {
                     contactPatch.contact_name = clues.contact_name;
                   }
-                  if (
-                    !hydratedDetail.contact_phone &&
-                    clues.contact_phone
-                  ) {
+                  if (!hydratedDetail.contact_phone && clues.contact_phone) {
                     contactPatch.contact_phone = clues.contact_phone;
                   }
-                  if (
-                    !hydratedDetail.contact_email &&
-                    clues.contact_email
-                  ) {
+                  if (!hydratedDetail.contact_email && clues.contact_email) {
                     contactPatch.contact_email = clues.contact_email;
                   }
                   if (Object.keys(contactPatch).length > 0) {
@@ -4524,7 +4568,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                       tradeInLeadId,
                       refreshed,
                     );
-                    photosOk = isPhotoStepAcknowledged(hydratedDetail, truncatedHistory);
+                    photosOk = isPhotoStepAcknowledged(
+                      hydratedDetail,
+                      truncatedHistory,
+                    );
                   }
                 }
 
@@ -4612,12 +4659,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               const positive = /\b(yes|ya|can|submit|go ahead|proceed)\b/i.test(
                 lastUserText,
               );
-              const negative = /\b(no|cannot|can't|dont|don't|cancel|stop)\b/i.test(
-                lastUserText,
-              );
+              const negative =
+                /\b(no|cannot|can't|dont|don't|cancel|stop)\b/i.test(
+                  lastUserText,
+                );
               if (negative || !positive) {
                 toolResult =
-                  "I’ll wait for a clear yes before submitting. Say \"yes\" or \"submit\" to proceed.";
+                  'I’ll wait for a clear yes before submitting. Say "yes" or "submit" to proceed.';
                 toolSummaries.push({
                   name: functionName,
                   args: { ...submitArgs, leadId: tradeInLeadId },
@@ -4942,8 +4990,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           const endIdx = toolResult.indexOf(endMarker);
 
           if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-            const extracted = toolResult.substring(startIdx + startMarker.length, endIdx).trim();
-            console.log(`[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars) - setting finalResponse immediately`);
+            const extracted = toolResult
+              .substring(startIdx + startMarker.length, endIdx)
+              .trim();
+            console.log(
+              `[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars) - setting finalResponse immediately`,
+            );
             finalResponse = extracted;
             // Don't add this tool result to messages - we already have the final response
             continue; // Skip adding to messages and move to next tool call
@@ -5019,20 +5071,31 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           `${tradeUpParts.target} ${formatCurrency(retailPrice)}. ` +
           `Top-up ~${formatCurrency(topUp)} (subject to inspection/stock).`;
 
-        console.log("[ChatKit] 🔒 Deterministic trade-up response:", finalResponse);
+        console.log(
+          "[ChatKit] 🔒 Deterministic trade-up response:",
+          finalResponse,
+        );
       }
 
       // ✅ DETERMINISTIC: Extract and use deterministic responses from vectorSearch.ts
       // Check if any tool result contains a deterministic response marker
-      if (!finalResponse && lastSearchProductsResult && lastSearchProductsResult.includes("<<<DETERMINISTIC_START>>>")) {
+      if (
+        !finalResponse &&
+        lastSearchProductsResult &&
+        lastSearchProductsResult.includes("<<<DETERMINISTIC_START>>>")
+      ) {
         const startMarker = "<<<DETERMINISTIC_START>>>";
         const endMarker = "<<<DETERMINISTIC_END>>>";
         const startIdx = lastSearchProductsResult.indexOf(startMarker);
         const endIdx = lastSearchProductsResult.indexOf(endMarker);
 
         if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-          const extracted = lastSearchProductsResult.substring(startIdx + startMarker.length, endIdx).trim();
-          console.log(`[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars, bypassing LLM)`);
+          const extracted = lastSearchProductsResult
+            .substring(startIdx + startMarker.length, endIdx)
+            .trim();
+          console.log(
+            `[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars, bypassing LLM)`,
+          );
           finalResponse = extracted;
         }
       }
@@ -5044,7 +5107,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             Array.isArray(assistantMessage.tool_calls) &&
             assistantMessage.tool_calls.length > 0;
           const isGemini = textModel.toLowerCase().includes("gemini");
-          const canUseGemini = isGemini && process.env.GEMINI_API_KEY && !hasTools;
+          const canUseGemini =
+            isGemini && process.env.GEMINI_API_KEY && !hasTools;
 
           if (canUseGemini) {
             try {
@@ -5063,7 +5127,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           }
 
           // Default / fallback: OpenAI
-          const model = textModel.includes("gemini") ? "gpt-4o-mini" : textModel;
+          const model = textModel.includes("gemini")
+            ? "gpt-4o-mini"
+            : textModel;
           return openai.chat.completions.create({
             model,
             messages,
@@ -5107,13 +5173,20 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
         // ✅ FAILSAFE: Catch hallucinations if they somehow bypass deterministic responses
         // This should rarely trigger now that vectorSearch.ts returns pre-formatted responses
-        if (lastHybridQuery && /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop|notebook|computer)\b/i.test(lastHybridQuery)) {
+        if (
+          lastHybridQuery &&
+          /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop|notebook|computer)\b/i.test(
+            lastHybridQuery,
+          )
+        ) {
           const hallucinatedProducts = ["chorvs", "anthem", "hades"];
           const responseL = finalResponse.toLowerCase();
 
           for (const fake of hallucinatedProducts) {
             if (responseL.includes(fake)) {
-              console.log(`[ChatKit] 🚨 FAILSAFE TRIGGERED - Blocked hallucinated product: ${fake}`);
+              console.log(
+                `[ChatKit] 🚨 FAILSAFE TRIGGERED - Blocked hallucinated product: ${fake}`,
+              );
               // This shouldn't happen with deterministic responses, but regenerate if it does
               messages.push({
                 role: "system",
@@ -5593,12 +5666,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
 
     // If the response contains numbered bullets with product names but no links, append links for voice/text parity
-    if (!/https?:\/\//i.test(finalResponse) && Array.isArray(lastSearchProductsResult)) {
+    if (
+      !/https?:\/\//i.test(finalResponse) &&
+      Array.isArray(lastSearchProductsResult)
+    ) {
       // no-op: lastSearchProductsResult is string; keep fallback below
     }
-    if (!/https?:\/\//i.test(finalResponse) && typeof lastSearchProductsResult === "string") {
+    if (
+      !/https?:\/\//i.test(finalResponse) &&
+      typeof lastSearchProductsResult === "string"
+    ) {
       // Try to extract URLs from the last tool result if present
-      const urlMatches = lastSearchProductsResult.match(/https?:\/\/\S+/g) || [];
+      const urlMatches =
+        lastSearchProductsResult.match(/https?:\/\/\S+/g) || [];
       if (urlMatches.length > 0) {
         const linkLines = urlMatches
           .slice(0, 5)

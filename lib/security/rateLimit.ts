@@ -15,6 +15,7 @@ interface RateLimitEntry {
 class RateLimiter {
   private limits: Map<string, RateLimitEntry> = new Map();
   private cleanupInterval: NodeJS.Timeout;
+  private readonly MAX_ENTRIES = 10000; // Prevent memory leak from unbounded growth
 
   constructor() {
     // Cleanup expired entries every 5 minutes
@@ -42,6 +43,14 @@ class RateLimiter {
     // No existing entry or expired
     if (!entry || now > entry.resetTime) {
       const resetTime = now + windowMs;
+
+      // Prevent memory leak: evict oldest entry if at capacity
+      if (this.limits.size >= this.MAX_ENTRIES) {
+        const oldestKey = this.limits.keys().next().value;
+        this.limits.delete(oldestKey);
+        console.warn("[RateLimit] Max entries reached, evicted oldest:", oldestKey);
+      }
+
       this.limits.set(identifier, {
         count: 1,
         resetTime,

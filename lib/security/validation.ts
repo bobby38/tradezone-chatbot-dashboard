@@ -3,6 +3,8 @@
  * Prevents token abuse and malicious payloads
  */
 
+import { logSuspiciousActivity } from './monitoring';
+
 export const VALIDATION_LIMITS = {
   MAX_MESSAGE_LENGTH: 1000, // Max characters per message
   MAX_HISTORY_LENGTH: 20, // Max conversation turns to include
@@ -32,6 +34,29 @@ export class ValidationResult {
   static failure(errors: ValidationError[]): ValidationResult {
     return new ValidationResult(false, errors);
   }
+}
+
+/**
+ * Log prompt injection attempt to security monitoring
+ */
+async function logInjectionAttempt(
+  message: string,
+  sessionId: string,
+  risk: "low" | "medium" | "high",
+  patterns: string[],
+  clientIp: string = "unknown"
+): Promise<void> {
+  await logSuspiciousActivity("prompt_injection", {
+    sessionId,
+    clientIp,
+    endpoint: "/api/chatkit/agent",
+    metadata: {
+      risk,
+      patterns: patterns.slice(0, 3), // Limit to first 3 patterns
+      messagePreview: message.substring(0, 100),
+      messageLength: message.length,
+    },
+  });
 }
 
 /**
@@ -167,9 +192,42 @@ export function validateChatMessage(input: any): ValidationResult {
     sanitizedMode = input.mode.trim().toLowerCase();
   }
 
+  // Check for prompt injection attempts
+  const injectionCheck = detectPromptInjection(input.message);
+
+  if (injectionCheck.detected) {
+    // Log the attempt
+    console.warn("[Security] Prompt injection detected:", {
+      risk: injectionCheck.risk,
+      patterns: injectionCheck.patterns,
+      message: input.message.substring(0, 100),
+    });
+
+    // Log to security monitoring (async, don't block)
+    logInjectionAttempt(
+      input.message,
+      input.sessionId || "unknown",
+      injectionCheck.risk,
+      injectionCheck.patterns
+    ).catch(err => console.error("[Security] Failed to log injection attempt:", err));
+
+    // Block high-risk attempts
+    if (injectionCheck.risk === "high") {
+      errors.push({
+        field: "message",
+        message: "Your message contains patterns that may interfere with the chatbot. Please rephrase your question.",
+        value: injectionCheck.risk,
+      });
+      return ValidationResult.failure(errors);
+    }
+
+    // For medium/low risk, sanitize but allow
+    console.log("[Security] Allowing medium/low risk message after sanitization");
+  }
+
   // Sanitize and return
   const sanitized = {
-    message: input.message.trim(),
+    message: sanitizeMessage(input.message.trim()),
     sessionId: input.sessionId.trim(),
     history: Array.isArray(input.history)
       ? input.history.slice(-VALIDATION_LIMITS.MAX_HISTORY_LENGTH) // Keep only last N turns
@@ -220,6 +278,91 @@ export function validateSessionId(sessionId: string): ValidationResult {
 }
 
 /**
+ * Detect prompt injection attempts
+ * Returns true if suspicious patterns are detected
+ */
+export function detectPromptInjection(message: string): {
+  detected: boolean;
+  patterns: string[];
+  risk: "low" | "medium" | "high";
+} {
+  const lowerMessage = message.toLowerCase();
+  const detectedPatterns: string[] = [];
+
+  // Critical injection patterns (HIGH RISK)
+  const criticalPatterns = [
+    /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)/i,
+    /disregard\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)/i,
+    /forget\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)/i,
+    /new\s+(instructions|prompt|rules|system\s+message)/i,
+    /you\s+are\s+now\s+(a|an)\s+/i,
+    /your\s+new\s+(role|purpose|instruction)/i,
+    /system:\s*/i,
+    /assistant:\s*/i,
+    /\[SYSTEM\]/i,
+    /\[INST\]/i,
+    /\[\/INST\]/i,
+    /<\|im_start\|>/i,
+    /<\|im_end\|>/i,
+    /<<SYS>>/i,
+    /<\/SYS>/i,
+  ];
+
+  // Medium-risk patterns (role-playing/identity confusion)
+  const mediumPatterns = [
+    /pretend\s+(you're|you\s+are|to\s+be)/i,
+    /act\s+(like|as\s+if)\s+you/i,
+    /roleplay\s+as/i,
+    /simulate\s+(being|a)/i,
+    /behave\s+like/i,
+    /respond\s+as\s+if\s+you/i,
+  ];
+
+  // Low-risk patterns (probing/testing)
+  const lowPatterns = [
+    /what\s+(are|is)\s+your\s+(instructions|rules|prompt)/i,
+    /show\s+me\s+your\s+(instructions|prompt|system\s+message)/i,
+    /reveal\s+your\s+(instructions|prompt)/i,
+    /tell\s+me\s+your\s+(instructions|rules)/i,
+  ];
+
+  // Check critical patterns
+  for (const pattern of criticalPatterns) {
+    if (pattern.test(message)) {
+      detectedPatterns.push(pattern.source);
+    }
+  }
+
+  if (detectedPatterns.length > 0) {
+    return { detected: true, patterns: detectedPatterns, risk: "high" };
+  }
+
+  // Check medium-risk patterns
+  for (const pattern of mediumPatterns) {
+    if (pattern.test(message)) {
+      detectedPatterns.push(pattern.source);
+    }
+  }
+
+  if (detectedPatterns.length > 0) {
+    return { detected: true, patterns: detectedPatterns, risk: "medium" };
+  }
+
+  // Check low-risk patterns
+  for (const pattern of lowPatterns) {
+    if (pattern.test(message)) {
+      detectedPatterns.push(pattern.source);
+    }
+  }
+
+  if (detectedPatterns.length > 0) {
+    return { detected: true, patterns: detectedPatterns, risk: "low" };
+  }
+
+  return { detected: false, patterns: [], risk: "low" };
+}
+
+/**
  * Sanitize message content to prevent injection attacks
  */
 export function sanitizeMessage(message: string): string {
@@ -231,6 +374,9 @@ export function sanitizeMessage(message: string): string {
 
   // Remove excessive newlines (max 3 consecutive)
   sanitized = sanitized.replace(/\n{4,}/g, "\n\n\n");
+
+  // Remove common instruction delimiters
+  sanitized = sanitized.replace(/<\|im_start\|>|<\|im_end\|>|<<SYS>>|<\/SYS>|\[SYSTEM\]|\[INST\]|\[\/INST\]/gi, "");
 
   return sanitized;
 }

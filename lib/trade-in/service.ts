@@ -119,8 +119,20 @@ export class TradeInValidationError extends Error {
 }
 
 const ARRAY_FIELDS = new Set(["defects", "accessories"]);
-const NUMERIC_FIELDS = new Set(["price_hint", "range_min", "range_max"]);
-const DATE_FIELDS = new Set(["last_contacted_at", "follow_up_at"]);
+const NUMERIC_FIELDS = new Set([
+  "price_hint",
+  "range_min",
+  "range_max",
+  "source_price_quoted",
+  "target_price_quoted",
+  "top_up_amount",
+]);
+const DATE_FIELDS = new Set([
+  "last_contacted_at",
+  "follow_up_at",
+  "quote_timestamp",
+]);
+const BOOLEAN_FIELDS = new Set(["initial_quote_given"]);
 const ENUM_FIELDS = new Set([
   "status",
   "condition",
@@ -134,6 +146,8 @@ const TEXT_FIELDS = new Set([
   "model",
   "storage",
   "pricing_version",
+   "source_device_name",
+   "target_device_name",
   "contact_name",
   "contact_phone",
   "contact_email",
@@ -148,6 +162,7 @@ const SUPPORTED_FIELDS = new Set(
   Array.from(ARRAY_FIELDS)
     .concat(Array.from(NUMERIC_FIELDS))
     .concat(Array.from(DATE_FIELDS))
+    .concat(Array.from(BOOLEAN_FIELDS))
     .concat(Array.from(ENUM_FIELDS))
     .concat(Array.from(TEXT_FIELDS)),
 );
@@ -198,6 +213,13 @@ export interface TradeInUpdateInput {
   last_contacted_at?: string;
   follow_up_at?: string;
   source_message_summary?: string;
+  source_device_name?: string;
+  source_price_quoted?: number | string | null;
+  target_device_name?: string;
+  target_price_quoted?: number | string | null;
+  top_up_amount?: number | string | null;
+  initial_quote_given?: boolean;
+  quote_timestamp?: string;
 }
 
 export interface TradeInSubmitInput {
@@ -367,6 +389,15 @@ function normalizePatch(patch: TradeInUpdateInput) {
           return;
         }
         updatePayload[key] = date.toISOString();
+      }
+      return;
+    }
+
+    if (BOOLEAN_FIELDS.has(key)) {
+      if (value === null || value === undefined) {
+        updatePayload[key] = null;
+      } else {
+        updatePayload[key] = Boolean(value);
       }
       return;
     }
@@ -541,6 +572,102 @@ export async function updateTradeInLead(
   }
 
   return { lead, actionsLogged, previousStatus };
+}
+
+export interface TradeUpQuoteCacheInput {
+  leadId: string;
+  sourceName: string;
+  targetName: string;
+  sourcePrice: number | string;
+  targetPrice: number | string;
+  topUpAmount: number | string;
+  quoteTimestamp?: string | Date;
+}
+
+export async function cacheTradeUpQuote(
+  input: TradeUpQuoteCacheInput,
+): Promise<void> {
+  const {
+    leadId,
+    sourceName,
+    targetName,
+    sourcePrice,
+    targetPrice,
+    topUpAmount,
+    quoteTimestamp,
+  } = input;
+
+  if (!leadId) {
+    throw new TradeInValidationError("leadId is required", ["leadId"]);
+  }
+
+  const invalidNumericFields: string[] = [];
+  const normalizeNumeric = (value: number | string, field: string) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) {
+      invalidNumericFields.push(field);
+      return null;
+    }
+    return num;
+  };
+
+  const resolvedSourcePrice = normalizeNumeric(
+    sourcePrice,
+    "source_price_quoted",
+  );
+  const resolvedTargetPrice = normalizeNumeric(
+    targetPrice,
+    "target_price_quoted",
+  );
+  const resolvedTopUp = normalizeNumeric(topUpAmount, "top_up_amount");
+
+  if (invalidNumericFields.length) {
+    throw new TradeInValidationError(
+      "Trade-up quote fields must be numeric",
+      invalidNumericFields,
+    );
+  }
+
+  const timestamp =
+    quoteTimestamp instanceof Date
+      ? quoteTimestamp
+      : quoteTimestamp
+        ? new Date(quoteTimestamp)
+        : new Date();
+  if (Number.isNaN(timestamp.valueOf())) {
+    throw new TradeInValidationError("Invalid quote_timestamp", ["quote_timestamp"]);
+  }
+
+  const payload = {
+    initial_quote_given: true,
+    source_device_name: sanitizeContactValue(sourceName, "device"),
+    source_price_quoted: resolvedSourcePrice!,
+    target_device_name: sanitizeContactValue(targetName, "device"),
+    target_price_quoted: resolvedTargetPrice!,
+    top_up_amount: resolvedTopUp!,
+    quote_timestamp: timestamp.toISOString(),
+  };
+
+  const { error } = await supabaseAdmin
+    .from("trade_in_leads")
+    .update(payload)
+    .eq("id", leadId);
+
+  if (error) {
+    throw new Error(
+      `[TradeIn] Failed to cache trade-up quote: ${error.message}`,
+    );
+  }
+
+  await supabaseAdmin.from("trade_in_actions").insert({
+    lead_id: leadId,
+    action_type: "note",
+    payload: {
+      message: `Auto-quoted ${payload.source_device_name} → ${payload.target_device_name} (top-up ~S$${payload.top_up_amount})`,
+      channel: "chat",
+      type: "quote_cache",
+    },
+  });
 }
 
 export async function createTradeInUploadUrl(params: {

@@ -97,7 +97,7 @@ export function isHighUsage(tokens: number, cost: number): boolean {
  * Log suspicious activity
  */
 export async function logSuspiciousActivity(
-  type: 'high_usage' | 'repeated_errors' | 'rate_limit_hit' | 'auth_failure',
+  type: 'high_usage' | 'repeated_errors' | 'rate_limit_hit' | 'auth_failure' | 'prompt_injection',
   details: {
     sessionId?: string;
     clientIp: string;

@@ -2201,34 +2201,25 @@
       // Initialize audio queue
       this.audioQueue = [];
 
-      // Input (microphone)
+      // Input (microphone) - Don't force sample rate, let browser choose best quality
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          // Avoid forcing a sample rate; let the browser choose to prevent mismatches (Firefox)
         },
       });
 
-      // Pick stream sample rate if available; otherwise fall back to default
+      // CRITICAL: Firefox requires AudioContext sample rate to MATCH the MediaStream
+      // Get the actual sample rate the browser gave us
       const track = this.mediaStream.getAudioTracks()[0];
       const trackSettings = track?.getSettings ? track.getSettings() : {};
-      let desiredSampleRate = trackSettings?.sampleRate || undefined;
+      const nativeSampleRate = trackSettings?.sampleRate || 48000; // Most browsers use 48kHz
 
-      try {
-        this.audioContext = desiredSampleRate
-          ? new AudioContext({ sampleRate: desiredSampleRate })
-          : new AudioContext();
-      } catch (err) {
-        console.warn(
-          "[Voice] AudioContext init failed with desired sampleRate",
-          desiredSampleRate,
-          err,
-        );
-        this.audioContext = new AudioContext();
-      }
-      // Ensure we know the actual sample rate in use
-      desiredSampleRate = this.audioContext.sampleRate || desiredSampleRate;
+      console.log("[Voice] Microphone native rate:", nativeSampleRate, "Hz");
+
+      // Create AudioContext with SAME rate as mic (required by Firefox)
+      // Browser will handle resampling when we send PCM16 data
+      this.audioContext = new AudioContext({ sampleRate: nativeSampleRate });
 
       const source = this.audioContext.createMediaStreamSource(
         this.mediaStream,
@@ -2278,18 +2269,10 @@
       source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
 
-      // Output (playback)
-      try {
-        this.playbackContext = desiredSampleRate
-          ? new AudioContext({ sampleRate: desiredSampleRate })
-          : new AudioContext();
-      } catch (err) {
-        console.warn(
-          "[Voice] Playback AudioContext init failed, falling back",
-          err,
-        );
-        this.playbackContext = new AudioContext();
-      }
+      // Output (playback) - OpenAI sends 24kHz PCM16, so playback uses 24kHz
+      // This is correct because we're receiving pre-encoded audio from OpenAI
+      this.playbackContext = new AudioContext({ sampleRate: 24000 });
+      console.log("[Voice] Playback AudioContext: 24kHz (OpenAI audio format)");
       this.playbackNode = this.playbackContext.createScriptProcessor(
         2048,
         1,
