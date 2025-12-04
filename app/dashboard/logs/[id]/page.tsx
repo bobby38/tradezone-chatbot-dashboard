@@ -66,16 +66,21 @@ function ChatBubble({ who, text, timestamp, status }: ChatBubbleProps) {
           <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              className="space-y-2"
               components={{
                 // Compact product list styling
                 ol: ({ children }) => (
-                  <ol className="space-y-2 my-2">{children}</ol>
+                  <ol className="list-decimal list-inside space-y-2 my-2">
+                    {children}
+                  </ol>
                 ),
                 ul: ({ children }) => (
-                  <ul className="space-y-1 my-2">{children}</ul>
+                  <ul className="list-disc list-inside space-y-1 my-2">
+                    {children}
+                  </ul>
                 ),
                 li: ({ children }) => (
-                  <li className="text-sm leading-relaxed">{children}</li>
+                  <li className="text-sm leading-relaxed ml-0">{children}</li>
                 ),
                 // Product links - compact inline
                 a: ({ href, children }) => (
