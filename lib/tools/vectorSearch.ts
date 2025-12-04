@@ -274,7 +274,8 @@ function extractProductCategory(query: string): string | null {
     },
     { pattern: /\b(headsets?|headphones?|earphones?)\b/i, category: "audio" },
     {
-      pattern: /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state)\b/i,
+      pattern:
+        /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state)\b/i,
       category: "storage",
     },
     {
@@ -554,7 +555,8 @@ export async function handleVectorSearch(
   let detectedCategory = extractProductCategory(query);
   // Hard override to avoid mis-detection for critical categories
   if (/\btablet\b/i.test(query)) detectedCategory = "tablet";
-  if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query)) detectedCategory = "phone";
+  if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query))
+    detectedCategory = "phone";
   // Hard override to avoid mis-detection
   if (/\btablet\b/i.test(query)) {
     detectedCategory = "tablet" as any;
@@ -595,7 +597,11 @@ export async function handleVectorSearch(
 
   if (detectedCategory && DIRECT_CATEGORY_SET.has(detectedCategory)) {
     const slugs = CATEGORY_SLUG_MAP[detectedCategory] || [];
-    const directResults = await getWooProductsByCategory(slugs, wooLimit, "asc");
+    const directResults = await getWooProductsByCategory(
+      slugs,
+      wooLimit,
+      "asc",
+    );
     if (directResults.length) {
       console.log(
         `[VectorSearch] Direct ${detectedCategory} category load: ${directResults.length} items`,
@@ -625,14 +631,22 @@ export async function handleVectorSearch(
         })
         .join("\n\n");
 
+      // Detect vague queries that need LLM clarification instead of deterministic response
+      const isVagueQuery =
+        /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
+          query.trim(),
+        );
+
       const intro = `Here's what we have (${directResults.length} products):\n\n`;
       const deterministicResponse = `${summaryPrefix}${intro}${listText}`;
-      const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
-        deterministicResponse,
-      )}<<<DETERMINISTIC_END>>>`;
+
+      // For vague queries, return without deterministic markers so LLM can ask clarification
+      const responseText = isVagueQuery
+        ? deterministicResponse
+        : `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
       return {
-        text: wrappedResponse,
+        text: responseText,
         store: resolvedStore.label,
         matches: [],
         wooProducts: directResults,
@@ -659,14 +673,24 @@ export async function handleVectorSearch(
 
   // Lightweight entity → token hints to make implicit queries smarter without LLM prompts
   const ENTITY_HINT_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
-    { regex: /\bronald|messi|madrid|barca|barcelona|man\s*united|man\s*u\b|liverpool|premier\s+league|fifa\b|fc\s2[34]/i, tokens: ["fifa", "fc"] },
-    { regex: /\bpeter\s+parker|spidey|spider-?man/i, tokens: ["spider", "spider-man"] },
+    {
+      regex:
+        /\bronald|messi|madrid|barca|barcelona|man\s*united|man\s*u\b|liverpool|premier\s+league|fifa\b|fc\s2[34]/i,
+      tokens: ["fifa", "fc"],
+    },
+    {
+      regex: /\bpeter\s+parker|spidey|spider-?man/i,
+      tokens: ["spider", "spider-man"],
+    },
     { regex: /\bhyrule|link\b/i, tokens: ["zelda"] },
     {
       regex: /\bpikachu|eevee|pokemon|pok[eé]mon|pakiman|pakimon/i,
       tokens: ["pokemon", "pokémon", "switch", "nintendo"],
     },
-    { regex: /\bkratos|atreus|ragnarok|god\s+of\s+war/i, tokens: ["god of war"] },
+    {
+      regex: /\bkratos|atreus|ragnarok|god\s+of\s+war/i,
+      tokens: ["god of war"],
+    },
     { regex: /\bmaster\s+chief|halo\b/i, tokens: ["halo"] },
     { regex: /\bvice\s+city|san\s+andreas|gta\b/i, tokens: ["gta"] },
     {
@@ -685,7 +709,10 @@ export async function handleVectorSearch(
   ];
 
   // Franchise keyword filters to keep results on-topic
-  const franchiseFilters: Array<{ regex: RegExp; predicate: (name: string) => boolean }> = [
+  const franchiseFilters: Array<{
+    regex: RegExp;
+    predicate: (name: string) => boolean;
+  }> = [
     {
       regex: /spider-?man|spidey/i,
       predicate: (name) => /spider-?man/i.test(name),
@@ -701,7 +728,7 @@ export async function handleVectorSearch(
   ];
 
   const prioritizeByTokens = <
-    T extends { name?: string | null; permalink?: string | null }
+    T extends { name?: string | null; permalink?: string | null },
   >(
     products: T[],
     tokens: string[],
@@ -724,7 +751,7 @@ export async function handleVectorSearch(
   };
 
   const dedupeWooProducts = <
-    T extends { permalink?: string | null; name?: string | null }
+    T extends { permalink?: string | null; name?: string | null },
   >(
     products: T[],
   ): T[] => {
@@ -803,16 +830,18 @@ export async function handleVectorSearch(
       const lowerQuery = query.toLowerCase();
 
       // Live-sale / latest intent: bypass catalog and fetch fresh via Perplexity first
-      const saleIntent = /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
-        lowerQuery,
-      );
+      const saleIntent =
+        /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+          lowerQuery,
+        );
       if (saleIntent) {
         try {
           const perplexityQuery = `${query} site:tradezone.sg latest prices`;
           console.log(
             `[VectorSearch] Sale/latest intent detected; querying Perplexity: "${perplexityQuery}"`,
           );
-          const perplexityResult = await handlePerplexitySearch(perplexityQuery);
+          const perplexityResult =
+            await handlePerplexitySearch(perplexityQuery);
           if (
             perplexityResult &&
             !perplexityResult.includes("No results found") &&
@@ -852,23 +881,23 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] Gamepad detected, searching for: "${searchQuery}"`,
         );
-  } else if (
-    /\b(handphone|phone|mobile|smartphone|android|iphone)\b/i.test(
-      lowerQuery,
-    )
-  ) {
-    // Anchor to phone category to avoid tablets
-    searchQuery = "handphone phone mobile smartphone";
-    console.log(
-      `[VectorSearch] Phone query detected - forcing phone category`,
-    );
-  } else if (/\btablet\b/i.test(lowerQuery)) {
-    // Map tablet to actual tablet products
-    searchQuery = "tablet ipad galaxy tab";
-    console.log(
-      `[VectorSearch] Tablet detected, searching for: "${searchQuery}"`,
-    );
-  } else if (/\bconsole\b/i.test(lowerQuery)) {
+      } else if (
+        /\b(handphone|phone|mobile|smartphone|android|iphone)\b/i.test(
+          lowerQuery,
+        )
+      ) {
+        // Anchor to phone category to avoid tablets
+        searchQuery = "handphone phone mobile smartphone";
+        console.log(
+          `[VectorSearch] Phone query detected - forcing phone category`,
+        );
+      } else if (/\btablet\b/i.test(lowerQuery)) {
+        // Map tablet to actual tablet products
+        searchQuery = "tablet ipad galaxy tab";
+        console.log(
+          `[VectorSearch] Tablet detected, searching for: "${searchQuery}"`,
+        );
+      } else if (/\bconsole\b/i.test(lowerQuery)) {
         // Replace "console" with brand name if specified, otherwise default to "playstation"
         if (/nintendo|switch/i.test(lowerQuery)) {
           searchQuery = searchQuery.replace(/\bconsole\b/gi, "nintendo");
@@ -950,7 +979,9 @@ export async function handleVectorSearch(
         );
       } else if (/\bdiablo\b/i.test(lowerQuery)) {
         searchQuery = "diablo";
-        console.log(`[VectorSearch] Diablo detected, searching for: "${searchQuery}"`);
+        console.log(
+          `[VectorSearch] Diablo detected, searching for: "${searchQuery}"`,
+        );
       }
 
       const cleanedQuery = cleanQueryForSearch(searchQuery);
@@ -959,128 +990,162 @@ export async function handleVectorSearch(
         return acc;
       }, []);
 
-  wooProducts = dedupeWooProducts(
-    await searchWooProducts(cleanedQuery, wooLimit),
-  );
-
-  // Phone-specific cleanup: remove tablet cross-bleed
-  if (detectedCategory === "phone" && wooProducts.length > 0) {
-    let phoneFiltered = wooProducts.filter((p) => {
-      const cats = ((p as any).categories || []).join(" ").toLowerCase();
-      const name = (p.name || "").toLowerCase();
-      const isPhoneCat = /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(cats) || /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(name);
-      const isTabletCat = /tablet|ipad/.test(cats) || /tablet|ipad/.test(name);
-      return isPhoneCat && !isTabletCat;
-    });
-
-    if (phoneFiltered.length === 0) {
-      phoneFiltered = dedupeWooProducts(await searchWooProducts("handphone phone mobile", wooLimit)).filter((p) => {
-        const cats = ((p as any).categories || []).join(" ").toLowerCase();
-        const name = (p.name || "").toLowerCase();
-        const isPhoneCat = /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(cats) || /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(name);
-        const isTabletCat = /tablet|ipad/.test(cats) || /tablet|ipad/.test(name);
-        return isPhoneCat && !isTabletCat;
-      });
-    }
-
-    if (phoneFiltered.length > 0) {
-      wooProducts = phoneFiltered;
-      console.log(`[VectorSearch] Phone filter applied: kept ${phoneFiltered.length} items`);
-    } else {
-      return {
-        text: "Browse phones here: https://tradezone.sg/product-category/handphone-tablet/handphone/",
-        store: resolvedStore.label,
-        matches: [],
-        wooProducts: [],
-      };
-    }
-  }
-
-  // Tablet-specific cleanup: remove phone/handphone cross-bleed
-  if (detectedCategory === "tablet" && wooProducts.length > 0) {
-    let tabletFiltered = wooProducts.filter((p) => {
-      const cats = ((p as any).categories || []).join(" ").toLowerCase();
-      const name = (p.name || "").toLowerCase();
-      const isTabletCat = /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
-      const isPhoneCat = /handphone|phone|mobile|smartphone/.test(cats) || /handphone|phone|mobile|smartphone/.test(name);
-      return isTabletCat && !isPhoneCat;
-    });
-
-    if (tabletFiltered.length === 0) {
-      tabletFiltered = dedupeWooProducts(await searchWooProducts("tablet", wooLimit)).filter((p) => {
-        const cats = ((p as any).categories || []).join(" ").toLowerCase();
-        const name = (p.name || "").toLowerCase();
-        const isTabletCat = /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
-        const isPhoneCat = /handphone|phone|mobile|smartphone/.test(cats) || /handphone|phone|mobile|smartphone/.test(name);
-        return isTabletCat && !isPhoneCat;
-      });
-    }
-
-    if (tabletFiltered.length > 0) {
-      wooProducts = tabletFiltered;
-      console.log(`[VectorSearch] Tablet filter applied: kept ${tabletFiltered.length} items`);
-    } else {
-      // Direct to tablet category page if nothing clean
-      return {
-        text: "Browse tablets here: https://tradezone.sg/product-category/handphone-tablet/tablet/",
-        store: resolvedStore.label,
-        matches: [],
-        wooProducts: [],
-      };
-    }
-  }
-
-  // Apply franchise filters (e.g., Spider-Man, Final Fantasy, Diablo) to keep lists tight
-  const franchiseMatch = franchiseFilters.find((f) => f.regex.test(query));
-  if (franchiseMatch && wooProducts.length > 0) {
-    const filtered = wooProducts.filter((p) =>
-      franchiseMatch.predicate((p.name || "").toLowerCase()),
-    );
-    if (filtered.length > 0) {
-      wooProducts = filtered;
-      console.log(
-        `[VectorSearch] Franchise filter applied (${franchiseMatch.regex}): kept ${filtered.length} items`,
+      wooProducts = dedupeWooProducts(
+        await searchWooProducts(cleanedQuery, wooLimit),
       );
-    }
-  }
 
-  // Platform intent filtering (PS5/PS4/Switch/Xbox/PC)
-  const platformIntent = (() => {
-    const q = lowerQuery;
-    if (/ps5|playstation\s*5\b/i.test(q)) return "ps5";
-    if (/ps4|playstation\s*4\b/i.test(q)) return "ps4";
-    if (/switch|nintendo\s*switch/i.test(q)) return "switch";
-    if (/\bxbox\b|series\s*[xs]\b|xbox\s*one/i.test(q)) return "xbox";
-    if (/\bpc\b|steam|windows\b/i.test(q)) return "pc";
-    return null;
-  })();
+      // Phone-specific cleanup: remove tablet cross-bleed
+      if (detectedCategory === "phone" && wooProducts.length > 0) {
+        let phoneFiltered = wooProducts.filter((p) => {
+          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const name = (p.name || "").toLowerCase();
+          const isPhoneCat =
+            /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(
+              cats,
+            ) ||
+            /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(
+              name,
+            );
+          const isTabletCat =
+            /tablet|ipad/.test(cats) || /tablet|ipad/.test(name);
+          return isPhoneCat && !isTabletCat;
+        });
 
-  if (platformIntent && wooProducts.length > 0) {
-    const platformFiltered = wooProducts.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const cats = ((p as any).categories || []).join(" ").toLowerCase();
-      switch (platformIntent) {
-        case "ps5":
-          return /ps5|playstation\s*5/.test(name) || /playstation\s*5/.test(cats);
-        case "ps4":
-          return /ps4|playstation\s*4/.test(name) || /playstation\s*4/.test(cats);
-        case "switch":
-          return /switch|nintendo/.test(name) || /switch/.test(cats);
-        case "xbox":
-          return /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats);
-        case "pc":
-          return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
-        default:
-          return true;
+        if (phoneFiltered.length === 0) {
+          phoneFiltered = dedupeWooProducts(
+            await searchWooProducts("handphone phone mobile", wooLimit),
+          ).filter((p) => {
+            const cats = ((p as any).categories || []).join(" ").toLowerCase();
+            const name = (p.name || "").toLowerCase();
+            const isPhoneCat =
+              /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(
+                cats,
+              ) ||
+              /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(
+                name,
+              );
+            const isTabletCat =
+              /tablet|ipad/.test(cats) || /tablet|ipad/.test(name);
+            return isPhoneCat && !isTabletCat;
+          });
+        }
+
+        if (phoneFiltered.length > 0) {
+          wooProducts = phoneFiltered;
+          console.log(
+            `[VectorSearch] Phone filter applied: kept ${phoneFiltered.length} items`,
+          );
+        } else {
+          return {
+            text: "Browse phones here: https://tradezone.sg/product-category/handphone-tablet/handphone/",
+            store: resolvedStore.label,
+            matches: [],
+            wooProducts: [],
+          };
+        }
       }
-    });
-    if (platformFiltered.length > 0) {
-      wooProducts = platformFiltered;
-      console.log(
-        `[VectorSearch] Platform filter applied (${platformIntent}): kept ${platformFiltered.length} items`,
-      );
-    }
-  }
+
+      // Tablet-specific cleanup: remove phone/handphone cross-bleed
+      if (detectedCategory === "tablet" && wooProducts.length > 0) {
+        let tabletFiltered = wooProducts.filter((p) => {
+          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const name = (p.name || "").toLowerCase();
+          const isTabletCat =
+            /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
+          const isPhoneCat =
+            /handphone|phone|mobile|smartphone/.test(cats) ||
+            /handphone|phone|mobile|smartphone/.test(name);
+          return isTabletCat && !isPhoneCat;
+        });
+
+        if (tabletFiltered.length === 0) {
+          tabletFiltered = dedupeWooProducts(
+            await searchWooProducts("tablet", wooLimit),
+          ).filter((p) => {
+            const cats = ((p as any).categories || []).join(" ").toLowerCase();
+            const name = (p.name || "").toLowerCase();
+            const isTabletCat =
+              /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
+            const isPhoneCat =
+              /handphone|phone|mobile|smartphone/.test(cats) ||
+              /handphone|phone|mobile|smartphone/.test(name);
+            return isTabletCat && !isPhoneCat;
+          });
+        }
+
+        if (tabletFiltered.length > 0) {
+          wooProducts = tabletFiltered;
+          console.log(
+            `[VectorSearch] Tablet filter applied: kept ${tabletFiltered.length} items`,
+          );
+        } else {
+          // Direct to tablet category page if nothing clean
+          return {
+            text: "Browse tablets here: https://tradezone.sg/product-category/handphone-tablet/tablet/",
+            store: resolvedStore.label,
+            matches: [],
+            wooProducts: [],
+          };
+        }
+      }
+
+      // Apply franchise filters (e.g., Spider-Man, Final Fantasy, Diablo) to keep lists tight
+      const franchiseMatch = franchiseFilters.find((f) => f.regex.test(query));
+      if (franchiseMatch && wooProducts.length > 0) {
+        const filtered = wooProducts.filter((p) =>
+          franchiseMatch.predicate((p.name || "").toLowerCase()),
+        );
+        if (filtered.length > 0) {
+          wooProducts = filtered;
+          console.log(
+            `[VectorSearch] Franchise filter applied (${franchiseMatch.regex}): kept ${filtered.length} items`,
+          );
+        }
+      }
+
+      // Platform intent filtering (PS5/PS4/Switch/Xbox/PC)
+      const platformIntent = (() => {
+        const q = lowerQuery;
+        if (/ps5|playstation\s*5\b/i.test(q)) return "ps5";
+        if (/ps4|playstation\s*4\b/i.test(q)) return "ps4";
+        if (/switch|nintendo\s*switch/i.test(q)) return "switch";
+        if (/\bxbox\b|series\s*[xs]\b|xbox\s*one/i.test(q)) return "xbox";
+        if (/\bpc\b|steam|windows\b/i.test(q)) return "pc";
+        return null;
+      })();
+
+      if (platformIntent && wooProducts.length > 0) {
+        const platformFiltered = wooProducts.filter((p) => {
+          const name = (p.name || "").toLowerCase();
+          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          switch (platformIntent) {
+            case "ps5":
+              return (
+                /ps5|playstation\s*5/.test(name) || /playstation\s*5/.test(cats)
+              );
+            case "ps4":
+              return (
+                /ps4|playstation\s*4/.test(name) || /playstation\s*4/.test(cats)
+              );
+            case "switch":
+              return /switch|nintendo/.test(name) || /switch/.test(cats);
+            case "xbox":
+              return (
+                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats)
+              );
+            case "pc":
+              return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
+            default:
+              return true;
+          }
+        });
+        if (platformFiltered.length > 0) {
+          wooProducts = platformFiltered;
+          console.log(
+            `[VectorSearch] Platform filter applied (${platformIntent}): kept ${platformFiltered.length} items`,
+          );
+        }
+      }
 
       // Storage intent: prefer storage categories and drop non-storage if possible
       if (detectedCategory === "storage" && wooProducts.length > 0) {
@@ -1092,13 +1157,22 @@ export async function handleVectorSearch(
           );
           const isSSDName = /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
           // Exclude accessories, cases, games, and consoles that contain "storage" in name
-          const isAccessory = /case|bag|controller|fan|game|mouse|pad|cover|housing|expansion card|drive.*console|portal|switch|playstation|xbox|ally/i.test(
+          const isAccessory =
+            /case|bag|controller|fan|game|mouse|pad|cover|housing|expansion card|drive.*console|portal|switch|playstation|xbox|ally/i.test(
+              name,
+            );
+          const isLaptopPc = /laptop|notebook|pc\b|desktop|gaming pc/i.test(
             name,
           );
-          const isLaptopPc = /laptop|notebook|pc\b|desktop|gaming pc/i.test(name);
           // Require actual storage keywords in name, not just category match
-          const hasStorageKeyword = /\b(ssd|nvme|m\.?2|solid\s*state|hard\s*drive|hdd)\b/i.test(name);
-          return (isStorageCat || isSSDName) && hasStorageKeyword && !isAccessory && !isLaptopPc;
+          const hasStorageKeyword =
+            /\b(ssd|nvme|m\.?2|solid\s*state|hard\s*drive|hdd)\b/i.test(name);
+          return (
+            (isStorageCat || isSSDName) &&
+            hasStorageKeyword &&
+            !isAccessory &&
+            !isLaptopPc
+          );
         });
         if (storageFiltered.length === 0) {
           // Try a direct storage search if category filter failed
@@ -1234,8 +1308,19 @@ export async function handleVectorSearch(
           lowerQuery,
         );
       if (isCameraIntent && wooProducts.length > 0) {
-        const cameraKeep = [/camera/, /osmo/, /gopro/, /insta\s*360/, /pocket\s*3/];
-        const cameraExclude = [/retroid/, /\bconsole\b/, /\bhandheld\b/, /neogeo/];
+        const cameraKeep = [
+          /camera/,
+          /osmo/,
+          /gopro/,
+          /insta\s*360/,
+          /pocket\s*3/,
+        ];
+        const cameraExclude = [
+          /retroid/,
+          /\bconsole\b/,
+          /\bhandheld\b/,
+          /neogeo/,
+        ];
         const filtered = wooProducts.filter((product) => {
           const name = (product.name || "").toLowerCase();
           if (cameraExclude.some((re) => re.test(name))) return false;
@@ -1396,21 +1481,21 @@ export async function handleVectorSearch(
           const maxCount = Math.max(...Object.values(baseNameCounts));
           const isSeries = maxCount >= 3;
 
-         const displayLimit = isSeries ? 5 : 8;
-         const productsToShow = wooProducts.slice(0, displayLimit);
-         const hasMore = wooProducts.length > displayLimit;
+          const displayLimit = isSeries ? 5 : 8;
+          const productsToShow = wooProducts.slice(0, displayLimit);
+          const hasMore = wooProducts.length > displayLimit;
 
-         const listText = productsToShow
-           .map((product, idx) => {
-             const price = formatPriceWithBudget(
-               product.price_sgd,
-               budgetContext!,
-             );
-             const url = product.permalink || `https://tradezone.sg`;
-             const imageStr =
-               idx === 0 && product.image
-                 ? `\n   ![${product.name}](${product.image})`
-                 : "";
+          const listText = productsToShow
+            .map((product, idx) => {
+              const price = formatPriceWithBudget(
+                product.price_sgd,
+                budgetContext!,
+              );
+              const url = product.permalink || `https://tradezone.sg`;
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
               return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
@@ -1451,7 +1536,8 @@ export async function handleVectorSearch(
             gpu: "https://tradezone.sg/product-category/graphic-card/",
             motherboard: "https://tradezone.sg/product-category/motherboard/",
             handheld: "https://tradezone.sg/product-category/gaming-handheld/",
-            storage: "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
+            storage:
+              "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
           };
 
           const categoryLink = detectedCategory
@@ -1491,12 +1577,19 @@ export async function handleVectorSearch(
         // Vector store contains games/consoles that contaminate specific accessory results
         const isControllerQuery =
           /\b(gamepad|controller|pro\s*controller)\b/i.test(query);
-        const skipVectorCategories = new Set(["phone", "tablet", "laptop", "storage"]);
+        const skipVectorCategories = new Set([
+          "phone",
+          "tablet",
+          "laptop",
+          "storage",
+        ]);
         const isCategoryBlocked =
           !!detectedCategory && skipVectorCategories.has(detectedCategory);
         const skipVectorEnrichment = isCategoryBlocked || isControllerQuery;
 
-        console.log(`[VectorSearch] 🔍 Category check: detectedCategory="${detectedCategory}", isCategoryBlocked=${isCategoryBlocked}, skipVectorEnrichment=${skipVectorEnrichment}`);
+        console.log(
+          `[VectorSearch] 🔍 Category check: detectedCategory="${detectedCategory}", isCategoryBlocked=${isCategoryBlocked}, skipVectorEnrichment=${skipVectorEnrichment}`,
+        );
 
         if (skipVectorEnrichment) {
           const categoryLabel = isControllerQuery
@@ -1554,19 +1647,29 @@ export async function handleVectorSearch(
             : "";
 
           // Return DETERMINISTIC response - don't let LLM rewrite it
-          const intro = wooProducts.length > 0
-            ? `Here's what we have (${wooProducts.length} products):\n\n`
-            : `I don't have any ${categoryLabel}s matching "${query}".`;
+          // Detect vague queries that need LLM clarification
+          const isVagueQuery =
+            /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
+              query.trim(),
+            );
 
-          const deterministicResponse = wooProducts.length > 0
-            ? `${summaryPrefix}${intro}${wooSection}`
-            : intro;
-          const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
-            deterministicResponse,
-          )}<<<DETERMINISTIC_END>>>`;
+          const intro =
+            wooProducts.length > 0
+              ? `Here's what we have (${wooProducts.length} products):\n\n`
+              : `I don't have any ${categoryLabel}s matching "${query}".`;
+
+          const deterministicResponse =
+            wooProducts.length > 0
+              ? `${summaryPrefix}${intro}${wooSection}`
+              : intro;
+
+          // For vague queries, skip deterministic markers so LLM can ask clarification
+          const responseText = isVagueQuery
+            ? deterministicResponse
+            : `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
           return {
-            text: wrappedResponse,
+            text: responseText,
             store: "product_catalog",
             matches: [],
             wooProducts: wooPayload,
@@ -1660,7 +1763,8 @@ export async function handleVectorSearch(
 
         // DETERMINISTIC RESPONSE - return directly to user without LLM rewriting
         const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
-        const deterministicResponse = summaryPrefix + intro + listText + moreText;
+        const deterministicResponse =
+          summaryPrefix + intro + listText + moreText;
         const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
           deterministicResponse,
         )}<<<DETERMINISTIC_END>>>`;
@@ -1674,9 +1778,12 @@ export async function handleVectorSearch(
       } else {
         // For specific categories (phone/tablet/laptop), don't fall back to vector - prevent hallucination
         const detectedCategory = extractProductCategory(query);
-        const blockVectorFallback = ["phone", "tablet", "laptop", "storage"].includes(
-          detectedCategory || "",
-        );
+        const blockVectorFallback = [
+          "phone",
+          "tablet",
+          "laptop",
+          "storage",
+        ].includes(detectedCategory || "");
 
         if (blockVectorFallback) {
           console.log(
@@ -1686,9 +1793,12 @@ export async function handleVectorSearch(
           // Category page links
           const categoryLinks: Record<string, string> = {
             laptop: "https://tradezone.sg/product-category/laptop/",
-            phone: "https://tradezone.sg/product-category/handphone-tablet/handphone/",
-            tablet: "https://tradezone.sg/product-category/handphone-tablet/tablet/",
-            storage: "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
+            phone:
+              "https://tradezone.sg/product-category/handphone-tablet/handphone/",
+            tablet:
+              "https://tradezone.sg/product-category/handphone-tablet/tablet/",
+            storage:
+              "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
           };
 
           const categoryLink = categoryLinks[detectedCategory || ""];
