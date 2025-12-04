@@ -19,12 +19,12 @@
   `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`  
   LLM wording is ignored for this step; contact must be captured before payout; photo is a single yes/no prompt and never blocks submission.
 - **Nov 27, 2025 – Graphiti rollout**: The legacy Zep memory/graph endpoints are replaced with Graphiti. Configure `GRAPHTI_BASE_URL` + `GRAPHTI_API_KEY` (and optional `GRAPHTI_DEFAULT_GROUP_ID`) so `/api/chatkit/agent` uses Graphiti for structured catalog lookups. Zep references below remain for historical context only.
-- **Dec 4, 2025 – Vague query clarification flow**: When users ask broad category questions ("any games", "tablets", "laptops"), the system now detects these vague queries and returns conversational clarification prompts instead of limited product lists:
-  - Added vague query detection regex `/^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i` across all four vector search code paths (lib/tools/vectorSearch.ts:640, 1688, 1726, 1821)
-  - Vague queries return mapped clarifications: "games" → "Got tons! PS5, PS4, Switch, or PC?", "laptops" → "Got several! 16GB? 32GB? Specific brand?"
-  - Specific queries ("PS5 games", "iPad Pro") bypass clarification and show products directly
-  - Prompt updated (lib/chatkit/defaultPrompt.ts:28-40) to prioritize clarification over immediate product display for broad queries
-  - Result: Conversational guidance flow that shows variety while narrowing customer intent, replacing the previous deterministic 2-product list
+- **Dec 5, 2025 – Show full inventory to maximize sales**: Removed vague query clarification logic that was hiding products from customers:
+  - **Problem**: "any tablet" showed only 3 products when 6 were in stock → customers thought we only had 3 → lost sales
+  - **Solution**: Removed vague query detection blocks from all 4 vector search code paths (lib/tools/vectorSearch.ts)
+  - Now shows ALL available products for category queries (tablets, phones, laptops, games)
+  - Product limit (`wooLimit`) still applies but displays full inventory count
+  - Result: Customers see complete product selection, can make informed purchase decisions, no hidden inventory
 
 ### Development Workflow Expectations
 - For every incoming request, produce a numbered task list before touching code, keep it updated, and check off each item only after verifying the fix.

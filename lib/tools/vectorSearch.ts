@@ -631,48 +631,8 @@ export async function handleVectorSearch(
         })
         .join("\n\n");
 
-      // Detect vague queries that need LLM clarification instead of deterministic response
-      const trimmedQuery = query.trim();
-      const isVagueQuery =
-        /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
-          trimmedQuery,
-        );
-      console.log(
-        `[VectorSearch] PATH1 Vague query check: query="${trimmedQuery}", isVague=${isVagueQuery}`,
-      );
-
-      // For vague queries, return a clarification prompt instead of product list
-      if (isVagueQuery) {
-        const category =
-          trimmedQuery.match(
-            /(games?|tablets?|laptops?|phones?|consoles?|controllers?)/i,
-          )?.[1] || "products";
-        const clarificationMap: Record<string, string> = {
-          game: "Got tons! PS5, PS4, Switch, or PC?",
-          games: "Got tons! PS5, PS4, Switch, or PC?",
-          tablet: "Plenty! iPad, Galaxy Tab, or Surface?",
-          tablets: "Plenty! iPad, Galaxy Tab, or Surface?",
-          laptop: "Got several! 16GB? 32GB? Specific brand?",
-          laptops: "Got several! 16GB? 32GB? Specific brand?",
-          phone: "Sure! Budget, mid-range, or flagship?",
-          phones: "Sure! Budget, mid-range, or flagship?",
-          console: "Which one? PS5, Xbox, or Switch?",
-          consoles: "Which one? PS5, Xbox, or Switch?",
-          controller: "For which console? PS5, Xbox, or Switch?",
-          controllers: "For which console? PS5, Xbox, or Switch?",
-        };
-        const clarification =
-          clarificationMap[category.toLowerCase()] ||
-          `What kind of ${category} are you looking for?`;
-
-        return {
-          text: clarification,
-          store: resolvedStore.label,
-          matches: [],
-          wooProducts: [],
-        };
-      }
-
+      // Show ALL products - no clarification needed for direct categories
+      // Customer needs to see full inventory to make purchase decision
       const intro = `Here's what we have (${directResults.length} products):\n\n`;
       const deterministicResponse = `${summaryPrefix}${intro}${listText}`;
       const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
@@ -1678,49 +1638,7 @@ export async function handleVectorSearch(
             ? `- These ARE ${categoryLabel}s from our Handphone category - show ALL of them even if product names don't contain the word "${categoryLabel}"\n`
             : "";
 
-          // Return DETERMINISTIC response - don't let LLM rewrite it
-          // Detect vague queries that need LLM clarification
-          const trimmedQuery = query.trim();
-          const isVagueQuery =
-            /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
-              trimmedQuery,
-            );
-          console.log(
-            `[VectorSearch] PATH2 Vague query check: query="${trimmedQuery}", isVague=${isVagueQuery}`,
-          );
-
-          // For vague queries, return a clarification prompt instead of product list
-          if (isVagueQuery) {
-            const category =
-              trimmedQuery.match(
-                /(games?|tablets?|laptops?|phones?|consoles?|controllers?)/i,
-              )?.[1] || "products";
-            const clarificationMap: Record<string, string> = {
-              game: "Got tons! PS5, PS4, Switch, or PC?",
-              games: "Got tons! PS5, PS4, Switch, or PC?",
-              tablet: "Plenty! iPad, Galaxy Tab, or Surface?",
-              tablets: "Plenty! iPad, Galaxy Tab, or Surface?",
-              laptop: "Got several! 16GB? 32GB? Specific brand?",
-              laptops: "Got several! 16GB? 32GB? Specific brand?",
-              phone: "Sure! Budget, mid-range, or flagship?",
-              phones: "Sure! Budget, mid-range, or flagship?",
-              console: "Which one? PS5, Xbox, or Switch?",
-              consoles: "Which one? PS5, Xbox, or Switch?",
-              controller: "For which console? PS5, Xbox, or Switch?",
-              controllers: "For which console? PS5, Xbox, or Switch?",
-            };
-            const clarification =
-              clarificationMap[category.toLowerCase()] ||
-              `What kind of ${category} are you looking for?`;
-
-            return {
-              text: clarification,
-              store: "product_catalog",
-              matches: [],
-              wooProducts: [],
-            };
-          }
-
+          // Return DETERMINISTIC response - show products directly
           const intro =
             wooProducts.length > 0
               ? `Here's what we have (${wooProducts.length} products):\n\n`
@@ -1773,49 +1691,7 @@ export async function handleVectorSearch(
             ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
             : "";
 
-          // Detect vague queries that need LLM clarification
-          const trimmedQuery = query.trim();
-          const isVagueQuery =
-            /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
-              trimmedQuery,
-            );
-          console.log(
-            `[VectorSearch] PATH4 Vague query check: query="${trimmedQuery}", isVague=${isVagueQuery}`,
-          );
-
-          // For vague queries, return a clarification prompt instead of product list
-          if (isVagueQuery) {
-            const category =
-              trimmedQuery.match(
-                /(games?|tablets?|laptops?|phones?|consoles?|controllers?)/i,
-              )?.[1] || "products";
-            const clarificationMap: Record<string, string> = {
-              game: "Got tons! PS5, PS4, Switch, or PC?",
-              games: "Got tons! PS5, PS4, Switch, or PC?",
-              tablet: "Plenty! iPad, Galaxy Tab, or Surface?",
-              tablets: "Plenty! iPad, Galaxy Tab, or Surface?",
-              laptop: "Got several! 16GB? 32GB? Specific brand?",
-              laptops: "Got several! 16GB? 32GB? Specific brand?",
-              phone: "Sure! Budget, mid-range, or flagship?",
-              phones: "Sure! Budget, mid-range, or flagship?",
-              console: "Which one? PS5, Xbox, or Switch?",
-              consoles: "Which one? PS5, Xbox, or Switch?",
-              controller: "For which console? PS5, Xbox, or Switch?",
-              controllers: "For which console? PS5, Xbox, or Switch?",
-            };
-            const clarification =
-              clarificationMap[category.toLowerCase()] ||
-              `What kind of ${category} are you looking for?`;
-
-            return {
-              text: clarification,
-              store: "product_catalog",
-              matches: [],
-              wooProducts: [],
-            };
-          }
-
-          // DETERMINISTIC RESPONSE - wrap in special markers so route.ts can extract and use directly
+          // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
           const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
           const deterministicResponse = intro + listText + moreText;
           const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
@@ -1865,49 +1741,7 @@ export async function handleVectorSearch(
           ? `${budgetSummaryLine}\n\n`
           : "";
 
-        // Detect vague queries that need LLM clarification
-        const trimmedQuery = query.trim();
-        const isVagueQuery =
-          /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
-            trimmedQuery,
-          );
-        console.log(
-          `[VectorSearch] PATH3 Vague query check: query="${trimmedQuery}", isVague=${isVagueQuery}`,
-        );
-
-        // For vague queries, return a clarification prompt instead of product list
-        if (isVagueQuery) {
-          const category =
-            trimmedQuery.match(
-              /(games?|tablets?|laptops?|phones?|consoles?|controllers?)/i,
-            )?.[1] || "products";
-          const clarificationMap: Record<string, string> = {
-            game: "Got tons! PS5, PS4, Switch, or PC?",
-            games: "Got tons! PS5, PS4, Switch, or PC?",
-            tablet: "Plenty! iPad, Galaxy Tab, or Surface?",
-            tablets: "Plenty! iPad, Galaxy Tab, or Surface?",
-            laptop: "Got several! 16GB? 32GB? Specific brand?",
-            laptops: "Got several! 16GB? 32GB? Specific brand?",
-            phone: "Sure! Budget, mid-range, or flagship?",
-            phones: "Sure! Budget, mid-range, or flagship?",
-            console: "Which one? PS5, Xbox, or Switch?",
-            consoles: "Which one? PS5, Xbox, or Switch?",
-            controller: "For which console? PS5, Xbox, or Switch?",
-            controllers: "For which console? PS5, Xbox, or Switch?",
-          };
-          const clarification =
-            clarificationMap[category.toLowerCase()] ||
-            `What kind of ${category} are you looking for?`;
-
-          return {
-            text: clarification,
-            store: "product_catalog",
-            matches: [],
-            wooProducts: [],
-          };
-        }
-
-        // DETERMINISTIC RESPONSE - return directly to user without LLM rewriting
+        // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
         const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
         const deterministicResponse =
           summaryPrefix + intro + listText + moreText;
