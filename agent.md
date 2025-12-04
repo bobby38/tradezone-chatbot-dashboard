@@ -1126,6 +1126,89 @@ lib/
 
 ---
 
+### December 4, 2025 - Intelligent Email Support with AI Research Hints
+
+**Status**: ✅ Staff contact emails now include AI-powered research hints and sources
+
+**Problem**: When customers contact support, staff received minimal context:
+```
+Message: Request to talk to staff.
+```
+No information about what the customer actually asked about.
+
+**Solution**: Cascading Perplexity search provides instant research + sources
+
+**Features Implemented**:
+
+1. **Enhanced Message Context** (`lib/chatkit/defaultPrompt.ts:248`)
+   - Prompt now explicitly requires full conversation summary
+   - Must include: original question, products discussed, reason for escalation
+   - Example: "Customer asked: Is PS5 portal playable without PS5? Question not answered, needs expert advice."
+
+2. **Cascading Search Strategy** (`lib/tools/emailSend.ts:84-140`)
+   - **Step 1**: Search tradezone.sg first (store-specific info)
+   - **Step 2**: If no results, fallback to open web (general product knowledge)
+   - **Smart Detection**: Automatically determines search scope
+   - **Dual Results**: Provides both store + web answers when needed
+
+3. **Enhanced Email Format** (`lib/tools/emailSend.ts:217-226`)
+   ```
+   Customer Message:
+   Customer asked: "Is PS5 portal playable without PS5?"
+   Question not answered, needs expert advice.
+   
+   ---
+   📚 AI Research Hint for Staff (🏪 TradeZone.sg + 🌐 Web):
+   
+   🏪 TradeZone.sg Search: No information found
+   
+   🌐 General Web Search:
+   The PlayStation Portal requires a PS5 console to function. 
+   It's a remote play device that streams from your PS5.
+   
+   🔗 Sources:
+   - https://www.playstation.com/portal
+   - https://www.ign.com/articles/ps5-portal-review
+   ```
+
+4. **Perplexity Domain Filter** (`lib/tools/perplexitySearch.ts:29-95`)
+   - New `handlePerplexitySearchWithDomain()` function
+   - Optional domain restriction: `["tradezone.sg"]` or `undefined` (open web)
+   - Backward compatible with existing `handlePerplexitySearch()`
+
+5. **Type Fixes** (`lib/graphiti.ts:1`, `app/api/chatkit/agent/route.ts:1`)
+   - Removed incorrect `RequestInit` import from `next/server`
+   - Added missing `NextRequest` import
+   - Fixed TypeScript strict mode errors
+
+**Search Strategy Examples**:
+
+| Customer Question | Step 1 (Store) | Step 2 (Web) | Result |
+|-------------------|----------------|--------------|--------|
+| "Do you have PS5 in stock?" | ✅ Found | - | 🏪 TradeZone.sg only |
+| "Is PS5 Portal standalone?" | ❌ Not found | ✅ Found | 🏪 + 🌐 Both |
+| "Your store hours?" | ✅ Found | - | 🏪 TradeZone.sg only |
+| "Nintendo Switch 2 specs?" | ❌ Not found | ✅ Found | 🏪 + 🌐 Both |
+
+**Benefits**:
+- ✅ Staff get instant context without asking customers to repeat
+- ✅ Faster response times (no research needed)
+- ✅ Better customer experience (accurate answers)
+- ✅ Reduced back-and-forth (sources included)
+- ✅ Intelligent search scope (store vs web)
+
+**Files Modified**:
+- `lib/chatkit/defaultPrompt.ts` - Enhanced message context requirements
+- `lib/tools/emailSend.ts` - Cascading search + enhanced email format
+- `lib/tools/perplexitySearch.ts` - Domain-aware search function
+- `lib/graphiti.ts` - Fixed RequestInit type import
+- `app/api/chatkit/agent/route.ts` - Added NextRequest import
+
+**Commits**:
+- `ac62958` - feat: intelligent email support with cascading Perplexity search
+
+---
+
 ### November 23, 2025 - Trade-Up Flow Complete Overhaul
 
 **Status**: ✅ Trade-up flow now 100% working with correct pricing, order, and photo prompts
