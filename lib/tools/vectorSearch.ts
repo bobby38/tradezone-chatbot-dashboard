@@ -1761,16 +1761,24 @@ export async function handleVectorSearch(
           ? `${budgetSummaryLine}\n\n`
           : "";
 
+        // Detect vague queries that need LLM clarification
+        const isVagueQuery =
+          /^(any|got|do you have|have you)?\s*(games?|tablets?|laptops?|phones?|consoles?|controllers?)\??$/i.test(
+            query.trim(),
+          );
+
         // DETERMINISTIC RESPONSE - return directly to user without LLM rewriting
         const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
         const deterministicResponse =
           summaryPrefix + intro + listText + moreText;
-        const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(
-          deterministicResponse,
-        )}<<<DETERMINISTIC_END>>>`;
+
+        // For vague queries, skip deterministic markers so LLM can ask clarification
+        const responseText = isVagueQuery
+          ? deterministicResponse
+          : `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
         return {
-          text: wrappedResponse,
+          text: responseText,
           store: "product_catalog",
           matches: [],
           wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
