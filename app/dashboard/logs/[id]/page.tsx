@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Bot, ThumbsUp, ThumbsDown } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatLog {
   id: string;
@@ -41,10 +43,10 @@ function ChatBubble({ who, text, timestamp, status }: ChatBubbleProps) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       <div
-        className={`flex items-start space-x-2 max-w-[70%] ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}
+        className={`flex items-start space-x-2 max-w-[85%] ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}
       >
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
             isUser ? "bg-primary" : "bg-secondary"
           }`}
         >
@@ -61,7 +63,59 @@ function ChatBubble({ who, text, timestamp, status }: ChatBubbleProps) {
               : "bg-card border border-border"
           }`}
         >
-          <p className="text-sm">{text}</p>
+          <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // Compact product list styling
+                ol: ({ children }) => (
+                  <ol className="space-y-2 my-2">{children}</ol>
+                ),
+                ul: ({ children }) => (
+                  <ul className="space-y-1 my-2">{children}</ul>
+                ),
+                li: ({ children }) => (
+                  <li className="text-sm leading-relaxed">{children}</li>
+                ),
+                // Product links - compact inline
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline text-xs"
+                  >
+                    {children}
+                  </a>
+                ),
+                // Hide product images (too cluttered)
+                img: () => null,
+                // Clean headings
+                h1: ({ children }) => (
+                  <h1 className="text-base font-semibold mt-2 mb-1">
+                    {children}
+                  </h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-sm font-semibold mt-2 mb-1">
+                    {children}
+                  </h2>
+                ),
+                // Compact paragraphs
+                p: ({ children }) => (
+                  <p className="my-1 leading-relaxed">{children}</p>
+                ),
+                // Strong/bold for product names
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-foreground">
+                    {children}
+                  </strong>
+                ),
+              }}
+            >
+              {text}
+            </ReactMarkdown>
+          </div>
           <div className="flex items-center justify-between mt-2 text-xs opacity-70">
             <span>{formatDate(timestamp)}</span>
             {!isUser && status && (
