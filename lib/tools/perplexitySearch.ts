@@ -23,10 +23,14 @@ export const perplexitySearchTool = {
 };
 
 /**
- * Handler function for Perplexity search
- * Uses Perplexity API with domain filter
+ * Handler function for Perplexity search with optional domain filter
+ * @param query - Search query
+ * @param domains - Optional array of domains to restrict search (e.g., ["tradezone.sg"])
  */
-export async function handlePerplexitySearch(query: string): Promise<string> {
+export async function handlePerplexitySearchWithDomain(
+  query: string,
+  domains?: string[],
+): Promise<string> {
   try {
     const perplexityKey = process.env.PERPLEXITY_API_KEY;
 
@@ -34,6 +38,11 @@ export async function handlePerplexitySearch(query: string): Promise<string> {
       console.warn("Perplexity API key not configured, skipping web search");
       return "Web search is currently unavailable. Please try using product search instead.";
     }
+
+    const searchScope = domains ? `${domains.join(", ")} only` : "the web";
+    const systemPrompt = domains
+      ? `Search ${searchScope} for relevant information. Provide concise, accurate answers.`
+      : "Search the web for relevant information. Provide concise, accurate answers with sources.";
 
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
@@ -43,12 +52,11 @@ export async function handlePerplexitySearch(query: string): Promise<string> {
       },
       body: JSON.stringify({
         model: "sonar-pro",
-        search_domain_filter: ["tradezone.sg"],
+        ...(domains && { search_domain_filter: domains }),
         messages: [
           {
             role: "system",
-            content:
-              "Search tradezone.sg only for relevant information. Provide concise, accurate answers.",
+            content: systemPrompt,
           },
           {
             role: "user",
@@ -68,10 +76,19 @@ export async function handlePerplexitySearch(query: string): Promise<string> {
 
     const data = await response.json();
     return (
-      data.choices?.[0]?.message?.content || "No results found on TradeZone.sg"
+      data.choices?.[0]?.message?.content ||
+      `No results found${domains ? ` on ${domains.join(", ")}` : ""}`
     );
   } catch (error) {
     console.error("Error in Perplexity search:", error);
-    return "I encountered an error searching the website. Please try again or use product search.";
+    return "I encountered an error searching. Please try again.";
   }
+}
+
+/**
+ * Handler function for Perplexity search
+ * Uses Perplexity API with domain filter (tradezone.sg only)
+ */
+export async function handlePerplexitySearch(query: string): Promise<string> {
+  return handlePerplexitySearchWithDomain(query, ["tradezone.sg"]);
 }

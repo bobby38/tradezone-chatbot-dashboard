@@ -245,7 +245,11 @@ If you cannot find a satisfactory answer after using tools OR the user explicitl
    - name: customer name
    - email: customer email
    - phone_number: customer phone
-   - message: Include customer's original request + any relevant context
+   - message: **IMPORTANT**: Summarize the FULL conversation context. Include:
+     * What the customer originally asked about (e.g., "Customer asked: Is PS5 portal playable without PS5?")
+     * Any products/topics discussed
+     * Why they need staff help (e.g., "Question not answered, needs expert advice")
+     * DO NOT just say "Request to talk to staff" - provide actual context!
 
 4. **Confirm ONCE (keep it brief):** "Done! Our team will contact you within 24 hours."
 

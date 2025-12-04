@@ -1,6 +1,7 @@
 import { EmailService } from "@/lib/email-service";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { handlePerplexitySearchWithDomain } from "./perplexitySearch";
 
 export const emailSendTool = {
   type: "function" as const,
@@ -80,6 +81,93 @@ export async function handleEmailSend(params: {
       phone,
     });
 
+    // Get AI research hint for staff using cascading Perplexity search
+    let aiHint = "";
+    let aiSources: string[] = [];
+    let searchStrategy = "";
+    try {
+      console.log(
+        "[EmailSend] Starting cascading Perplexity search for staff hint...",
+      );
+
+      // Step 1: Always try store-specific search first
+      console.log("[EmailSend] Step 1: Searching tradezone.sg...");
+      let storeResult = await handlePerplexitySearchWithDomain(params.message, [
+        "tradezone.sg",
+      ]);
+
+      // Check if store search found useful info
+      const noInfoPhrases = [
+        "no results",
+        "not found",
+        "cannot find",
+        "no information",
+        "don't have",
+        "unavailable",
+        "unable to find",
+      ];
+
+      const storeHasInfo =
+        !noInfoPhrases.some((phrase) =>
+          storeResult.toLowerCase().includes(phrase),
+        ) && storeResult.length > 50;
+
+      let perplexityResult = storeResult;
+
+      if (storeHasInfo) {
+        console.log("[EmailSend] ✅ Store search found useful info");
+        searchStrategy = "🏪 TradeZone.sg";
+      } else {
+        // Step 2: If store has no info, try open web search
+        console.log(
+          "[EmailSend] Step 2: Store search yielded no results, trying open web...",
+        );
+        const webResult = await handlePerplexitySearchWithDomain(
+          params.message,
+        );
+
+        const webHasInfo =
+          !noInfoPhrases.some((phrase) =>
+            webResult.toLowerCase().includes(phrase),
+          ) && webResult.length > 50;
+
+        if (webHasInfo) {
+          console.log("[EmailSend] ✅ Web search found useful info");
+          perplexityResult = `🏪 TradeZone.sg Search: ${storeResult}\n\n🌐 General Web Search:\n${webResult}`;
+          searchStrategy = "🏪 TradeZone.sg + 🌐 Web";
+        } else {
+          console.log("[EmailSend] ⚠️ Both searches yielded no results");
+          searchStrategy = "No useful results found";
+        }
+      }
+
+      // Extract answer and sources from Perplexity response
+      const lines = perplexityResult.split("\n");
+      const answerLines: string[] = [];
+      const sourceLines: string[] = [];
+      let inSources = false;
+
+      for (const line of lines) {
+        if (line.includes("Source") || line.includes("http")) {
+          inSources = true;
+          if (line.trim()) sourceLines.push(line.trim());
+        } else if (!inSources && line.trim()) {
+          answerLines.push(line.trim());
+        }
+      }
+
+      aiHint = answerLines.join(" ").slice(0, 500); // Keep it concise
+      aiSources = sourceLines.slice(0, 3); // Top 3 sources
+
+      console.log("[EmailSend] AI hint generated:", {
+        hint: aiHint.slice(0, 100),
+        sourcesCount: aiSources.length,
+      });
+    } catch (error) {
+      console.warn("[EmailSend] Could not fetch Perplexity hint:", error);
+      // Continue without hint - not critical
+    }
+
     // Create Supabase client
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -93,7 +181,8 @@ export async function handleEmailSend(params: {
     );
 
     const submissionId = randomUUID();
-    referenceCode = submissionId.split("-")[0]?.toUpperCase() ||
+    referenceCode =
+      submissionId.split("-")[0]?.toUpperCase() ||
       submissionId.slice(0, 8).toUpperCase();
 
     // Create submission record
@@ -112,6 +201,8 @@ export async function handleEmailSend(params: {
           sent_via: "chatkit_agent",
           context: params.message,
           reference_code: referenceCode,
+          ai_hint: aiHint || undefined,
+          ai_sources: aiSources.length > 0 ? aiSources : undefined,
         },
       });
 
@@ -124,6 +215,15 @@ export async function handleEmailSend(params: {
 
     console.log("[EmailSend] Submission created:", submissionId);
 
+    // Format message with AI research hint
+    let enhancedMessage = params.message;
+    if (aiHint) {
+      enhancedMessage += `\n\n---\n📚 AI Research Hint for Staff (${searchStrategy}):\n${aiHint}`;
+      if (aiSources.length > 0) {
+        enhancedMessage += `\n\n🔗 Sources:\n${aiSources.join("\n")}`;
+      }
+    }
+
     // Send email notification
     const emailSent = await EmailService.sendFormNotification({
       type: "contact",
@@ -131,7 +231,7 @@ export async function handleEmailSend(params: {
       formData: {
         name: params.name,
         email: params.email,
-        message: params.message,
+        message: enhancedMessage,
         phone: phone || "Not provided",
         reference_code: referenceCode,
       },

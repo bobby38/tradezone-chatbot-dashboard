@@ -1,4 +1,4 @@
-import type { RequestInit } from "next/server";
+// RequestInit is a global type from the Fetch API - no import needed
 
 type GraphitiConfig = {
   baseUrl: string;
@@ -59,7 +59,9 @@ function resolveGraphitiConfig(): GraphitiConfig | null {
 async function graphitiFetch<T>(path: string, init: RequestInit): Promise<T> {
   const config = resolveGraphitiConfig();
   if (!config) {
-    throw new Error("Graphiti is not configured. Set GRAPHTI_BASE_URL and GRAPHTI_API_KEY.");
+    throw new Error(
+      "Graphiti is not configured. Set GRAPHTI_BASE_URL and GRAPHTI_API_KEY.",
+    );
   }
   const url = `${config.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   const headers = {
