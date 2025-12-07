@@ -23,8 +23,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  AlertTriangle,
   Bot,
   Brain,
+  CalendarClock,
+  Clock3,
+  Download,
   History,
   Loader2,
   Mail,
@@ -71,6 +75,28 @@ interface BotConfig {
   voice?: string;
   vectorStoreId?: string;
   voiceEnabled?: boolean;
+}
+
+interface ScheduledTaskRun {
+  id: string;
+  status: "success" | "failed";
+  startedAt: string;
+  endedAt: string;
+  durationMs?: number;
+  logUrl?: string;
+  notes?: string;
+}
+
+interface ScheduledTask {
+  id: string;
+  title: string;
+  description: string;
+  frequency: string;
+  cron: string;
+  owner: string;
+  environment: string;
+  lastRun: ScheduledTaskRun;
+  recentRuns: ScheduledTaskRun[];
 }
 
 type StatusState = {
@@ -190,6 +216,13 @@ export default function SettingsPage() {
   const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [telemetryError, setTelemetryError] = useState<string | null>(null);
   const [telemetryLoadedOnce, setTelemetryLoadedOnce] = useState(false);
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
+  const [scheduledTasksLoading, setScheduledTasksLoading] = useState(false);
+  const [scheduledTasksError, setScheduledTasksError] = useState<string | null>(
+    null,
+  );
+  const [scheduledTasksLoadedOnce, setScheduledTasksLoadedOnce] =
+    useState(false);
 
   const currentModels = useMemo(() => {
     const provider = PROVIDER_OPTIONS.find(
@@ -347,11 +380,40 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const fetchScheduledTasks = useCallback(async () => {
+    try {
+      setScheduledTasksLoading(true);
+      setScheduledTasksError(null);
+      const response = await fetch("/api/scheduled-tasks", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to load scheduled tasks (${response.status})`);
+      }
+      const data = await response.json();
+      setScheduledTasks(data.tasks || []);
+      setScheduledTasksLoadedOnce(true);
+    } catch (error) {
+      console.error("[Settings] Failed to load scheduled tasks", error);
+      setScheduledTasksError(
+        error instanceof Error ? error.message : "Unknown scheduler error",
+      );
+    } finally {
+      setScheduledTasksLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === "logs" && !telemetryLoadedOnce) {
       fetchTelemetry();
     }
   }, [activeTab, fetchTelemetry, telemetryLoadedOnce]);
+
+  useEffect(() => {
+    if (activeTab === "schedulers" && !scheduledTasksLoadedOnce) {
+      fetchScheduledTasks();
+    }
+  }, [activeTab, fetchScheduledTasks, scheduledTasksLoadedOnce]);
 
   const handleSaveGeneral = async () => {
     try {
@@ -559,6 +621,26 @@ export default function SettingsPage() {
 
   const botPromptChanged = botPrompt !== botInitialPrompt;
 
+  const failingTasks = useMemo(
+    () => scheduledTasks.filter((task) => task.lastRun?.status === "failed"),
+    [scheduledTasks],
+  );
+
+  const latestFailingTask = useMemo(() => {
+    if (failingTasks.length === 0) return null;
+    return failingTasks.reduce<{
+      task: ScheduledTask;
+      run: ScheduledTaskRun;
+    } | null>((latest, task) => {
+      const currentTime = new Date(task.lastRun.endedAt).getTime();
+      if (!latest) {
+        return { task, run: task.lastRun };
+      }
+      const latestTime = new Date(latest.run.endedAt).getTime();
+      return currentTime > latestTime ? { task, run: task.lastRun } : latest;
+    }, null);
+  }, [failingTasks]);
+
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-0 space-y-6">
       <div className="space-y-2">
@@ -576,7 +658,7 @@ export default function SettingsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid grid-cols-4 md:grid-cols-5 gap-2 bg-muted/40 p-1">
+        <TabsList className="grid grid-cols-5 md:grid-cols-6 gap-2 bg-muted/40 p-1">
           <TabsTrigger value="general" className="text-sm">
             <SettingsIcon className="mr-2 h-4 w-4" />
             General
@@ -592,6 +674,10 @@ export default function SettingsPage() {
           <TabsTrigger value="bot" className="text-sm">
             <Bot className="mr-2 h-4 w-4" />
             Bot Settings
+          </TabsTrigger>
+          <TabsTrigger value="schedulers" className="text-sm">
+            <CalendarClock className="mr-2 h-4 w-4" />
+            Schedulers
           </TabsTrigger>
           <TabsTrigger value="logs" className="text-sm">
             <History className="mr-2 h-4 w-4" />
@@ -1230,6 +1316,192 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="schedulers" className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Scheduled Tasks</h2>
+              <p className="text-sm text-muted-foreground">
+                Monitor cron jobs that keep the price grid, Woo snapshot, and
+                Graphiti graph aligned.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={fetchScheduledTasks}
+              disabled={scheduledTasksLoading}
+            >
+              {scheduledTasksLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Refresh
+            </Button>
+          </div>
+
+          {scheduledTasksError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {scheduledTasksError}
+            </div>
+          )}
+
+          {failingTasks.length > 0 && latestFailingTask && (
+            <div className="flex items-start gap-3 rounded-md border border-destructive/50 bg-destructive/10 p-4">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-destructive">
+                  {failingTasks.length} scheduled{" "}
+                  {failingTasks.length === 1 ? "task" : "tasks"} need attention
+                </p>
+                <p className="text-sm text-destructive/90">
+                  {latestFailingTask.task.title} failed{" "}
+                  {formatRelativeTimeFromNow(latestFailingTask.run.endedAt)} —{" "}
+                  {latestFailingTask.run.notes || "check the job logs."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {scheduledTasksLoading && scheduledTasks.length === 0 && (
+            <Card>
+              <CardContent className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading scheduler status…
+              </CardContent>
+            </Card>
+          )}
+
+          {!scheduledTasksLoading && scheduledTasks.length === 0 && (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                No scheduled tasks found. Wire your Coolify/N8N cron jobs to the
+                `/api/scheduled-tasks` source to populate this view.
+              </CardContent>
+            </Card>
+          )}
+
+          {scheduledTasks.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {scheduledTasks.map((task) => {
+                const topRuns = task.recentRuns.slice(0, 3);
+                const statusVariant: "secondary" | "destructive" =
+                  task.lastRun.status === "success"
+                    ? "secondary"
+                    : "destructive";
+                return (
+                  <Card key={task.id} className="flex flex-col">
+                    <CardHeader className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CardTitle className="flex items-center gap-2">
+                          {task.title}
+                          <Badge variant={statusVariant}>
+                            {task.lastRun.status === "success"
+                              ? "Healthy"
+                              : "Attention"}
+                          </Badge>
+                        </CardTitle>
+                        <Badge variant="outline">{task.environment}</Badge>
+                      </div>
+                      <CardDescription>{task.description}</CardDescription>
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock3 className="h-4 w-4" />
+                          {task.frequency}
+                        </span>
+                        <code className="rounded bg-muted px-2 py-0.5 text-xs font-mono">
+                          {task.cron}
+                        </code>
+                        <span>Owner: {task.owner}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Last run:{" "}
+                        <span
+                          className={
+                            task.lastRun.status === "success"
+                              ? "text-emerald-600 dark:text-emerald-500"
+                              : "text-destructive"
+                          }
+                        >
+                          {task.lastRun.status === "success"
+                            ? "Success"
+                            : "Failed"}
+                        </span>{" "}
+                        • {formatRelativeTimeFromNow(task.lastRun.endedAt)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">
+                          Recent executions
+                        </p>
+                        <div className="mt-2 space-y-3">
+                          {topRuns.map((run) => (
+                            <div
+                              key={run.id}
+                              className="rounded-md border border-border/60 bg-muted/30 p-3 text-sm"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={
+                                      run.status === "success"
+                                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                                        : "text-destructive font-semibold"
+                                    }
+                                  >
+                                    {run.status === "success"
+                                      ? "Success"
+                                      : "Failed"}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Duration: {formatDuration(run.durationMs)}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  Finished{" "}
+                                  {formatRelativeTimeFromNow(run.endedAt)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Started: {formatDateTime(run.startedAt)}
+                                <br />
+                                Ended: {formatDateTime(run.endedAt)}
+                              </p>
+                              {run.notes && (
+                                <p className="mt-1 text-xs text-foreground">
+                                  Notes: {run.notes}
+                                </p>
+                              )}
+                              {run.logUrl && (
+                                <div className="pt-2">
+                                  <Button
+                                    asChild
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto px-0"
+                                  >
+                                    <a
+                                      href={run.logUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 text-sm"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                      Download logs
+                                    </a>
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
         <TabsContent value="logs" className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -1333,4 +1605,45 @@ export default function SettingsPage() {
       </Tabs>
     </div>
   );
+}
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
+});
+
+function formatRelativeTimeFromNow(dateString: string) {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "unknown time";
+  const diffMs = date.getTime() - Date.now();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  if (Math.abs(diffHours) < 24) {
+    return relativeTimeFormatter.format(Math.round(diffHours), "hour");
+  }
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return relativeTimeFormatter.format(Math.round(diffDays), "day");
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatDuration(durationMs?: number) {
+  if (!durationMs || durationMs < 0) return "—";
+  const totalSeconds = Math.round(durationMs / 1000);
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m${seconds ? ` ${seconds}s` : ""}`;
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h${minutes ? ` ${minutes}m` : ""}`;
 }

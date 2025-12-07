@@ -104,12 +104,17 @@ export default function ChatLogsPage() {
           ? "text"
           : null;
 
-      const channelChoice = channelFromSearch || (channelFilter !== "all" ? channelFilter : null);
+      const channelChoice =
+        channelFromSearch || (channelFilter !== "all" ? channelFilter : null);
 
       if (channelChoice === "voice") {
-        query = query.in("source", ["chatkit_voice", "chatkit"]).filter("channel", "eq", "voice");
+        query = query
+          .in("source", ["chatkit_voice", "chatkit"])
+          .filter("channel", "eq", "voice");
       } else if (channelChoice === "text") {
-        query = query.in("source", ["chatkit", "chatkit_voice"]).filter("channel", "neq", "voice");
+        query = query
+          .in("source", ["chatkit", "chatkit_voice"])
+          .filter("channel", "neq", "voice");
       } else {
         // Default: include both sources so voice entries are visible without a filter
         query = query.in("source", ["chatkit", "chatkit_voice"]);
@@ -137,7 +142,15 @@ export default function ChatLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchTerm, statusFilter]);
+  }, [
+    channelFilter,
+    currentPage,
+    pageSize,
+    searchTerm,
+    sortDir,
+    sortField,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     fetchLogs();

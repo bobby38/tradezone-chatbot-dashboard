@@ -25,6 +25,10 @@
   - Now shows ALL available products for category queries (tablets, phones, laptops, games)
   - Product limit (`wooLimit`) still applies but displays full inventory count
   - Result: Customers see complete product selection, can make informed purchase decisions, no hidden inventory
+- **Dec 7, 2025 – Scheduler health tab**:
+  - Added `/api/scheduled-tasks` to centralize cron metadata (price grid sync, Woo snapshot rebuild, Graphiti enrichment) plus their recent executions/log URLs.
+  - `Dashboard → Settings → Schedulers` tab now surfaces frequency, cron expression, owner/environment badges, and a “Recent Executions” stack per job.
+  - Automatic red banner appears when the latest run failed so ops can chase product trade-in or Graphiti sync issues immediately; log download links sit beside each run for quick auditing.
 
 ### Development Workflow Expectations
 - For every incoming request, produce a numbered task list before touching code, keep it updated, and check off each item only after verifying the fix.
