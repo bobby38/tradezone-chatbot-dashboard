@@ -134,9 +134,9 @@ export async function POST(req: NextRequest) {
         },
         turn_detection: {
           type: "server_vad",
-          threshold: 0.55,
-          prefix_padding_ms: 500,
-          silence_duration_ms: 1200,
+          threshold: 0.5, // Slightly more sensitive to detect interruptions
+          prefix_padding_ms: 300, // Faster response to user starting to speak
+          silence_duration_ms: 700, // Shorter silence = faster interruption detection (was 1200ms)
         },
         tools: VOICE_TOOL_DEFINITIONS,
         tool_choice: "auto",
