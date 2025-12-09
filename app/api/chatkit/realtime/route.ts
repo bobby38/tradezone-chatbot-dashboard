@@ -116,13 +116,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Realtime model: allow override; default to cost-efficient gpt-5-mini preview
-    const model = process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-mini";
+    const model =
+      process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-mini";
 
     const config = {
       apiKey: process.env.OPENAI_API_KEY,
       websocketUrl: "wss://api.openai.com/v1/realtime",
       model,
-      voice: "shimmer", // Female voice (gentle, warm) - Realtime API compatible
+      voice: "alloy",
       vectorStoreId: process.env.OPENAI_VECTOR_STORE_ID,
 
       // Full session configuration for both dashboard and widget
@@ -134,9 +135,9 @@ export async function POST(req: NextRequest) {
         },
         turn_detection: {
           type: "server_vad",
-          threshold: 0.5, // Slightly more sensitive to detect interruptions
-          prefix_padding_ms: 300, // Faster response to user starting to speak
-          silence_duration_ms: 700, // Shorter silence = faster interruption detection (was 1200ms)
+          threshold: 0.55,
+          prefix_padding_ms: 500,
+          silence_duration_ms: 1200,
         },
         tools: VOICE_TOOL_DEFINITIONS,
         tool_choice: "auto",
