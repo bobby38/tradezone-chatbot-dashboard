@@ -2174,14 +2174,10 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       }
     }
 
-    if (
-      alreadyNotified ||
-      !hasDevice ||
-      !hasContactPhone ||
-      !hasEmail ||
-      !hasPayout ||
-      !photoStepAcknowledged
-    ) {
+    // Only require: device, phone, email
+    // Payout is optional - customer comes to store anyway for trade-ups
+    // Photo is nice-to-have but shouldn't block submission
+    if (alreadyNotified || !hasDevice || !hasContactPhone || !hasEmail) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
         hasDevice,
