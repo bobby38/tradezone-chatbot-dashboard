@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       apiKey: process.env.OPENAI_API_KEY,
       websocketUrl: "wss://api.openai.com/v1/realtime",
       model,
-      voice: "nova", // Female voice (warm, friendly)
+      voice: "shimmer", // Female voice (gentle, warm) - Realtime API compatible
       vectorStoreId: process.env.OPENAI_VECTOR_STORE_ID,
 
       // Full session configuration for both dashboard and widget
