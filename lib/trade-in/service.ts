@@ -146,8 +146,8 @@ const TEXT_FIELDS = new Set([
   "model",
   "storage",
   "pricing_version",
-   "source_device_name",
-   "target_device_name",
+  "source_device_name",
+  "target_device_name",
   "contact_name",
   "contact_phone",
   "contact_email",
@@ -635,7 +635,9 @@ export async function cacheTradeUpQuote(
         ? new Date(quoteTimestamp)
         : new Date();
   if (Number.isNaN(timestamp.valueOf())) {
-    throw new TradeInValidationError("Invalid quote_timestamp", ["quote_timestamp"]);
+    throw new TradeInValidationError("Invalid quote_timestamp", [
+      "quote_timestamp",
+    ]);
   }
 
   const payload = {
@@ -763,9 +765,10 @@ export async function submitTradeInLead(
   if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
-  if (!lead.preferred_payout?.trim()) {
-    missingFields.push("preferred_payout");
-  }
+  // Payout is optional - customer arranges payment at store
+  // if (!lead.preferred_payout?.trim()) {
+  //   missingFields.push("preferred_payout");
+  // }
 
   if (missingFields.length > 0) {
     const missingList = missingFields

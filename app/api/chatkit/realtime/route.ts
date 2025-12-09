@@ -116,14 +116,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Realtime model: allow override; default to cost-efficient gpt-5-mini preview
-    const model =
-      process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-mini";
+    const model = process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-mini";
 
     const config = {
       apiKey: process.env.OPENAI_API_KEY,
       websocketUrl: "wss://api.openai.com/v1/realtime",
       model,
-      voice: "alloy",
+      voice: "nova", // Female voice (warm, friendly)
       vectorStoreId: process.env.OPENAI_VECTOR_STORE_ID,
 
       // Full session configuration for both dashboard and widget
