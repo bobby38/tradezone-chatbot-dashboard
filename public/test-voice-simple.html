@@ -1,0 +1,224 @@
+<!doctype html>
+<html>
+    <head>
+        <title>LiveKit Voice Test - Simple</title>
+        <style>
+            body {
+                font-family: Arial;
+                max-width: 600px;
+                margin: 50px auto;
+                padding: 20px;
+            }
+            button {
+                padding: 15px 30px;
+                font-size: 16px;
+                margin: 10px;
+                cursor: pointer;
+            }
+            #status {
+                padding: 15px;
+                background: #f0f0f0;
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            #messages {
+                padding: 15px;
+                background: #e8f4f8;
+                border-radius: 5px;
+                min-height: 200px;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .msg {
+                margin: 10px 0;
+                padding: 8px;
+                border-radius: 5px;
+            }
+            .user {
+                background: #d1e7dd;
+            }
+            .agent {
+                background: #fff3cd;
+            }
+            .system {
+                background: #e9ecef;
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🎙️ LiveKit Voice Test</h1>
+
+        <div id="status">Status: Not connected</div>
+
+        <button onclick="connect()">Connect & Talk</button>
+        <button onclick="disconnect()">Disconnect</button>
+
+        <div id="messages"></div>
+
+        <script type="module">
+            import {
+                Room,
+                RoomEvent,
+                Track,
+                createLocalAudioTrack,
+            } from "https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.esm.mjs";
+
+            let room = null;
+
+            window.connect = async function () {
+                try {
+                    log("system", "Getting microphone access...");
+
+                    // Get microphone access FIRST
+                    const audioTrack = await createLocalAudioTrack({
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                    });
+
+                    log("system", "✅ Microphone ready");
+                    log("system", "Getting LiveKit token...");
+
+                    // Get token
+                    const response = await fetch(
+                        "http://localhost:3000/api/livekit/token",
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                roomName: "test-" + Date.now(),
+                                participantName: "Tester",
+                            }),
+                        },
+                    );
+
+                    const { token, url } = await response.json();
+                    log("system", "✅ Token received");
+
+                    // Connect to room
+                    room = new Room();
+
+                    await room.connect(url, token, {
+                        autoSubscribe: true,
+                    });
+
+                    updateStatus("✅ Connected to LiveKit");
+                    log("system", "✅ Connected! Publishing audio...");
+
+                    // Publish our microphone
+                    await room.localParticipant.publishTrack(audioTrack);
+
+                    log(
+                        "system",
+                        "🎤 Microphone published! Waiting for agent...",
+                    );
+
+                    // Listen for agent joining
+                    room.on(RoomEvent.ParticipantConnected, (participant) => {
+                        log(
+                            "system",
+                            `Participant joined: ${participant.identity}`,
+                        );
+                        if (participant.identity.includes("agent")) {
+                            log(
+                                "system",
+                                "🤖 AGENT JOINED! Start speaking now!",
+                            );
+                            updateStatus("🤖 Agent ready - SPEAK NOW!");
+                        }
+                    });
+
+                    // Listen for agent audio
+                    room.on(
+                        RoomEvent.TrackSubscribed,
+                        (track, publication, participant) => {
+                            if (track.kind === Track.Kind.Audio) {
+                                log(
+                                    "system",
+                                    `🔊 Receiving audio from ${participant.identity}`,
+                                );
+                                const el = track.attach();
+                                el.autoplay = true;
+                                el.volume = 1.0;
+                                document.body.appendChild(el);
+                                el.play().catch((e) =>
+                                    log(
+                                        "system",
+                                        "❌ Audio play error: " + e.message,
+                                    ),
+                                );
+                            }
+                        },
+                    );
+
+                    // Listen for data (transcripts, tool calls, etc)
+                    room.on(RoomEvent.DataReceived, (payload, participant) => {
+                        try {
+                            const data = JSON.parse(
+                                new TextDecoder().decode(payload),
+                            );
+                            console.log("Data received:", data); // Debug log
+
+                            if (
+                                data.type === "transcript" &&
+                                data.role === "user"
+                            ) {
+                                log("user", data.text);
+                            } else if (
+                                data.type === "transcript" &&
+                                data.role === "assistant"
+                            ) {
+                                log("agent", data.text);
+                            } else if (data.type === "tool_call") {
+                                log(
+                                    "system",
+                                    `🔧 Tool: ${data.tool} - ${JSON.stringify(data.args)}`,
+                                );
+                            } else if (data.type === "tool_result") {
+                                log(
+                                    "system",
+                                    `📊 Result: ${data.result.substring(0, 100)}...`,
+                                );
+                            }
+                        } catch (e) {
+                            // Not JSON, might be text
+                            console.log(
+                                "Non-JSON data:",
+                                new TextDecoder().decode(payload),
+                            );
+                        }
+                    });
+                } catch (error) {
+                    log("system", "❌ Error: " + error.message);
+                    updateStatus("❌ Error: " + error.message);
+                }
+            };
+
+            window.disconnect = async function () {
+                if (room) {
+                    await room.disconnect();
+                    updateStatus("Disconnected");
+                    log("system", "Disconnected");
+                }
+            };
+
+            function updateStatus(text) {
+                document.getElementById("status").textContent =
+                    "Status: " + text;
+            }
+
+            function log(type, text) {
+                const msg = document.createElement("div");
+                msg.className = "msg " + type;
+                msg.textContent =
+                    (type === "user"
+                        ? "👤 You: "
+                        : type === "agent"
+                          ? "🤖 Agent: "
+                          : "• ") + text;
+                document.getElementById("messages").appendChild(msg);
+                document.getElementById("messages").scrollTop = 999999;
+            }
+        </script>
+    </body>
+</html>

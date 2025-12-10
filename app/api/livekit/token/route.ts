@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AccessToken } from 'livekit-server-sdk';
+import { NextRequest, NextResponse } from "next/server";
+import { AccessToken } from "livekit-server-sdk";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,13 +10,13 @@ export async function POST(req: NextRequest) {
 
     if (!apiKey || !apiSecret) {
       return NextResponse.json(
-        { error: 'LiveKit credentials not configured' },
-        { status: 500 }
+        { error: "LiveKit credentials not configured" },
+        { status: 500 },
       );
     }
 
     const at = new AccessToken(apiKey, apiSecret, {
-      identity: participantName || 'user-' + Date.now(),
+      identity: participantName || "user-" + Date.now(),
     });
 
     at.addGrant({
@@ -28,15 +28,49 @@ export async function POST(req: NextRequest) {
 
     const token = await at.toJwt();
 
+    // Dispatch agent to the room
+    try {
+      const apiUrl = process.env.LIVEKIT_URL?.replace(
+        "wss://",
+        "https://",
+      ).replace("ws://", "http://");
+      const dispatchResponse = await fetch(
+        `${apiUrl}/twirp/livekit.AgentDispatchService/CreateDispatch`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            room: roomName,
+            agent_name: "amara",
+          }),
+        },
+      );
+
+      if (!dispatchResponse.ok) {
+        console.error(
+          "[LiveKit] Agent dispatch failed:",
+          await dispatchResponse.text(),
+        );
+      } else {
+        console.log("[LiveKit] Agent dispatched to room:", roomName);
+      }
+    } catch (error: any) {
+      console.error("[LiveKit] Agent dispatch error:", error.message);
+      // Don't fail the token request if dispatch fails
+    }
+
     return NextResponse.json({
       token,
       url: process.env.LIVEKIT_URL,
     });
   } catch (error: any) {
-    console.error('[LiveKit Token] Error:', error);
+    console.error("[LiveKit Token] Error:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate token' },
-      { status: 500 }
+      { error: error.message || "Failed to generate token" },
+      { status: 500 },
     );
   }
 }

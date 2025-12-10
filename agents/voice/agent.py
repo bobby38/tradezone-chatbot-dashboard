@@ -16,6 +16,7 @@ from livekit.agents import (
     JobContext,
     JobProcess,
     cli,
+    function_tool,
     inference,
     room_io,
 )
@@ -34,6 +35,13 @@ API_KEY = os.getenv("CHATKIT_API_KEY", "")
 class TradeZoneAgent(Agent):
     def __init__(self) -> None:
         super().__init__(
+            tools=[
+                searchProducts,
+                searchtool,
+                tradein_update_lead,
+                tradein_submit_lead,
+                sendemail,
+            ],
             instructions="""You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
 
 # Output rules
@@ -107,8 +115,10 @@ When customer wants trade-in:
 
 
 # Tools that call Next.js APIs
+@function_tool
 async def searchProducts(query: str) -> str:
     """Search TradeZone product catalog using vector database."""
+    logger.info(f"[searchProducts] CALLED with query: {query}")
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
@@ -118,12 +128,30 @@ async def searchProducts(query: str) -> str:
                 timeout=30.0,
             )
             result = response.json()
-            return result.get("result", "No products found")
+
+            # Log the full response for debugging
+            logger.info(f"searchProducts API response: {result}")
+
+            # Check if we got a successful response
+            if result.get("success"):
+                product_result = result.get("result", "")
+                if product_result and len(product_result) > 10:
+                    logger.info(
+                        f"searchProducts returning {len(product_result)} chars of product data"
+                    )
+                    return product_result
+                else:
+                    logger.warning(f"searchProducts got empty result: {product_result}")
+                    return "No products found matching your search"
+            else:
+                logger.error(f"searchProducts API failed: {result}")
+                return "No products found"
         except Exception as e:
             logger.error(f"searchProducts error: {e}")
             return "Sorry, I couldn't search products right now"
 
 
+@function_tool
 async def searchtool(query: str) -> str:
     """Search TradeZone website for general information."""
     async with httpx.AsyncClient() as client:
@@ -141,6 +169,7 @@ async def searchtool(query: str) -> str:
             return "Sorry, I couldn't find that information"
 
 
+@function_tool
 async def tradein_update_lead(
     category: str = None,
     brand: str = None,
@@ -186,6 +215,7 @@ async def tradein_update_lead(
             return "Information saved"
 
 
+@function_tool
 async def tradein_submit_lead(summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
     async with httpx.AsyncClient() as client:
@@ -203,6 +233,7 @@ async def tradein_submit_lead(summary: str = None) -> str:
             return "Trade-in submitted"
 
 
+@function_tool
 async def sendemail(
     email_type: str,
     name: str,
@@ -243,7 +274,7 @@ def prewarm(proc: JobProcess):
 server.setup_fnc = prewarm
 
 
-@server.rtc_session(agent_name="amara")
+@server.rtc_session()  # Auto-join any room
 async def entrypoint(ctx: JobContext):
     """Main entry point for LiveKit voice sessions"""
 
@@ -255,7 +286,6 @@ async def entrypoint(ctx: JobContext):
         ),
         llm=inference.LLM(
             model="openai/gpt-4.1-mini",  # Fast, cost-effective
-            temperature=0.7,
         ),
         tts=inference.TTS(
             model="cartesia/sonic-3",  # Ultra-low latency TTS
@@ -266,13 +296,6 @@ async def entrypoint(ctx: JobContext):
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,  # Start generating before user finishes
     )
-
-    # Register tools
-    session.register_tool(searchProducts)
-    session.register_tool(searchtool)
-    session.register_tool(tradein_update_lead)
-    session.register_tool(tradein_submit_lead)
-    session.register_tool(sendemail)
 
     await session.start(
         agent=TradeZoneAgent(),
