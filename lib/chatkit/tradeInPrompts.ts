@@ -75,8 +75,8 @@ Agent: "Let me check our trade-in database for Xbox Series X pricing information
 9. In voice: STOP immediately if user starts speaking (don't finish your sentence)
 9. When device + contact info are complete, present the reply using:
    **Trade-In Summary**
-   - 🔴 PRICING (if trade-up): "{Source Device} trade-in ~S${trade_value} → {Target Device} S${retail_price} → Top-up ~S${difference}"
-   - 🔴 PRICING (if cash trade-in): "Trade-in offer: S${trade_value} (subject to inspection)"
+   - 🔴 PRICING (if trade-up): "{Source Device} trade-in ~S$[trade_value] → {Target Device} S$[retail_price] → Top-up ~S$[difference]"
+   - 🔴 PRICING (if cash trade-in): "Trade-in offer: S$[trade_value] (subject to inspection)"
    - Device: {brand model storage}
    - Condition: {condition}
    - Accessories: {list or "None"}
@@ -275,9 +275,9 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
    - 🔴 Display COMPLETE structured summary in TEXT:
 
      **Trade-In Summary**
-     Source: {Brand Model Storage} trade-in ~S${value}
-     Target: {Brand Model} S${price}
-     Top-up: ~S${difference}
+     Source: {Brand Model Storage} trade-in ~S$[value]
+     Target: {Brand Model} S$[price]
+     Top-up: ~S$[difference]
 
      Device Condition: {condition}
      Accessories: {box/cables/etc or "None"}
@@ -351,7 +351,7 @@ WAIT for "yes/correct/yep" before continuing.
 - price_hint: trade-in value
 - range_min: retail price
 - range_max: retail price
-- notes: "Trade-up: {SOURCE} ~S${TRADE} → {TARGET} S${BUY} → Top-up ~S${DIFFERENCE}"
+- notes: "Trade-up: {SOURCE} ~S$[TRADE] → {TARGET} S$[BUY] → Top-up ~S$[DIFFERENCE]"
 
 **Step 3.5: Ask to Proceed** (≤5 words)
 "Want to proceed with this trade-up?"
