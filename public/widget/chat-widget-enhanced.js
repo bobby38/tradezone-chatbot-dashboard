@@ -42,6 +42,9 @@
       videoUrl: "", // Optional hero video
       enableVoice: true,
       enableVideo: true,
+      // LiveKit client library (used for voice)
+      // Prefer same-origin copy to avoid adblock/CSP; fallback to UNPKG
+      livekitScriptUrl: null,
       // Appwrite Storage Configuration
       appwrite: {
         endpoint: "https://studio.getrezult.com/v1",
@@ -2148,14 +2151,58 @@
       }
     },
 
+    // Ensure LiveKit library is present (injects script tag if missing)
+    ensureLiveKit: async function () {
+      const existing =
+        window.LivekitClient || window.LiveKitClient || window.LiveKit;
+      if (existing) return existing;
+
+      // Avoid duplicate loads
+      if (!this._livekitLoadPromise) {
+        const primary =
+          this.config.livekitScriptUrl ||
+          `${this.config.apiUrl}/widget/livekit-client.umd.js`;
+        const fallback =
+          "https://unpkg.com/livekit-client@2.5.7/dist/livekit-client.umd.js";
+
+        this._livekitLoadPromise = new Promise((resolve, reject) => {
+          const load = (url, triedFallback = false) => {
+            const script = document.createElement("script");
+            script.src = url;
+            script.async = true;
+            script.onload = () => {
+              const lk =
+                window.LivekitClient || window.LiveKitClient || window.LiveKit;
+              if (lk) return resolve(lk);
+              if (!triedFallback) return load(fallback, true);
+              reject(new Error("LiveKit global not found after load"));
+            };
+            script.onerror = () => {
+              if (!triedFallback) {
+                console.warn("[Voice] Primary LiveKit script failed, trying CDN");
+                return load(fallback, true);
+              }
+              reject(new Error("Failed to load LiveKit script (primary+CDN)"));
+            };
+            document.head.appendChild(script);
+          };
+          load(primary, false);
+        });
+      }
+
+      return this._livekitLoadPromise.catch((err) => {
+        console.error("[Voice] LiveKit load failed", err);
+        return null;
+      });
+    },
+
     startVoice: async function () {
       try {
         console.log("[Voice] Starting LiveKit voice mode...");
         this.updateVoiceStatus("Connecting...");
 
         // Get microphone first
-        const LiveKit =
-          window.LivekitClient || window.LiveKitClient || window.LiveKit;
+        const LiveKit = await this.ensureLiveKit();
         if (!LiveKit) {
           throw new Error(
             "LiveKit library not loaded. Please refresh the page.",
