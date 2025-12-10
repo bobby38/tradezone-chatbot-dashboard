@@ -273,7 +273,7 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 
 **Step 6: FINAL CONFIRMATION** (Show complete summary, let user verify)
    - 🔴 Display COMPLETE structured summary in TEXT:
-     ```
+
      **Trade-In Summary**
      Source: {Brand Model Storage} trade-in ~S${value}
      Target: {Brand Model} S${price}
@@ -288,7 +288,6 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
      - Email: {email}
 
      Payout: {method}
-     ```
    - Voice says (≤15 words): "Check the summary. I'll submit in 10 seconds unless you need to change something."
    - **BUFFER TIME**: Wait 10 seconds for user to review
    - If user says "OK"/"Yes"/"Submit" → Submit immediately (skip wait)
