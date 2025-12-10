@@ -1,0 +1,8 @@
+livekit-agents>=0.10.0
+livekit-plugins-deepgram
+livekit-plugins-openai
+livekit-plugins-cartesia
+livekit-plugins-silero
+livekit-plugins-noise-cancellation
+httpx
+python-dotenv
