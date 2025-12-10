@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleVectorSearch, handlePerplexitySearch } from "@/lib/tools";
+import { searchWooProducts } from "@/lib/agent-tools";
 import {
   verifyApiKey,
   authErrorResponse,
@@ -29,11 +30,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Determine search context
-    const searchContext =
-      context === "catalog" ? "trade_in_vector_store" : undefined;
+    // For catalog searches, use WooCommerce search (same as text chat)
+    if (context === "catalog") {
+      const wooResult = await searchWooProducts(query);
 
-    // Try vector search first
+      console.log("[Search API] WooCommerce search:", {
+        query,
+        foundProducts: wooResult.length,
+      });
+
+      if (wooResult.length > 0) {
+        // Format products for voice with markdown (clickable links + images)
+        const formatted = wooResult
+          .slice(0, 5)
+          .map((p) => {
+            const price = p.price_sgd ? `$${p.price_sgd}` : "Contact us";
+            const link = p.permalink || "";
+            const image = p.image || "";
+
+            // Make product names TTS-friendly (PS5 -> PlayStation 5)
+            let ttsName = p.name
+              .replace(/\bPS5\b/gi, "PlayStation 5")
+              .replace(/\bPS4\b/gi, "PlayStation 4")
+              .replace(/\bXbox Series X\b/gi, "Xbox Series X")
+              .replace(/\bXbox Series S\b/gi, "Xbox Series S");
+
+            // Markdown format: ![image](url) for image, [text](url) for link
+            let result = "";
+            if (image) {
+              result += `![${ttsName}](${image})\n`;
+            }
+            result += `**[${ttsName}](${link})** — ${price}`;
+
+            return result;
+          })
+          .join("\n\n");
+
+        return NextResponse.json({
+          success: true,
+          result: formatted,
+          products: wooResult.slice(0, 5), // Include structured product data
+        });
+      }
+    }
+
+    // Fallback to vector search
+    const searchContext =
+      context === "catalog"
+        ? { intent: "product", toolUsed: "searchProducts" }
+        : context === "website"
+          ? { intent: "general", toolUsed: "searchtool" }
+          : undefined;
+
     const vectorResult = await handleVectorSearch(query, searchContext);
 
     if (vectorResult && vectorResult.length > 0) {
@@ -83,9 +131,8 @@ function formatSearchResults(results: string): string {
     const products = productMatches
       .slice(0, 5) // Max 5 products for voice
       .map((match) => {
-        const [, name, price] = match.match(
-          /\*\*(.+?)\*\* — S\$(\d+(?:\.\d{2})?)/,
-        ) || [];
+        const [, name, price] =
+          match.match(/\*\*(.+?)\*\* — S\$(\d+(?:\.\d{2})?)/) || [];
         return `${name} at S$${price}`;
       })
       .filter(Boolean);

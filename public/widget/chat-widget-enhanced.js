@@ -155,6 +155,7 @@
 
       this.injectStyles();
       this.createWidget();
+      this.loadVoiceTranscript(); // Load persisted voice transcript
       this.attachEventListeners();
       this.registerViewportListeners();
       this.updateWidgetHeight(); // Set initial height
@@ -205,7 +206,8 @@
       });
 
       if (sportTokens.size) {
-        refinedQuery = `${refinedQuery} ${Array.from(sportTokens).join(" ")}`.trim();
+        refinedQuery =
+          `${refinedQuery} ${Array.from(sportTokens).join(" ")}`.trim();
       }
 
       const extraKeywords = new Set();
@@ -272,12 +274,9 @@
       if (match?.familyTitle) chunks.push(match.familyTitle);
       if (match?.price) chunks.push(String(match.price));
       if (match?.description) chunks.push(match.description);
-      if (Array.isArray(match?.categories)) chunks.push(match.categories.join(" "));
-      return chunks
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase();
+      if (Array.isArray(match?.categories))
+        chunks.push(match.categories.join(" "));
+      return chunks.join(" ").replace(/\s+/g, " ").trim().toLowerCase();
     },
 
     buildVoiceProductSummary: function (matches) {
@@ -448,12 +447,51 @@
       }
     },
 
+    // Save voice transcript to localStorage
+    saveVoiceTranscript: function () {
+      const VOICE_KEY = "tz_voice_transcript";
+      try {
+        const transcript = document.getElementById("tz-voice-transcript");
+        if (transcript) {
+          localStorage.setItem(VOICE_KEY, transcript.innerHTML);
+        }
+      } catch (e) {
+        console.warn("[TradeZone] Failed to save voice transcript:", e);
+      }
+    },
+
+    // Load voice transcript from localStorage
+    loadVoiceTranscript: function () {
+      const VOICE_KEY = "tz_voice_transcript";
+      const EXPIRY_KEY = "tz_session_expiry";
+      try {
+        // Check if session is still valid
+        const expiry = localStorage.getItem(EXPIRY_KEY);
+        if (!expiry || Date.now() >= parseInt(expiry)) {
+          // Session expired, clear voice transcript
+          localStorage.removeItem(VOICE_KEY);
+          return;
+        }
+
+        const stored = localStorage.getItem(VOICE_KEY);
+        const transcript = document.getElementById("tz-voice-transcript");
+        if (stored && transcript) {
+          transcript.innerHTML = stored;
+          transcript.classList.add("expanded");
+          console.log("[TradeZone] Loaded voice transcript from storage");
+        }
+      } catch (e) {
+        console.warn("[TradeZone] Failed to load voice transcript:", e);
+      }
+    },
+
     // Clear session and start fresh
     clearSession: function () {
       try {
         localStorage.removeItem("tz_session_id");
         localStorage.removeItem("tz_session_expiry");
         localStorage.removeItem("tz_chat_history");
+        localStorage.removeItem("tz_voice_transcript");
         this.messages = [];
         this.sessionId = this.getOrCreateSessionId();
         console.log(
@@ -1871,7 +1909,8 @@
           voiceContainer.classList.remove("hidden");
           voiceContainer.classList.add("active");
         }
-        if (chatWindow) chatWindow.classList.add("tz-voice-active", "tz-voice-compact");
+        if (chatWindow)
+          chatWindow.classList.add("tz-voice-active", "tz-voice-compact");
         if (chatHero) chatHero.classList.add("hidden");
         if (voiceBtn) voiceBtn.classList.add("idle");
         if (voiceStatus) voiceStatus.textContent = "Tap the mic to start";
@@ -1882,7 +1921,8 @@
           voiceContainer.classList.add("hidden");
           voiceContainer.classList.remove("active");
         }
-        if (chatWindow) chatWindow.classList.remove("tz-voice-active", "tz-voice-compact");
+        if (chatWindow)
+          chatWindow.classList.remove("tz-voice-active", "tz-voice-compact");
         if (chatHero && !chatWindow?.classList.contains("tz-mobile-compact")) {
           chatHero.classList.remove("hidden");
         }
@@ -2110,71 +2150,136 @@
 
     startVoice: async function () {
       try {
-        // Get realtime config
+        console.log("[Voice] Starting LiveKit voice mode...");
+        this.updateVoiceStatus("Connecting...");
+
+        // Get microphone first
+        const LiveKit =
+          window.LivekitClient || window.LiveKitClient || window.LiveKit;
+        if (!LiveKit) {
+          throw new Error(
+            "LiveKit library not loaded. Please refresh the page.",
+          );
+        }
+        const audioTrack = await LiveKit.createLocalAudioTrack({
+          echoCancellation: true,
+          noiseSuppression: true,
+        });
+        this.voiceState.audioTrack = audioTrack;
+        console.log("[Voice] Microphone ready");
+
+        // Get LiveKit token
+        const roomName = `chat-${this.sessionId || Date.now()}`;
         const response = await fetch(
-          `${this.config.apiUrl}/api/chatkit/realtime`,
+          `${this.config.apiUrl}/api/livekit/token`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-API-Key": this.config.apiKey || "",
-            },
-            body: JSON.stringify({ sessionId: this.sessionId }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              roomName,
+              participantName: this.clientId || "user-" + Date.now(),
+            }),
           },
         );
 
-        const config = await response.json();
+        const { token, url } = await response.json();
+        console.log("[Voice] Token received");
 
-        // Connect to OpenAI Realtime (EXACT COPY FROM DASHBOARD)
-        this.ws = new WebSocket(
-          `${config.config.websocketUrl}?model=${config.config.model}`,
-          [
-            "realtime",
-            `openai-insecure-api-key.${config.config.apiKey}`,
-            "openai-beta.realtime-v1",
-          ],
+        // Connect to LiveKit room
+        this.voiceState.room = new LiveKit.Room();
+
+        // Set up event listeners BEFORE connecting
+        this.voiceState.room.on(
+          LiveKit.RoomEvent.ParticipantConnected,
+          (participant) => {
+            console.log("[Voice] Participant joined:", participant.identity);
+            if (participant.identity.startsWith("agent-")) {
+              this.updateVoiceStatus("Agent joined! Speak now");
+              // Don't add to text chat - keep voice and text separate
+            }
+          },
         );
 
-        this.ws.onopen = async () => {
-          console.log("[Voice] Connected");
-          this.updateVoiceStatus("Connected");
+        this.voiceState.room.on(
+          LiveKit.RoomEvent.TrackSubscribed,
+          (track, publication, participant) => {
+            if (track.kind === LiveKit.Track.Kind.Audio) {
+              console.log("[Voice] Receiving audio from", participant.identity);
+              const audioElement = track.attach();
+              document.body.appendChild(audioElement);
+            }
+          },
+        );
 
-          // Use full config from API (same as dashboard!)
-          this.ws.send(
-            JSON.stringify({
-              type: "session.update",
-              session: {
-                ...config.config.sessionConfig,
-                voice: config.config.voice || "alloy",
-                output_audio_format: "pcm16",
-              },
-            }),
-          );
+        // Listen for transcription events from LiveKit
+        this.voiceState.room.on(
+          LiveKit.RoomEvent.TranscriptionReceived,
+          (transcriptions, participant) => {
+            console.log(
+              `[Voice] Transcription from ${participant.identity}:`,
+              transcriptions,
+            );
 
-          // Initialize audio
-          await this.initAudio();
-          this.isRecording = true;
-          this.updateVoiceButton();
-        };
+            // Process each transcription segment
+            transcriptions.forEach((segment) => {
+              if (segment.final && segment.text) {
+                // Determine if this is from user or agent
+                if (participant.identity.startsWith("agent-")) {
+                  // Agent speaking
+                  this.voicePendingAssistantTranscript = segment.text;
+                  this.addTranscript(segment.text, "assistant");
+                } else {
+                  // User speaking
+                  this.voicePendingUserTranscript = segment.text;
+                  this.addTranscript(segment.text, "user");
+                }
+              }
+            });
+          },
+        );
 
-        this.ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log("[Voice] Received event:", data.type, data);
-          this.handleVoiceEvent(data);
-        };
+        // Listen for product data from the agent (tool results)
+        this.voiceState.room.on(
+          LiveKit.RoomEvent.DataReceived,
+          (payload, participant, kind, topic) => {
+            if (topic === "tool-results") {
+              try {
+                const decoder = new TextDecoder();
+                const data = JSON.parse(decoder.decode(payload));
+                console.log("[Voice] Tool result received:", data);
 
-        this.ws.onerror = (error) => {
-          console.error("[Voice] WebSocket error:", error);
-          this.updateVoiceStatus("Connection error");
-        };
+                if (data.type === "product_results" && data.products) {
+                  // Display product cards in transcript
+                  this.displayProductCards(data.products);
+                }
+              } catch (err) {
+                console.error("[Voice] Error parsing tool result:", err);
+              }
+            }
+          },
+        );
 
-        this.ws.onclose = (event) => {
-          console.log("[Voice] WebSocket closed:", event.code, event.reason);
+        this.voiceState.room.on(LiveKit.RoomEvent.Disconnected, () => {
+          console.log("[Voice] Disconnected from room");
           this.updateVoiceStatus("Disconnected");
-        };
+          this.isRecording = false;
+          this.updateVoiceButton();
+        });
+
+        // Connect to room
+        await this.voiceState.room.connect(url, token, { autoSubscribe: true });
+        console.log("[Voice] Connected to LiveKit room");
+        this.updateVoiceStatus("Connected - Publishing audio...");
+
+        // Publish microphone
+        await this.voiceState.room.localParticipant.publishTrack(audioTrack);
+        console.log("[Voice] Microphone published");
+
+        this.updateVoiceStatus("🎤 Speaking mode active");
+        this.isRecording = true;
+        this.updateVoiceButton();
       } catch (error) {
         console.error("[Voice] Error:", error);
-        console.error("[Voice] Error details:", error.message, error.stack);
         this.updateVoiceStatus(
           "Error: " + (error.message || "Failed to start"),
         );
@@ -2185,19 +2290,25 @@
     },
 
     stopVoice: function () {
-      if (this.ws) this.ws.close();
-      if (this.mediaStream) {
-        this.mediaStream.getTracks().forEach((track) => track.stop());
+      console.log("[Voice] Stopping voice mode");
+
+      if (this.voiceState.room) {
+        this.voiceState.room.disconnect();
+        this.voiceState.room = null;
       }
-      if (this.audioContext) this.audioContext.close();
-      if (this.playbackContext) this.playbackContext.close();
+
+      if (this.voiceState.audioTrack) {
+        this.voiceState.audioTrack.stop();
+        this.voiceState.audioTrack = null;
+      }
 
       this.isRecording = false;
       this.updateVoiceButton();
       this.updateVoiceStatus("Stopped");
     },
 
-    initAudio: async function () {
+    // OLD OpenAI Realtime code - no longer needed with LiveKit
+    initAudio_DEPRECATED: async function () {
       // Initialize audio queue
       this.audioQueue = [];
 
@@ -2320,7 +2431,8 @@
       );
     },
 
-    handleVoiceEvent: function (event) {
+    // OLD OpenAI Realtime code - no longer needed with LiveKit
+    handleVoiceEvent_DEPRECATED: function (event) {
       switch (event.type) {
         case "conversation.item.input_audio_transcription.completed":
           console.log("[Voice] User said:", event.transcript);
@@ -2398,7 +2510,11 @@
 
         case "input_audio_buffer.speech_started": {
           console.log("[Voice] User started speaking");
-          if (this.voiceState.isResponding && this.ws && this.ws.readyState === WebSocket.OPEN) {
+          if (
+            this.voiceState.isResponding &&
+            this.ws &&
+            this.ws.readyState === WebSocket.OPEN
+          ) {
             try {
               this.ws.send(JSON.stringify({ type: "response.cancel" }));
             } catch (err) {
@@ -2496,9 +2612,8 @@
                     voiceContext,
                   );
                   if (filteredMatches.length) {
-                    const summary = this.buildVoiceProductSummary(
-                      filteredMatches,
-                    );
+                    const summary =
+                      this.buildVoiceProductSummary(filteredMatches);
                     if (summary) {
                       result = `${summary}\n\nNeed details on any of these?`;
                     }
@@ -2567,9 +2682,8 @@
                       voiceContext,
                     );
                     if (filteredMatches.length) {
-                      const summary = this.buildVoiceProductSummary(
-                        filteredMatches,
-                      );
+                      const summary =
+                        this.buildVoiceProductSummary(filteredMatches);
                       if (summary) {
                         result = `${summary}\n\nNeed details on any of these?`;
                       }
@@ -3017,7 +3131,12 @@
 
     addTranscript: function (text, role) {
       const transcript = document.getElementById("tz-voice-transcript");
-      if (!transcript) return;
+      if (!transcript) {
+        console.error("[Voice] Transcript element not found!");
+        return;
+      }
+      console.log(`[Voice] Adding transcript - ${role}:`, text);
+
       const div = document.createElement("div");
       div.style.marginBottom = "8px";
 
@@ -3038,10 +3157,71 @@
       transcript.appendChild(div);
       transcript.classList.add("expanded");
       transcript.scrollTop = transcript.scrollHeight;
+
+      // Save transcript to localStorage for persistence
+      this.saveVoiceTranscript();
+
+      console.log(
+        "[Voice] Transcript updated, children count:",
+        transcript.children.length,
+      );
     },
 
     updateVoiceStatus: function (status) {
       document.getElementById("tz-voice-status").textContent = status;
+    },
+
+    displayProductCards: function (products) {
+      const transcript = document.getElementById("tz-voice-transcript");
+      if (!transcript) {
+        console.error("[Voice] Transcript element not found!");
+        return;
+      }
+
+      console.log(`[Voice] Displaying ${products.length} product cards`);
+
+      products.forEach((product) => {
+        const div = document.createElement("div");
+        div.style.marginBottom = "12px";
+        div.style.padding = "10px";
+        div.style.background = "rgba(139, 92, 246, 0.1)";
+        div.style.borderRadius = "8px";
+        div.style.border = "1px solid rgba(139, 92, 246, 0.3)";
+        div.style.display = "flex";
+        div.style.gap = "10px";
+        div.style.alignItems = "center";
+
+        const imageHtml = product.image
+          ? `<img src="${this.escapeHtml(product.image)}" alt="${this.escapeHtml(product.name)}" style="width: 110px; height: 110px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />`
+          : "";
+
+        const price = product.price_sgd
+          ? `$${product.price_sgd}`
+          : "Contact us";
+        const link = product.permalink || "#";
+
+        div.innerHTML = `
+          ${imageHtml}
+          <div style="flex: 1; min-width: 0;">
+            <div style="margin-bottom: 4px;">
+              <a href="${this.escapeHtml(link)}" target="_blank" rel="noopener noreferrer" style="color: #a78bfa; text-decoration: none; font-weight: 600; font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis;">
+                ${this.escapeHtml(product.name)}
+              </a>
+            </div>
+            <div style="color: #fbbf24; font-weight: bold; font-size: 14px;">${this.escapeHtml(price)}</div>
+          </div>
+        `;
+
+        transcript.appendChild(div);
+      });
+
+      transcript.classList.add("expanded");
+      transcript.scrollTop = transcript.scrollHeight;
+
+      // Save transcript to localStorage for persistence
+      this.saveVoiceTranscript();
+
+      console.log("[Voice] Product cards displayed");
     },
 
     showVoiceAttachment: function (imageUrl) {
