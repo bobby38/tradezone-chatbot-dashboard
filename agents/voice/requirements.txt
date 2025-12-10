@@ -1,8 +1,9 @@
-livekit-agents>=0.10.0
-livekit-plugins-deepgram
+livekit-agents
+livekit-plugins-assemblyai
 livekit-plugins-openai
 livekit-plugins-cartesia
 livekit-plugins-silero
 livekit-plugins-noise-cancellation
+livekit-plugins-turn-detector
 httpx
 python-dotenv

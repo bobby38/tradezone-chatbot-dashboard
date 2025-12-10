@@ -84,3 +84,5 @@ tsconfig.tsbuildinfo
 # Local backups
 .env.local.bak
 .env.coolify
+agents/voice/venv/
+agents/voice/.env.local
