@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { roomName, participantName } = await req.json();
@@ -62,10 +72,13 @@ export async function POST(req: NextRequest) {
       // Don't fail the token request if dispatch fails
     }
 
-    return NextResponse.json({
-      token,
-      url: process.env.LIVEKIT_URL,
-    });
+    return NextResponse.json(
+      {
+        token,
+        url: process.env.LIVEKIT_URL,
+      },
+      { headers: corsHeaders },
+    );
   } catch (error: any) {
     console.error("[LiveKit Token] Error:", error);
     return NextResponse.json(
