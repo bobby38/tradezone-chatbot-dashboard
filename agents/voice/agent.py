@@ -15,6 +15,7 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    RunContext,
     cli,
     function_tool,
     inference,
@@ -35,13 +36,6 @@ API_KEY = os.getenv("CHATKIT_API_KEY", "")
 class TradeZoneAgent(Agent):
     def __init__(self) -> None:
         super().__init__(
-            tools=[
-                searchProducts,
-                searchtool,
-                tradein_update_lead,
-                tradein_submit_lead,
-                sendemail,
-            ],
             instructions="""You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
 
 # Output rules
@@ -113,13 +107,12 @@ When customer wants trade-in:
             allow_interruptions=True,
         )
 
-
-# Tools that call Next.js APIs
-@function_tool
-async def searchProducts(query: str) -> str:
-    """Search TradeZone product catalog using vector database."""
-    logger.info(f"[searchProducts] CALLED with query: {query}")
-    async with httpx.AsyncClient() as client:
+    # Tools that call Next.js APIs
+    @function_tool()
+    async def searchProducts(self, context, query: str) -> str:
+        """Search TradeZone product catalog using vector database."""
+        logger.info(f"[searchProducts] CALLED with query: {query}")
+        async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tools/search",
