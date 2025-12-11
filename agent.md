@@ -42,6 +42,23 @@ source venv/bin/activate
 python agent.py dev
 ```
 
+### Frontend Widget (LiveKit)
+
+- Widget auto-loads LiveKit SDK; primary source: same-origin `https://trade.rezult.co/widget/livekit-client.umd.js` (fallback: UNPKG).
+- Script tag example (with cache-bust):
+```html
+<script
+  src="https://trade.rezult.co/widget/chat-widget-enhanced.js?v=20251210-livekit8"
+  data-api-url="https://trade.rezult.co"
+  data-api-key="tzck_widget_l5IlWeuwk-WxwxV483FyPV2OPstbEuzq"
+  data-livekit-script-url="https://trade.rezult.co/widget/livekit-client.umd.js"
+  data-position="bottom-right"
+  data-primary-color="#8b5cf6"
+  data-video-url="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4"
+></script>
+```
+- Ensure `/api/livekit/token` CORS is enabled (handled in code) and `LIVEKIT_URL` points to `wss://tradezone-9kwy60jr.livekit.cloud`.
+
 ### Files & Documentation
 - `agents/voice/agent.py` - Main Python agent (currently running)
 - `agents/voice/SETUP.md` - Setup instructions
