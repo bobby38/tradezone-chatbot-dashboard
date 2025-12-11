@@ -4204,6 +4204,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New ~S$500; Preowned ~S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
     });
 
+    messages.push({
+      role: "system",
+      content:
+        "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in ~S$100'; 'Switch 2 trade-in ~S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
+    });
+
     console.log("[ChatKit] Tool choice:", {
       isTradeInPricingQuery,
       isProductInfoQuery,
