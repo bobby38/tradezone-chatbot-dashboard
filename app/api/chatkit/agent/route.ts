@@ -4198,6 +4198,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         "Only handle consumer electronics/gaming (consoles, handhelds, phones, tablets, laptops, cameras, drones, GoPro/Osmo). If the user asks about cars, bikes, e-bikes, scooters, appliances, or furniture, politely decline: 'We currently trade only electronics/gaming devices.' If they insist, offer to ask staff via sendemail(info_request) after collecting name, phone, and email.",
     });
 
+    messages.push({
+      role: "system",
+      content:
+        "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New ~S$500; Preowned ~S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
+    });
+
     console.log("[ChatKit] Tool choice:", {
       isTradeInPricingQuery,
       isProductInfoQuery,
