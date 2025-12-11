@@ -729,19 +729,23 @@ async def entrypoint(ctx: JobContext):
         )
 
     # Event handlers for dashboard logging
-    @session.on("user_speech_committed")
-    def on_user_speech(msg):
+    @session.on("user_input_transcribed")
+    def on_user_input(event):
         """Capture user's final transcribed message"""
         nonlocal conversation_buffer
-        conversation_buffer["user_message"] = msg.text
-        logger.info(f"[Voice] User said: {msg.text}")
+        if event.is_final:  # Only capture final transcripts
+            conversation_buffer["user_message"] = event.transcript
+            logger.info(f"[Voice] User said: {event.transcript}")
 
-    @session.on("agent_speech_committed")
-    def on_agent_speech(msg):
+    @session.on("conversation_item_added")
+    def on_conversation_item(event):
         """Capture agent's response and log to dashboard"""
         nonlocal conversation_buffer, participant_identity
-        conversation_buffer["bot_response"] = msg.text
-        logger.info(f"[Voice] Agent said: {msg.text}")
+        # Check if this is an assistant message
+        if hasattr(event.item, "role") and event.item.role == "assistant":
+            if hasattr(event.item, "content") and event.item.content:
+                conversation_buffer["bot_response"] = event.item.content
+                logger.info(f"[Voice] Agent said: {event.item.content}")
 
         # Log complete turn to dashboard
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
