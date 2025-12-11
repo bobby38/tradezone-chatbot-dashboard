@@ -33,7 +33,12 @@ logger = logging.getLogger("agent-amara")
 load_dotenv(".env.local")
 
 # Next.js API base URL
-API_BASE_URL = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3001")
+DEFAULT_API_BASE_URL = (
+    "https://trade.rezult.co"
+    if os.getenv("NODE_ENV", "").lower() == "production"
+    else "http://localhost:3001"
+)
+API_BASE_URL = os.getenv("NEXT_PUBLIC_API_URL", DEFAULT_API_BASE_URL)
 API_KEY = os.getenv("CHATKIT_API_KEY", "")
 
 # LLM tuning (allow env overrides for latency/accuracy trade-offs)
