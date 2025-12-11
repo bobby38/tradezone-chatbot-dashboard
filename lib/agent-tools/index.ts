@@ -95,7 +95,6 @@ export async function getWooProductsByCategory(
   return mapped.slice(0, limit);
 }
 
-
 export interface NormalizeProductResult {
   query: string;
   candidates: Array<{
@@ -398,7 +397,7 @@ export async function searchWooProducts(
   let familyFilter: string[] | null = null;
   let categoryFilter: string | null = null;
   for (const { pattern, keywords, category } of familyKeywords) {
-  if (pattern.test(query)) {
+    if (pattern.test(query)) {
       familyFilter = keywords;
       categoryFilter = category || null;
       console.log(
@@ -455,6 +454,17 @@ export async function searchWooProducts(
     .map((product) => {
       const name = (product.name || "").toLowerCase();
       let score = 0;
+
+      // FILTER: When user asks for "game", exclude trading cards/posters/non-games
+      if (/\b(game|games)\b/i.test(query)) {
+        const isNonGame =
+          /\b(trading\s*card|poster|figure|plush|toy|keychain|sticker|art\s*book)\b/i.test(
+            name,
+          );
+        if (isNonGame) {
+          return { product, score: 0 }; // Exclude non-game items
+        }
+      }
 
       // Apply category filter for phones/tablets (use WooCommerce categories)
       if (categoryFilter === "phone" || categoryFilter === "tablet") {
@@ -588,7 +598,9 @@ export async function searchWooProducts(
       } else if (categoryFilter === "laptop") {
         // Laptops are identified via Woo categories since product names may omit "laptop"
         const inLaptopCategory = isInCategory(product, "laptop");
-        console.log(`[searchWooProducts] 🔍 Checking laptop category for "${product.name}": inCategory=${inLaptopCategory}, categories=${JSON.stringify(product.categories?.map(c => c.slug))}`);
+        console.log(
+          `[searchWooProducts] 🔍 Checking laptop category for "${product.name}": inCategory=${inLaptopCategory}, categories=${JSON.stringify(product.categories?.map((c) => c.slug))}`,
+        );
         if (!inLaptopCategory) {
           return { product, score: 0 };
         }
@@ -620,7 +632,10 @@ export async function searchWooProducts(
     `[searchWooProducts] Scored ${scored.length} products after filtering`,
   );
   if (categoryFilter) {
-    console.log(`[searchWooProducts] 📋 Category filter "${categoryFilter}" results:`, scored.map(s => s.product.name));
+    console.log(
+      `[searchWooProducts] 📋 Category filter "${categoryFilter}" results:`,
+      scored.map((s) => s.product.name),
+    );
   }
 
   let results = scored.map(({ product }) => ({
