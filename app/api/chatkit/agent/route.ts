@@ -4065,11 +4065,6 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       });
     }
 
-    // Trade-up pairs should always pull catalog/trade data (ONLY if quote not already given)
-    if (tradeUpPairIntent && !quoteAlreadyGiven) {
-      isTradeInPricingQuery = true;
-    }
-
     // Note: isSaleContext was removed; treat as false by default.
     const saleIntent =
       !deliveryIntent &&
@@ -4089,14 +4084,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       !deliveryIntent &&
       !quoteAlreadyGiven &&
       !saleIntent &&
-      (tradeUpPairIntent ||
-        isTradeInPricingQuery ||
-        isProductInfoQuery ||
-        Boolean(productSlug));
+      !tradeUpPairIntent &&
+      (isTradeInPricingQuery || isProductInfoQuery || Boolean(productSlug));
 
     let toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
+
+    // Trade-up is fully server-side priced; block product search tools to avoid Woo lists
+    if (tradeUpPairIntent) {
+      toolChoice = "none" as const;
+    }
 
     // Sale/promo intents: static reply only (no tools) to avoid noisy/hallucinated product lists
     if (saleIntent && !deliveryIntent) {
@@ -4139,20 +4137,6 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       const hintTarget = tradeUpParts?.target
         ? `Use retail price for "${tradeUpParts.target}" (default to NEW unless user said preowned/used/open-box)`
         : "Use retail price for the second device (default NEW unless user said preowned/used/open-box)";
-
-      // Force the model to fetch both prices explicitly
-      if (tradeUpParts?.source) {
-        messages.push({
-          role: "system",
-          content: `Call searchProducts for trade-in pricing with query: "trade-in ${tradeUpParts.source}". Use the returned value as the trade-in amount.`,
-        });
-      }
-      if (tradeUpParts?.target) {
-        messages.push({
-          role: "system",
-          content: `Call searchProducts for retail pricing with query: "${tradeUpParts.target}". Do NOT use trade-in value for the target product.`,
-        });
-      }
 
       messages.push({
         role: "system",
