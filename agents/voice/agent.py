@@ -92,12 +92,11 @@ async def searchProducts(context: RunContext, query: str) -> str:
             logger.info(f"[searchProducts] API response: {result}")
 
             if result.get("success"):
-                product_result = result.get("result", "")
                 products_data = result.get("products", [])
 
-                if product_result and len(product_result) > 10:
+                if products_data and len(products_data) > 0:
                     logger.info(
-                        f"[searchProducts] ✅ Returning {len(product_result)} chars, {len(products_data)} products"
+                        f"[searchProducts] ✅ Found {len(products_data)} products"
                     )
 
                     # Send structured product data to widget for visual display
@@ -122,7 +121,26 @@ async def searchProducts(context: RunContext, query: str) -> str:
                             f"[searchProducts] Failed to send visual data: {e}"
                         )
 
-                    return product_result
+                    # Create voice-friendly response (NO IDs, NO markdown, NO URLs)
+                    voice_friendly = []
+                    for p in products_data[:3]:  # Limit to 3 for voice
+                        name = p.get("name", "").strip()
+                        price = p.get("price_sgd", "")
+
+                        # Clean product name for voice (remove HTML, special chars)
+                        name = name.replace("&amp;", "and").replace("&", "and")
+                        name = name.replace("  ", " ").strip()
+
+                        if price:
+                            voice_friendly.append(f"{name} for ${price}")
+                        else:
+                            voice_friendly.append(f"{name}")
+
+                    voice_response = "We have: " + ", ".join(voice_friendly[:2])
+                    if len(products_data) > 2:
+                        voice_response += f", and {len(products_data) - 2} more options"
+
+                    return voice_response
                 else:
                     logger.warning(f"[searchProducts] ⚠️ Empty result")
                     return "No products found matching your search"
