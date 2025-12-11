@@ -4080,19 +4080,38 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       });
     }
 
+    // Single-device trade-in: fetch price server-side and block catalog listing
+    let forcedTradeInPrice: number | null = null;
+    if (tradeInIntent && !tradeUpPairIntent && !quoteAlreadyGiven) {
+      const tradeQuery =
+        tradeDeviceQuery || `trade-in ${normalizeProductName(message)}`;
+      const tradeResult = await fetchApproxPrice(tradeQuery, "trade_in");
+      forcedTradeInPrice = tradeResult.amount ?? null;
+      if (forcedTradeInPrice != null) {
+        lastTradeInPrice = forcedTradeInPrice;
+        messages.push({
+          role: "system",
+          content: `Deterministic trade-in pricing: "${normalizeProductName(
+            tradeQuery,
+          )}" ~S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply with the price in one line, then ask "Proceed with this trade-in?" and continue the checklist: condition, accessories, photos (reuse if on file), name, phone, email, payout. No catalog links.`,
+        });
+      }
+    }
+
     const shouldForceCatalog =
       !deliveryIntent &&
       !quoteAlreadyGiven &&
       !saleIntent &&
       !tradeUpPairIntent &&
-      (isTradeInPricingQuery || isProductInfoQuery || Boolean(productSlug));
+      !tradeInIntent &&
+      (isProductInfoQuery || Boolean(productSlug));
 
     let toolChoice = shouldForceCatalog
       ? { type: "function" as const, function: { name: "searchProducts" } }
       : ("auto" as const);
 
-    // Trade-up is fully server-side priced; block product search tools to avoid Woo lists
-    if (tradeUpPairIntent) {
+    // Trade-up and single-device trade-in are fully server-side priced; block product search tools
+    if (tradeUpPairIntent || tradeInIntent) {
       toolChoice = "none" as const;
     }
 
@@ -4140,7 +4159,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       messages.push({
         role: "system",
-        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values.`,
+        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values. Do NOT call searchProducts or list WooCommerce items during trade-up.`,
       });
 
       // Payout/top-up clarity: always disambiguate who pays whom
