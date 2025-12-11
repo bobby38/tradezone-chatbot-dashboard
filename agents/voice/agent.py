@@ -39,6 +39,9 @@ API_KEY = os.getenv("CHATKIT_API_KEY", "")
 LLM_MODEL = os.getenv("VOICE_LLM_MODEL", "openai/gpt-4.1-mini")
 LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 
+# Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
+VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
+
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -636,22 +639,42 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
-    # Use OpenAI Realtime API - same as old working system
-    session = AgentSession(
-        llm=realtime.RealtimeModel(
-            model=os.getenv(
-                "VOICE_LLM_MODEL",
-                "gpt-4o-mini-realtime-preview-2024-12-17",
+    # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
+    if VOICE_STACK == "realtime":
+        session = AgentSession(
+            llm=realtime.RealtimeModel(
+                model=os.getenv(
+                    "VOICE_LLM_MODEL",
+                    "gpt-4o-mini-realtime-preview-2024-12-17",
+                ),
+                voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
+                temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
+                turn_detection=openai.realtime.ServerVAD(
+                    threshold=0.55,
+                    prefix_padding_ms=500,
+                    silence_duration_ms=1200,
+                ),
             ),
-            voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
-            temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
-            turn_detection=openai.realtime.ServerVAD(
-                threshold=0.55,
-                prefix_padding_ms=500,
-                silence_duration_ms=1200,
+        )
+    else:
+        session = AgentSession(
+            stt=inference.STT(
+                model="assemblyai/universal-streaming",
+                language="en",
             ),
-        ),
-    )
+            llm=inference.LLM(
+                model=LLM_MODEL,
+                temperature=LLM_TEMPERATURE,
+            ),
+            tts=inference.TTS(
+                model="cartesia/sonic-3",
+                voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+                language="en",
+            ),
+            turn_detection=MultilingualModel(),
+            vad=ctx.proc.userdata["vad"],
+            preemptive_generation=True,
+        )
 
     # Event handlers for dashboard logging
     @session.on("user_speech_committed")
