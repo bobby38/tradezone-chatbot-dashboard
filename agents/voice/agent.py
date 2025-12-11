@@ -40,7 +40,7 @@ LLM_MODEL = os.getenv("VOICE_LLM_MODEL", "openai/gpt-4.1-mini")
 LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 
 # Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
-VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
+VOICE_STACK = os.getenv("VOICE_STACK", "realtime").lower()
 
 
 # ============================================================================
