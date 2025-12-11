@@ -69,6 +69,24 @@ python agent.py dev
 ### Next Steps
 Agent is running and ready! Need to create frontend client to test. See `agents/AGENT_STATUS.md` for details.
 
+### LiveKit Creds (Dec 11, 2025)
+- LIVEKIT_URL: `wss://tradezone-9kwy60jr.livekit.cloud`
+- LIVEKIT_API_KEY: `APIexoxxNQJkjoW`
+- LIVEKIT_API_SECRET: `6ZtxzOricfKDesvfnf2BfV3hoLMGJ7s8tnfz9ezHnQ4U`
+- Keep **the same key/secret** in BOTH services:
+  - Voice agent service (feature/livekit-voice-agent)
+  - Next.js token/dispatch endpoint (`/api/livekit/token`)
+- Do NOT set `LIVEKIT_AGENT_ACCESS_TOKEN` when using key/secret.
+- Token endpoint must dispatch agents with **Basic auth** using API key/secret (already patched in `app/api/livekit/token/route.ts`).
+
+### Stack toggle
+- `VOICE_STACK` env controls the voice path:
+  - `realtime` (default): OpenAI Realtime (GPT) end-to-end, lowest latency for tool calling.
+  - `classic`: AssemblyAI STT + OpenAI LLM + Cartesia TTS (fallback if desired).
+
+### Known issue & fix summary
+- Recent 401/unauthenticated errors were caused by mismatched LiveKit credentials between the Next.js token service and the voice agent. Using the **same** API key/secret above in both services resolves dispatch/auth failures.
+
 ---
 
 ## 1. Project Snapshot
