@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // Save user message if provided
     if (user_message) {
-      await supabase.from("chat_logs").insert({
+      const { error: userError } = await supabase.from("chat_logs").insert({
         user_id: participant_identity || "voice-user",
         prompt: user_message,
         response: "",
@@ -64,11 +64,19 @@ export async function POST(req: NextRequest) {
         timestamp: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
+
+      if (userError) {
+        console.error(
+          "[LiveKit Chat Log] Failed to save user message:",
+          userError,
+        );
+        throw userError;
+      }
     }
 
     // Save agent message if provided
     if (agent_message) {
-      await supabase.from("chat_logs").insert({
+      const { error: agentError } = await supabase.from("chat_logs").insert({
         user_id: participant_identity || "voice-user",
         prompt: user_message || "",
         response: agent_message,
@@ -82,8 +90,17 @@ export async function POST(req: NextRequest) {
         timestamp: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
+
+      if (agentError) {
+        console.error(
+          "[LiveKit Chat Log] Failed to save agent message:",
+          agentError,
+        );
+        throw agentError;
+      }
     }
 
+    console.log("[LiveKit Chat Log] Successfully saved to database");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[LiveKit Chat Log] Error:", error);
