@@ -619,12 +619,11 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
      - Email: {email}
 
      Payout: {method}
-   - Voice says (≤15 words): "Check the summary. I'll submit in 10 seconds unless you need to change something."
-   - **BUFFER TIME**: Wait 10 seconds for user to review
-   - If user says "OK"/"Yes"/"Submit" → Submit immediately (skip wait)
-   - If user says "Wait"/"Stop"/"Hold" → Cancel timer, wait for correction
-   - If user corrects something ("Email is bobby@hotmail not bobby@gmail") → Update, show new summary, ask again with buffer
-   - If 10 seconds pass with no objection → Auto-submit
+   - Voice says (≤10 words): "Everything correct? Say OK to submit."
+   - WAIT for user confirmation ("OK", "Yes", "Correct", "Submit", "Looks good")
+   - If user confirms → Proceed to Step 7 (submit immediately)
+   - If user says "Wait"/"Stop"/"Hold" → Wait for correction
+   - If user corrects something ("Email is bobby@hotmail not bobby@gmail") → Update that field with tradein_update_lead, show new summary, ask again: "Updated. Everything correct now?"
 
 8. **If user hesitates** ("uh", "um", pauses):
    - Say NOTHING. Just wait.
