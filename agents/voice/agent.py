@@ -645,11 +645,7 @@ async def entrypoint(ctx: JobContext):
                 ),
                 voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
                 temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
-                turn_detection=openai.realtime.ServerVAD(
-                    threshold=0.55,
-                    prefix_padding_ms=500,
-                    silence_duration_ms=1200,
-                ),
+                # ServerVAD settings - using default turn detection
             ),
         )
     else:
