@@ -3,9 +3,27 @@
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
 
 **Status**: Production-ready Python agent running on LiveKit Cloud  
-**Branch**: `feature/livekit-voice-agent`  
+**Branch**: `feature/livekit-voice-agent` (commit `2f7671c` includes Bearer auth + logging/pacing fixes)  
 **Region**: Singapore  
 **Performance**: 3x faster latency (450ms vs 1500ms), 50% cost reduction
+
+### Deployment must-haves (Dec 11, 2025)
+- Environment (runtime) in the voice container **must** include:  
+  - `CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB`  
+  - `NEXT_PUBLIC_API_URL=https://trade.rezult.co`
+- Use the image built from commit `2f7671c` (or newer). Older images (e.g., `7c96289`) **do not** send the Bearer header and will 401 on `/api/chatkit/agent`.
+- If Coolify shows AUTH_FAILURE after envs are set, force a rebuild/redeploy of the voice service from `feature/livekit-voice-agent` (disable cache/skip-build). The correct image automatically sends `Authorization: Bearer <CHATKIT_API_KEY>` + `X-API-Key`.
+- Quick container check:  
+  ```
+  echo $CHATKIT_API_KEY | cut -c1-8   # expect tzck_mfu
+  echo $NEXT_PUBLIC_API_URL           # expect https://trade.rezult.co
+  python - <<'PY'
+  from pathlib import Path
+  t = Path("/app/agents/voice/agent.py").read_text()
+  print("has build_auth_headers:", "build_auth_headers" in t)
+  PY
+  # should print: has build_auth_headers: True
+  ```
 
 ### Quick Overview
 
@@ -68,6 +86,24 @@ python agent.py dev
 
 ### Next Steps
 Agent is running and ready! Need to create frontend client to test. See `agents/AGENT_STATUS.md` for details.
+
+### LiveKit Creds (Dec 11, 2025)
+- LIVEKIT_URL: `wss://tradezone-9kwy60jr.livekit.cloud`
+- LIVEKIT_API_KEY: `APIexoxxNQJkjoW`
+- LIVEKIT_API_SECRET: `6ZtxzOricfKDesvfnf2BfV3hoLMGJ7s8tnfz9ezHnQ4U`
+- Keep **the same key/secret** in BOTH services:
+  - Voice agent service (feature/livekit-voice-agent)
+  - Next.js token/dispatch endpoint (`/api/livekit/token`)
+- Do NOT set `LIVEKIT_AGENT_ACCESS_TOKEN` when using key/secret.
+- Token endpoint must dispatch agents with **Basic auth** using API key/secret (already patched in `app/api/livekit/token/route.ts`).
+
+### Stack toggle
+- `VOICE_STACK` env controls the voice path:
+  - `realtime` (default): OpenAI Realtime (GPT) end-to-end, lowest latency for tool calling.
+  - `classic`: AssemblyAI STT + OpenAI LLM + Cartesia TTS (fallback if desired).
+
+### Known issue & fix summary
+- Recent 401/unauthenticated errors were caused by mismatched LiveKit credentials between the Next.js token service and the voice agent. Using the **same** API key/secret above in both services resolves dispatch/auth failures.
 
 ---
 

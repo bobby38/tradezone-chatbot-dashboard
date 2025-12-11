@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+from typing import Dict
 
 import httpx
 from dotenv import load_dotenv
@@ -42,31 +43,61 @@ LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 # Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
 VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
 
+if not API_KEY:
+    logger.warning(
+        "[Voice Agent] CHATKIT_API_KEY is missing — API calls will be rejected"
+    )
+
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
 
+def build_auth_headers() -> Dict[str, str]:
+    """
+    Standard auth headers for all server-to-server calls.
+    Use both X-API-Key and Bearer to stay compatible with dashboard handlers.
+    """
+    headers: Dict[str, str] = {}
+    if API_KEY:
+        headers["X-API-Key"] = API_KEY
+        headers["Authorization"] = f"Bearer {API_KEY}"
+    return headers
+
+
 async def log_to_dashboard(
     user_id: str, user_message: str, bot_response: str, session_id: str = None
 ):
-    """Log voice conversation to dashboard via /api/n8n-chat endpoint"""
+    """Log voice conversation to dashboard via livekit chat-log endpoint"""
     try:
+        headers = build_auth_headers()
+        if not headers:
+            logger.error("[Dashboard] ❌ CHATKIT_API_KEY missing — cannot log chat")
+            return
+
         async with httpx.AsyncClient() as client:
             payload = {
-                "user_id": user_id,
-                "prompt": user_message,
-                "response": bot_response,
                 "session_id": session_id,
-                "metadata": {"source": "livekit_voice"},
+                "user_message": user_message,
+                "agent_message": bot_response,
+                "room_name": session_id,
+                "participant_identity": user_id,
             }
             response = await client.post(
-                f"{API_BASE_URL}/api/n8n-chat",
+                f"{API_BASE_URL}/api/livekit/chat-log",
                 json=payload,
+                headers=headers,
                 timeout=5.0,
             )
-            logger.info(f"[Dashboard] ✅ Logged to dashboard: {response.status_code}")
+            if response.status_code >= 300:
+                logger.error(
+                    f"[Dashboard] ❌ Failed to log turn ({response.status_code}): {response.text}"
+                )
+            else:
+                logger.info(
+                    f"[Dashboard] ✅ Logged to chat_logs: {response.status_code}"
+                )
     except Exception as e:
         logger.error(f"[Dashboard] ❌ Failed to log: {e}")
 
@@ -80,6 +111,7 @@ async def log_to_dashboard(
 async def searchProducts(context: RunContext, query: str) -> str:
     """Search TradeZone product catalog using vector database. Handles both regular products and trade-in pricing."""
     logger.warning(f"[searchProducts] ⚠️ CALLED with query: {query}")
+    headers = build_auth_headers()
 
     async with httpx.AsyncClient() as client:
         try:
@@ -87,7 +119,7 @@ async def searchProducts(context: RunContext, query: str) -> str:
             response = await client.post(
                 f"{API_BASE_URL}/api/tools/search",
                 json={"query": query, "context": "catalog"},
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=30.0,
             )
             result = response.json()
@@ -134,12 +166,13 @@ async def searchProducts(context: RunContext, query: str) -> str:
 async def searchtool(context: RunContext, query: str) -> str:
     """Search TradeZone website for general information."""
     logger.info(f"[searchtool] CALLED with query: {query}")
+    headers = build_auth_headers()
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tools/search",
                 json={"query": query, "context": "website"},
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=30.0,
             )
             result = response.json()
@@ -169,6 +202,7 @@ async def tradein_update_lead(
     logger.warning(
         f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
     )
+    headers = build_auth_headers()
 
     # Get session ID from room name
     try:
@@ -206,9 +240,14 @@ async def tradein_update_lead(
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/update",
                 json=data,
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=10.0,
             )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[tradein_update_lead] ❌ {response.status_code}: {response.text}"
+                )
+                return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
             return result.get("message", "Trade-in information saved")
@@ -221,6 +260,7 @@ async def tradein_update_lead(
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
     logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
+    headers = build_auth_headers()
 
     # Get session ID from room name
     try:
@@ -234,9 +274,14 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/submit",
                 json={"session_id": session_id, "summary": summary, "notify": True},
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=10.0,
             )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[tradein_submit_lead] ❌ {response.status_code}: {response.text}"
+                )
+                return f"Submit failed ({response.status_code}) — please retry"
             result = response.json()
             logger.info(f"[tradein_submit_lead] ✅ Response: {result}")
             return result.get("message", "Trade-in submitted successfully")
@@ -256,6 +301,7 @@ async def sendemail(
 ) -> str:
     """Send support escalation to TradeZone staff. Only use when customer explicitly requests human follow-up."""
     logger.info(f"[sendemail] CALLED: type={email_type}")
+    headers = build_auth_headers()
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
@@ -267,7 +313,7 @@ async def sendemail(
                     "message": message,
                     "phone_number": phone_number,
                 },
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=10.0,
             )
             result = response.json()
@@ -306,8 +352,10 @@ class TradeZoneAgent(Agent):
 
 You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
 
-- Speak in concise phrases (≤12 words). Pause after each short answer and let the caller interrupt.
+- Speak in ultra-concise phrases (aim 6–9 words, hard cap 12). Pause after each short answer and let the caller interrupt. If you have nothing new to add, stay silent.
+- One question per turn. Never chain two questions in one response.
 - Never read markdown, headings like "Quick Links", or the literal text between ---START PRODUCT LIST--- markers aloud. For voice, briefly mention how many products found (e.g., "Found 8 Final Fantasy games"), list the top 3-4 with prices, then ask if they want more details or the full list in chat.
+- Before giving extra info or a longer list, ask if they actually want it. If they say no/unsure, stop and ask: "What do you want to do next?"
 - 🔴 **CRITICAL - SHOW BUT DON'T SPEAK**:
   - URLs, phone numbers, emails, serial numbers → ALWAYS show in text, NEVER speak out loud
   - **Product listings**: ALWAYS display in text with COMPLETE structure (same as text chat):
@@ -325,6 +373,8 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
+- Mirror text-chat logic and tools exactly (searchProducts, tradein_update_lead, tradein_submit_lead, sendemail). Do not invent any extra voice-only shortcuts; every saved field must go through the same tools used by text chat.
+- Phone and email: collect one at a time, then READ BACK the full value once ("That's 8448 9068, correct?"). Wait for a clear yes before saving. If email arrives in fragments across turns, assemble it and read the full address once before saving.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
 - If multiple products come back from a search, say "I found a few options—want the details?" and only read the one(s) they pick.
 
@@ -421,6 +471,8 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 🔴 CRITICAL: Once trade-in confirmed, call tradein_update_lead AFTER EVERY user response, BEFORE replying.
 
 🛑 **STOP RULE**: If user says "wait/hold on/stop" → Say "Sure!" and SHUT UP.
+
+🔒 **After top-up math**: Once you state the trade-in value, target price, and top-up, do **not** call searchProducts again or show unrelated product lists. Stay on the checklist (condition → box → accessories → contact → photos → recap → submit).
 
 **Keep it SHORT - under 12 words per response!**
 - Say one short sentence, then pause. Let the customer speak first.
@@ -665,7 +717,7 @@ async def entrypoint(ctx: JobContext):
             ),
             turn_detection=MultilingualModel(),
             vad=ctx.proc.userdata["vad"],
-            preemptive_generation=True,
+            preemptive_generation=False,  # listen for full turn before speaking
         )
 
     # Event handlers for dashboard logging
