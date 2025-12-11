@@ -1285,6 +1285,14 @@ async function fetchApproxPrice(
   query: string,
   contextIntent: "trade_in" | "retail",
 ): Promise<PriceLookupResult> {
+  // Prefer explicit hints to avoid noisy catalog fallbacks (e.g., Switch 2 accessories)
+  const hintTable =
+    contextIntent === "trade_in" ? TRADE_IN_PRICE_HINTS : RETAIL_PRICE_HINTS;
+  const hinted = pickHintPrice(query.toLowerCase(), hintTable);
+  if (hinted != null) {
+    return { amount: hinted, version: "hint" };
+  }
+
   try {
     const gridPrice = await lookupPriceFromGrid(query, contextIntent);
     if (gridPrice.amount != null) {
@@ -5526,6 +5534,22 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         lastRetailPrice ??
         hintedRetailPrice ??
         null;
+
+      // Guardrail: if catalog returned an obviously low price, fall back to hint (prevents accessory prices)
+      if (
+        hintedRetailPrice != null &&
+        retailPrice != null &&
+        retailPrice < 0.6 * hintedRetailPrice
+      ) {
+        retailPrice = hintedRetailPrice;
+      }
+      if (
+        hintedTradeValue != null &&
+        tradeValue != null &&
+        tradeValue < 0.6 * hintedTradeValue
+      ) {
+        tradeValue = hintedTradeValue;
+      }
 
       const tradeVersion =
         derivedSummary?.tradeVersion ??
