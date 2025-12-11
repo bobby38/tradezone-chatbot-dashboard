@@ -637,21 +637,21 @@ async def entrypoint(ctx: JobContext):
     participant_identity = None
 
     # Use OpenAI Realtime API - same as old working system
-session = AgentSession(
-    llm=realtime.RealtimeModel(
-        model=os.getenv(
-            "VOICE_LLM_MODEL",
-            "gpt-4o-mini-realtime-preview-2024-12-17",
+    session = AgentSession(
+        llm=realtime.RealtimeModel(
+            model=os.getenv(
+                "VOICE_LLM_MODEL",
+                "gpt-4o-mini-realtime-preview-2024-12-17",
+            ),
+            voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
+            temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
+            turn_detection=openai.realtime.ServerVAD(
+                threshold=0.55,
+                prefix_padding_ms=500,
+                silence_duration_ms=1200,
+            ),
         ),
-        voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
-        temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
-        turn_detection=openai.realtime.ServerVAD(
-            threshold=0.55,
-            prefix_padding_ms=500,
-            silence_duration_ms=1200,
-        ),
-    ),
-)
+    )
 
     # Event handlers for dashboard logging
     @session.on("user_speech_committed")
