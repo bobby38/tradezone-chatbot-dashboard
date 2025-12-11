@@ -109,6 +109,10 @@ const TRADE_IN_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
   { pattern: /xbox\s*series\s*x/i, value: 350 },
   { pattern: /xbox\s*series\s*s/i, value: 150 },
   { pattern: /osmo\s+pocket\s*3/i, value: 350 },
+  { pattern: /switch\s*oled/i, value: 100 },
+  { pattern: /switch\s*(gen\s*1|gen\s*2|v1|v2)?\b/i, value: 70 },
+  { pattern: /switch\s*lite/i, value: 60 },
+  { pattern: /switch\s*2/i, value: 350 },
 ];
 
 const RETAIL_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
@@ -118,6 +122,10 @@ const RETAIL_PRICE_HINTS: Array<{ pattern: RegExp; value: number }> = [
   { pattern: /ps5/i, value: 800 },
   { pattern: /ps4\s*pro/i, value: 250 },
   { pattern: /osmo\s+pocket\s*3/i, value: 600 },
+  { pattern: /switch\s*oled/i, value: 250 },
+  { pattern: /switch\s*(gen\s*1|gen\s*2|v1|v2)?\b/i, value: 150 },
+  { pattern: /switch\s*lite/i, value: 110 },
+  { pattern: /switch\s*2/i, value: 500 },
 ];
 
 type TradeGridEntry = {
