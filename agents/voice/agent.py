@@ -200,18 +200,34 @@ async def normalizeProduct(context: RunContext, query: str, limit: int = 5) -> s
             logger.info(f"[normalizeProduct] API response: {result}")
 
             candidates = result.get("candidates", [])
-            if candidates:
-                # Return the top match's product ID for easy use
+            if not candidates:
+                return "No matching products found"
+
+            # If only ONE match with high confidence → return it directly
+            if len(candidates) == 1 and candidates[0].get("confidence", 0) > 0.85:
                 top_match = candidates[0]
                 product_id = top_match.get("modelId", "")
-                confidence = top_match.get("confidence", 0)
+                display_name = top_match.get("displayName", product_id)
+                return f"EXACT_MATCH: {product_id} ({display_name})"
 
-                if confidence > 0.7:
-                    return f"Product ID: {product_id} (confidence: {confidence:.0%})"
-                else:
-                    return f"Possible match: {product_id} (low confidence: {confidence:.0%})"
-            else:
-                return "No matching products found"
+            # If MULTIPLE matches OR low confidence → return ALL options for user to pick
+            if len(candidates) > 1 or candidates[0].get("confidence", 0) <= 0.85:
+                options = []
+                for idx, candidate in enumerate(candidates[:5], 1):
+                    product_id = candidate.get("modelId", "")
+                    display_name = candidate.get("displayName", product_id)
+                    confidence = candidate.get("confidence", 0)
+                    options.append(
+                        f"{idx}. {display_name} (ID: {product_id}, {confidence:.0%} confidence)"
+                    )
+
+                return "MULTIPLE_MATCHES - Ask user to pick:\n" + "\n".join(options)
+
+            # Fallback
+            top_match = candidates[0]
+            product_id = top_match.get("modelId", "")
+            return f"MATCH: {product_id}"
+
         except Exception as e:
             logger.error(f"[normalizeProduct] ❌ Exception: {e}")
             return "Sorry, couldn't normalize product query"
@@ -575,21 +591,35 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 - User: "I want a PS5" → You: "Which PS5? Slim 1TB Digital, Slim 1TB Disc, Pro 1TB, or Pro 2TB?"
 - User: "Trade my Xbox" → You: "Which Xbox? Series S, Series X, or One?"
 
-**Once you have EXACT model (brand + model + storage):**
-1. Call normalizeProduct(query="{EXACT device}") → returns candidates with confidence scores
-2. **If confidence < 0.8 OR multiple matches**:
-   - List the options to user: "I see PS5 Slim 1TB Digital at $X and PS5 Slim 1TB Disc at $Y. Which one?"
-   - WAIT for customer to pick
-3. **If confidence >= 0.8 (clear match)**:
-   - Call priceLookup(productId="...", priceType="trade_in") → get price
-   - Reply with ≤10 words: "PS4 Pro 1TB trade-in $100. Condition?"
+**Once you have model info, call normalizeProduct:**
+1. Call normalizeProduct(query="{device}") → Returns one of three responses:
+
+   **Response A: "EXACT_MATCH: {id} ({name})"**
+   → Single clear match (>85% confidence)
+   → Extract product_id, call priceLookup immediately
+   → Say: "{Device} trade-in ${price}. Condition?"
+
+   **Response B: "MULTIPLE_MATCHES - Ask user to pick:"**
+   → Multiple options listed with numbers (PS5/Xbox/Switch have many variants!)
+   → Example response:
+   ```
+   1. PS5 Slim 1TB Digital (ps5_slim_1tb_digital, 92%)
+   2. PS5 Slim 1TB Disc (ps5_slim_1tb_disc, 89%)
+   3. PS5 Pro 1TB (ps5_pro_1tb, 78%)
+   ```
+   → Say to user: "I got a few: Slim Digital, Slim Disc, or Pro? Which one?"
+   → WAIT for customer to pick (by number or name)
+   → Use selected product_id for priceLookup
+
+   **Response C: "No matching products found"**
+   → Say: "Can't find that. Can you describe it differently?"
 
 **For upgrades/trade-ups:**
-- Get BOTH devices exact models first (source + target)
-- Example: "Confirm: PS4 Pro 1TB for PS5 Pro 2TB Digital?"
-- Then lookup both prices and calculate top-up
+- Normalize BOTH devices BEFORE quoting any prices
+- If either returns MULTIPLE_MATCHES, resolve FIRST before pricing
+- Only quote prices after BOTH devices confirmed
 
-**CRITICAL**: Prices update daily - NEVER say a price without calling priceLookup first!
+**CRITICAL**: Prices update weekly - ALWAYS call priceLookup, NEVER guess!
 
 **Step 2: DEVICE DETAILS** (Ask in this order, ONE at a time)
 1. Storage (if applicable): "Storage size?" → Save → "Noted."
