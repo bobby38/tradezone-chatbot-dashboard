@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+yes lease rest is DeviceOrientationEventimport { NextRequest, NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
 const corsHeaders = {
@@ -17,11 +17,21 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const livekitUrl = process.env.LIVEKIT_URL;
+
+    console.log("[LiveKit Token] Environment check:", {
+      hasApiKey: !!apiKey,
+      hasApiSecret: !!apiSecret,
+      hasUrl: !!livekitUrl,
+      apiKeyPrefix: apiKey?.substring(0, 7),
+      urlPrefix: livekitUrl?.substring(0, 20),
+    });
 
     if (!apiKey || !apiSecret) {
+      console.error("[LiveKit Token] Missing credentials!");
       return NextResponse.json(
         { error: "LiveKit credentials not configured" },
-        { status: 500 },
+        { status: 500, headers: corsHeaders },
       );
     }
 
@@ -83,7 +93,7 @@ export async function POST(req: NextRequest) {
     console.error("[LiveKit Token] Error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to generate token" },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     );
   }
 }
