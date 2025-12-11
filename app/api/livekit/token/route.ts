@@ -1,4 +1,4 @@
-yes lease rest is DeviceOrientationEventimport { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { AccessToken } from "livekit-server-sdk";
 
 const corsHeaders = {
