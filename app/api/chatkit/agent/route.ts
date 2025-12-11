@@ -661,7 +661,7 @@ const TRADE_IN_KEYWORD_PATTERNS = [
 ];
 
 const TRADE_IN_DEVICE_HINTS =
-  /\b(ps ?5|ps ?4|playstation|xbox|switch|steam deck|rog ally|legion go|msi claw|meta quest|dji osmo|iphone|ipad|samsung|mobile phone|console|handheld)\b/i;
+  /\b(ps ?5|ps ?4|playstation|xbox|switch|steam deck|rog ally|legion go|msi claw|meta quest|dji osmo|gopro|drone|iphone|ipad|samsung|mobile phone|console|handheld|laptop|tablet|camera)\b/i;
 
 const TRADE_IN_ACTION_HINTS =
   /\b(trade|tra[iy]n|train|sell|worth|value|quote|offer|top[- ]?up)\b/i;
@@ -4176,6 +4176,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           "If photos already exist on the lead, say 'I have your previous photos on file—use those or upload new ones?' and proceed based on their answer. If none, ask for photos once and note refusal if they decline.",
       });
     }
+
+    // Graceful fallback when no price found
+    messages.push({
+      role: "system",
+      content:
+        "If you cannot find a trade-in price after checks, DO NOT list products. Say briefly: 'Sorry, I couldn't find a trade-in price for that model right now. I can ask staff to confirm—want me to pass this to the team?' If yes, collect name, phone, and email, then call sendemail(info_request) with the context.",
+    });
+
+    messages.push({
+      role: "system",
+      content:
+        "Only handle consumer electronics/gaming (consoles, handhelds, phones, tablets, laptops, cameras, drones, GoPro/Osmo). If the user asks about cars, bikes, e-bikes, scooters, appliances, or furniture, politely decline: 'We currently trade only electronics/gaming devices.' If they insist, offer to ask staff via sendemail(info_request) after collecting name, phone, and email.",
+    });
 
     console.log("[ChatKit] Tool choice:", {
       isTradeInPricingQuery,
