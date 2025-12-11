@@ -32,13 +32,12 @@ logger = logging.getLogger("agent-amara")
 
 load_dotenv(".env.local")
 
-# Next.js API base URL
-DEFAULT_API_BASE_URL = (
-    "https://trade.rezult.co"
-    if os.getenv("NODE_ENV", "").lower() == "production"
-    else "http://localhost:3001"
+# Next.js API base URL (default to production; override via env for local dev/tests)
+API_BASE_URL = (
+    os.getenv("NEXT_PUBLIC_API_URL")
+    or os.getenv("API_BASE_URL")
+    or "https://trade.rezult.co"
 )
-API_BASE_URL = os.getenv("NEXT_PUBLIC_API_URL", DEFAULT_API_BASE_URL)
 API_KEY = os.getenv("CHATKIT_API_KEY", "")
 
 # LLM tuning (allow env overrides for latency/accuracy trade-offs)
@@ -48,10 +47,14 @@ LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 # Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
 VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
 
+logger.info(f"[Voice Agent] API_BASE_URL = {API_BASE_URL}")
+
 if not API_KEY:
     logger.warning(
         "[Voice Agent] CHATKIT_API_KEY is missing — API calls will be rejected"
     )
+else:
+    logger.info(f"[Voice Agent] CHATKIT_API_KEY prefix = {API_KEY[:8]}")
 
 
 # ============================================================================
