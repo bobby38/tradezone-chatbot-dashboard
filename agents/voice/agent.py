@@ -153,6 +153,99 @@ async def searchProducts(context: RunContext, query: str) -> str:
 
 
 @function_tool
+async def normalizeProduct(context: RunContext, query: str, limit: int = 5) -> str:
+    """
+    Normalize a product query into canonical product IDs.
+    Use this BEFORE priceLookup to convert "PS4 Pro 1TB" into "ps4_pro_1tb".
+
+    Args:
+        query: Product description (e.g., "PS4 Pro 1TB", "Steam Deck OLED 512GB")
+        limit: Number of matches to return (default: 5)
+
+    Returns:
+        List of matching products with their canonical IDs
+    """
+    logger.info(f"[normalizeProduct] CALLED with query={query}")
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tools/normalize-product",
+                json={"query": query, "limit": limit},
+                headers={"X-API-Key": API_KEY},
+                timeout=10.0,
+            )
+            result = response.json()
+            logger.info(f"[normalizeProduct] API response: {result}")
+
+            candidates = result.get("candidates", [])
+            if candidates:
+                # Return the top match's product ID for easy use
+                top_match = candidates[0]
+                product_id = top_match.get("modelId", "")
+                confidence = top_match.get("confidence", 0)
+
+                if confidence > 0.7:
+                    return f"Product ID: {product_id} (confidence: {confidence:.0%})"
+                else:
+                    return f"Possible match: {product_id} (low confidence: {confidence:.0%})"
+            else:
+                return "No matching products found"
+        except Exception as e:
+            logger.error(f"[normalizeProduct] ❌ Exception: {e}")
+            return "Sorry, couldn't normalize product query"
+
+
+@function_tool
+async def priceLookup(
+    context: RunContext,
+    productId: str,
+    condition: str = None,
+    priceType: str = "trade_in",
+) -> str:
+    """
+    Lookup authoritative trade-in or retail pricing for a product.
+
+    Args:
+        productId: Canonical product ID (e.g., "ps4_pro_1tb", "ps5_pro_2tb_digital")
+        condition: Condition (e.g., "mint", "good", "fair", "brand_new", "preowned")
+        priceType: Either "trade_in" or "retail" (default: "trade_in")
+
+    Returns:
+        Price information including value_sgd, min_sgd, max_sgd
+    """
+    logger.info(
+        f"[priceLookup] CALLED with productId={productId}, condition={condition}, priceType={priceType}"
+    )
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tools/price-lookup",
+                json={
+                    "productId": productId,
+                    "condition": condition,
+                    "priceType": priceType,
+                },
+                headers={"X-API-Key": API_KEY},
+                timeout=10.0,
+            )
+            result = response.json()
+            logger.info(f"[priceLookup] API response: {result}")
+
+            # Format voice-friendly response
+            if result.get("value_sgd"):
+                return f"Price: ${result['value_sgd']} SGD"
+            elif result.get("min_sgd") and result.get("max_sgd"):
+                return f"Price range: ${result['min_sgd']} to ${result['max_sgd']} SGD"
+            elif result.get("min_sgd"):
+                return f"Starting from ${result['min_sgd']} SGD"
+            else:
+                return "Price not available for this product"
+        except Exception as e:
+            logger.error(f"[priceLookup] ❌ Exception: {e}")
+            return "Sorry, I couldn't lookup the price right now"
+
+
+@function_tool
 async def searchtool(context: RunContext, query: str) -> str:
     """Search TradeZone website for general information."""
     logger.info(f"[searchtool] CALLED with query: {query}")
@@ -310,6 +403,8 @@ class TradeZoneAgent(Agent):
         super().__init__(
             tools=[
                 searchProducts,
+                normalizeProduct,
+                priceLookup,
                 searchtool,
                 tradein_update_lead,
                 tradein_submit_lead,
@@ -451,10 +546,16 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 **🔴 STRUCTURED FORM FLOW - FOLLOW THIS EXACT ORDER:**
 
 **Step 1: PRICE CHECK** (Mandatory - give price BEFORE asking questions)
-- User mentions device → IMMEDIATELY call searchProducts({query: "trade-in {device} price"})
-- Reply with ≤10 words using the trade-in range. Example: "PS5 trade-in S$400-550. Storage size?"
+- User mentions device → IMMEDIATELY use 2-step lookup:
+  1. Call normalizeProduct(query="PS4 Pro 1TB") → get product ID (e.g., "ps4_pro_1tb")
+  2. Call priceLookup(productId="ps4_pro_1tb", priceType="trade_in") → get price
+- Reply with ≤10 words using the trade-in price. Example: "PS4 Pro 1TB trade-in ~S$150. Condition?"
 - NEVER skip this. NEVER ask condition before giving price.
-- If **TRADE_IN_NO_MATCH**: confirm Singapore, offer manual review, use sendemail if approved
+- If price lookup fails: confirm Singapore, offer manual review, use sendemail if approved
+- For upgrades, also lookup target device:
+  1. normalizeProduct(query="PS5 Pro 2TB Digital") → get target product ID
+  2. priceLookup(productId="ps5_pro_2tb_digital", priceType="retail") → get target price
+  3. Calculate: top-up = target_price - trade_in_value
 - For installments (top-up >= S$300): add estimate after price. Example: "Top-up ~S$450. That's roughly 3 payments of S$150, subject to approval."
 
 **Step 2: DEVICE DETAILS** (Ask in this order, ONE at a time)
