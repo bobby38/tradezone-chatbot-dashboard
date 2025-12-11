@@ -35,6 +35,13 @@ load_dotenv(".env.local")
 API_BASE_URL = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3001")
 API_KEY = os.getenv("CHATKIT_API_KEY", "")
 
+# LLM tuning (allow env overrides for latency/accuracy trade-offs)
+LLM_MODEL = os.getenv("VOICE_LLM_MODEL", "openai/gpt-4.1-mini")
+LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
+
+# Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
+VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
+
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -156,6 +163,7 @@ async def tradein_update_lead(
     contact_email: str = None,
     preferred_payout: str = None,
     notes: str = None,
+    target_device: str = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
     logger.warning(
@@ -166,8 +174,13 @@ async def tradein_update_lead(
     try:
         room = get_job_context().room
         session_id = room.name
-    except:
+    except Exception:
         session_id = None
+
+    # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
+    inferred_payout = preferred_payout
+    if target_device:
+        inferred_payout = "top-up"
 
     async with httpx.AsyncClient() as client:
         try:
@@ -183,8 +196,9 @@ async def tradein_update_lead(
                     "contact_name": contact_name,
                     "contact_phone": contact_phone,
                     "contact_email": contact_email,
-                    "preferred_payout": preferred_payout,
+                    "preferred_payout": inferred_payout,
                     "notes": notes,
+                    "target_device": target_device,
                 }.items()
                 if v is not None
             }
@@ -212,7 +226,7 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     try:
         room = get_job_context().room
         session_id = room.name
-    except:
+    except Exception:
         session_id = None
 
     async with httpx.AsyncClient() as client:
@@ -313,6 +327,9 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
  - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
 - If multiple products come back from a search, say "I found a few options—want the details?" and only read the one(s) they pick.
+
+## Price safety (voice number drift)
+- When reading prices aloud, keep numbers concise: say "S dollar" or "Singapore dollars" after the number. Never add extra digits. If STT seems noisy, show the exact number in text and say "Showing S dollar price on screen." If a price has more than 4 digits, insert pauses: "One thousand, one hundred".
 
 ## Quick Answers (Answer instantly - NO tool calls)
 - What is TradeZone.sg? → TradeZone.sg buys and sells new and second-hand electronics, gaming gear, and gadgets in Singapore.
@@ -425,13 +442,9 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 4. Accessories: "Accessories included?" → Save → "Thanks."
 
 **Step 3: CONTACT INFO** (Show in text, don't speak)
-- Ask ONCE: "Name, phone, email?" (≤5 words)
-- Listen for all three pieces of information
-- 🔴 CRITICAL: Display the contact details in text chat, but just SAY: "Got it." (≤3 words)
-- DO NOT ask to confirm if info is clear - just save and move on
-- ONLY ask to confirm if something was UNCLEAR or MISSING:
-  - "Didn't catch the email - can you repeat?"
-  - "What's your name?"
+- Collect **one field per turn** to match legacy flow: first phone, then email, then name. Keep each ask ≤5 words.
+- After each answer, call tradein_update_lead immediately, then respond with a 1–3 word acknowledgement like "Noted" or "Saved".
+- Display the contact details in text chat; do not read them out. Only re-ask a single field if it was unclear.
 
 **Step 4: PHOTOS** (Optional - don't block submission)
    - Once device details and contact info are saved, ask once: "Photos help us quote faster—want to send one?"
@@ -622,19 +635,42 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
-    # Use OpenAI Realtime API - same as old working system
-    session = AgentSession(
-        llm=realtime.RealtimeModel(
-            model="gpt-4o-mini-realtime-preview-2024-12-17",
-            voice="alloy",
-            temperature=0.8,
-            turn_detection=openai.realtime.ServerVAD(
-                threshold=0.55,
-                prefix_padding_ms=500,
-                silence_duration_ms=1200,
+    # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
+    if VOICE_STACK == "realtime":
+        session = AgentSession(
+            llm=realtime.RealtimeModel(
+                model=os.getenv(
+                    "VOICE_LLM_MODEL",
+                    "gpt-4o-mini-realtime-preview-2024-12-17",
+                ),
+                voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
+                temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
+                turn_detection=openai.realtime.ServerVAD(
+                    threshold=0.55,
+                    prefix_padding_ms=500,
+                    silence_duration_ms=1200,
+                ),
             ),
-        ),
-    )
+        )
+    else:
+        session = AgentSession(
+            stt=inference.STT(
+                model="assemblyai/universal-streaming",
+                language="en",
+            ),
+            llm=inference.LLM(
+                model=LLM_MODEL,
+                temperature=LLM_TEMPERATURE,
+            ),
+            tts=inference.TTS(
+                model="cartesia/sonic-3",
+                voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+                language="en",
+            ),
+            turn_detection=MultilingualModel(),
+            vad=ctx.proc.userdata["vad"],
+            preemptive_generation=True,
+        )
 
     # Event handlers for dashboard logging
     @session.on("user_speech_committed")

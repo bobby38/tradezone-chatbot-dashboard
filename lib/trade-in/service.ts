@@ -848,6 +848,11 @@ export async function submitTradeInLead(
     } catch (emailError) {
       console.error("[TradeIn] Email send failed:", emailError);
       emailSent = false;
+
+      // Surface email failure back to caller so LiveKit/Realtime can tell the user
+      throw new Error(
+        `Trade-in saved but email notification failed: ${emailError?.message || emailError}`,
+      );
     }
 
     await supabaseAdmin.from("trade_in_actions").insert({
