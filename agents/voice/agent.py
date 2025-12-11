@@ -229,7 +229,8 @@ async def tradein_update_lead(
             data = {
                 k: v
                 for k, v in {
-                    "session_id": session_id,
+                    # API expects camelCase sessionId (not session_id)
+                    "sessionId": session_id,
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -281,7 +282,8 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/submit",
-                json={"session_id": session_id, "summary": summary, "notify": True},
+                # API expects camelCase sessionId
+                json={"sessionId": session_id, "summary": summary, "notify": True},
                 headers=headers,
                 timeout=10.0,
             )

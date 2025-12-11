@@ -646,6 +646,7 @@ function deriveSessionName(
 
 const TRADE_IN_KEYWORD_PATTERNS = [
   /\btrade[- ]?in\b/i,
+  /\bt\s*rade[- ]?in\b/i, // catches “t rade in” typos/spaces
   /\btra[iy]n\b/i,
   /\bbuy[- ]?back\b/i,
   /\btop[- ]?up\b/i,
@@ -1193,8 +1194,14 @@ function detectTradeInIntent(query: string): boolean {
 function detectTradeUpPair(query: string): boolean {
   const normalized = query.toLowerCase();
   if (!normalized) return false;
-  const tradePairPattern =
-    /(trade|upgrade|swap|exchange)\s+.+\s+(for|to)\s+.+/i;
+
+  // Allow for user typos/spaces inside "trade" (e.g., "t rade")
+  const tradeLike = /(t\s*ra\s*de|trade|upgrade|swap|exchange)/i;
+  const tradePairPattern = new RegExp(
+    `${tradeLike.source}\\s+.+\\s+(for|to)\\s+.+`,
+    "i",
+  );
+
   return tradePairPattern.test(normalized);
 }
 
@@ -1202,7 +1209,7 @@ function parseTradeUpParts(
   query: string,
 ): { source?: string; target?: string } | null {
   const match = query.match(
-    /(trade|upgrade|swap|exchange)\s+(.+?)\s+(for|to)\s+(.+?)(?:[,.]| on | with |$)/i,
+    /(t\s*ra\s*de|trade|upgrade|swap|exchange)\s+(.+?)\s+(for|to)\s+(.+?)(?:[,.]| on | with |$)/i,
   );
   if (!match) return null;
   const source = match[2]?.trim();
@@ -2023,6 +2030,38 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
   return patch;
 }
 
+function extractFullNameFromHistory(
+  history?: Array<{ role?: string; content?: string }>,
+): string | null {
+  if (!history) return null;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (!msg || msg.role !== "user" || typeof msg.content !== "string") {
+      continue;
+    }
+    const emailMatch = msg.content.match(
+      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+    );
+    const phoneMatch = msg.content.match(/\+?\d[\d\s-]{7,}/);
+    const cleaned = msg.content
+      .replace(emailMatch ? emailMatch[0] : "", " ")
+      .replace(phoneMatch ? phoneMatch[0] : "", " ")
+      .replace(/[,.;:]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned) continue;
+    const tokens = cleaned
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(t))
+      .filter((t) => !PLACEHOLDER_NAME_TOKENS.has(t.toLowerCase()));
+    if (tokens.length >= 2) {
+      return tokens.slice(0, 3).join(" ");
+    }
+  }
+  return null;
+}
+
 function isPhotoStepAcknowledged(
   detail: any,
   recentHistory?: Array<{ role: string; content: string }>,
@@ -2199,6 +2238,29 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         "[ChatKit] Auto-submit proceeding without confirmed contact name",
         { leadId: params.leadId },
       );
+    } else {
+      // If name is only one token but we have a fuller name in recent history, upgrade it
+      const tokens = (detail.contact_name || "").trim().split(/\s+/);
+      if (tokens.length === 1) {
+        const historyName = extractFullNameFromHistory(params.history);
+        if (
+          historyName &&
+          historyName.toLowerCase() !== detail.contact_name.trim().toLowerCase()
+        ) {
+          try {
+            await updateTradeInLead(params.leadId, {
+              contact_name: historyName,
+            });
+            detail = await getTradeInLeadDetail(params.leadId);
+            hasContactName = true;
+          } catch (nameUpgradeError) {
+            console.warn(
+              "[ChatKit] Name upgrade failed, continuing with existing name",
+              nameUpgradeError,
+            );
+          }
+        }
+      }
     }
 
     if (
@@ -4095,6 +4157,20 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       messages.push({
         role: "system",
         content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values.`,
+      });
+
+      // Payout/top-up clarity: always disambiguate who pays whom
+      messages.push({
+        role: "system",
+        content:
+          "When showing the top-up, add a parenthetical to clarify direction: 'Top-up ≈ S$Z (you pay us)'. If the math implies cash-out, use 'Cash-out ≈ S$Z (we pay you)'. Keep the wording short.",
+      });
+
+      // Photo reuse clarity
+      messages.push({
+        role: "system",
+        content:
+          "If photos already exist on the lead, say 'I have your previous photos on file—use those or upload new ones?' and proceed based on their answer. If none, ask for photos once and note refusal if they decline.",
       });
     }
 
