@@ -15,7 +15,8 @@
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
     "grid:sync": "tsx scripts/fetch-price-grid.ts",
-    "test:trade-grid": "tsx tests/trade-grid-smoke.ts"
+    "test:trade-grid": "tsx tests/trade-grid-smoke.ts",
+    "diagnose:livekit": "tsx scripts/check-livekit-env.ts"
   },
   "dependencies": {
     "@google-analytics/data": "^4.12.1",
