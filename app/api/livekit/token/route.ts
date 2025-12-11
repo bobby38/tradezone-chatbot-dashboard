@@ -54,9 +54,10 @@ export async function POST(req: NextRequest) {
         "wss://",
         "https://",
       ).replace("ws://", "http://");
-      // LiveKit Agent Dispatch expects server auth (Basic with API key/secret),
-      // not the participant token. Using the token here returns 401.
-      const basicAuth = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+      const dispatchToken = new AccessToken(apiKey, apiSecret, {
+        identity: "agent-dispatcher",
+      });
+      dispatchToken.addGrant({ roomAdmin: true });
 
       const dispatchResponse = await fetch(
         `${apiUrl}/twirp/livekit.AgentDispatchService/CreateDispatch`,
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Basic ${basicAuth}`,
+            Authorization: `Bearer ${await dispatchToken.toJwt()}`,
           },
           body: JSON.stringify({
             room: roomName,
