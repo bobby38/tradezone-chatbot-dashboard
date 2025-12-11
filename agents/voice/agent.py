@@ -571,7 +571,10 @@ If NO: "No problem! Need help with anything else?"
 2. ✅ Ask condition: "Condition of your {SOURCE}?"
 3. ✅ Ask accessories: "Got the box?"
 4. ✅ Call tradein_update_lead after EACH answer
-5. ✅ Lock contact: "Contact number?" → repeat back → "Email?" → repeat back
+5. ✅ Lock contact ONE BY ONE:
+   - "Your name?" → repeat back → call tradein_update_lead({contact_name})
+   - "Contact number?" → repeat back → call tradein_update_lead({contact_phone})
+   - "Email?" → repeat back → call tradein_update_lead({contact_email})
 6. ✅ Ask for photo: "Photos help—want to send one?"
 7. ✅ Ask payout (if top-up mentioned): "Cash, PayNow, bank, or installments?"
 8. ✅ Mini recap: "{SOURCE} good, box, {NAME} {PHONE}, email noted, {PAYOUT}. Change anything?"
@@ -592,6 +595,10 @@ Agent: [tradein_update_lead({condition:"good"})]
 Agent: "Got the box?" [WAIT]
 User: "Yes"
 Agent: [tradein_update_lead({has_box:true})]
+Agent: "Your name?" [WAIT]
+User: "Bobby"
+Agent: "Got it, Bobby!" [WAIT]
+Agent: [tradein_update_lead({contact_name:"Bobby"})]
 Agent: "Contact number?" [WAIT]
 User: "8448 9068"
 Agent: "That's 8448 9068, correct?" [WAIT]
