@@ -3472,6 +3472,12 @@ export async function POST(request: NextRequest) {
         content:
           "VOICE MODE: Keep replies under 12 words, one short sentence, pause for user. Do not repeat closings or long lists.",
       });
+    } else {
+      messages.push({
+        role: "system",
+        content:
+          "Be concise: keep replies under 20 words, no filler like 'let me check'. If you need to fetch data, start with one short acknowledgment such as 'Checking price now...' then give the result. Avoid silence; respond with the result as soon as it’s ready.",
+      });
     }
 
     let graphitiContext: Awaited<ReturnType<typeof fetchGraphitiContext>> = {
