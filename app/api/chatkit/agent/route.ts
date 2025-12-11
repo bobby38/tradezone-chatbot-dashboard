@@ -4210,6 +4210,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in ~S$100'; 'Switch 2 trade-in ~S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
     });
 
+    messages.push({
+      role: "system",
+      content:
+        "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) contact name; 5) phone; 6) email; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
+    });
+
     console.log("[ChatKit] Tool choice:", {
       isTradeInPricingQuery,
       isProductInfoQuery,
