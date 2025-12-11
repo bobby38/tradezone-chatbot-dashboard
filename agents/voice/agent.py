@@ -628,7 +628,7 @@ async def entrypoint(ctx: JobContext):
             language="en",
         ),
         llm=inference.LLM(
-            model="google/gemini-2.5-flash-lite",
+            model="openai/gpt-4o-mini",  # Better tool calling than Gemini 2.5 Flash Lite
         ),
         tts=inference.TTS(
             model="cartesia/sonic-3",
