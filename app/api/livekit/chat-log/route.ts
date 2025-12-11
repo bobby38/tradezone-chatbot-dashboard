@@ -96,7 +96,6 @@ export async function POST(req: NextRequest) {
         channel: "voice",
         user_agent: userAgent,
         metadata: { room_name, participant_identity },
-        timestamp: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
 
@@ -120,7 +119,6 @@ export async function POST(req: NextRequest) {
         channel: "voice",
         user_agent: userAgent,
         metadata: { room_name, participant_identity },
-        timestamp: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
 
