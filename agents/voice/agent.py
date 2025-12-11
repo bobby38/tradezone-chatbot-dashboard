@@ -744,7 +744,11 @@ async def entrypoint(ctx: JobContext):
         # Check if this is an assistant message
         if hasattr(event.item, "role") and event.item.role == "assistant":
             if hasattr(event.item, "content") and event.item.content:
-                conversation_buffer["bot_response"] = event.item.content
+                # Convert content to string (it may be a list)
+                content = event.item.content
+                if isinstance(content, list):
+                    content = " ".join(str(item) for item in content)
+                conversation_buffer["bot_response"] = content
                 logger.info(f"[Voice] Agent said: {event.item.content}")
 
         # Log complete turn to dashboard

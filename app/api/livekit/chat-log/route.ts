@@ -6,34 +6,29 @@ import {
   isAuthRequired,
 } from "@/lib/security/auth";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+interface LiveKitChatRequest {
+  session_id: string;
+  user_message?: string;
+  agent_message?: string;
+  room_name?: string;
+  participant_identity?: string;
+}
 
 /**
  * Save voice chat logs to Supabase
- * Called by Python LiveKit agent
+ * Called by Python LiveKit agent - follows same structure as /api/n8n-chat
  */
 export async function POST(req: NextRequest) {
-  console.log("[LiveKit Chat Log] ========== NEW REQUEST ==========");
-  console.log("[LiveKit Chat Log] Timestamp:", new Date().toISOString());
-  console.log("[LiveKit Chat Log] Environment check:", {
-    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-  });
-
   // Authentication
   if (isAuthRequired()) {
-    console.log("[LiveKit Chat Log] Auth required, verifying...");
     const authResult = verifyApiKey(req);
     if (!authResult.authenticated) {
-      console.log("[LiveKit Chat Log] ❌ Auth failed:", authResult.error);
       return authErrorResponse(authResult.error);
     }
-    console.log("[LiveKit Chat Log] ✅ Auth passed");
-  } else {
-    console.log("[LiveKit Chat Log] ⚠️ Auth disabled in this environment");
   }
 
   try {
@@ -43,127 +38,114 @@ export async function POST(req: NextRequest) {
       agent_message,
       room_name,
       participant_identity,
-    } = await req.json();
+    }: LiveKitChatRequest = await req.json();
 
-    console.log("[LiveKit Chat Log] Payload:", {
-      session_id,
-      has_user_msg: !!user_message,
-      has_agent_msg: !!agent_message,
-      user_msg_preview: user_message?.substring(0, 50),
-      agent_msg_preview: agent_message?.substring(0, 50),
-      room_name,
-      participant_identity,
-    });
-
+    // Validate required fields
     if (!session_id || (!user_message && !agent_message)) {
-      console.log(
-        "[LiveKit Chat Log] ❌ Validation failed: missing required fields",
-      );
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        {
+          error: "Missing required fields",
+          required: ["session_id", "user_message or agent_message"],
+          received: {
+            session_id: !!session_id,
+            user_message: !!user_message,
+            agent_message: !!agent_message,
+          },
+        },
         { status: 400 },
       );
     }
 
-    // Get current turn index
-    console.log(
-      "[LiveKit Chat Log] Querying turn count for session:",
-      session_id,
-    );
-    const { count: turnCount, error: countError } = await supabase
+    // Convert messages to strings if they're arrays
+    const userMsg = Array.isArray(user_message)
+      ? user_message.join(" ")
+      : user_message;
+    const agentMsg = Array.isArray(agent_message)
+      ? agent_message.join(" ")
+      : agent_message;
+
+    const userId = participant_identity || "voice-user";
+    const userAgent = req.headers.get("user-agent") || "livekit-agent";
+
+    // Get next turn index for this session
+    const { count: turnCount } = await supabase
       .from("chat_logs")
       .select("*", { count: "exact", head: true })
       .eq("session_id", session_id);
 
-    if (countError) {
-      console.error("[LiveKit Chat Log] ❌ Count query failed:", countError);
-    } else {
-      console.log("[LiveKit Chat Log] Current turn count:", turnCount);
-    }
-
     const turnIndex = (turnCount || 0) + 1;
 
+    // Generate session name from first message
+    const firstMessage = userMsg || agentMsg || "Voice Chat";
+    const sessionName =
+      firstMessage.length > 50
+        ? firstMessage.substring(0, 47) + "..."
+        : firstMessage;
+
     // Save user message if provided
-    if (user_message) {
-      console.log("[LiveKit Chat Log] Attempting to save user message...");
-      const userData = {
-        user_id: participant_identity || "voice-user",
-        prompt: user_message,
+    if (userMsg) {
+      const { error: userError } = await supabase.from("chat_logs").insert({
+        user_id: userId,
+        prompt: userMsg,
         response: "",
         session_id,
-        session_name: `Voice: ${user_message.substring(0, 50)}...`,
+        session_name: `Voice: ${sessionName}`,
         status: "user_message",
         turn_index: turnIndex,
         source: "livekit-voice",
         channel: "voice",
+        user_agent: userAgent,
         metadata: { room_name, participant_identity },
         timestamp: new Date().toISOString(),
         created_at: new Date().toISOString(),
-      };
-      console.log(
-        "[LiveKit Chat Log] User data to insert:",
-        JSON.stringify(userData, null, 2),
-      );
-
-      const { data: userData_result, error: userError } = await supabase
-        .from("chat_logs")
-        .insert(userData);
+      });
 
       if (userError) {
-        console.error(
-          "[LiveKit Chat Log] ❌ Failed to save user message:",
-          JSON.stringify(userError, null, 2),
-        );
+        console.error("Error inserting user message:", userError);
         throw userError;
       }
-      console.log("[LiveKit Chat Log] ✅ User message saved successfully");
     }
 
     // Save agent message if provided
-    if (agent_message) {
-      console.log("[LiveKit Chat Log] Attempting to save agent message...");
-      const agentData = {
-        user_id: participant_identity || "voice-user",
-        prompt: user_message || "",
-        response: agent_message,
+    if (agentMsg) {
+      const { error: agentError } = await supabase.from("chat_logs").insert({
+        user_id: userId,
+        prompt: userMsg || "",
+        response: agentMsg,
         session_id,
-        session_name: `Voice: ${(user_message || agent_message).substring(0, 50)}...`,
+        session_name: `Voice: ${sessionName}`,
         status: "completed",
-        turn_index: turnIndex + (user_message ? 1 : 0),
+        turn_index: userMsg ? turnIndex + 1 : turnIndex,
         source: "livekit-voice",
         channel: "voice",
+        user_agent: userAgent,
         metadata: { room_name, participant_identity },
         timestamp: new Date().toISOString(),
         created_at: new Date().toISOString(),
-      };
-      console.log(
-        "[LiveKit Chat Log] Agent data to insert:",
-        JSON.stringify(agentData, null, 2),
-      );
-
-      const { data: agentData_result, error: agentError } = await supabase
-        .from("chat_logs")
-        .insert(agentData);
+      });
 
       if (agentError) {
-        console.error(
-          "[LiveKit Chat Log] ❌ Failed to save agent message:",
-          JSON.stringify(agentError, null, 2),
-        );
+        console.error("Error inserting agent message:", agentError);
         throw agentError;
       }
-      console.log("[LiveKit Chat Log] ✅ Agent message saved successfully");
     }
 
-    console.log("[LiveKit Chat Log] ========== SUCCESS ==========");
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: "Chat log saved successfully",
+      data: {
+        session_id,
+        turn_index: turnIndex,
+      },
+    });
   } catch (error) {
-    console.error("[LiveKit Chat Log] Error:", error);
+    console.error("LiveKit chat log error:", error);
+
     return NextResponse.json(
       {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to save chat log",
+        error: "Failed to save chat log",
+        details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     );
