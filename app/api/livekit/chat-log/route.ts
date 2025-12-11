@@ -82,56 +82,36 @@ export async function POST(req: NextRequest) {
         ? firstMessage.substring(0, 47) + "..."
         : firstMessage;
 
-    // Save user message if provided
-    if (userMsg) {
-      const { error: userError } = await supabase.from("chat_logs").insert({
+    // Insert single chat log entry with both prompt and response (like n8n-chat)
+    const { data: chatLog, error: chatLogError } = await supabase
+      .from("chat_logs")
+      .insert({
         user_id: userId,
-        prompt: userMsg,
-        response: "",
+        prompt: userMsg || "",
+        response: agentMsg || "",
         session_id,
         session_name: `Voice: ${sessionName}`,
-        status: "user_message",
+        status: "success",
         turn_index: turnIndex,
         source: "livekit-voice",
         channel: "voice",
         user_agent: userAgent,
         metadata: { room_name, participant_identity },
         created_at: new Date().toISOString(),
-      });
+      })
+      .select()
+      .single();
 
-      if (userError) {
-        console.error("Error inserting user message:", userError);
-        throw userError;
-      }
-    }
-
-    // Save agent message if provided
-    if (agentMsg) {
-      const { error: agentError } = await supabase.from("chat_logs").insert({
-        user_id: userId,
-        prompt: userMsg || "",
-        response: agentMsg,
-        session_id,
-        session_name: `Voice: ${sessionName}`,
-        status: "completed",
-        turn_index: userMsg ? turnIndex + 1 : turnIndex,
-        source: "livekit-voice",
-        channel: "voice",
-        user_agent: userAgent,
-        metadata: { room_name, participant_identity },
-        created_at: new Date().toISOString(),
-      });
-
-      if (agentError) {
-        console.error("Error inserting agent message:", agentError);
-        throw agentError;
-      }
+    if (chatLogError) {
+      console.error("Error inserting chat log:", chatLogError);
+      throw chatLogError;
     }
 
     return NextResponse.json({
       success: true,
       message: "Chat log saved successfully",
       data: {
+        chat_log_id: chatLog.id,
         session_id,
         turn_index: turnIndex,
       },
