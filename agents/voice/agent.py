@@ -162,7 +162,9 @@ async def tradein_update_lead(
     notes: str = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
-    logger.info(f"[tradein_update_lead] CALLED")
+    logger.warning(
+        f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
+    )
 
     # Get session ID from room name
     try:
@@ -208,7 +210,7 @@ async def tradein_update_lead(
 @function_tool
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
-    logger.info(f"[tradein_submit_lead] CALLED")
+    logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
 
     # Get session ID from room name
     try:
@@ -331,18 +333,21 @@ CRITICAL - Product Display Rules:
 - DO NOT read URLs out loud - they're clickable in the transcript
 - Keep it conversational and helpful
 
-# Trade-In Flow
+# Trade-In Flow - MANDATORY TOOL USAGE
 
-When customer wants trade-in:
-1. Give price range FIRST (call searchProducts)
-2. Ask for details one at a time: storage, condition, box, accessories
-3. After EACH detail, call tradein_update_lead to save it
-4. Ask for contact info: "Name, phone, email?"
-5. DO NOT read contact details back - just say "Got it"
-6. Ask about photos (optional)
-7. Show summary in text, voice says: "Check the summary. I'll submit in 10 seconds unless you need to change something."
-8. Wait 10 seconds or for confirmation
-9. Call tradein_submit_lead
+When customer wants trade-in, you MUST use tools at every step:
+
+1. When user says "trade" or "trade-in": Call tradein_update_lead with category="gaming console" or appropriate category
+2. When user mentions device (e.g., "PS4 Pro 1TB"): IMMEDIATELY call tradein_update_lead(model="PS4 Pro", storage="1TB")
+3. When user says condition (e.g., "good"): IMMEDIATELY call tradein_update_lead(condition="good")
+4. When user confirms accessories: IMMEDIATELY call tradein_update_lead(notes="Has original box and accessories")
+5. When user provides name: IMMEDIATELY call tradein_update_lead(contact_name="[name]")
+6. When user provides phone: IMMEDIATELY call tradein_update_lead(contact_phone="[phone]")
+7. When user provides email: IMMEDIATELY call tradein_update_lead(contact_email="[email]")
+8. After ALL info collected: Say "I have all your details. Submitting now." Then IMMEDIATELY call tradein_submit_lead(summary="Trade-in: [model] [storage] [condition] for [name] [phone] [email]")
+
+NEVER skip calling these tools. NEVER just say "Got it" without calling the tool.
+After EACH user provides info, respond with "Saved" then ask next question.
 
 # Guardrails
 
