@@ -24,8 +24,8 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import noise_cancellation, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import noise_cancellation, openai, silero
+from livekit.plugins.openai import realtime
 
 logger = logging.getLogger("agent-amara")
 
@@ -622,22 +622,18 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
+    # Use OpenAI Realtime API - same as old working system
     session = AgentSession(
-        stt=inference.STT(
-            model="assemblyai/universal-streaming",
-            language="en",
+        llm=realtime.RealtimeModel(
+            model="gpt-4o-mini-realtime-preview-2024-12-17",
+            voice="alloy",
+            temperature=0.8,
+            turn_detection=openai.realtime.ServerVAD(
+                threshold=0.55,
+                prefix_padding_ms=500,
+                silence_duration_ms=1200,
+            ),
         ),
-        llm=inference.LLM(
-            model="openai/gpt-4.1-mini",  # Best for complex function calling - more accurate than 4o-mini
-        ),
-        tts=inference.TTS(
-            model="cartesia/sonic-3",
-            voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
-            language="en",
-        ),
-        turn_detection=MultilingualModel(),
-        vad=ctx.proc.userdata["vad"],
-        preemptive_generation=True,
     )
 
     # Event handlers for dashboard logging
