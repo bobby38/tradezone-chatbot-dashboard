@@ -30,64 +30,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // For catalog searches, use WooCommerce search (same as text chat)
-    if (context === "catalog") {
-      const wooResult = await searchWooProducts(query);
+    // Detect trade-in intent
+    const isTradeInQuery =
+      /trade[-\s]?in|sell|buyback|cash for|upgrade.*for|swap.*for/i.test(query);
 
-      console.log("[Search API] WooCommerce search:", {
-        query,
-        foundProducts: wooResult.length,
-      });
-
-      if (wooResult.length > 0) {
-        // Format products for voice with markdown (clickable links + images)
-        const formatted = wooResult
-          .slice(0, 5)
-          .map((p) => {
-            const price = p.price_sgd ? `$${p.price_sgd}` : "Contact us";
-            const link = p.permalink || "";
-            const image = p.image || "";
-
-            // Make product names TTS-friendly (PS5 -> PlayStation 5)
-            let ttsName = p.name
-              .replace(/\bPS5\b/gi, "PlayStation 5")
-              .replace(/\bPS4\b/gi, "PlayStation 4")
-              .replace(/\bXbox Series X\b/gi, "Xbox Series X")
-              .replace(/\bXbox Series S\b/gi, "Xbox Series S");
-
-            // Markdown format: ![image](url) for image, [text](url) for link
-            let result = "";
-            if (image) {
-              result += `![${ttsName}](${image})\n`;
-            }
-            result += `**[${ttsName}](${link})** — ${price}`;
-
-            return result;
-          })
-          .join("\n\n");
-
-        return NextResponse.json({
-          success: true,
-          result: formatted,
-          products: wooResult.slice(0, 5), // Include structured product data
-        });
-      }
-    }
-
-    // Fallback to vector search
+    // Use handleVectorSearch (same as text chat) - it handles trade-in pricing automatically
     const searchContext =
       context === "catalog"
-        ? { intent: "product", toolUsed: "searchProducts" }
+        ? {
+            intent: isTradeInQuery ? "trade_in" : "product",
+            toolUsed: "searchProducts",
+          }
         : context === "website"
           ? { intent: "general", toolUsed: "searchtool" }
           : undefined;
 
+    console.log("[Search API] Using handleVectorSearch:", {
+      query,
+      context: searchContext,
+      isTradeInQuery,
+    });
+
     const vectorResult = await handleVectorSearch(query, searchContext);
 
-    if (vectorResult && vectorResult.length > 0) {
+    if (vectorResult && vectorResult.text) {
+      let responseText = vectorResult.text;
+
+      // Add SSML for proper price pronunciation (100 dollars instead of 1-0-0 dollars)
+      responseText = responseText.replace(
+        /S\$(\d+(?:,\d{3})*(?:\.\d{2})?)/g,
+        "$1 dollars",
+      );
+
       return NextResponse.json({
         success: true,
-        result: formatSearchResults(vectorResult),
+        result: responseText,
+        products: vectorResult.wooProducts || [],
+        store: vectorResult.store,
       });
     }
 

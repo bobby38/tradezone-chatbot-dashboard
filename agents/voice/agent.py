@@ -71,10 +71,12 @@ async def log_to_dashboard(
 
 @function_tool
 async def searchProducts(context: RunContext, query: str) -> str:
-    """Search TradeZone product catalog using vector database."""
-    logger.info(f"[searchProducts] CALLED with query: {query}")
+    """Search TradeZone product catalog using vector database. Handles both regular products and trade-in pricing."""
+    logger.warning(f"[searchProducts] ⚠️ CALLED with query: {query}")
+
     async with httpx.AsyncClient() as client:
         try:
+            # Use /api/tools/search which now uses handleVectorSearch (same as text chat)
             response = await client.post(
                 f"{API_BASE_URL}/api/tools/search",
                 json={"query": query, "context": "catalog"},
@@ -82,18 +84,14 @@ async def searchProducts(context: RunContext, query: str) -> str:
                 timeout=30.0,
             )
             result = response.json()
-            logger.info(f"[searchProducts] API response: {result}")
+            logger.warning(f"[searchProducts] API response: {response.status_code}")
 
             if result.get("success"):
-                product_result = result.get("result", "")
+                answer = result.get("result", "")
                 products_data = result.get("products", [])
 
-                if product_result and len(product_result) > 10:
-                    logger.info(
-                        f"[searchProducts] ✅ Returning {len(product_result)} chars, {len(products_data)} products"
-                    )
-
-                    # Send structured product data to widget for visual display
+                # Send structured product data to widget for visual display
+                if products_data:
                     try:
                         room = get_job_context().room
                         await room.local_participant.publish_data(
@@ -115,10 +113,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                             f"[searchProducts] Failed to send visual data: {e}"
                         )
 
-                    return product_result
-                else:
-                    logger.warning(f"[searchProducts] ⚠️ Empty result")
-                    return "No products found matching your search"
+                logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
+                return answer if answer else "No products found"
             else:
                 logger.error(f"[searchProducts] ❌ API failed: {result}")
                 return "No products found"
