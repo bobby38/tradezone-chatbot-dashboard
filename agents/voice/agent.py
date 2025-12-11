@@ -53,6 +53,12 @@ async def log_to_dashboard(
 ):
     """Log voice conversation to dashboard via /api/n8n-chat endpoint"""
     try:
+        logger.info(
+            f"[Dashboard] 📝 Logging conversation - User: {user_id[:20]}..., Session: {session_id}"
+        )
+        logger.info(f"[Dashboard] 📝 User message: {user_message[:100]}...")
+        logger.info(f"[Dashboard] 📝 Bot response: {bot_response[:100]}...")
+
         async with httpx.AsyncClient() as client:
             payload = {
                 "user_id": user_id,
@@ -61,14 +67,30 @@ async def log_to_dashboard(
                 "session_id": session_id,
                 "metadata": {"source": "livekit_voice"},
             }
+
+            logger.info(f"[Dashboard] 🌐 Sending to {API_BASE_URL}/api/n8n-chat")
+
             response = await client.post(
                 f"{API_BASE_URL}/api/n8n-chat",
                 json=payload,
-                timeout=5.0,
+                headers={"X-API-Key": API_KEY} if API_KEY else {},
+                timeout=10.0,
             )
-            logger.info(f"[Dashboard] ✅ Logged to dashboard: {response.status_code}")
+
+            response_data = response.json()
+            logger.info(
+                f"[Dashboard] ✅ Success: {response.status_code} - {response_data}"
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"[Dashboard] ⚠️ Non-200 status: {response.status_code} - {response_data}"
+                )
+
+    except httpx.TimeoutException as e:
+        logger.error(f"[Dashboard] ⏱️ Timeout logging to dashboard: {e}")
     except Exception as e:
-        logger.error(f"[Dashboard] ❌ Failed to log: {e}")
+        logger.error(f"[Dashboard] ❌ Failed to log: {type(e).__name__} - {str(e)}")
 
 
 # ============================================================================
@@ -840,17 +862,25 @@ async def entrypoint(ctx: JobContext):
         """Capture user's final transcribed message"""
         nonlocal conversation_buffer
         conversation_buffer["user_message"] = msg.text
-        logger.info(f"[Voice] User said: {msg.text}")
+        logger.info(f"[Voice] 🎤 User said: {msg.text}")
+        logger.info(
+            f"[Voice] 📦 Buffer now has user_message: {bool(conversation_buffer['user_message'])}"
+        )
 
     @session.on("agent_speech_committed")
     def on_agent_speech(msg):
         """Capture agent's response and log to dashboard"""
         nonlocal conversation_buffer, participant_identity
         conversation_buffer["bot_response"] = msg.text
-        logger.info(f"[Voice] Agent said: {msg.text}")
+        logger.info(f"[Voice] 🤖 Agent said: {msg.text}")
+        logger.info(
+            f"[Voice] 📦 Buffer status - user_message: {bool(conversation_buffer['user_message'])}, bot_response: {bool(conversation_buffer['bot_response'])}"
+        )
 
         # Log complete turn to dashboard
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
+            logger.info(f"[Voice] ✅ Complete turn detected - logging to dashboard")
+
             # Get participant identity from room
             if not participant_identity:
                 for participant in ctx.room.remote_participants.values():
@@ -859,9 +889,13 @@ async def entrypoint(ctx: JobContext):
                         == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
                     ):
                         participant_identity = participant.identity
+                        logger.info(
+                            f"[Voice] 👤 Found participant: {participant_identity}"
+                        )
                         break
 
             user_id = participant_identity or room_name
+            logger.info(f"[Voice] 🆔 Using user_id: {user_id}, session_id: {room_name}")
 
             # Log to dashboard asynchronously
             asyncio.create_task(
@@ -875,6 +909,11 @@ async def entrypoint(ctx: JobContext):
 
             # Clear buffer for next turn
             conversation_buffer = {"user_message": "", "bot_response": ""}
+            logger.info(f"[Voice] 🧹 Buffer cleared for next turn")
+        else:
+            logger.warning(
+                f"[Voice] ⚠️ Incomplete turn - user_message: {bool(conversation_buffer['user_message'])}, bot_response: {bool(conversation_buffer['bot_response'])}"
+            )
 
     await session.start(
         agent=TradeZoneAgent(),
