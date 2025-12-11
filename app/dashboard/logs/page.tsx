@@ -110,17 +110,18 @@ export default function ChatLogsPage() {
       if (channelChoice === "voice") {
         query = query
           .in("source", ["chatkit_voice", "chatkit", "livekit-voice"])
-          .filter("channel", "eq", "voice");
+          .eq("channel", "voice");
       } else if (channelChoice === "text") {
         query = query
           .in("source", ["chatkit", "chatkit_voice", "livekit-voice"])
-          .filter("channel", "neq", "voice");
+          .or("channel.neq.voice,channel.is.null");
       } else {
-        // Default: include both sources so voice entries are visible without a filter
+        // Default: include all sources (voice, text, and legacy without channel)
         query = query.in("source", [
           "chatkit",
           "chatkit_voice",
           "livekit-voice",
+          "n8n-chat",
         ]);
       }
 
