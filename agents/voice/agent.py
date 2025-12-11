@@ -3,6 +3,7 @@ TradeZone Voice Agent - LiveKit Integration
 Calls existing Next.js APIs to keep logic in sync with text chat
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -33,6 +34,34 @@ load_dotenv(".env.local")
 # Next.js API base URL
 API_BASE_URL = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3001")
 API_KEY = os.getenv("CHATKIT_API_KEY", "")
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+
+async def log_to_dashboard(
+    user_id: str, user_message: str, bot_response: str, session_id: str = None
+):
+    """Log voice conversation to dashboard via /api/n8n-chat endpoint"""
+    try:
+        async with httpx.AsyncClient() as client:
+            payload = {
+                "user_id": user_id,
+                "prompt": user_message,
+                "response": bot_response,
+                "session_id": session_id,
+                "metadata": {"source": "livekit_voice"},
+            }
+            response = await client.post(
+                f"{API_BASE_URL}/api/n8n-chat",
+                json=payload,
+                timeout=5.0,
+            )
+            logger.info(f"[Dashboard] ✅ Logged to dashboard: {response.status_code}")
+    except Exception as e:
+        logger.error(f"[Dashboard] ❌ Failed to log: {e}")
 
 
 # ============================================================================
@@ -134,11 +163,20 @@ async def tradein_update_lead(
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
     logger.info(f"[tradein_update_lead] CALLED")
+
+    # Get session ID from room name
+    try:
+        room = get_job_context().room
+        session_id = room.name
+    except:
+        session_id = None
+
     async with httpx.AsyncClient() as client:
         try:
             data = {
                 k: v
                 for k, v in {
+                    "session_id": session_id,
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -171,11 +209,19 @@ async def tradein_update_lead(
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
     logger.info(f"[tradein_submit_lead] CALLED")
+
+    # Get session ID from room name
+    try:
+        room = get_job_context().room
+        session_id = room.name
+    except:
+        session_id = None
+
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/submit",
-                json={"summary": summary, "notify": True},
+                json={"session_id": session_id, "summary": summary, "notify": True},
                 headers={"X-API-Key": API_KEY},
                 timeout=10.0,
             )
@@ -331,6 +377,11 @@ server.setup_fnc = prewarm
 async def entrypoint(ctx: JobContext):
     """Main entry point for LiveKit voice sessions"""
 
+    # Store conversation for dashboard logging
+    conversation_buffer = {"user_message": "", "bot_response": ""}
+    room_name = ctx.room.name
+    participant_identity = None
+
     session = AgentSession(
         stt=inference.STT(
             model="assemblyai/universal-streaming",
@@ -348,6 +399,48 @@ async def entrypoint(ctx: JobContext):
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
+
+    # Event handlers for dashboard logging
+    @session.on("user_speech_committed")
+    def on_user_speech(msg):
+        """Capture user's final transcribed message"""
+        nonlocal conversation_buffer
+        conversation_buffer["user_message"] = msg.text
+        logger.info(f"[Voice] User said: {msg.text}")
+
+    @session.on("agent_speech_committed")
+    def on_agent_speech(msg):
+        """Capture agent's response and log to dashboard"""
+        nonlocal conversation_buffer, participant_identity
+        conversation_buffer["bot_response"] = msg.text
+        logger.info(f"[Voice] Agent said: {msg.text}")
+
+        # Log complete turn to dashboard
+        if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
+            # Get participant identity from room
+            if not participant_identity:
+                for participant in ctx.room.remote_participants.values():
+                    if (
+                        participant.kind
+                        == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+                    ):
+                        participant_identity = participant.identity
+                        break
+
+            user_id = participant_identity or room_name
+
+            # Log to dashboard asynchronously
+            asyncio.create_task(
+                log_to_dashboard(
+                    user_id=user_id,
+                    user_message=conversation_buffer["user_message"],
+                    bot_response=conversation_buffer["bot_response"],
+                    session_id=room_name,
+                )
+            )
+
+            # Clear buffer for next turn
+            conversation_buffer = {"user_message": "", "bot_response": ""}
 
     await session.start(
         agent=TradeZoneAgent(),
