@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+from typing import Dict
 
 import httpx
 from dotenv import load_dotenv
@@ -40,7 +41,12 @@ LLM_MODEL = os.getenv("VOICE_LLM_MODEL", "openai/gpt-4.1-mini")
 LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 
 # Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
-VOICE_STACK = os.getenv("VOICE_STACK", "realtime").lower()
+VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
+
+if not API_KEY:
+    logger.warning(
+        "[Voice Agent] CHATKIT_API_KEY is missing — API calls will be rejected"
+    )
 
 
 # ============================================================================
@@ -48,49 +54,52 @@ VOICE_STACK = os.getenv("VOICE_STACK", "realtime").lower()
 # ============================================================================
 
 
+def build_auth_headers() -> Dict[str, str]:
+    """
+    Standard auth headers for all server-to-server calls.
+    Use both X-API-Key and Bearer to stay compatible with dashboard handlers.
+    """
+    headers: Dict[str, str] = {}
+    if API_KEY:
+        headers["X-API-Key"] = API_KEY
+        headers["Authorization"] = f"Bearer {API_KEY}"
+    return headers
+
+
 async def log_to_dashboard(
     user_id: str, user_message: str, bot_response: str, session_id: str = None
 ):
-    """Log voice conversation to dashboard via /api/n8n-chat endpoint"""
+    """Log voice conversation to dashboard via livekit chat-log endpoint"""
     try:
-        logger.info(
-            f"[Dashboard] 📝 Logging conversation - User: {user_id[:20]}..., Session: {session_id}"
-        )
-        logger.info(f"[Dashboard] 📝 User message: {user_message[:100]}...")
-        logger.info(f"[Dashboard] 📝 Bot response: {bot_response[:100]}...")
+        headers = build_auth_headers()
+        if not headers:
+            logger.error("[Dashboard] ❌ CHATKIT_API_KEY missing — cannot log chat")
+            return
 
         async with httpx.AsyncClient() as client:
             payload = {
-                "user_id": user_id,
-                "prompt": user_message,
-                "response": bot_response,
                 "session_id": session_id,
-                "metadata": {"source": "livekit_voice"},
+                "user_message": user_message,
+                "agent_message": bot_response,
+                "room_name": session_id,
+                "participant_identity": user_id,
             }
-
-            logger.info(f"[Dashboard] 🌐 Sending to {API_BASE_URL}/api/n8n-chat")
-
             response = await client.post(
-                f"{API_BASE_URL}/api/n8n-chat",
+                f"{API_BASE_URL}/api/livekit/chat-log",
                 json=payload,
-                headers={"X-API-Key": API_KEY} if API_KEY else {},
-                timeout=10.0,
+                headers=headers,
+                timeout=5.0,
             )
-
-            response_data = response.json()
-            logger.info(
-                f"[Dashboard] ✅ Success: {response.status_code} - {response_data}"
-            )
-
-            if response.status_code != 200:
+            if response.status_code >= 300:
                 logger.error(
-                    f"[Dashboard] ⚠️ Non-200 status: {response.status_code} - {response_data}"
+                    f"[Dashboard] ❌ Failed to log turn ({response.status_code}): {response.text}"
                 )
-
-    except httpx.TimeoutException as e:
-        logger.error(f"[Dashboard] ⏱️ Timeout logging to dashboard: {e}")
+            else:
+                logger.info(
+                    f"[Dashboard] ✅ Logged to chat_logs: {response.status_code}"
+                )
     except Exception as e:
-        logger.error(f"[Dashboard] ❌ Failed to log: {type(e).__name__} - {str(e)}")
+        logger.error(f"[Dashboard] ❌ Failed to log: {e}")
 
 
 # ============================================================================
@@ -100,28 +109,28 @@ async def log_to_dashboard(
 
 @function_tool
 async def searchProducts(context: RunContext, query: str) -> str:
-    """Search TradeZone product catalog using vector database."""
-    logger.info(f"[searchProducts] CALLED with query: {query}")
+    """Search TradeZone product catalog using vector database. Handles both regular products and trade-in pricing."""
+    logger.warning(f"[searchProducts] ⚠️ CALLED with query: {query}")
+    headers = build_auth_headers()
+
     async with httpx.AsyncClient() as client:
         try:
+            # Use /api/tools/search which now uses handleVectorSearch (same as text chat)
             response = await client.post(
                 f"{API_BASE_URL}/api/tools/search",
                 json={"query": query, "context": "catalog"},
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=30.0,
             )
             result = response.json()
-            logger.info(f"[searchProducts] API response: {result}")
+            logger.warning(f"[searchProducts] API response: {response.status_code}")
 
             if result.get("success"):
+                answer = result.get("result", "")
                 products_data = result.get("products", [])
 
-                if products_data and len(products_data) > 0:
-                    logger.info(
-                        f"[searchProducts] ✅ Found {len(products_data)} products"
-                    )
-
-                    # Send structured product data to widget for visual display
+                # Send structured product data to widget for visual display
+                if products_data:
                     try:
                         room = get_job_context().room
                         await room.local_participant.publish_data(
@@ -143,29 +152,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                             f"[searchProducts] Failed to send visual data: {e}"
                         )
 
-                    # Create voice-friendly response (NO IDs, NO markdown, NO URLs)
-                    voice_friendly = []
-                    for p in products_data[:3]:  # Limit to 3 for voice
-                        name = p.get("name", "").strip()
-                        price = p.get("price_sgd", "")
-
-                        # Clean product name for voice (remove HTML, special chars)
-                        name = name.replace("&amp;", "and").replace("&", "and")
-                        name = name.replace("  ", " ").strip()
-
-                        if price:
-                            voice_friendly.append(f"{name} for ${price}")
-                        else:
-                            voice_friendly.append(f"{name}")
-
-                    voice_response = "We have: " + ", ".join(voice_friendly[:2])
-                    if len(products_data) > 2:
-                        voice_response += f", and {len(products_data) - 2} more options"
-
-                    return voice_response
-                else:
-                    logger.warning(f"[searchProducts] ⚠️ Empty result")
-                    return "No products found matching your search"
+                logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
+                return answer if answer else "No products found"
             else:
                 logger.error(f"[searchProducts] ❌ API failed: {result}")
                 return "No products found"
@@ -175,124 +163,16 @@ async def searchProducts(context: RunContext, query: str) -> str:
 
 
 @function_tool
-async def normalizeProduct(context: RunContext, query: str, limit: int = 5) -> str:
-    """
-    Normalize a product query into canonical product IDs.
-    Use this BEFORE priceLookup to convert "PS4 Pro 1TB" into "ps4_pro_1tb".
-
-    Args:
-        query: Product description (e.g., "PS4 Pro 1TB", "Steam Deck OLED 512GB")
-        limit: Number of matches to return (default: 5)
-
-    Returns:
-        List of matching products with their canonical IDs
-    """
-    logger.info(f"[normalizeProduct] CALLED with query={query}")
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                f"{API_BASE_URL}/api/tools/normalize-product",
-                json={"query": query, "limit": limit},
-                headers={"X-API-Key": API_KEY},
-                timeout=10.0,
-            )
-            result = response.json()
-            logger.info(f"[normalizeProduct] API response: {result}")
-
-            candidates = result.get("candidates", [])
-            if not candidates:
-                return "No matching products found"
-
-            # If only ONE match with high confidence → return it directly
-            if len(candidates) == 1 and candidates[0].get("confidence", 0) > 0.85:
-                top_match = candidates[0]
-                product_id = top_match.get("modelId", "")
-                display_name = top_match.get("displayName", product_id)
-                return f"EXACT_MATCH: {product_id} ({display_name})"
-
-            # If MULTIPLE matches OR low confidence → return ALL options for user to pick
-            if len(candidates) > 1 or candidates[0].get("confidence", 0) <= 0.85:
-                options = []
-                for idx, candidate in enumerate(candidates[:5], 1):
-                    product_id = candidate.get("modelId", "")
-                    display_name = candidate.get("displayName", product_id)
-                    confidence = candidate.get("confidence", 0)
-                    options.append(
-                        f"{idx}. {display_name} (ID: {product_id}, {confidence:.0%} confidence)"
-                    )
-
-                return "MULTIPLE_MATCHES - Ask user to pick:\n" + "\n".join(options)
-
-            # Fallback
-            top_match = candidates[0]
-            product_id = top_match.get("modelId", "")
-            return f"MATCH: {product_id}"
-
-        except Exception as e:
-            logger.error(f"[normalizeProduct] ❌ Exception: {e}")
-            return "Sorry, couldn't normalize product query"
-
-
-@function_tool
-async def priceLookup(
-    context: RunContext,
-    productId: str,
-    condition: str = None,
-    priceType: str = "trade_in",
-) -> str:
-    """
-    Lookup authoritative trade-in or retail pricing for a product.
-
-    Args:
-        productId: Canonical product ID (e.g., "ps4_pro_1tb", "ps5_pro_2tb_digital")
-        condition: Condition (e.g., "mint", "good", "fair", "brand_new", "preowned")
-        priceType: Either "trade_in" or "retail" (default: "trade_in")
-
-    Returns:
-        Price information including value_sgd, min_sgd, max_sgd
-    """
-    logger.info(
-        f"[priceLookup] CALLED with productId={productId}, condition={condition}, priceType={priceType}"
-    )
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                f"{API_BASE_URL}/api/tools/price-lookup",
-                json={
-                    "productId": productId,
-                    "condition": condition,
-                    "priceType": priceType,
-                },
-                headers={"X-API-Key": API_KEY},
-                timeout=10.0,
-            )
-            result = response.json()
-            logger.info(f"[priceLookup] API response: {result}")
-
-            # Format voice-friendly response
-            if result.get("value_sgd"):
-                return f"Price: ${result['value_sgd']} SGD"
-            elif result.get("min_sgd") and result.get("max_sgd"):
-                return f"Price range: ${result['min_sgd']} to ${result['max_sgd']} SGD"
-            elif result.get("min_sgd"):
-                return f"Starting from ${result['min_sgd']} SGD"
-            else:
-                return "Price not available for this product"
-        except Exception as e:
-            logger.error(f"[priceLookup] ❌ Exception: {e}")
-            return "Sorry, I couldn't lookup the price right now"
-
-
-@function_tool
 async def searchtool(context: RunContext, query: str) -> str:
     """Search TradeZone website for general information."""
     logger.info(f"[searchtool] CALLED with query: {query}")
+    headers = build_auth_headers()
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tools/search",
                 json={"query": query, "context": "website"},
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=30.0,
             )
             result = response.json()
@@ -322,6 +202,7 @@ async def tradein_update_lead(
     logger.warning(
         f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
     )
+    headers = build_auth_headers()
 
     # Get session ID from room name
     try:
@@ -359,9 +240,14 @@ async def tradein_update_lead(
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/update",
                 json=data,
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=10.0,
             )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[tradein_update_lead] ❌ {response.status_code}: {response.text}"
+                )
+                return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
             return result.get("message", "Trade-in information saved")
@@ -374,6 +260,7 @@ async def tradein_update_lead(
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
     logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
+    headers = build_auth_headers()
 
     # Get session ID from room name
     try:
@@ -387,9 +274,14 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/submit",
                 json={"session_id": session_id, "summary": summary, "notify": True},
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=10.0,
             )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[tradein_submit_lead] ❌ {response.status_code}: {response.text}"
+                )
+                return f"Submit failed ({response.status_code}) — please retry"
             result = response.json()
             logger.info(f"[tradein_submit_lead] ✅ Response: {result}")
             return result.get("message", "Trade-in submitted successfully")
@@ -409,6 +301,7 @@ async def sendemail(
 ) -> str:
     """Send support escalation to TradeZone staff. Only use when customer explicitly requests human follow-up."""
     logger.info(f"[sendemail] CALLED: type={email_type}")
+    headers = build_auth_headers()
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
@@ -420,7 +313,7 @@ async def sendemail(
                     "message": message,
                     "phone_number": phone_number,
                 },
-                headers={"X-API-Key": API_KEY},
+                headers=headers,
                 timeout=10.0,
             )
             result = response.json()
@@ -441,8 +334,6 @@ class TradeZoneAgent(Agent):
         super().__init__(
             tools=[
                 searchProducts,
-                normalizeProduct,
-                priceLookup,
                 searchtool,
                 tradein_update_lead,
                 tradein_submit_lead,
@@ -461,8 +352,10 @@ class TradeZoneAgent(Agent):
 
 You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electronics.
 
-- Speak in concise phrases (≤12 words). Pause after each short answer and let the caller interrupt.
+- Speak in ultra-concise phrases (aim 6–9 words, hard cap 12). Pause after each short answer and let the caller interrupt. If you have nothing new to add, stay silent.
+- One question per turn. Never chain two questions in one response.
 - Never read markdown, headings like "Quick Links", or the literal text between ---START PRODUCT LIST--- markers aloud. For voice, briefly mention how many products found (e.g., "Found 8 Final Fantasy games"), list the top 3-4 with prices, then ask if they want more details or the full list in chat.
+- Before giving extra info or a longer list, ask if they actually want it. If they say no/unsure, stop and ask: "What do you want to do next?"
 - 🔴 **CRITICAL - SHOW BUT DON'T SPEAK**:
   - URLs, phone numbers, emails, serial numbers → ALWAYS show in text, NEVER speak out loud
   - **Product listings**: ALWAYS display in text with COMPLETE structure (same as text chat):
@@ -480,6 +373,8 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
+- Mirror text-chat logic and tools exactly (searchProducts, tradein_update_lead, tradein_submit_lead, sendemail). Do not invent any extra voice-only shortcuts; every saved field must go through the same tools used by text chat.
+- Phone and email: collect one at a time, then READ BACK the full value once ("That's 8448 9068, correct?"). Wait for a clear yes before saving. If email arrives in fragments across turns, assemble it and read the full address once before saving.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
 - If multiple products come back from a search, say "I found a few options—want the details?" and only read the one(s) they pick.
 
@@ -577,49 +472,20 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 
 🛑 **STOP RULE**: If user says "wait/hold on/stop" → Say "Sure!" and SHUT UP.
 
+🔒 **After top-up math**: Once you state the trade-in value, target price, and top-up, do **not** call searchProducts again or show unrelated product lists. Stay on the checklist (condition → box → accessories → contact → photos → recap → submit).
+
 **Keep it SHORT - under 12 words per response!**
 - Say one short sentence, then pause. Let the customer speak first.
 - If they interrupt or say "wait", respond with "Sure" and stay silent.
 
 **🔴 STRUCTURED FORM FLOW - FOLLOW THIS EXACT ORDER:**
 
-**Step 1: VERIFY EXACT MODEL FIRST** (CRITICAL - Prices change daily!)
-🔴 **NEVER guess or assume the variant** - ALWAYS confirm exact model before pricing!
-
-**If user mentions device WITHOUT full details:**
-- User: "I have a PS4 Pro" → You: "What storage? 1TB or 2TB?"
-- User: "I want a PS5" → You: "Which PS5? Slim 1TB Digital, Slim 1TB Disc, Pro 1TB, or Pro 2TB?"
-- User: "Trade my Xbox" → You: "Which Xbox? Series S, Series X, or One?"
-
-**Once you have model info, call normalizeProduct:**
-1. Call normalizeProduct(query="{device}") → Returns one of three responses:
-
-   **Response A: "EXACT_MATCH: {id} ({name})"**
-   → Single clear match (>85% confidence)
-   → Extract product_id, call priceLookup immediately
-   → Say: "{Device} trade-in ${price}. Condition?"
-
-   **Response B: "MULTIPLE_MATCHES - Ask user to pick:"**
-   → Multiple options listed with numbers (PS5/Xbox/Switch have many variants!)
-   → Example response:
-   ```
-   1. PS5 Slim 1TB Digital (ps5_slim_1tb_digital, 92%)
-   2. PS5 Slim 1TB Disc (ps5_slim_1tb_disc, 89%)
-   3. PS5 Pro 1TB (ps5_pro_1tb, 78%)
-   ```
-   → Say to user: "I got a few: Slim Digital, Slim Disc, or Pro? Which one?"
-   → WAIT for customer to pick (by number or name)
-   → Use selected product_id for priceLookup
-
-   **Response C: "No matching products found"**
-   → Say: "Can't find that. Can you describe it differently?"
-
-**For upgrades/trade-ups:**
-- Normalize BOTH devices BEFORE quoting any prices
-- If either returns MULTIPLE_MATCHES, resolve FIRST before pricing
-- Only quote prices after BOTH devices confirmed
-
-**CRITICAL**: Prices update weekly - ALWAYS call priceLookup, NEVER guess!
+**Step 1: PRICE CHECK** (Mandatory - give price BEFORE asking questions)
+- User mentions device → IMMEDIATELY call searchProducts({query: "trade-in {device} price"})
+- Reply with ≤10 words using the trade-in range. Example: "PS5 trade-in S$400-550. Storage size?"
+- NEVER skip this. NEVER ask condition before giving price.
+- If **TRADE_IN_NO_MATCH**: confirm Singapore, offer manual review, use sendemail if approved
+- For installments (top-up >= S$300): add estimate after price. Example: "Top-up ~S$450. That's roughly 3 payments of S$150, subject to approval."
 
 **Step 2: DEVICE DETAILS** (Ask in this order, ONE at a time)
 1. Storage (if applicable): "Storage size?" → Save → "Noted."
@@ -660,11 +526,12 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
      - Email: {email}
 
      Payout: {method}
-   - Voice says (≤10 words): "Everything correct? Say OK to submit."
-   - WAIT for user confirmation ("OK", "Yes", "Correct", "Submit", "Looks good")
-   - If user confirms → Proceed to Step 7 (submit immediately)
-   - If user says "Wait"/"Stop"/"Hold" → Wait for correction
-   - If user corrects something ("Email is bobby@hotmail not bobby@gmail") → Update that field with tradein_update_lead, show new summary, ask again: "Updated. Everything correct now?"
+   - Voice says (≤15 words): "Check the summary. I'll submit in 10 seconds unless you need to change something."
+   - **BUFFER TIME**: Wait 10 seconds for user to review
+   - If user says "OK"/"Yes"/"Submit" → Submit immediately (skip wait)
+   - If user says "Wait"/"Stop"/"Hold" → Cancel timer, wait for correction
+   - If user corrects something ("Email is bobby@hotmail not bobby@gmail") → Update, show new summary, ask again with buffer
+   - If 10 seconds pass with no objection → Auto-submit
 
 8. **If user hesitates** ("uh", "um", pauses):
    - Say NOTHING. Just wait.
@@ -712,14 +579,9 @@ Outside Singapore? "Sorry, Singapore only." Don't submit.
 "Confirm: trade {SOURCE} for {TARGET}?"
 WAIT for "yes/correct/yep" before continuing.
 
-**Step 2: Fetch BOTH Prices** (CRITICAL - Use normalize + priceLookup!)
-- For SOURCE device (trade-in):
-  1. normalizeProduct(query="{SOURCE device full name}")
-  2. priceLookup(productId="...", priceType="trade_in")
-- For TARGET device (retail):
-  1. normalizeProduct(query="{TARGET device full name}")
-  2. priceLookup(productId="...", priceType="retail")
-- DO NOT use searchProducts for pricing - it searches product catalog, not price grid!
+**Step 2: Fetch BOTH Prices** (CRITICAL - Use correct queries!)
+- Call searchProducts({query: "trade-in {SOURCE}"}) ← Trade-in value
+- Call searchProducts({query: "buy price {TARGET}"}) ← Retail price (MUST use "buy price"!)
 
 **Step 3: State Clear Pricing** (≤20 words)
 "Your {SOURCE} trades for S$[TRADE]. The {TARGET} is S$[BUY]. Top-up: S$[DIFFERENCE]."
@@ -735,55 +597,16 @@ WAIT for "yes/okay/sure/let's do it" before continuing.
 If NO: "No problem! Need help with anything else?"
 
 **Step 4: Follow COMPLETE Trade-In Flow** (ONLY if user said YES to proceed!)
-🔴 CRITICAL: This is a STRICT FORM - Follow steps 1→10 in EXACT ORDER. NO SKIPPING. NO FLEXIBILITY.
-
 1. ✅ Ask storage (if not mentioned): "Storage size?"
 2. ✅ Ask condition: "Condition of your {SOURCE}?"
 3. ✅ Ask accessories: "Got the box?"
 4. ✅ Call tradein_update_lead after EACH answer
-5. 🔴 MANDATORY CONTACT FORM (STRICT ORDER - ONE BY ONE):
-   Step 5a: "Your name?" → WAIT → repeat back → call tradein_update_lead({contact_name})
-   Step 5b: "Contact number?" → WAIT → repeat back → call tradein_update_lead({contact_phone})
-   Step 5c: "Email?" → WAIT → repeat back → call tradein_update_lead({contact_email})
-   ❌ NEVER ask all 3 at once
-   ❌ NEVER skip to phone without name
-   ❌ NEVER skip to email without phone
+5. ✅ Lock contact: "Contact number?" → repeat back → "Email?" → repeat back
 6. ✅ Ask for photo: "Photos help—want to send one?"
 7. ✅ Ask payout (if top-up mentioned): "Cash, PayNow, bank, or installments?"
-8. 🔴 FULL RECAP - DISPLAY AS STRUCTURED MARKDOWN:
-   Voice says: "Here's your complete summary"
-   Screen displays:
-
-   **TRADE-IN SUMMARY**
-
-   **DEVICE DETAILS:**
-   • From: {SOURCE BRAND MODEL STORAGE}
-   • Condition: {MINT/GOOD/FAIR}
-   • Accessories: {Box, Cables, Controller / None}
-
-   **TRADE-UP PRICING:**
-   • Trade-In Value: ~S${TRADE_VALUE}
-   • Target Device: {TARGET BRAND MODEL}
-   • Target Price: S${TARGET_PRICE}
-   • **Top-Up Required: S${TOP_UP}**
-
-   **CONTACT INFORMATION:**
-   • Name: {FULL NAME}
-   • Phone: {PHONE NUMBER}
-   • Email: {EMAIL ADDRESS}
-
-   **PREFERENCES:**
-   • Photos: {Provided / Not provided}
-   • Payout: {Cash / PayNow / Bank / Installments}
-
-   "Everything correct?" [WAIT for YES/NO]
-
-   If NO: "What needs changing?" → Update that field → Show full recap again
-   If YES: Proceed to Step 9
-9. ✅ Submit: Call tradein_submit_lead (ONLY after customer confirms "yes" to recap)
-10. ✅ Confirm: "Done! We've submitted to our team. Visit 21 Hougang St 51, #02-09, 12pm-8pm. Anything else?"
-
-🔴 CRITICAL: Once customer agrees to price (Step 3.5), you MUST complete ALL steps 1-10. Client cannot exit until form is complete or they explicitly cancel.
+8. ✅ Mini recap: "{SOURCE} good, box, {NAME} {PHONE}, email noted, {PAYOUT}. Change anything?"
+9. ✅ Submit: Call tradein_submit_lead
+10. ✅ Confirm: "Done! We'll review and contact you. Anything else?"
 
 **Example - CORRECT FLOW ✅:**
 User: "Trade my PS4 Pro 1TB for Xbox Series X Digital"
@@ -799,10 +622,6 @@ Agent: [tradein_update_lead({condition:"good"})]
 Agent: "Got the box?" [WAIT]
 User: "Yes"
 Agent: [tradein_update_lead({has_box:true})]
-Agent: "Your name?" [WAIT]
-User: "Bobby"
-Agent: "Got it, Bobby!" [WAIT]
-Agent: [tradein_update_lead({contact_name:"Bobby"})]
 Agent: "Contact number?" [WAIT]
 User: "8448 9068"
 Agent: "That's 8448 9068, correct?" [WAIT]
@@ -878,7 +697,7 @@ async def entrypoint(ctx: JobContext):
                 ),
                 voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
                 temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
-                # ServerVAD removed - using default turn detection (API changed)
+                # ServerVAD settings - using default turn detection
             ),
         )
     else:
@@ -898,7 +717,7 @@ async def entrypoint(ctx: JobContext):
             ),
             turn_detection=MultilingualModel(),
             vad=ctx.proc.userdata["vad"],
-            preemptive_generation=True,
+            preemptive_generation=False,  # listen for full turn before speaking
         )
 
     # Event handlers for dashboard logging
@@ -907,25 +726,17 @@ async def entrypoint(ctx: JobContext):
         """Capture user's final transcribed message"""
         nonlocal conversation_buffer
         conversation_buffer["user_message"] = msg.text
-        logger.info(f"[Voice] 🎤 User said: {msg.text}")
-        logger.info(
-            f"[Voice] 📦 Buffer now has user_message: {bool(conversation_buffer['user_message'])}"
-        )
+        logger.info(f"[Voice] User said: {msg.text}")
 
     @session.on("agent_speech_committed")
     def on_agent_speech(msg):
         """Capture agent's response and log to dashboard"""
         nonlocal conversation_buffer, participant_identity
         conversation_buffer["bot_response"] = msg.text
-        logger.info(f"[Voice] 🤖 Agent said: {msg.text}")
-        logger.info(
-            f"[Voice] 📦 Buffer status - user_message: {bool(conversation_buffer['user_message'])}, bot_response: {bool(conversation_buffer['bot_response'])}"
-        )
+        logger.info(f"[Voice] Agent said: {msg.text}")
 
         # Log complete turn to dashboard
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
-            logger.info(f"[Voice] ✅ Complete turn detected - logging to dashboard")
-
             # Get participant identity from room
             if not participant_identity:
                 for participant in ctx.room.remote_participants.values():
@@ -934,13 +745,9 @@ async def entrypoint(ctx: JobContext):
                         == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
                     ):
                         participant_identity = participant.identity
-                        logger.info(
-                            f"[Voice] 👤 Found participant: {participant_identity}"
-                        )
                         break
 
             user_id = participant_identity or room_name
-            logger.info(f"[Voice] 🆔 Using user_id: {user_id}, session_id: {room_name}")
 
             # Log to dashboard asynchronously
             asyncio.create_task(
@@ -954,11 +761,6 @@ async def entrypoint(ctx: JobContext):
 
             # Clear buffer for next turn
             conversation_buffer = {"user_message": "", "bot_response": ""}
-            logger.info(f"[Voice] 🧹 Buffer cleared for next turn")
-        else:
-            logger.warning(
-                f"[Voice] ⚠️ Incomplete turn - user_message: {bool(conversation_buffer['user_message'])}, bot_response: {bool(conversation_buffer['bot_response'])}"
-            )
 
     await session.start(
         agent=TradeZoneAgent(),
