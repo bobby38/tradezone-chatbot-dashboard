@@ -434,10 +434,11 @@ export default function ChatLogsPage() {
                             log.session_id || log.user_id || "session",
                           )}`}
                           className="text-primary hover:text-primary/80 underline"
+                          title={log.session_id || log.user_id || "unknown"}
                         >
                           {(log.session_id || log.user_id || "unknown").slice(
                             0,
-                            12,
+                            20,
                           )}
                         </Link>
                       </TableCell>
