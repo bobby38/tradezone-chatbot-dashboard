@@ -57,7 +57,10 @@ export async function POST(req: NextRequest) {
       const dispatchToken = new AccessToken(apiKey, apiSecret, {
         identity: "agent-dispatcher",
       });
-      dispatchToken.addGrant({ roomAdmin: true });
+      dispatchToken.addGrant({
+        roomAdmin: true,
+        room: roomName,
+      });
 
       const dispatchResponse = await fetch(
         `${apiUrl}/twirp/livekit.AgentDispatchService/CreateDispatch`,
