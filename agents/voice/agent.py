@@ -24,8 +24,8 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import noise_cancellation, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import noise_cancellation, openai, silero
+from livekit.plugins.openai import realtime
 
 logger = logging.getLogger("agent-amara")
 
@@ -636,24 +636,22 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
-    session = AgentSession(
-        stt=inference.STT(
-            model="assemblyai/universal-streaming",
-            language="en",
+    # Use OpenAI Realtime API - same as old working system
+session = AgentSession(
+    llm=realtime.RealtimeModel(
+        model=os.getenv(
+            "VOICE_LLM_MODEL",
+            "gpt-4o-mini-realtime-preview-2024-12-17",
         ),
-        llm=inference.LLM(
-            model=LLM_MODEL,
-            temperature=LLM_TEMPERATURE,
+        voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
+        temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
+        turn_detection=openai.realtime.ServerVAD(
+            threshold=0.55,
+            prefix_padding_ms=500,
+            silence_duration_ms=1200,
         ),
-        tts=inference.TTS(
-            model="cartesia/sonic-3",
-            voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
-            language="en",
-        ),
-        turn_detection=MultilingualModel(),
-        vad=ctx.proc.userdata["vad"],
-        preemptive_generation=True,
-    )
+    ),
+)
 
     # Event handlers for dashboard logging
     @session.on("user_speech_committed")
