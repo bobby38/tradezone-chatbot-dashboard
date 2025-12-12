@@ -236,10 +236,11 @@ async def calculate_tradeup_pricing(
     async with httpx.AsyncClient() as client:
         try:
             # Call the text chat API to calculate trade-up pricing
+            # Format MUST match pattern: "trade DEVICE for DEVICE" for proper detection
             response = await client.post(
                 f"{API_BASE_URL}/api/chatkit/agent",
                 json={
-                    "message": f"Calculate trade-up: {source_device} for {target_device}",
+                    "message": f"Trade {source_device} for {target_device}",
                     "sessionId": session_id,  # camelCase as required by API
                 },
                 headers=headers,
@@ -597,14 +598,15 @@ class TradeInChecklistState:
     """
 
     # Fixed order that CANNOT be changed
+    # API REQUIREMENT: name/phone/email MUST come BEFORE condition/accessories
     STEPS = [
         "storage",  # 0: Storage (if not already specified)
-        "condition",  # 1: Device condition
-        "accessories",  # 2: Box/accessories
-        "photos",  # 3: Photos acknowledgment
-        "name",  # 4: Contact name
-        "phone",  # 5: Contact phone
-        "email",  # 6: Contact email
+        "name",  # 1: Contact name (MUST be before condition per API)
+        "phone",  # 2: Contact phone (MUST be before condition per API)
+        "email",  # 3: Contact email (MUST be before condition per API)
+        "condition",  # 4: Device condition (after contact info)
+        "accessories",  # 5: Box/accessories
+        "photos",  # 6: Photos acknowledgment
         "payout",  # 7: Payout preference (skip for trade-up)
         "recap",  # 8: Show summary
         "submit",  # 9: Final submission
@@ -972,63 +974,80 @@ Outside Singapore? "Sorry, Singapore only." Don't submit.
 WAIT for "yes/correct/yep" before continuing.
 
 **Step 2: Calculate Trade-Up Pricing** (CRITICAL - Use the pricing tool!)
+🔴 NO SPEECH NEEDED - typing indicator shows automatically while tool runs
 🔴 MANDATORY: Call calculate_tradeup_pricing({source_device: "{SOURCE}", target_device: "{TARGET}"})
 - This returns ACCURATE pricing using the same logic as text chat
 - Returns: trade-in value, retail price (from price hints, NOT catalog), and top-up amount
 - DO NOT use searchProducts for pricing - it returns wrong catalog prices!
 
-**Step 3: State Clear Pricing** (≤20 words)
+**Step 4: Show Pricing Breakdown** (≤20 words)
 "Your {SOURCE} trades for S$[TRADE]. The {TARGET} is S$[BUY]. Top-up: S$[DIFFERENCE]."
-Example: "Steam Deck trades S$300. PS5 Pro S$900. Top-up: S$600."
-🔴 AFTER stating prices, you MUST call tradein_update_lead with:
-- model: "{SOURCE}"
-- target_device_name: "{TARGET}"
-- source_price_quoted: [TRADE]
-- target_price_quoted: [BUY]
-- top_up_amount: [DIFFERENCE]
+Example: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600."
 
-**Step 3.5: Ask to Proceed** (≤5 words)
-"Want to proceed with this trade-up?"
+**Step 5: Ask to Proceed** (≤5 words)
+"Want to proceed?"
 WAIT for "yes/okay/sure/let's do it" before continuing.
 If NO: "No problem! Need help with anything else?"
 
-**Step 4: Follow COMPLETE Trade-In Flow** (ONLY if user said YES to proceed!)
+**Step 6: Collect Contact Info FIRST** (ONLY if user said YES to proceed!)
+🔴 CRITICAL ORDER - API REQUIRES contact info BEFORE device details:
 1. ✅ Ask storage (if not mentioned): "Storage size?"
-2. ✅ Ask condition: "Condition of your {SOURCE}?"
-3. ✅ Ask accessories: "Got the box?"
-4. ✅ Call tradein_update_lead after EACH answer
-5. ✅ Lock contact: "Contact number?" → repeat back → "Email?" → repeat back
-6. ✅ Ask for photo: "Photos help—want to send one?"
-7. ✅ Ask payout (if top-up mentioned): "Cash, PayNow, bank, or installments?"
-8. ✅ Mini recap: "{SOURCE} good, box, {NAME} {PHONE}, email noted, {PAYOUT}. Change anything?"
-9. ✅ Submit: Call tradein_submit_lead
-10. ✅ Confirm: "Done! We'll review and contact you. Anything else?"
+2. ✅ Ask name: "Your name?"
+3. ✅ Ask phone: "Contact number?" → repeat back for confirmation
+4. ✅ Ask email: "Email address?" → repeat back for confirmation
+5. ✅ NOW call tradein_update_lead with EXACT field names:
+   ```
+   tradein_update_lead(
+     model="MSI Claw",              # Source device model (NOT brand+model, just model)
+     storage="1TB",                  # Storage size
+     target_device_name="PS5 Pro 2TB Digital",  # Full target device name
+     contact_name="John",            # User's name
+     contact_phone="84489068",       # Phone WITHOUT dashes/spaces
+     contact_email="john@example.com",  # Email address
+     source_price_quoted=300,        # Trade-in value from calculate_tradeup_pricing
+     target_price_quoted=900,        # Retail price from calculate_tradeup_pricing
+     top_up_amount=600               # Top-up from calculate_tradeup_pricing
+   )
+   ```
+   🚨 If this call FAILS with "Invalid fields" error, DO NOT continue!
+   Tell user: "I'm having trouble saving the details. Let me connect you with staff."
+   Then call: sendemail(info_request="Trade-up submission failed - {SOURCE} for {TARGET}, contact {NAME} {PHONE}")
+
+**Step 7: Collect Device Details** (After contact info saved)
+6. ✅ Ask condition: "Condition of your {SOURCE}? Mint, good, fair, or faulty?"
+7. ✅ Ask accessories: "Got the box and accessories?"
+8. ✅ Call tradein_update_lead after EACH answer
+9. ✅ Ask for photo: "Photos help—want to send one?"
+10. ✅ Mini recap: "{SOURCE} {CONDITION}, {ACCESSORIES}, {NAME} {PHONE}, email noted. Correct?"
+11. ✅ Submit: Call tradein_submit_lead
+12. ✅ Confirm: "Trade-up submitted! We'll contact you to arrange. Anything else?"
 
 **Example - CORRECT FLOW ✅:**
-User: "Trade my PS4 Pro 1TB for Xbox Series X Digital"
-Agent: "Confirm: PS4 Pro for Xbox Series X?" [WAIT]
+User: "Trade my MSI Claw 1TB for PS5 Pro 2TB Digital"
+Agent: "Confirm: trade MSI Claw 1TB for PS5 Pro 2TB Digital?" [WAIT]
 User: "Yes"
-Agent: [calculate_tradeup_pricing({source_device:"PS4 Pro 1TB", target_device:"Xbox Series X Digital"})]
-Agent: "Your PS4 Pro trades for S$100. The Xbox Series X is S$699. Top-up: S$599."
-Agent: [tradein_update_lead({model:"PS4 Pro 1TB", target_device_name:"Xbox Series X Digital", source_price_quoted:100, target_price_quoted:699, top_up_amount:599})]
-Agent: "Condition of your PS4?" [WAIT]
-User: "Good condition"
-Agent: [tradein_update_lead({condition:"good"})]
-Agent: "Got the box?" [WAIT]
+Agent: [calculate_tradeup_pricing(source_device="MSI Claw 1TB", target_device="PS5 Pro 2TB Digital")] [typing indicator shows]
+Agent: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600. Want to proceed?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead({has_box:true})]
+Agent: "Your name?" [WAIT]
+User: "Bobby"
 Agent: "Contact number?" [WAIT]
 User: "8448 9068"
-Agent: "That's 8448 9068, correct?" [WAIT]
+Agent: "That's 84489068, correct?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead({contact_phone:"8448 9068"})]
-Agent: "Email for quote?" [WAIT]
+Agent: "Email?" [WAIT]
 User: "bobby@hotmail.com"
-Agent: "So bobby@hotmail.com?" [WAIT]
+Agent: "bobby@hotmail.com, right?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead({contact_email:"bobby@hotmail.com"})]
+Agent: [tradein_update_lead(model="Claw", storage="1TB", target_device_name="PS5 Pro 2TB Digital", contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com", source_price_quoted=300, target_price_quoted=900, top_up_amount=600)]
+Agent: "Condition of your MSI Claw? Mint, good, fair, or faulty?" [WAIT]
+User: "Good"
+Agent: [tradein_update_lead(condition="good")]
+Agent: "Got the box?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(has_box=true)]
 Agent: "Photos help—want to send one?" [WAIT]
-User: "No"
+User: "No photos"
 Agent: [tradein_update_lead({photos_provided:false})]
 Agent: "Noted—final quote after inspection. Installments or cash top-up?"
 User: "Installments"
