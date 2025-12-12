@@ -2189,10 +2189,22 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       params.tradeUpPricingSummary?.source &&
         params.tradeUpPricingSummary?.target,
     );
+
+    console.log("[ChatKit] Trade-up detection:", {
+      isTradeUp,
+      hasPayout,
+      tradeUpPricingSummary: params.tradeUpPricingSummary,
+      source: params.tradeUpPricingSummary?.source,
+      target: params.tradeUpPricingSummary?.target,
+      source_device_name: detail.source_device_name,
+      target_device_name: detail.target_device_name,
+    });
+
     if (isTradeUp && !hasPayout) {
       // Do NOT write to DB with a non-enum value; just mark as satisfied in-memory
       hasPayout = true;
       detail = { ...detail, preferred_payout: "top_up" };
+      console.log("[ChatKit] Trade-up detected, auto-setting hasPayout=true");
     }
 
     // Check if photos step acknowledged (encouraged but no longer blocking email)
@@ -4771,7 +4783,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                     latency_ms: 0,
                     error_message: "Missing required fields",
                   });
-                  break;
+                  // 🔧 FIX: Must push tool response to messages array, not break
+                  messages.push({
+                    role: "tool",
+                    tool_call_id: toolCall.id,
+                    content: toolResult,
+                  });
+                  continue; // Continue to next tool call instead of break
                 }
               } catch (guardError) {
                 console.warn("[ChatKit] Submit guard check failed", guardError);
@@ -4815,7 +4833,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   latency_ms: Date.now() - toolStart,
                   error_message: "Missing explicit yes",
                 });
-                break;
+                // 🔧 FIX: Must push tool response to messages array, not break
+                messages.push({
+                  role: "tool",
+                  tool_call_id: toolCall.id,
+                  content: toolResult,
+                });
+                continue; // Continue to next tool call instead of break
               }
 
               const { emailSent } = await submitTradeInLead({
@@ -5456,6 +5480,59 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         lastTradeInPrice,
         lastRetailPrice,
       });
+    }
+
+    // 🔧 FIX: Persist trade-up data BEFORE auto-submit check
+    // This ensures auto-submit can detect it's a trade-up and skip payout validation
+    if (
+      tradeInLeadId &&
+      tradeUpPricingSummary &&
+      tradeUpPricingSummary.source &&
+      tradeUpPricingSummary.target
+    ) {
+      const {
+        source,
+        target,
+        tradeValue,
+        retailPrice,
+        topUp,
+        tradeVersion,
+        retailVersion,
+      } = tradeUpPricingSummary;
+
+      if (tradeValue != null && retailPrice != null && topUp != null) {
+        console.log(
+          "[ChatKit] Pre-persisting trade-up data before auto-submit",
+          {
+            source,
+            target,
+            tradeValue,
+            retailPrice,
+            topUp,
+          },
+        );
+
+        try {
+          await updateTradeInLead(tradeInLeadId, {
+            initial_quote_given: true,
+            source_device_name: source,
+            source_price_quoted: tradeValue,
+            target_device_name: target,
+            target_price_quoted: retailPrice,
+            top_up_amount: topUp,
+            quote_timestamp: new Date().toISOString(),
+            pricing_version: tradeVersion || retailVersion || undefined,
+          });
+          console.log(
+            "[ChatKit] Trade-up data persisted successfully before auto-submit",
+          );
+        } catch (prePersistError) {
+          console.warn(
+            "[ChatKit] Failed to pre-persist trade-up data",
+            prePersistError,
+          );
+        }
+      }
     }
 
     if (tradeInLeadId) {
