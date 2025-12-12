@@ -57,9 +57,17 @@ if not API_KEY:
 else:
     logger.info(f"[Voice Agent] CHATKIT_API_KEY prefix = {API_KEY[:8]}")
 
-# Global state machine instance (shared across all sessions for now)
-# TODO: In production, use session-based state management
-_checklist_state = None
+# Session-scoped checklist states (keyed by LiveKit room/session id)
+_checklist_states: Dict[str, "TradeInChecklistState"] = {}
+
+
+def _get_checklist(session_id: str) -> "TradeInChecklistState":
+    state = _checklist_states.get(session_id)
+    if state is None:
+        state = TradeInChecklistState()
+        _checklist_states[session_id] = state
+        logger.info(f"[checklist] 🆕 Initialized checklist for session {session_id}")
+    return state
 
 
 # ============================================================================
@@ -302,8 +310,6 @@ async def tradein_update_lead(
     top_up_amount: float = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
-    global _checklist_state
-
     logger.warning(
         f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
     )
@@ -322,10 +328,7 @@ async def tradein_update_lead(
         logger.error("[tradein_update_lead] ❌ No session_id available!")
         return "Failed to save details - session not found. Please try again."
 
-    # Initialize state machine if not already created
-    if _checklist_state is None:
-        _checklist_state = TradeInChecklistState()
-        logger.info("[tradein_update_lead] 🆕 Initialized checklist state machine")
+    checklist_state = _get_checklist(session_id)
 
         # Auto-detect if device has no storage based on category
         if category:
@@ -340,7 +343,7 @@ async def tradein_update_lead(
                 "watch",
             ]
             if category.lower() in no_storage_categories:
-                _checklist_state.mark_no_storage()
+                checklist_state.mark_no_storage()
 
         # Also check model name for clues
         if model:
@@ -359,7 +362,7 @@ async def tradein_update_lead(
                     "cable",
                 ]
                 if any(keyword in model_lower for keyword in no_storage_keywords):
-                    _checklist_state.mark_no_storage()
+                    checklist_state.mark_no_storage()
 
             # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
             import re
@@ -370,10 +373,10 @@ async def tradein_update_lead(
                     f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
                 )
                 # Mark storage as already collected so we skip asking
-                _checklist_state.mark_field_collected("storage", "specified_in_model")
+                checklist_state.mark_field_collected("storage", "specified_in_model")
 
     # 🔒 ENFORCE state machine order - validate that we're collecting the right field
-    current_step = _checklist_state.get_current_step()
+    current_step = checklist_state.get_current_step()
 
     # Map parameters to step names
     field_step_mapping = {
@@ -420,7 +423,7 @@ async def tradein_update_lead(
         # Trade-up flows should NOT write payout to the DB (enum lacks "top-up")
         inferred_payout = None
         trade_up_mode = True
-        _checklist_state.is_trade_up = True
+        checklist_state.is_trade_up = True
         logger.info(
             "[tradein_update_lead] 🔄 Detected trade-up, skipping payout step and omitting preferred_payout"
         )
@@ -446,7 +449,7 @@ async def tradein_update_lead(
         preferred_payout = None
 
     # Hard guards: enforce strict step-by-step collection
-    current_step = _checklist_state.get_current_step()
+    current_step = checklist_state.get_current_step()
 
     if current_step == "storage":
         if not storage:
@@ -491,23 +494,23 @@ async def tradein_update_lead(
     # Optimistically advance local checklist when a field is provided,
     # so we keep asking the next step even if the API call fails.
     if storage:
-        _checklist_state.mark_field_collected("storage", storage)
+        checklist_state.mark_field_collected("storage", storage)
     if condition:
-        _checklist_state.mark_field_collected("condition", condition)
+        checklist_state.mark_field_collected("condition", condition)
     if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
-        _checklist_state.mark_field_collected("accessories", True)
+        checklist_state.mark_field_collected("accessories", True)
     if photos_acknowledged is not None:
-        _checklist_state.mark_field_collected("photos", photos_acknowledged)
+        checklist_state.mark_field_collected("photos", photos_acknowledged)
     if contact_name:
-        _checklist_state.mark_field_collected("name", contact_name)
+        checklist_state.mark_field_collected("name", contact_name)
     if contact_phone:
-        _checklist_state.mark_field_collected("phone", contact_phone)
+        checklist_state.mark_field_collected("phone", contact_phone)
     if contact_email:
-        _checklist_state.mark_field_collected("email", contact_email)
+        checklist_state.mark_field_collected("email", contact_email)
     if trade_up_mode:
-        _checklist_state.mark_field_collected("payout", "trade-up")
+        checklist_state.mark_field_collected("payout", "trade-up")
     elif preferred_payout:
-        _checklist_state.mark_field_collected("payout", preferred_payout)
+        checklist_state.mark_field_collected("payout", preferred_payout)
 
     async with httpx.AsyncClient() as client:
         try:
@@ -552,8 +555,8 @@ async def tradein_update_lead(
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
 
             # Return the next required question with STRICT enforcement
-            next_question = _checklist_state.get_next_question()
-            current_step = _checklist_state.get_current_step()
+            next_question = checklist_state.get_next_question()
+            current_step = checklist_state.get_current_step()
             logger.info(
                 f"[tradein_update_lead] 📋 Current step: {current_step}, Next question: {next_question}"
             )
@@ -565,8 +568,8 @@ async def tradein_update_lead(
                 return "✅ All information collected. 🚨 SYSTEM RULE: You MUST call tradein_submit_lead now. DO NOT ask any more questions."
             else:
                 # List all fields we're still waiting for to prevent skipping
-                remaining_steps = _checklist_state.STEPS[
-                    _checklist_state.current_step_index :
+                remaining_steps = checklist_state.STEPS[
+                    checklist_state.current_step_index :
                 ]
                 return f"✅ Saved. 🚨 SYSTEM RULE: You MUST ask ONLY '{next_question}' next. DO NOT skip to {remaining_steps[1] if len(remaining_steps) > 1 else 'submit'} or any other field. Current checklist step: {current_step}."
         except Exception as e:
@@ -588,22 +591,15 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
         session_id = None
 
     # 🔒 Pre-flight guard: refuse to submit if checklist is missing required fields
-    global _checklist_state
-    if _checklist_state is None:
-        _checklist_state = TradeInChecklistState()
+    checklist_state = _get_checklist(session_id or "default_submit")
 
     required_fields = ["condition", "name", "phone", "email"]
     missing_steps = [
-        field
-        for field in required_fields
-        if field not in _checklist_state.collected_data
+        field for field in required_fields if field not in checklist_state.collected_data
     ]
 
     # Payout is required unless trade-up; trade-up marks payout as collected
-    if (
-        not _checklist_state.is_trade_up
-        and "payout" not in _checklist_state.collected_data
-    ):
+    if not checklist_state.is_trade_up and "payout" not in checklist_state.collected_data:
         missing_steps.append("payout")
 
     if missing_steps:
