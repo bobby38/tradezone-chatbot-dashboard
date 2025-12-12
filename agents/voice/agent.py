@@ -119,6 +119,16 @@ async def log_to_dashboard(
 async def searchProducts(context: RunContext, query: str) -> str:
     """Search TradeZone product catalog using vector database. Handles both regular products and trade-in pricing."""
     logger.warning(f"[searchProducts] ⚠️ CALLED with query: {query}")
+
+    # 🔒 BLOCK product listings during trade-up pricing (only return price text)
+    is_trade_pricing = any(
+        keyword in query.lower()
+        for keyword in ["trade-in", "trade in", "tradein", "buy price", "trade price"]
+    )
+    if is_trade_pricing:
+        logger.info(
+            f"[searchProducts] 🔒 Trade pricing query detected - will skip product cards"
+        )
     headers = build_auth_headers()
 
     async with httpx.AsyncClient() as client:
@@ -138,7 +148,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                 products_data = result.get("products", [])
 
                 # Send structured product data to widget for visual display
-                if products_data:
+                # 🔒 SKIP product cards during trade pricing (only show price text)
+                if products_data and not is_trade_pricing:
                     try:
                         room = get_job_context().room
                         await room.local_participant.publish_data(
@@ -159,6 +170,10 @@ async def searchProducts(context: RunContext, query: str) -> str:
                         logger.error(
                             f"[searchProducts] Failed to send visual data: {e}"
                         )
+                elif is_trade_pricing:
+                    logger.info(
+                        f"[searchProducts] 🔒 Skipped sending {len(products_data) if products_data else 0} product cards (trade pricing mode)"
+                    )
 
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
                 return answer if answer else "No products found"
@@ -216,8 +231,14 @@ async def tradein_update_lead(
     try:
         room = get_job_context().room
         session_id = room.name
-    except Exception:
+        logger.info(f"[tradein_update_lead] Session ID from room: {session_id}")
+    except Exception as e:
+        logger.error(f"[tradein_update_lead] Failed to get room: {e}")
         session_id = None
+
+    if not session_id:
+        logger.error("[tradein_update_lead] ❌ No session_id available!")
+        return "Failed to save details - session not found. Please try again."
 
     # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
     inferred_payout = preferred_payout
