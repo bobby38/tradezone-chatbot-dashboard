@@ -252,6 +252,66 @@ async def tradein_update_lead(
         _checklist_state = TradeInChecklistState()
         logger.info("[tradein_update_lead] 🆕 Initialized checklist state machine")
 
+    # 🔒 ENFORCE state machine order - validate that we're collecting the right field
+    current_step = _checklist_state.get_current_step()
+
+    # Map parameters to step names
+    field_step_mapping = {
+        "storage": "storage",
+        "condition": "condition",
+        "notes": "accessories",  # notes containing box/accessories info
+        "photos_acknowledged": "photos",
+        "contact_name": "name",
+        "contact_phone": "phone",
+        "contact_email": "email",
+        "preferred_payout": "payout",
+    }
+
+    # Check if any field is being set that's not the current step
+    fields_being_set = []
+    if storage:
+        fields_being_set.append("storage")
+    if condition:
+        fields_being_set.append("condition")
+    if notes and ("box" in notes.lower() or "accessories" in notes.lower()):
+        fields_being_set.append("accessories")
+    if photos_acknowledged is not None:
+        fields_being_set.append("photos")
+    if contact_name:
+        fields_being_set.append("name")
+    if contact_phone:
+        fields_being_set.append("phone")
+    if contact_email:
+        fields_being_set.append("email")
+    if preferred_payout:
+        fields_being_set.append("payout")
+
+    # Allow setting multiple fields on first call (when model/brand/category are provided)
+    # But after initialization, ONLY allow current step
+    if _checklist_state.current_step_index > 0:
+        for field in fields_being_set:
+            if field != current_step and field not in _checklist_state.collected_data:
+                logger.warning(
+                    f"[tradein_update_lead] ⚠️ BLOCKED: Trying to set '{field}' but current step is '{current_step}'. Ignoring out-of-order field."
+                )
+                # Don't block the whole call, just skip the out-of-order field
+                if field == "storage":
+                    storage = None
+                elif field == "condition":
+                    condition = None
+                elif field == "accessories":
+                    notes = None
+                elif field == "photos":
+                    photos_acknowledged = None
+                elif field == "name":
+                    contact_name = None
+                elif field == "phone":
+                    contact_phone = None
+                elif field == "email":
+                    contact_email = None
+                elif field == "payout":
+                    preferred_payout = None
+
     # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
     inferred_payout = preferred_payout
     if target_device:
@@ -313,17 +373,24 @@ async def tradein_update_lead(
             if inferred_payout:
                 _checklist_state.mark_field_collected("payout", inferred_payout)
 
-            # Return the next required question
+            # Return the next required question with STRICT enforcement
             next_question = _checklist_state.get_next_question()
-            logger.info(f"[tradein_update_lead] 📋 Next question: {next_question}")
+            current_step = _checklist_state.get_current_step()
+            logger.info(
+                f"[tradein_update_lead] 📋 Current step: {current_step}, Next question: {next_question}"
+            )
 
-            # If we're at recap or submit, return different message
+            # 🔒 FORCE the exact next question - LLM MUST ask this and ONLY this
             if next_question == "recap":
-                return "Got it. Ready for a quick recap?"
+                return "✅ Information saved. 🚨 SYSTEM RULE: You MUST now display the complete trade-in summary and ask for confirmation. DO NOT ask any other questions."
             elif next_question == "submit":
-                return "All set! Submitting now..."
+                return "✅ All information collected. 🚨 SYSTEM RULE: You MUST call tradein_submit_lead now. DO NOT ask any more questions."
             else:
-                return f"Got it. {next_question}"
+                # List all fields we're still waiting for to prevent skipping
+                remaining_steps = _checklist_state.STEPS[
+                    _checklist_state.current_step_index :
+                ]
+                return f"✅ Saved. 🚨 SYSTEM RULE: You MUST ask ONLY '{next_question}' next. DO NOT skip to {remaining_steps[1] if len(remaining_steps) > 1 else 'submit'} or any other field. Current checklist step: {current_step}."
         except Exception as e:
             logger.error(f"[tradein_update_lead] ❌ Exception: {e}")
             return "Information saved"
