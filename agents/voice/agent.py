@@ -330,50 +330,66 @@ async def tradein_update_lead(
 
     checklist_state = _get_checklist(session_id)
 
-        # Auto-detect if device has no storage based on category
-        if category:
-            no_storage_categories = [
+    # Reset checklist if a new trade pair is detected in the same session
+    pair_key = "|".join(
+        [
+            (brand or "").strip().lower(),
+            (model or "").strip().lower(),
+            (target_device_name or "").strip().lower(),
+        ]
+    )
+    if checklist_state.pair_key and pair_key and pair_key != checklist_state.pair_key:
+        checklist_state = TradeInChecklistState()
+        checklist_state.pair_key = pair_key
+        _checklist_states[session_id] = checklist_state
+        logger.info(f"[checklist] 🔄 Reset checklist for new pair: {pair_key}")
+    elif pair_key:
+        checklist_state.pair_key = pair_key
+
+    # Auto-detect if device has no storage based on category
+    if category:
+        no_storage_categories = [
+            "camera",
+            "accessory",
+            "accessories",
+            "controller",
+            "headset",
+            "monitor",
+            "tv",
+            "watch",
+        ]
+        if category.lower() in no_storage_categories:
+            checklist_state.mark_no_storage()
+
+    # Also check model name for clues
+    if model:
+        model_lower = model.lower()
+
+        # Check if it's a device type that doesn't have storage
+        if not category:
+            no_storage_keywords = [
                 "camera",
-                "accessory",
-                "accessories",
                 "controller",
                 "headset",
+                "headphone",
+                "speaker",
                 "monitor",
-                "tv",
                 "watch",
+                "cable",
             ]
-            if category.lower() in no_storage_categories:
+            if any(keyword in model_lower for keyword in no_storage_keywords):
                 checklist_state.mark_no_storage()
 
-        # Also check model name for clues
-        if model:
-            model_lower = model.lower()
+        # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
+        import re
 
-            # Check if it's a device type that doesn't have storage
-            if not category:
-                no_storage_keywords = [
-                    "camera",
-                    "controller",
-                    "headset",
-                    "headphone",
-                    "speaker",
-                    "monitor",
-                    "watch",
-                    "cable",
-                ]
-                if any(keyword in model_lower for keyword in no_storage_keywords):
-                    checklist_state.mark_no_storage()
-
-            # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
-            import re
-
-            storage_pattern = r"\b(\d+\s*(gb|tb|mb))\b"
-            if re.search(storage_pattern, model_lower):
-                logger.info(
-                    f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
-                )
-                # Mark storage as already collected so we skip asking
-                checklist_state.mark_field_collected("storage", "specified_in_model")
+        storage_pattern = r"\b(\d+\s*(gb|tb|mb))\b"
+        if re.search(storage_pattern, model_lower):
+            logger.info(
+                f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
+            )
+            # Mark storage as already collected so we skip asking
+            checklist_state.mark_field_collected("storage", "specified_in_model")
 
     # 🔒 ENFORCE state machine order - validate that we're collecting the right field
     current_step = checklist_state.get_current_step()
@@ -593,13 +609,26 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     # 🔒 Pre-flight guard: refuse to submit if checklist is missing required fields
     checklist_state = _get_checklist(session_id or "default_submit")
 
-    required_fields = ["condition", "name", "phone", "email"]
+    required_fields = [
+        "brand",
+        "model",
+        "storage",
+        "condition",
+        "name",
+        "phone",
+        "email",
+    ]
     missing_steps = [
-        field for field in required_fields if field not in checklist_state.collected_data
+        field
+        for field in required_fields
+        if field not in checklist_state.collected_data
     ]
 
     # Payout is required unless trade-up; trade-up marks payout as collected
-    if not checklist_state.is_trade_up and "payout" not in checklist_state.collected_data:
+    if (
+        not checklist_state.is_trade_up
+        and "payout" not in checklist_state.collected_data
+    ):
         missing_steps.append("payout")
 
     if missing_steps:
@@ -745,6 +774,7 @@ class TradeInChecklistState:
         self.skip_storage = (
             False  # For devices without storage (cameras, accessories, etc.)
         )
+        self.pair_key = None  # tracks (source/target) to allow per-trade reset
 
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
