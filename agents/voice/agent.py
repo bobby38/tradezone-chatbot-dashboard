@@ -441,6 +441,10 @@ async def tradein_update_lead(
     notes = _normalize(notes)
     target_device_name = _normalize(target_device_name)
 
+    # For trade-up, never send preferred_payout to API (enum has no "top-up")
+    if trade_up_mode:
+        preferred_payout = None
+
     # Hard guards: enforce strict step-by-step collection
     current_step = _checklist_state.get_current_step()
 
