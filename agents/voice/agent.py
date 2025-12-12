@@ -211,6 +211,77 @@ async def searchtool(context: RunContext, query: str) -> str:
 
 
 @function_tool
+async def calculate_tradeup_pricing(
+    context: RunContext,
+    source_device: str,
+    target_device: str,
+) -> str:
+    """
+    Calculate accurate trade-up pricing using the text chat API.
+    Use this when customer wants to trade Device A for Device B.
+    Returns: trade-in value, retail price, and top-up amount.
+    """
+    logger.warning(
+        f"[calculate_tradeup_pricing] ⚠️ CALLED with: source={source_device}, target={target_device}"
+    )
+    headers = build_auth_headers()
+
+    # Get session ID from room name
+    try:
+        room = get_job_context().room
+        session_id = room.name
+    except Exception:
+        session_id = "voice_pricing_calc"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # Call the text chat API to calculate trade-up pricing
+            response = await client.post(
+                f"{API_BASE_URL}/api/chatkit/agent",
+                json={
+                    "prompt": f"Calculate trade-up: {source_device} for {target_device}",
+                    "session_id": session_id,
+                    "user_id": "voice_agent",
+                    "skip_response": True,  # We only want the pricing calculation
+                },
+                headers=headers,
+                timeout=15.0,
+            )
+
+            if response.status_code >= 400:
+                logger.error(
+                    f"[calculate_tradeup_pricing] ❌ {response.status_code}: {response.text}"
+                )
+                return f"Unable to calculate pricing. Please try again."
+
+            result = response.json()
+            logger.info(f"[calculate_tradeup_pricing] ✅ Response: {result}")
+
+            # Extract trade-up pricing from response
+            trade_up_summary = result.get("tradeUpPricingSummary")
+            if trade_up_summary:
+                source_name = trade_up_summary.get("source", source_device)
+                target_name = trade_up_summary.get("target", target_device)
+                trade_value = trade_up_summary.get("tradeValue")
+                retail_price = trade_up_summary.get("retailPrice")
+                top_up = trade_up_summary.get("topUp")
+
+                if (
+                    trade_value is not None
+                    and retail_price is not None
+                    and top_up is not None
+                ):
+                    return f"{source_name} trade-in value: S${int(trade_value)}. {target_name} retail price: S${int(retail_price)}. Top-up required: S${int(top_up)}."
+
+            # Fallback: extract from response text
+            return result.get("response", "Unable to calculate pricing.")
+
+        except Exception as e:
+            logger.error(f"[calculate_tradeup_pricing] ❌ Exception: {e}")
+            return "Pricing calculation unavailable. Please provide device details."
+
+
+@function_tool
 async def tradein_update_lead(
     context: RunContext,
     category: str = None,
@@ -225,6 +296,9 @@ async def tradein_update_lead(
     notes: str = None,
     target_device_name: str = None,
     photos_acknowledged: bool = None,
+    source_price_quoted: float = None,
+    target_price_quoted: float = None,
+    top_up_amount: float = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
     global _checklist_state
@@ -382,6 +456,9 @@ async def tradein_update_lead(
                     "preferred_payout": inferred_payout,
                     "notes": notes,
                     "target_device_name": target_device_name,
+                    "source_price_quoted": source_price_quoted,
+                    "target_price_quoted": target_price_quoted,
+                    "top_up_amount": top_up_amount,
                 }.items()
                 if v is not None
             }
@@ -651,6 +728,7 @@ class TradeZoneAgent(Agent):
             tools=[
                 searchProducts,
                 searchtool,
+                calculate_tradeup_pricing,
                 tradein_update_lead,
                 tradein_submit_lead,
                 sendemail,
@@ -895,17 +973,21 @@ Outside Singapore? "Sorry, Singapore only." Don't submit.
 "Confirm: trade {SOURCE} for {TARGET}?"
 WAIT for "yes/correct/yep" before continuing.
 
-**Step 2: Fetch BOTH Prices** (CRITICAL - Use correct queries!)
-- Call searchProducts({query: "trade-in {SOURCE}"}) ← Trade-in value
-- Call searchProducts({query: "buy price {TARGET}"}) ← Retail price (MUST use "buy price"!)
+**Step 2: Calculate Trade-Up Pricing** (CRITICAL - Use the pricing tool!)
+🔴 MANDATORY: Call calculate_tradeup_pricing({source_device: "{SOURCE}", target_device: "{TARGET}"})
+- This returns ACCURATE pricing using the same logic as text chat
+- Returns: trade-in value, retail price (from price hints, NOT catalog), and top-up amount
+- DO NOT use searchProducts for pricing - it returns wrong catalog prices!
 
 **Step 3: State Clear Pricing** (≤20 words)
 "Your {SOURCE} trades for S$[TRADE]. The {TARGET} is S$[BUY]. Top-up: S$[DIFFERENCE]."
+Example: "Steam Deck trades S$300. PS5 Pro S$900. Top-up: S$600."
 🔴 AFTER stating prices, you MUST call tradein_update_lead with:
-- price_hint: trade-in value
-- range_min: retail price
-- range_max: retail price
-- notes: "Trade-up: {SOURCE} ~S$[TRADE] → {TARGET} S$[BUY] → Top-up ~S$[DIFFERENCE]"
+- model: "{SOURCE}"
+- target_device_name: "{TARGET}"
+- source_price_quoted: [TRADE]
+- target_price_quoted: [BUY]
+- top_up_amount: [DIFFERENCE]
 
 **Step 3.5: Ask to Proceed** (≤5 words)
 "Want to proceed with this trade-up?"
@@ -928,10 +1010,9 @@ If NO: "No problem! Need help with anything else?"
 User: "Trade my PS4 Pro 1TB for Xbox Series X Digital"
 Agent: "Confirm: PS4 Pro for Xbox Series X?" [WAIT]
 User: "Yes"
-Agent: [searchProducts("trade-in PS4 Pro 1TB")]
-Agent: [searchProducts("buy price Xbox Series X Digital")]
+Agent: [calculate_tradeup_pricing({source_device:"PS4 Pro 1TB", target_device:"Xbox Series X Digital"})]
 Agent: "Your PS4 Pro trades for S$100. The Xbox Series X is S$699. Top-up: S$599."
-Agent: [tradein_update_lead({brand:"Sony", model:"PS4 Pro", storage:"1TB"})]
+Agent: [tradein_update_lead({model:"PS4 Pro 1TB", target_device_name:"Xbox Series X Digital", source_price_quoted:100, target_price_quoted:699, top_up_amount:599})]
 Agent: "Condition of your PS4?" [WAIT]
 User: "Good condition"
 Agent: [tradein_update_lead({condition:"good"})]
