@@ -45,11 +45,12 @@ The voice agent uses a **hybrid architecture**:
 - **VAD**: Silero voice activity detection
 
 ### Tools Available
-All 5 tools call Next.js APIs to maintain sync with text chat:
-- `searchProducts` - Product catalog search
+All 6 tools call Next.js APIs to maintain sync with text chat:
+- `searchProducts` - Product catalog search (blocks product cards during trade pricing)
 - `searchtool` - Website content search
-- `tradein_update_lead` - Save trade-in details
-- `tradein_submit_lead` - Submit trade-in
+- `calculate_tradeup_pricing` - **NEW**: Calls text chat API for accurate trade-up pricing (uses retail price hints, not catalog)
+- `tradein_update_lead` - Save trade-in details (with deterministic state machine enforcement)
+- `tradein_submit_lead` - Submit completed trade-in
 - `sendemail` - Escalate to staff
 
 ### How to Run
@@ -104,7 +105,15 @@ Agent is running and ready! Need to create frontend client to test. See `agents/
 
 ### Known issue & fix summary
 - Recent 401/unauthenticated errors were caused by mismatched LiveKit credentials between the Next.js token service and the voice agent. Using the **same** API key/secret above in both services resolves dispatch/auth failures.
-- Dec 12, 2025 trade-in hardening:
+- **Dec 12, 2025 - Voice Agent Overhaul (LATEST)** (commits `82ce8aa`, `88309b9`, `298e660`, `3e91c5d`, `3cbea4d`):
+  1. **Deterministic State Machine**: Enforces fixed checklist order (storage → condition → accessories → photos → name → phone → email → payout → recap → submit). Prevents LLM from asking multiple fields together or skipping steps.
+  2. **Smart Storage Detection**: Auto-detects storage in model name (e.g., "512GB") and skips redundant "Storage size?" question. Also skips storage for devices without it (cameras, accessories).
+  3. **API Field Fix**: Changed `target_device` → `target_device_name` to match backend validation.
+  4. **Trade-Up Pricing Integration**: New `calculate_tradeup_pricing` tool calls text chat API for accurate pricing using retail price hints (PS5 Pro 2TB: S$900, not S$499 catalog price).
+  5. **Strict Enforcement**: Tool responses include `🚨 SYSTEM RULE` markers forcing exact next question. Field validation blocks out-of-order collection.
+  - **Expected Behavior**: One question at a time, never bundles fields, auto-skips payout for trade-ups, pricing synchronized with text chat, lead data properly saved
+  - **Deployment Note**: Requires Coolify to rebuild Python voice agent container. Check logs for `[calculate_tradeup_pricing]` and `[ChecklistState]` messages.
+- Dec 12, 2025 trade-in hardening (earlier):
   - Trade/trade-up flows now block Woo/product listings entirely; prices come only from trade grid + trade vector + hints (e.g., Switch 2 retail S$500, Switch OLED trade S$100).
   - If variants exist, the agent may show up to 3 labeled price options (no images/links), then proceeds through a fixed checklist: condition → accessories → photos (reuse if present) → name → phone → email → payout → recap → submit.
   - If no price found or non-gadget item, the agent offers staff handoff instead of listing products.
