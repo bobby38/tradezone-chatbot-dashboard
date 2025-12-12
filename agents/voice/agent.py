@@ -239,10 +239,8 @@ async def calculate_tradeup_pricing(
             response = await client.post(
                 f"{API_BASE_URL}/api/chatkit/agent",
                 json={
-                    "prompt": f"Calculate trade-up: {source_device} for {target_device}",
-                    "session_id": session_id,
-                    "user_id": "voice_agent",
-                    "skip_response": True,  # We only want the pricing calculation
+                    "message": f"Calculate trade-up: {source_device} for {target_device}",
+                    "sessionId": session_id,  # camelCase as required by API
                 },
                 headers=headers,
                 timeout=15.0,
