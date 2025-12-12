@@ -223,7 +223,7 @@ async def tradein_update_lead(
     contact_email: str = None,
     preferred_payout: str = None,
     notes: str = None,
-    target_device: str = None,
+    target_device_name: str = None,
     photos_acknowledged: bool = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
@@ -359,7 +359,7 @@ async def tradein_update_lead(
 
     # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
     inferred_payout = preferred_payout
-    if target_device:
+    if target_device_name:
         inferred_payout = "top-up"
         _checklist_state.is_trade_up = True
         logger.info("[tradein_update_lead] 🔄 Detected trade-up, skipping payout step")
@@ -381,7 +381,7 @@ async def tradein_update_lead(
                     "contact_email": contact_email,
                     "preferred_payout": inferred_payout,
                     "notes": notes,
-                    "target_device": target_device,
+                    "target_device_name": target_device_name,
                 }.items()
                 if v is not None
             }
