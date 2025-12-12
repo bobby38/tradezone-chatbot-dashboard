@@ -505,12 +505,39 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
     headers = build_auth_headers()
 
-    # Get session ID from room name
+    # Get session ID from room name (voice sessions do not expose leadId directly)
     try:
         room = get_job_context().room
         session_id = room.name
     except Exception:
         session_id = None
+
+    # 🔒 Pre-flight guard: refuse to submit if checklist is missing required fields
+    global _checklist_state
+    if _checklist_state is None:
+        _checklist_state = TradeInChecklistState()
+
+    required_fields = ["condition", "name", "phone", "email"]
+    missing_steps = [
+        field
+        for field in required_fields
+        if field not in _checklist_state.collected_data
+    ]
+
+    # Payout is required unless trade-up; trade-up marks payout as collected
+    if not _checklist_state.is_trade_up and "payout" not in _checklist_state.collected_data:
+        missing_steps.append("payout")
+
+    if missing_steps:
+        logger.warning(
+            f"[tradein_submit_lead] ⛔ Blocked submit, missing: {missing_steps}"
+        )
+        next_step = missing_steps[0]
+        return (
+            "🚨 SYSTEM RULE: Submission blocked — missing required info. "
+            f"You MUST collect {', '.join(missing_steps)} using tradein_update_lead before submitting. "
+            f"Ask '{TradeInChecklistState.QUESTIONS.get(next_step, next_step)}' now."
+        )
 
     async with httpx.AsyncClient() as client:
         try:
@@ -521,17 +548,47 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
                 headers=headers,
                 timeout=10.0,
             )
+
+            # Surface validation errors to the LLM so it can recover
             if response.status_code >= 400:
                 logger.error(
                     f"[tradein_submit_lead] ❌ {response.status_code}: {response.text}"
                 )
-                return f"Submit failed ({response.status_code}) — please retry"
+                try:
+                    error_body = response.json()
+                except Exception:
+                    error_body = {"error": response.text}
+
+                fields = error_body.get("fields")
+                if fields:
+                    # Normalize DB field names to checklist labels
+                    friendly = {
+                        "contact_name": "name",
+                        "contact_phone": "phone",
+                        "contact_email": "email",
+                        "preferred_payout": "payout",
+                        "model": "model",
+                        "brand": "brand",
+                        "condition": "condition",
+                    }
+                    missing = [friendly.get(f, f) for f in fields]
+                    missing_msg = ", ".join(missing)
+                    return (
+                        "🚨 Submission failed: missing required details — "
+                        f"{missing_msg}. Ask and save them with tradein_update_lead, then try again."
+                    )
+
+                return (
+                    f"Submit failed ({response.status_code}). "
+                    "Ask the customer for the missing details, save with tradein_update_lead, then retry."
+                )
+
             result = response.json()
             logger.info(f"[tradein_submit_lead] ✅ Response: {result}")
             return result.get("message", "Trade-in submitted successfully")
         except Exception as e:
             logger.error(f"[tradein_submit_lead] ❌ Exception: {e}")
-            return "Trade-in submitted"
+            return "Submit failed — please retry after saving all details."
 
 
 @function_tool
