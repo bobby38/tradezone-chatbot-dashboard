@@ -424,6 +424,22 @@ async def tradein_update_lead(
             "[tradein_update_lead] 🔄 Detected trade-up, skipping payout step and omitting preferred_payout"
         )
 
+    # Normalize string fields: treat empty/whitespace as None so we don't send invalid enums
+    def _normalize(val):
+        if isinstance(val, str):
+            val = val.strip()
+            return val or None
+        return val
+
+    storage = _normalize(storage)
+    condition = _normalize(condition)
+    contact_name = _normalize(contact_name)
+    contact_phone = _normalize(contact_phone)
+    contact_email = _normalize(contact_email)
+    preferred_payout = _normalize(preferred_payout)
+    notes = _normalize(notes)
+    target_device_name = _normalize(target_device_name)
+
     async with httpx.AsyncClient() as client:
         try:
             data = {
