@@ -441,17 +441,44 @@ async def tradein_update_lead(
     notes = _normalize(notes)
     target_device_name = _normalize(target_device_name)
 
-    # Hard guards: don’t hit the API with missing required fields
-    if not condition:
-        return "🚨 SYSTEM RULE: Condition missing. Ask the customer for the device condition (mint/good/fair/faulty) and call tradein_update_lead again."
-    if not contact_name:
-        return "🚨 SYSTEM RULE: Name missing. Ask for their full name, then call tradein_update_lead."
-    if not contact_phone or len(re.sub(r"\\D", "", contact_phone)) < 8:
-        return "🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead."
-    if not contact_email or not re.match(
-        r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", contact_email
-    ):
-        return "🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead."
+    # Hard guards: enforce strict step-by-step collection
+    current_step = _checklist_state.get_current_step()
+
+    if current_step == "storage":
+        if not storage:
+            return "🚨 SYSTEM RULE: Storage missing. Ask for storage size (e.g., 1TB/512GB) and call tradein_update_lead again."
+
+    if current_step == "condition":
+        if not condition:
+            return "🚨 SYSTEM RULE: Condition missing. Ask for device condition (mint/good/fair/faulty) and call tradein_update_lead again."
+
+    if current_step == "accessories":
+        if not notes or (
+            "box" not in notes.lower() and "accessor" not in notes.lower()
+        ):
+            return "🚨 SYSTEM RULE: Box/accessories not captured. Ask if they have the box and accessories, then call tradein_update_lead."
+
+    if current_step == "photos":
+        if photos_acknowledged is None:
+            return "🚨 SYSTEM RULE: Photos step not acknowledged. Ask if they can provide photos; if no, note it, then call tradein_update_lead."
+
+    if current_step == "name":
+        if not contact_name:
+            return "🚨 SYSTEM RULE: Name missing. Ask for their full name, then call tradein_update_lead."
+
+    if current_step == "phone":
+        if not contact_phone or len(re.sub(r"\\D", "", contact_phone)) < 8:
+            return "🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead."
+
+    if current_step == "email":
+        if not contact_email or not re.match(
+            r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", contact_email
+        ):
+            return "🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead."
+
+    if current_step == "payout":
+        if not trade_up_mode and not preferred_payout:
+            return "🚨 SYSTEM RULE: Payout missing. Ask for payout preference (cash / PayNow / bank / installment) and call tradein_update_lead."
 
     async with httpx.AsyncClient() as client:
         try:
