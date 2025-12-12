@@ -56,6 +56,10 @@ if not API_KEY:
 else:
     logger.info(f"[Voice Agent] CHATKIT_API_KEY prefix = {API_KEY[:8]}")
 
+# Global state machine instance (shared across all sessions for now)
+# TODO: In production, use session-based state management
+_checklist_state = None
+
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -220,8 +224,11 @@ async def tradein_update_lead(
     preferred_payout: str = None,
     notes: str = None,
     target_device: str = None,
+    photos_acknowledged: bool = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
+    global _checklist_state
+
     logger.warning(
         f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
     )
@@ -240,10 +247,17 @@ async def tradein_update_lead(
         logger.error("[tradein_update_lead] ❌ No session_id available!")
         return "Failed to save details - session not found. Please try again."
 
+    # Initialize state machine if not already created
+    if _checklist_state is None:
+        _checklist_state = TradeInChecklistState()
+        logger.info("[tradein_update_lead] 🆕 Initialized checklist state machine")
+
     # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
     inferred_payout = preferred_payout
     if target_device:
         inferred_payout = "top-up"
+        _checklist_state.is_trade_up = True
+        logger.info("[tradein_update_lead] 🔄 Detected trade-up, skipping payout step")
 
     async with httpx.AsyncClient() as client:
         try:
@@ -280,7 +294,36 @@ async def tradein_update_lead(
                 return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
-            return result.get("message", "Trade-in information saved")
+
+            # Track state: mark fields as collected
+            if storage:
+                _checklist_state.mark_field_collected("storage", storage)
+            if condition:
+                _checklist_state.mark_field_collected("condition", condition)
+            if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
+                _checklist_state.mark_field_collected("accessories", True)
+            if photos_acknowledged is not None:
+                _checklist_state.mark_field_collected("photos", photos_acknowledged)
+            if contact_name:
+                _checklist_state.mark_field_collected("name", contact_name)
+            if contact_phone:
+                _checklist_state.mark_field_collected("phone", contact_phone)
+            if contact_email:
+                _checklist_state.mark_field_collected("email", contact_email)
+            if inferred_payout:
+                _checklist_state.mark_field_collected("payout", inferred_payout)
+
+            # Return the next required question
+            next_question = _checklist_state.get_next_question()
+            logger.info(f"[tradein_update_lead] 📋 Next question: {next_question}")
+
+            # If we're at recap or submit, return different message
+            if next_question == "recap":
+                return "Got it. Ready for a quick recap?"
+            elif next_question == "submit":
+                return "All set! Submitting now..."
+            else:
+                return f"Got it. {next_question}"
         except Exception as e:
             logger.error(f"[tradein_update_lead] ❌ Exception: {e}")
             return "Information saved"
@@ -356,12 +399,128 @@ async def sendemail(
 
 
 # ============================================================================
+# TRADE-IN CHECKLIST STATE MACHINE
+# ============================================================================
+
+
+class TradeInChecklistState:
+    """
+    Enforces deterministic trade-in checklist order.
+    Prevents LLM from asking questions out of order or asking multiple fields at once.
+    """
+
+    # Fixed order that CANNOT be changed
+    STEPS = [
+        "storage",  # 0: Storage (if not already specified)
+        "condition",  # 1: Device condition
+        "accessories",  # 2: Box/accessories
+        "photos",  # 3: Photos acknowledgment
+        "name",  # 4: Contact name
+        "phone",  # 5: Contact phone
+        "email",  # 6: Contact email
+        "payout",  # 7: Payout preference (skip for trade-up)
+        "recap",  # 8: Show summary
+        "submit",  # 9: Final submission
+    ]
+
+    QUESTIONS = {
+        "storage": "Storage size?",
+        "condition": "Condition?",
+        "accessories": "Got the box?",
+        "photos": "Photos help—want to send one?",
+        "name": "Your name?",
+        "phone": "Phone number?",
+        "email": "Email?",
+        "payout": "Cash, PayNow, bank, or installments?",
+        "recap": "recap",  # Special: triggers summary
+        "submit": "submit",  # Special: triggers submission
+    }
+
+    def __init__(self):
+        self.current_step_index = 0
+        self.collected_data = {}
+        self.is_trade_up = False
+        self.completed = False
+
+    def mark_trade_up(self):
+        """Trade-ups skip payout question"""
+        self.is_trade_up = True
+
+    def mark_field_collected(self, field_name: str, value: any = True):
+        """Mark a field as collected and advance if it's the current step"""
+        self.collected_data[field_name] = value
+        logger.info(f"[ChecklistState] Marked '{field_name}' as collected")
+
+        # If this is the current step, auto-advance
+        current_step = self.get_current_step()
+        if current_step == field_name:
+            self.advance()
+
+    def advance(self):
+        """Move to next step"""
+        if self.current_step_index < len(self.STEPS):
+            self.current_step_index += 1
+            logger.info(f"[ChecklistState] Advanced to step {self.current_step_index}")
+
+    def get_current_step(self) -> str:
+        """Get the current step name"""
+        if self.current_step_index >= len(self.STEPS):
+            self.completed = True
+            return "completed"
+
+        step = self.STEPS[self.current_step_index]
+
+        # Skip steps that are already collected
+        while step in self.collected_data and self.current_step_index < len(self.STEPS):
+            logger.info(f"[ChecklistState] Skipping '{step}' (already collected)")
+            self.current_step_index += 1
+            if self.current_step_index >= len(self.STEPS):
+                self.completed = True
+                return "completed"
+            step = self.STEPS[self.current_step_index]
+
+        # Skip payout for trade-ups
+        if step == "payout" and self.is_trade_up:
+            logger.info(f"[ChecklistState] Skipping 'payout' (trade-up mode)")
+            self.current_step_index += 1
+            return self.get_current_step()
+
+        return step
+
+    def get_next_question(self) -> str:
+        """Get the exact question to ask for current step"""
+        current_step = self.get_current_step()
+
+        if current_step == "completed":
+            return None
+
+        return self.QUESTIONS.get(current_step, current_step)
+
+    def is_complete(self) -> bool:
+        """Check if all required fields are collected"""
+        return self.completed or self.current_step_index >= len(self.STEPS)
+
+    def get_progress(self) -> dict:
+        """Get current progress for debugging"""
+        return {
+            "current_step": self.get_current_step(),
+            "step_index": self.current_step_index,
+            "collected": list(self.collected_data.keys()),
+            "is_trade_up": self.is_trade_up,
+            "completed": self.completed,
+        }
+
+
+# ============================================================================
 # AGENT CLASS
 # ============================================================================
 
 
 class TradeZoneAgent(Agent):
     def __init__(self) -> None:
+        # Initialize state machine for deterministic checklist flow
+        self.checklist_state = TradeInChecklistState()
+
         super().__init__(
             tools=[
                 searchProducts,
