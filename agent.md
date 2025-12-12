@@ -113,6 +113,20 @@ Agent is running and ready! Need to create frontend client to test. See `agents/
   5. **Strict Enforcement**: Tool responses include `🚨 SYSTEM RULE` markers forcing exact next question. Field validation blocks out-of-order collection.
   - **Expected Behavior**: One question at a time, never bundles fields, auto-skips payout for trade-ups, pricing synchronized with text chat, lead data properly saved
   - **Deployment Note**: Requires Coolify to rebuild Python voice agent container. Check logs for `[calculate_tradeup_pricing]` and `[ChecklistState]` messages.
+- **Dec 12–13, 2025 - Trade-in reliability hardening (voice)** (commits `5ccdd009`, `5bc8cc9f`, `31535fa2`, `d97c96f8`, `e62267d2`):
+  - Per-session checklist: state is keyed to LiveKit room; fields never bleed across users.
+  - Per-trade reset: when a new source/target pair is mentioned in the same session, the checklist resets so each trade is isolated.
+  - Required fields enforced before any API call: brand, model, storage (unless auto-detected), condition, accessories/box ack, photos ack, name, phone (8+ digits), email (valid), payout (skipped for trade-up). Missing fields return an explicit prompt instead of calling the API.
+  - Trade-up payout stripped from payloads (DB enum has no `top-up`), preventing 500s.
+  - Submit guard uses the session’s checklist and blocks until all required slots are present.
+  - Local checklist advances even if the API call fails, but now errors tell the LLM exactly which field to re-ask.
+
+### Quick validation before handing to QA
+1) Redeploy voice agent with `main` (≥ `e62267d2`) and restart container.
+2) Run one voice or simulated flow (MSI Claw 1TB → PS5 Pro 2TB trade-up):
+   - Confirm prompts follow: storage → condition → accessories → photos → name → phone → email → recap → submit.
+   - Verify lead in dashboard has brand/model/storage/condition/accessories/photos ack/name/phone/email and no payout field (trade-up).
+3) If any field is missing, check agent logs for `🚨 SYSTEM RULE` message; the tool will specify which field to re-ask.
 - Dec 12, 2025 trade-in hardening (earlier):
   - Trade/trade-up flows now block Woo/product listings entirely; prices come only from trade grid + trade vector + hints (e.g., Switch 2 retail S$500, Switch OLED trade S$100).
   - If variants exist, the agent may show up to 3 labeled price options (no images/links), then proceeds through a fixed checklist: condition → accessories → photos (reuse if present) → name → phone → email → payout → recap → submit.
