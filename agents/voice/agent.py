@@ -405,31 +405,12 @@ async def tradein_update_lead(
     if preferred_payout:
         fields_being_set.append("payout")
 
-    # Allow setting multiple fields on first call (when model/brand/category are provided)
-    # But after initialization, ONLY allow current step
-    if _checklist_state.current_step_index > 0:
-        for field in fields_being_set:
-            if field != current_step and field not in _checklist_state.collected_data:
-                logger.warning(
-                    f"[tradein_update_lead] ⚠️ BLOCKED: Trying to set '{field}' but current step is '{current_step}'. Ignoring out-of-order field."
-                )
-                # Don't block the whole call, just skip the out-of-order field
-                if field == "storage":
-                    storage = None
-                elif field == "condition":
-                    condition = None
-                elif field == "accessories":
-                    notes = None
-                elif field == "photos":
-                    photos_acknowledged = None
-                elif field == "name":
-                    contact_name = None
-                elif field == "phone":
-                    contact_phone = None
-                elif field == "email":
-                    contact_email = None
-                elif field == "payout":
-                    preferred_payout = None
+    # 🔓 ALLOW BATCH SAVE: Let LLM send all fields at once when ready
+    # State machine enforces QUESTION ORDER, but tool accepts ANY fields
+    # This allows: ask questions one-by-one → save everything together
+    logger.info(
+        f"[tradein_update_lead] Accepting fields: {fields_being_set} (current step: {current_step})"
+    )
 
     # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
     inferred_payout = preferred_payout
@@ -881,16 +862,31 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 - If **TRADE_IN_NO_MATCH**: confirm Singapore, offer manual review, use sendemail if approved
 - For installments (top-up >= S$300): add estimate after price. Example: "Top-up ~S$450. That's roughly 3 payments of S$150, subject to approval."
 
-**Step 2: DEVICE DETAILS** (Ask in this order, ONE at a time)
-1. Storage (if applicable): "Storage size?" → Save → "Noted."
-2. Condition: "Condition? (mint/good/fair/faulty)" → Save → "Got it."
-3. Box: "Got the box?" → Save → "Noted."
-4. Accessories: "Accessories included?" → Save → "Thanks."
+**Step 2: DEVICE DETAILS** (Ask in this order, ONE at a time, just conversation)
+1. Storage (if applicable): "Storage size?" → User: "512GB" → "Noted." (≤3 words)
+2. Condition: "Condition? (mint/good/fair/faulty)" → User: "Good" → "Got it." (≤3 words)
+3. Box: "Got the box?" → User: "Yes" → "Noted." (≤3 words)
+4. Accessories: "Accessories included?" → User: "Controller" → "Thanks." (≤3 words)
 
-**Step 3: CONTACT INFO** (Show in text, don't speak)
-- Collect **one field per turn** to match legacy flow: first phone, then email, then name. Keep each ask ≤5 words.
-- After each answer, call tradein_update_lead immediately, then respond with a 1–3 word acknowledgement like "Noted" or "Saved".
-- Display the contact details in text chat; do not read them out. Only re-ask a single field if it was unclear.
+**Step 3: CONTACT INFO** (Collect in conversation, ONE at a time)
+1. Phone: "Contact number?" → User: "8448 9068" → Confirm: "8448 9068, right?" → User: "Yes" → "Saved." (≤3 words)
+2. Email: "Email?" → User: "bobby@hotmail.com" → Confirm: "bobby@hotmail.com?" → User: "Yes" → "Noted." (≤3 words)
+3. Name: "Your name?" → User: "Bobby" → "Thanks." (≤3 words)
+
+**Step 3.5: SAVE EVERYTHING TO DATABASE** (CRITICAL - Must do before showing summary!)
+🚨 NOW call tradein_update_lead with ALL collected information:
+```
+tradein_update_lead(
+  model="PS5",
+  storage="825GB",
+  condition="good",
+  notes="Box: Yes, Accessories: controller",
+  contact_name="Bobby",
+  contact_phone="84489068",
+  contact_email="bobby@hotmail.com",
+  preferred_payout="cash"  # or "top-up" for trade-ups
+)
+```
 
 **Step 4: PHOTOS** (Optional - don't block submission)
    - Once device details and contact info are saved, ask once: "Photos help us quote faster—want to send one?"
