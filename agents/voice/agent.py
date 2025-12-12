@@ -252,6 +252,51 @@ async def tradein_update_lead(
         _checklist_state = TradeInChecklistState()
         logger.info("[tradein_update_lead] 🆕 Initialized checklist state machine")
 
+        # Auto-detect if device has no storage based on category
+        if category:
+            no_storage_categories = [
+                "camera",
+                "accessory",
+                "accessories",
+                "controller",
+                "headset",
+                "monitor",
+                "tv",
+                "watch",
+            ]
+            if category.lower() in no_storage_categories:
+                _checklist_state.mark_no_storage()
+
+        # Also check model name for clues
+        if model:
+            model_lower = model.lower()
+
+            # Check if it's a device type that doesn't have storage
+            if not category:
+                no_storage_keywords = [
+                    "camera",
+                    "controller",
+                    "headset",
+                    "headphone",
+                    "speaker",
+                    "monitor",
+                    "watch",
+                    "cable",
+                ]
+                if any(keyword in model_lower for keyword in no_storage_keywords):
+                    _checklist_state.mark_no_storage()
+
+            # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
+            import re
+
+            storage_pattern = r"\b(\d+\s*(gb|tb|mb))\b"
+            if re.search(storage_pattern, model_lower):
+                logger.info(
+                    f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
+                )
+                # Mark storage as already collected so we skip asking
+                _checklist_state.mark_field_collected("storage", "specified_in_model")
+
     # 🔒 ENFORCE state machine order - validate that we're collecting the right field
     current_step = _checklist_state.get_current_step()
 
@@ -508,10 +553,18 @@ class TradeInChecklistState:
         self.collected_data = {}
         self.is_trade_up = False
         self.completed = False
+        self.skip_storage = (
+            False  # For devices without storage (cameras, accessories, etc.)
+        )
 
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
         self.is_trade_up = True
+
+    def mark_no_storage(self):
+        """Mark that this device doesn't have storage (cameras, accessories, etc.)"""
+        self.skip_storage = True
+        logger.info("[ChecklistState] Device has no storage, will skip storage step")
 
     def mark_field_collected(self, field_name: str, value: any = True):
         """Mark a field as collected and advance if it's the current step"""
@@ -545,6 +598,12 @@ class TradeInChecklistState:
                 self.completed = True
                 return "completed"
             step = self.STEPS[self.current_step_index]
+
+        # Skip storage for devices that don't have storage (cameras, accessories, etc.)
+        if step == "storage" and self.skip_storage:
+            logger.info(f"[ChecklistState] Skipping 'storage' (device has no storage)")
+            self.current_step_index += 1
+            return self.get_current_step()
 
         # Skip payout for trade-ups
         if step == "payout" and self.is_trade_up:
