@@ -414,10 +414,15 @@ async def tradein_update_lead(
 
     # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
     inferred_payout = preferred_payout
+    trade_up_mode = False
     if target_device_name:
-        inferred_payout = "top-up"
+        # Trade-up flows should NOT write payout to the DB (enum lacks "top-up")
+        inferred_payout = None
+        trade_up_mode = True
         _checklist_state.is_trade_up = True
-        logger.info("[tradein_update_lead] 🔄 Detected trade-up, skipping payout step")
+        logger.info(
+            "[tradein_update_lead] 🔄 Detected trade-up, skipping payout step and omitting preferred_payout"
+        )
 
     async with httpx.AsyncClient() as client:
         try:
@@ -473,7 +478,10 @@ async def tradein_update_lead(
                 _checklist_state.mark_field_collected("phone", contact_phone)
             if contact_email:
                 _checklist_state.mark_field_collected("email", contact_email)
-            if inferred_payout:
+            if trade_up_mode:
+                # Mark payout as satisfied without touching DB enum
+                _checklist_state.mark_field_collected("payout", "trade-up")
+            elif inferred_payout:
                 _checklist_state.mark_field_collected("payout", inferred_payout)
 
             # Return the next required question with STRICT enforcement
@@ -525,7 +533,10 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     ]
 
     # Payout is required unless trade-up; trade-up marks payout as collected
-    if not _checklist_state.is_trade_up and "payout" not in _checklist_state.collected_data:
+    if (
+        not _checklist_state.is_trade_up
+        and "payout" not in _checklist_state.collected_data
+    ):
         missing_steps.append("payout")
 
     if missing_steps:
