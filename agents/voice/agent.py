@@ -284,17 +284,17 @@ async def calculate_tradeup_pricing(
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    category: str = None,
-    brand: str = None,
-    model: str = None,
-    storage: str = None,
-    condition: str = None,
-    contact_name: str = None,
-    contact_phone: str = None,
-    contact_email: str = None,
-    preferred_payout: str = None,
-    notes: str = None,
-    target_device_name: str = None,
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
+    model: Optional[str] = None,
+    storage: Optional[str] = None,
+    condition: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    contact_phone: Optional[str] = None,
+    contact_email: Optional[str] = None,
+    preferred_payout: Optional[str] = None,
+    notes: Optional[str] = None,
+    target_device_name: Optional[str] = None,
     photos_acknowledged: bool = None,
     source_price_quoted: float = None,
     target_price_quoted: float = None,
@@ -439,6 +439,14 @@ async def tradein_update_lead(
     preferred_payout = _normalize(preferred_payout)
     notes = _normalize(notes)
     target_device_name = _normalize(target_device_name)
+
+    # Hard guards: don’t hit the API with missing required fields
+    if not condition:
+        return "🚨 SYSTEM RULE: Condition missing. Ask the customer for the device condition (mint/good/fair/faulty) and call tradein_update_lead again."
+    if not contact_phone or len(re.sub(r\"\\D\", \"\", contact_phone)) < 8:
+        return \"🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead.\"
+    if not contact_email or not re.match(r\"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$\", contact_email):
+        return \"🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead.\"
 
     async with httpx.AsyncClient() as client:
         try:
