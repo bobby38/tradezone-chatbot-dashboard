@@ -7,7 +7,8 @@ import asyncio
 import json
 import logging
 import os
-from typing import Dict
+import re
+from typing import Dict, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -443,10 +444,14 @@ async def tradein_update_lead(
     # Hard guards: don’t hit the API with missing required fields
     if not condition:
         return "🚨 SYSTEM RULE: Condition missing. Ask the customer for the device condition (mint/good/fair/faulty) and call tradein_update_lead again."
-    if not contact_phone or len(re.sub(r\"\\D\", \"\", contact_phone)) < 8:
-        return \"🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead.\"
-    if not contact_email or not re.match(r\"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$\", contact_email):
-        return \"🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead.\"
+    if not contact_name:
+        return "🚨 SYSTEM RULE: Name missing. Ask for their full name, then call tradein_update_lead."
+    if not contact_phone or len(re.sub(r"\\D", "", contact_phone)) < 8:
+        return "🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead."
+    if not contact_email or not re.match(
+        r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", contact_email
+    ):
+        return "🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead."
 
     async with httpx.AsyncClient() as client:
         try:
