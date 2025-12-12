@@ -484,6 +484,27 @@ async def tradein_update_lead(
         if not trade_up_mode and not preferred_payout:
             return "🚨 SYSTEM RULE: Payout missing. Ask for payout preference (cash / PayNow / bank / installment) and call tradein_update_lead."
 
+    # Optimistically advance local checklist when a field is provided,
+    # so we keep asking the next step even if the API call fails.
+    if storage:
+        _checklist_state.mark_field_collected("storage", storage)
+    if condition:
+        _checklist_state.mark_field_collected("condition", condition)
+    if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
+        _checklist_state.mark_field_collected("accessories", True)
+    if photos_acknowledged is not None:
+        _checklist_state.mark_field_collected("photos", photos_acknowledged)
+    if contact_name:
+        _checklist_state.mark_field_collected("name", contact_name)
+    if contact_phone:
+        _checklist_state.mark_field_collected("phone", contact_phone)
+    if contact_email:
+        _checklist_state.mark_field_collected("email", contact_email)
+    if trade_up_mode:
+        _checklist_state.mark_field_collected("payout", "trade-up")
+    elif preferred_payout:
+        _checklist_state.mark_field_collected("payout", preferred_payout)
+
     async with httpx.AsyncClient() as client:
         try:
             data = {
@@ -519,30 +540,12 @@ async def tradein_update_lead(
                 logger.error(
                     f"[tradein_update_lead] ❌ {response.status_code}: {response.text}"
                 )
-                return f"Failed to save info ({response.status_code})"
+                return (
+                    f"🚨 Save failed ({response.status_code}). "
+                    "Ask the customer again for the last field, then call tradein_update_lead."
+                )
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
-
-            # Track state: mark fields as collected
-            if storage:
-                _checklist_state.mark_field_collected("storage", storage)
-            if condition:
-                _checklist_state.mark_field_collected("condition", condition)
-            if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
-                _checklist_state.mark_field_collected("accessories", True)
-            if photos_acknowledged is not None:
-                _checklist_state.mark_field_collected("photos", photos_acknowledged)
-            if contact_name:
-                _checklist_state.mark_field_collected("name", contact_name)
-            if contact_phone:
-                _checklist_state.mark_field_collected("phone", contact_phone)
-            if contact_email:
-                _checklist_state.mark_field_collected("email", contact_email)
-            if trade_up_mode:
-                # Mark payout as satisfied without touching DB enum
-                _checklist_state.mark_field_collected("payout", "trade-up")
-            elif inferred_payout:
-                _checklist_state.mark_field_collected("payout", inferred_payout)
 
             # Return the next required question with STRICT enforcement
             next_question = _checklist_state.get_next_question()
