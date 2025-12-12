@@ -452,6 +452,10 @@ async def tradein_update_lead(
         if not storage:
             return "🚨 SYSTEM RULE: Storage missing. Ask for storage size (e.g., 1TB/512GB) and call tradein_update_lead again."
 
+    # Always require device brand/model before proceeding to contact steps
+    if not brand or not model:
+        return "🚨 SYSTEM RULE: Device brand/model missing. Ask for the exact device name (brand + model), then call tradein_update_lead."
+
     if current_step == "condition":
         if not condition:
             return "🚨 SYSTEM RULE: Condition missing. Ask for device condition (mint/good/fair/faulty) and call tradein_update_lead again."
