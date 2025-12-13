@@ -8,8 +8,8 @@
 **Root Cause**: Commit `79aa3b8` added strict gating logic in `auto_save.py` (lines 668-691) that blocks contact field saving until device details (storage, condition, accessories, photos) are complete. However, the LLM was still asking for contact info prematurely, causing extracted data to be logged but not saved to checklist state.
 
 **Three-Pronged Fix Applied**:
-1. **Instructions Enhanced** (`agents/voice/agent.py` lines 991-999): Added forceful ⚠️ CRITICAL DATA LOSS WARNING at top of agent instructions explaining that contact info will be SILENTLY DISCARDED if asked too early
-2. **Tool Response Blocking** (`agents/voice/agent.py` lines 703-718): Enhanced `tradein_update_lead` tool response to actively detect and block out-of-order contact collection attempts, returning explicit warning message to LLM
+1. **Instructions Enhanced** (`agents/voice/agent.py` lines 991-1070): Added forceful ⚠️ CRITICAL DATA LOSS WARNING at top of agent instructions explaining that contact info will be SILENTLY DISCARDED if asked too early, and explicitly moved the photos prompt ahead of contact collection in the documented order
+2. **Tool Response Blocking** (`agents/voice/agent.py` lines 420-640): Enhanced `tradein_update_lead` tool response to actively detect and block out-of-order contact collection attempts, returning explicit warning message to LLM the moment device details are incomplete
 3. **Documentation Updated**: This change log entry documents the bug, root cause, and three-pronged solution approach
 
 **Impact**: Prevents silent data loss and ensures contact information is only collected after all device details are complete, eliminating submission failures.
@@ -25,7 +25,7 @@
 - **IMPROVED**: Name extraction patterns for "Family name Denny" and bulk input scenarios
 - Voice trade-in flow now reuses a single lead per LiveKit session and passes `leadId` on every update/submit to prevent fragmented leads.
 - Trade-up calls no longer send `preferred_payout` (enum mismatch fixed); payout step is skipped for trade-ups.
-- Deterministic checklist order enforced for voice: storage → condition → accessories/box → name → phone → email → payout → photos → recap → submit.
+- Deterministic checklist order enforced for voice: storage → condition → accessories/box → photos (acknowledged) → name → phone → email → payout → recap → submit.
 - Pricing lookups upgraded: alias matching (Quest 3/3S, spacing), storage-aware selection (unique storage returns price directly), and variant options surfaced when multiple capacities exist.
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
