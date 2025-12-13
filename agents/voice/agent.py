@@ -400,6 +400,7 @@ async def calculate_tradeup_pricing(
             except Exception:
                 session_id = None
 
+            next_question = "Storage size?"
             if session_id:
                 existing_ctx = _tradeup_context.get(session_id)
                 if existing_ctx:
@@ -429,12 +430,13 @@ async def calculate_tradeup_pricing(
                 state.collected_data["source_price_quoted"] = trade_value
                 state.collected_data["target_price_quoted"] = retail_price
                 state.collected_data["top_up_amount"] = top_up
+                next_question = state.get_next_question() or next_question
 
             return (
                 f"Your {source_device} trades for S${int(trade_value)}. "
                 f"The {target_device} is S${int(retail_price)}. "
                 f"Top-up: S${int(top_up)}. Want to proceed? "
-                f"🚨 SYSTEM RULE: If user says yes, ask ONLY 'Storage size?' next."
+                f"🚨 SYSTEM RULE: If user says yes, ask ONLY '{next_question}' next."
             )
 
         logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
@@ -445,8 +447,7 @@ async def calculate_tradeup_pricing(
         return "Pricing calculation unavailable. Please provide device details."
 
 
-@function_tool
-async def tradein_update_lead(
+async def _tradein_update_lead_impl(
     context: RunContext,
     category: Optional[str] = None,
     brand: Optional[str] = None,
@@ -804,6 +805,43 @@ async def tradein_update_lead(
         except Exception as e:
             logger.error(f"[tradein_update_lead] ❌ Exception: {e}")
             return "Information saved"
+
+
+@function_tool
+async def tradein_update_lead(context: RunContext, payload: Dict[str, Any]) -> str:
+    category = payload.get("category")
+    brand = payload.get("brand")
+    model = payload.get("model")
+    storage = payload.get("storage")
+    condition = payload.get("condition")
+    contact_name = payload.get("contact_name")
+    contact_phone = payload.get("contact_phone")
+    contact_email = payload.get("contact_email")
+    preferred_payout = payload.get("preferred_payout")
+    notes = payload.get("notes")
+    target_device_name = payload.get("target_device_name") or ""
+    photos_acknowledged = payload.get("photos_acknowledged")
+    source_price_quoted = payload.get("source_price_quoted")
+    target_price_quoted = payload.get("target_price_quoted")
+    top_up_amount = payload.get("top_up_amount")
+    return await _tradein_update_lead_impl(
+        context=context,
+        category=category,
+        brand=brand,
+        model=model,
+        storage=storage,
+        condition=condition,
+        contact_name=contact_name,
+        contact_phone=contact_phone,
+        contact_email=contact_email,
+        preferred_payout=preferred_payout,
+        notes=notes,
+        target_device_name=target_device_name,
+        photos_acknowledged=photos_acknowledged,
+        source_price_quoted=source_price_quoted,
+        target_price_quoted=target_price_quoted,
+        top_up_amount=top_up_amount,
+    )
 
 
 @function_tool
