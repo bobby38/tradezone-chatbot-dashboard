@@ -70,8 +70,6 @@ else:
 
 # Session-scoped checklist states (keyed by LiveKit room/session id)
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
-# Legacy single checklist handle (kept for tool functions that still reference it)
-_checklist_state: Optional["TradeInChecklistState"] = None
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -356,7 +354,6 @@ async def tradein_update_lead(
     top_up_amount: Optional[float] = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
-    global _checklist_state
 
     logger.warning(
         f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
@@ -376,58 +373,56 @@ async def tradein_update_lead(
         logger.error("[tradein_update_lead] ❌ No session_id available!")
         return "Failed to save details - session not found. Please try again."
 
-    # Initialize state machine if not already created
-    if _checklist_state is None:
-        _checklist_state = TradeInChecklistState()
-        logger.info("[tradein_update_lead] 🆕 Initialized checklist state machine")
+    # Use per-session checklist state
+    state = _get_checklist(session_id)
 
-        # Auto-detect if device has no storage based on category
-        if category:
-            no_storage_categories = [
+    # Auto-detect if device has no storage based on category
+    if category:
+        no_storage_categories = [
+            "camera",
+            "accessory",
+            "accessories",
+            "controller",
+            "headset",
+            "monitor",
+            "tv",
+            "watch",
+        ]
+        if category.lower() in no_storage_categories:
+            state.mark_no_storage()
+
+    # Also check model name for clues
+    if model:
+        model_lower = model.lower()
+
+        # Check if it's a device type that doesn't have storage
+        if not category:
+            no_storage_keywords = [
                 "camera",
-                "accessory",
-                "accessories",
                 "controller",
                 "headset",
+                "headphone",
+                "speaker",
                 "monitor",
-                "tv",
                 "watch",
+                "cable",
             ]
-            if category.lower() in no_storage_categories:
-                _checklist_state.mark_no_storage()
+            if any(keyword in model_lower for keyword in no_storage_keywords):
+                state.mark_no_storage()
 
-        # Also check model name for clues
-        if model:
-            model_lower = model.lower()
+        # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
+        import re
 
-            # Check if it's a device type that doesn't have storage
-            if not category:
-                no_storage_keywords = [
-                    "camera",
-                    "controller",
-                    "headset",
-                    "headphone",
-                    "speaker",
-                    "monitor",
-                    "watch",
-                    "cable",
-                ]
-                if any(keyword in model_lower for keyword in no_storage_keywords):
-                    _checklist_state.mark_no_storage()
-
-            # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
-            import re
-
-            storage_pattern = r"\b(\d+\s*(gb|tb|mb))\b"
-            if re.search(storage_pattern, model_lower):
-                logger.info(
-                    f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
-                )
-                # Mark storage as already collected so we skip asking
-                _checklist_state.mark_field_collected("storage", "specified_in_model")
+        storage_pattern = r"\b(\d+\s*(gb|tb|mb))\b"
+        if re.search(storage_pattern, model_lower):
+            logger.info(
+                f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
+            )
+            # Mark storage as already collected so we skip asking
+            state.mark_field_collected("storage", "specified_in_model")
 
     # 🔒 ENFORCE state machine order - validate that we're collecting the right field
-    current_step = _checklist_state.get_current_step()
+    current_step = state.get_current_step()
 
     # Map parameters to step names
     field_step_mapping = {
@@ -479,9 +474,9 @@ async def tradein_update_lead(
 
     # Allow setting multiple fields on first call (when model/brand/category are provided)
     # But after initialization, ONLY allow current step
-    if _checklist_state.current_step_index > 0:
+    if state.current_step_index > 0:
         for field in fields_being_set:
-            if field != current_step and field not in _checklist_state.collected_data:
+            if field != current_step and field not in state.collected_data:
                 logger.warning(
                     f"[tradein_update_lead] ⚠️ BLOCKED: Trying to set '{field}' but current step is '{current_step}'. Ignoring out-of-order field."
                 )
@@ -503,12 +498,14 @@ async def tradein_update_lead(
                 elif field == "payout":
                     preferred_payout = None
 
-    # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
+    # Detect trade-up (target device present) → do NOT send payout (enum mismatch in API)
     inferred_payout = preferred_payout
     if target_device_name:
-        inferred_payout = "top-up"
-        _checklist_state.is_trade_up = True
-        logger.info("[tradein_update_lead] 🔄 Detected trade-up, skipping payout step")
+        inferred_payout = None
+        state.is_trade_up = True
+        logger.info(
+            "[tradein_update_lead] 🔄 Detected trade-up, skipping payout step (no payout field sent)"
+        )
 
     async with httpx.AsyncClient() as client:
         try:
@@ -551,25 +548,25 @@ async def tradein_update_lead(
 
             # Track state: mark fields as collected
             if storage:
-                _checklist_state.mark_field_collected("storage", storage)
+                state.mark_field_collected("storage", storage)
             if condition:
-                _checklist_state.mark_field_collected("condition", condition)
+                state.mark_field_collected("condition", condition)
             if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
-                _checklist_state.mark_field_collected("accessories", True)
+                state.mark_field_collected("accessories", True)
             if photos_acknowledged is not None:
-                _checklist_state.mark_field_collected("photos", photos_acknowledged)
+                state.mark_field_collected("photos", photos_acknowledged)
             if contact_name:
-                _checklist_state.mark_field_collected("name", contact_name)
+                state.mark_field_collected("name", contact_name)
             if contact_phone:
-                _checklist_state.mark_field_collected("phone", contact_phone)
+                state.mark_field_collected("phone", contact_phone)
             if contact_email:
-                _checklist_state.mark_field_collected("email", contact_email)
+                state.mark_field_collected("email", contact_email)
             if inferred_payout:
-                _checklist_state.mark_field_collected("payout", inferred_payout)
+                state.mark_field_collected("payout", inferred_payout)
 
             # Return the next required question with STRICT enforcement
-            next_question = _checklist_state.get_next_question()
-            current_step = _checklist_state.get_current_step()
+            next_question = state.get_next_question()
+            current_step = state.get_current_step()
             logger.info(
                 f"[tradein_update_lead] 📋 Current step: {current_step}, Next question: {next_question}"
             )
@@ -581,9 +578,7 @@ async def tradein_update_lead(
                 return "✅ All information collected. 🚨 SYSTEM RULE: You MUST call tradein_submit_lead now. DO NOT ask any more questions."
             else:
                 # List all fields we're still waiting for to prevent skipping
-                remaining_steps = _checklist_state.STEPS[
-                    _checklist_state.current_step_index :
-                ]
+                remaining_steps = state.STEPS[state.current_step_index :]
                 return f"✅ Saved. 🚨 SYSTEM RULE: You MUST ask ONLY '{next_question}' next. DO NOT skip to {remaining_steps[1] if len(remaining_steps) > 1 else 'submit'} or any other field. Current checklist step: {current_step}."
         except Exception as e:
             logger.error(f"[tradein_update_lead] ❌ Exception: {e}")
