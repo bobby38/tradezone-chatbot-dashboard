@@ -3384,6 +3384,17 @@
 
         if (data.url) {
           console.log("[Appwrite] Upload successful:", data.url);
+          if ("mediaLinked" in data || "leadId" in data || "linkError" in data) {
+            console.log("[Appwrite] Trade-in media link result:", {
+              leadId: data.leadId || null,
+              mediaLinked: Boolean(data.mediaLinked),
+              linkError: data.linkError || null,
+              sessionId: this.sessionId,
+            });
+            if (data.mediaLinked === false && data.linkError) {
+              console.warn("[Appwrite] Media upload succeeded but linking failed:", data.linkError);
+            }
+          }
           return data.url;
         } else {
           throw new Error("No URL returned from upload");

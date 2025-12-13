@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
+  let linkedLeadId: string | null = null;
+  let mediaLinked = false;
+  let linkErrorMessage: string | null = null;
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -199,6 +203,7 @@ export async function POST(req: NextRequest) {
         });
 
         const leadId = ensured.leadId;
+        linkedLeadId = leadId;
         console.log(
           `[Appwrite Upload] Ensured lead: ${leadId} (created: ${ensured.created}, status: ${ensured.status})`,
         );
@@ -225,6 +230,8 @@ export async function POST(req: NextRequest) {
           mimeType: file.type,
           sizeBytes: file.size,
         });
+
+        mediaLinked = true;
 
         console.log(`[Appwrite Upload] Media record saved for lead ${leadId}`);
 
@@ -259,6 +266,8 @@ export async function POST(req: NextRequest) {
           "[Appwrite Upload] Failed to link to trade-in lead:",
           linkError,
         );
+        linkErrorMessage =
+          linkError instanceof Error ? linkError.message : String(linkError);
         // Don't fail the upload if linking fails - image still uploaded to Appwrite
       }
     }
@@ -268,6 +277,9 @@ export async function POST(req: NextRequest) {
         success: true,
         url: imageUrl,
         fileId: data.$id,
+        leadId: linkedLeadId,
+        mediaLinked,
+        linkError: linkErrorMessage,
       },
       { headers: corsHeaders },
     );

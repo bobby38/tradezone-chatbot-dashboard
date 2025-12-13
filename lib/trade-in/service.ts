@@ -34,6 +34,22 @@ const resolveOrgId = () => {
 
 const DEFAULT_ORG_ID = resolveOrgId();
 
+function normalizeLeadHash(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return normalized;
+
+  // Collapse widget/LiveKit session ids like:
+  // - client_..._<timestamp>
+  // - chat-client_..._<timestamp>
+  // into a stable hash based on the client id portion.
+  const match = normalized.match(/^(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i);
+  if (match && match[2]) {
+    return match[2];
+  }
+
+  return normalized;
+}
+
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   throw new Error(
     "Missing Supabase configuration. NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.",
@@ -232,9 +248,7 @@ export interface TradeInSubmitInput {
 export async function ensureTradeInLead(
   params: EnsureTradeInLeadParams,
 ): Promise<EnsureTradeInLeadResult> {
-  const leadHash = (params.leadHash || params.sessionId || "")
-    .trim()
-    .toLowerCase();
+  const leadHash = normalizeLeadHash(params.leadHash || params.sessionId || "");
 
   if (!leadHash) {
     throw new TradeInValidationError("Lead hash or session id is required");
@@ -707,7 +721,7 @@ export async function submitTradeInLead(
 
   console.log("[TradeIn] Fetching lead:", input.leadId);
 
-  const { data: lead, error } = await supabaseAdmin
+  const { data: loadedLead, error } = await supabaseAdmin
     .from("trade_in_leads")
     .select(
       `id, status, channel, category, brand, model, storage, condition,
@@ -721,12 +735,14 @@ export async function submitTradeInLead(
     .eq("id", input.leadId)
     .single();
 
-  if (error || !lead) {
+  if (error || !loadedLead) {
     console.error("[TradeIn] Lead not found:", error);
     throw new Error(
       `Trade-in lead not found: ${error?.message ?? "unknown error"}`,
     );
   }
+
+  let lead: any = loadedLead;
 
   console.log("[TradeIn] Lead loaded:", {
     id: lead.id,
@@ -813,7 +829,7 @@ export async function submitTradeInLead(
     .single();
 
   if (!refreshError && refreshedLead) {
-    (lead as any) = refreshedLead;
+    lead = refreshedLead;
   }
 
   let emailSent = false;
