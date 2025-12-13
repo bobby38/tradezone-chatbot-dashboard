@@ -270,6 +270,8 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
     """
     Find all variants of a device (different storage, editions, etc.)
     Returns list of {label, trade_in, retail, variant_info}
+
+    IMPORTANT: If exact match exists, return ONLY that match to avoid false clarifications.
     """
     grid = load_price_grid()
     if not grid:
@@ -277,6 +279,7 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
 
     device_lower = device_name.lower()
     variants = []
+    exact_match = None
 
     # Search all categories
     for category_data in grid.get("categories", {}).values():
@@ -287,7 +290,25 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
         for label, trade_price in preowned.items():
             label_lower = label.lower()
 
-            # Check if this is a variant of the device (contains device name)
+            # Check for EXACT match first (highest priority)
+            if label_lower == device_lower:
+                retail_price = brand_new.get(label)
+                exact_match = {
+                    "label": label,
+                    "trade_in": trade_price[0]
+                    if isinstance(trade_price, list)
+                    else trade_price,
+                    "retail": retail_price[0]
+                    if isinstance(retail_price, list)
+                    else retail_price
+                    if retail_price
+                    else None,
+                    "variant_info": "",
+                }
+                # Don't break - continue checking other categories
+                continue
+
+            # Check if this is a variant of the device (fuzzy match)
             device_tokens = set(device_lower.split())
             label_tokens = set(label_lower.split())
 
@@ -312,6 +333,10 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
                         "variant_info": " ".join(sorted(variant_info)),
                     }
                 )
+
+    # If exact match found, return ONLY that (no clarification needed)
+    if exact_match:
+        return [exact_match]
 
     return variants
 

@@ -15,6 +15,7 @@ import httpx
 from auto_save import (
     auto_save_after_message,
     check_for_confirmation_and_submit,
+    detect_and_fix_trade_up_prices,
     extract_data_from_message,
     force_save_to_db,
 )
@@ -242,67 +243,50 @@ async def calculate_tradeup_pricing(
     target_device: str,
 ) -> str:
     """
-    Calculate accurate trade-up pricing using the text chat API.
+    Calculate accurate trade-up pricing using Python price lookup from JSON file.
     Use this when customer wants to trade Device A for Device B.
     Returns: trade-in value, retail price, and top-up amount.
+    Handles variant detection and clarification questions automatically.
     """
     logger.warning(
-        f"[calculate_tradeup_pricing] ⚠️ CALLED with: source={source_device}, target={target_device}"
+        f"[calculate_tradeup_pricing] 🐍 PYTHON PRICING with: source={source_device}, target={target_device}"
     )
-    headers = build_auth_headers()
 
-    # Get session ID from room name
     try:
-        room = get_job_context().room
-        session_id = room.name
-    except Exception:
-        session_id = "voice_pricing_calc"
+        # Use Python-based pricing system (bypasses text chat API)
+        result = detect_and_fix_trade_up_prices(source_device, target_device)
 
-    async with httpx.AsyncClient() as client:
-        try:
-            # Call the text chat API to calculate trade-up pricing
-            # Format MUST match pattern: "trade DEVICE for DEVICE" for proper detection
-            response = await client.post(
-                f"{API_BASE_URL}/api/chatkit/agent",
-                json={
-                    "message": f"Trade {source_device} for {target_device}",
-                    "sessionId": session_id,  # camelCase as required by API
-                },
-                headers=headers,
-                timeout=15.0,
-            )
+        if not result:
+            logger.error(f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}")
+            return f"Sorry, I couldn't find pricing for {source_device} or {target_device}. Please provide the exact model."
 
-            if response.status_code >= 400:
-                logger.error(
-                    f"[calculate_tradeup_pricing] ❌ {response.status_code}: {response.text}"
-                )
-                return f"Unable to calculate pricing. Please try again."
+        # Check if clarification is needed
+        if result.get("needs_clarification"):
+            source_q = result.get("source_question")
+            target_q = result.get("target_question")
 
-            result = response.json()
-            logger.info(f"[calculate_tradeup_pricing] ✅ Response: {result}")
+            if source_q and target_q:
+                return f"{source_q} Also, {target_q}"
+            elif source_q:
+                return source_q
+            elif target_q:
+                return target_q
 
-            # Extract trade-up pricing from response
-            trade_up_summary = result.get("tradeUpPricingSummary")
-            if trade_up_summary:
-                source_name = trade_up_summary.get("source", source_device)
-                target_name = trade_up_summary.get("target", target_device)
-                trade_value = trade_up_summary.get("tradeValue")
-                retail_price = trade_up_summary.get("retailPrice")
-                top_up = trade_up_summary.get("topUp")
+        # Return pricing if available
+        trade_value = result.get("trade_value")
+        retail_price = result.get("retail_price")
+        top_up = result.get("top_up")
 
-                if (
-                    trade_value is not None
-                    and retail_price is not None
-                    and top_up is not None
-                ):
-                    return f"{source_name} trade-in value: S${int(trade_value)}. {target_name} retail price: S${int(retail_price)}. Top-up required: S${int(top_up)}."
+        if trade_value and retail_price and top_up:
+            logger.info(f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}")
+            return f"Your {source_device} trades for S${int(trade_value)}. The {target_device} is S${int(retail_price)}. Top-up: S${int(top_up)}."
 
-            # Fallback: extract from response text
-            return result.get("response", "Unable to calculate pricing.")
+        logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
+        return "Unable to calculate complete pricing. Please verify the device models."
 
-        except Exception as e:
-            logger.error(f"[calculate_tradeup_pricing] ❌ Exception: {e}")
-            return "Pricing calculation unavailable. Please provide device details."
+    except Exception as e:
+        logger.error(f"[calculate_tradeup_pricing] ❌ Exception: {e}")
+        return "Pricing calculation unavailable. Please provide device details."
 
 
 @function_tool
@@ -1059,7 +1043,7 @@ async def entrypoint(ctx: JobContext):
     # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
     def on_user_input(event):
-        """Capture user's final transcribed message and auto-save data"""
+Only if the client insists or the agent can say, "Oh, we have just this thing, is pre-owned."         """Capture user's final transcribed message and auto-save data"""
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
