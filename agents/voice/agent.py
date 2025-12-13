@@ -237,14 +237,43 @@ async def searchtool(context: RunContext, query: str) -> str:
 
 
 @function_tool
+async def check_tradein_price(
+    context: RunContext,
+    device_name: str,
+) -> str:
+    """
+    Quick price check: Get trade-in value for a device WITHOUT starting the full workflow.
+    Use this when customer asks "What can I get for my [device]?" or "How much is my [device] worth?"
+    Returns ONLY the trade-in value - does NOT start data collection.
+    """
+    logger.warning(f"[check_tradein_price] 🔍 PRICE CHECK for: {device_name}")
+
+    from auto_save import lookup_price, needs_clarification
+
+    # Check if we need clarification for variants
+    clarification = needs_clarification(device_name)
+    if clarification:
+        return clarification
+
+    # Get trade-in price
+    price = lookup_price(device_name, "preowned")
+    if price:
+        logger.info(f"[check_tradein_price] ✅ Found: ${price}")
+        return f"Your {device_name} is worth about S${int(price)} for trade-in."
+    else:
+        logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
+        return f"Sorry, I couldn't find trade-in pricing for {device_name}. Please provide the exact model."
+
+
+@function_tool
 async def calculate_tradeup_pricing(
     context: RunContext,
     source_device: str,
     target_device: str,
 ) -> str:
     """
-    Calculate accurate trade-up pricing using Python price lookup from JSON file.
-    Use this when customer wants to trade Device A for Device B.
+    Calculate trade-up pricing (trade Device A for Device B) and START the full workflow.
+    Use this ONLY when customer explicitly wants to TRADE IN their device for another device.
     Returns: trade-in value, retail price, and top-up amount.
     Handles variant detection and clarification questions automatically.
     """
