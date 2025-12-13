@@ -7,6 +7,8 @@ import asyncio
 import json
 import logging
 import os
+import re
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 import httpx
@@ -115,11 +117,11 @@ PAYOUT_KEYWORD_FALLBACKS = (
 UNSUPPORTED_PAYOUT_KEYWORDS = ("top up", "topup", "top-up")
 
 
-def normalize_payout_value(value: Optional[str]) -> Optional[str]:
-    if not value:
+def normalize_payout_value(raw: Optional[str]) -> Optional[str]:
+    if not raw:
         return None
 
-    normalized = value.strip().lower()
+    normalized = raw.strip().lower()
     normalized = normalized.replace("-", " ")
     normalized = normalized.replace("_", " ")
     normalized = " ".join(normalized.split())
@@ -138,6 +140,44 @@ def normalize_payout_value(value: Optional[str]) -> Optional[str]:
             return None
 
     return normalized if normalized in VALID_PAYOUT_VALUES else None
+
+
+def _infer_brand_from_device_name(device_name: Optional[str]) -> Optional[str]:
+    if not device_name or not isinstance(device_name, str):
+        return None
+    lower = device_name.lower()
+    if "iphone" in lower or "ipad" in lower or "macbook" in lower:
+        return "Apple"
+    if "switch" in lower:
+        return "Nintendo"
+    if "playstation" in lower or lower.startswith("ps"):
+        return "Sony"
+    if "xbox" in lower:
+        return "Microsoft"
+    return None
+
+
+async def _persist_quote_flag(session_id: str, quote_timestamp: Optional[str]) -> None:
+    try:
+        await _ensure_tradein_lead_for_session(session_id)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/update",
+                json={
+                    "sessionId": session_id,
+                    "leadId": _lead_ids.get(session_id),
+                    "initial_quote_given": True,
+                    "quote_timestamp": quote_timestamp,
+                },
+                headers=build_auth_headers(),
+                timeout=10.0,
+            )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[QuoteState] ❌ Failed to persist quote flag: {response.status_code} {response.text}"
+                )
+    except Exception as e:
+        logger.error(f"[QuoteState] ❌ Persist failed: {e}")
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -170,6 +210,58 @@ def build_auth_headers() -> Dict[str, str]:
         headers["X-API-Key"] = API_KEY
         headers["Authorization"] = f"Bearer {API_KEY}"
     return headers
+
+
+def _is_valid_contact_name(name: Optional[str]) -> bool:
+    if not name or not isinstance(name, str):
+        return False
+    trimmed = name.strip()
+    if len(trimmed) < 2 or len(trimmed) > 80:
+        return False
+    # Only allow basic ASCII name chars to avoid garbled STT tokens corrupting the lead
+    allowed = re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed)
+    if not allowed:
+        return False
+    # Require at least 2 letters
+    letters = re.sub(r"[^A-Za-z]", "", trimmed)
+    return len(letters) >= 2
+
+
+async def _ensure_tradein_lead_for_session(session_id: str) -> Optional[str]:
+    if not session_id:
+        return None
+    if session_id in _lead_ids:
+        return _lead_ids.get(session_id)
+
+    headers = build_auth_headers()
+    if not headers:
+        logger.warning("[tradein_start] ⚠️ Missing auth headers; cannot ensure lead")
+        return None
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/start",
+                json={"sessionId": session_id},
+                headers=headers,
+                timeout=10.0,
+            )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[tradein_start] ❌ {response.status_code}: {response.text}"
+                )
+                return None
+            result = response.json() if response.content else {}
+            lead_id = result.get("leadId") or result.get("lead", {}).get("id")
+            if lead_id:
+                _lead_ids[session_id] = lead_id
+                logger.info(
+                    f"[tradein_start] 📌 Cached leadId for session {session_id}: {lead_id}"
+                )
+            return lead_id
+        except Exception as e:
+            logger.error(f"[tradein_start] ❌ Exception: {e}")
+            return None
 
 
 async def log_to_dashboard(
@@ -456,12 +548,17 @@ async def calculate_tradeup_pricing(
                 }
                 state = _get_checklist(session_id)
                 state.mark_trade_up()
-                state.collected_data["force_new_lead"] = True
                 state.collected_data["source_device_name"] = source_device
                 state.collected_data["target_device_name"] = target_device
                 state.collected_data["source_price_quoted"] = trade_value
                 state.collected_data["target_price_quoted"] = retail_price
                 state.collected_data["top_up_amount"] = top_up
+
+                inferred_brand = _infer_brand_from_device_name(source_device)
+                if inferred_brand:
+                    state.collected_data["brand"] = inferred_brand
+                state.collected_data["model"] = source_device
+
                 next_question = state.get_next_question() or next_question
 
             return (
@@ -522,13 +619,21 @@ async def _tradein_update_lead_impl(
 
     if contact_name and "name" in state.collected_data:
         existing_name = str(state.collected_data.get("name") or "").strip()
-        if existing_name and existing_name.lower() != str(contact_name).strip().lower():
+        existing_ok = _is_valid_contact_name(existing_name)
+        incoming_ok = _is_valid_contact_name(contact_name)
+        if existing_ok and incoming_ok and existing_name.lower() != str(contact_name).strip().lower():
             logger.warning(
                 "[tradein_update_lead] ⚠️ Ignoring new contact_name (already collected): existing=%s new=%s",
                 existing_name,
                 contact_name,
             )
             contact_name = None
+        elif (not existing_ok) and incoming_ok:
+            logger.warning(
+                "[tradein_update_lead] ✅ Replacing invalid existing contact_name: existing=%s new=%s",
+                existing_name,
+                contact_name,
+            )
     if contact_phone and "phone" in state.collected_data:
         existing_phone = str(state.collected_data.get("phone") or "").strip()
         if existing_phone and existing_phone != str(contact_phone).strip():
@@ -752,7 +857,6 @@ async def _tradein_update_lead_impl(
                     # API expects camelCase sessionId (not session_id)
                     "sessionId": session_id,
                     "leadId": _lead_ids.get(session_id),
-                    "forceNew": bool(state.collected_data.get("force_new_lead")),
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -784,10 +888,6 @@ async def _tradein_update_lead_impl(
                 return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
-
-            # After first successful save on a new trade, drop the force-new flag.
-            if state.collected_data.get("force_new_lead"):
-                state.collected_data.pop("force_new_lead", None)
 
             # Cache leadId for this session so all subsequent saves/uploads use the same lead
             lead_id = result.get("lead", {}).get("id")
@@ -1443,6 +1543,8 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
+    asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
+
     # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
     if VOICE_STACK == "realtime":
         session = AgentSession(
@@ -1547,9 +1649,17 @@ async def entrypoint(ctx: JobContext):
                         and has_prices
                     ):
                         checklist.collected_data["initial_quote_given"] = True
+                        checklist.collected_data["quote_timestamp"] = datetime.utcnow().isoformat()
                         logger.info(
                             "[QuoteState] ✅ Marked initial_quote_given=True after quote spoken. progress=%s",
                             progress,
+                        )
+
+                        asyncio.create_task(
+                            _persist_quote_flag(
+                                room_name,
+                                checklist.collected_data.get("quote_timestamp"),
+                            )
                         )
 
                     said_proceed = "want to proceed" in content.lower()

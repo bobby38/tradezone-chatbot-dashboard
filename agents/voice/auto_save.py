@@ -15,6 +15,18 @@ import httpx
 
 logger = logging.getLogger("agent-amara")
 
+
+def _is_valid_contact_name(name: str) -> bool:
+    if not name or not isinstance(name, str):
+        return False
+    trimmed = name.strip()
+    if len(trimmed) < 2 or len(trimmed) > 80:
+        return False
+    if not re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed):
+        return False
+    letters = re.sub(r"[^A-Za-z]", "", trimmed)
+    return len(letters) >= 2
+
 # Price grid caching (fetched from API, cached for 5 minutes)
 PRICE_GRID = None
 PRICE_GRID_LAST_FETCH = 0
@@ -363,10 +375,15 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
                 name = re.sub(r"[.!?]+$", "", message.strip())
                 name = re.sub(r"\s*-\s*", "", name)
                 if len(name) >= 2:
-                    extracted["contact_name"] = name
-                    logger.warning(
-                        f"[auto-extract] 👤 Found name (direct): {extracted['contact_name']}"
-                    )
+                    if _is_valid_contact_name(name):
+                        extracted["contact_name"] = name
+                        logger.warning(
+                            f"[auto-extract] 👤 Found name (direct): {extracted['contact_name']}"
+                        )
+                    else:
+                        logger.warning(
+                            f"[auto-extract] ⚠️ Rejected invalid name (direct): {name}"
+                        )
 
             # Pattern 4: Extract potential name from mixed input
             elif 2 <= len(words) <= 6:
@@ -383,10 +400,15 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
                 if name_words:
                     potential_name = " ".join(name_words[:3])
-                    extracted["contact_name"] = potential_name
-                    logger.warning(
-                        f"[auto-extract] 👤 Found name (mixed): {extracted['contact_name']}"
-                    )
+                    if _is_valid_contact_name(potential_name):
+                        extracted["contact_name"] = potential_name
+                        logger.warning(
+                            f"[auto-extract] 👤 Found name (mixed): {extracted['contact_name']}"
+                        )
+                    else:
+                        logger.warning(
+                            f"[auto-extract] ⚠️ Rejected invalid name (mixed): {potential_name}"
+                        )
 
     return extracted
 

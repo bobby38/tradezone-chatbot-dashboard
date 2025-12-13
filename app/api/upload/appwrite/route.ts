@@ -189,40 +189,19 @@ export async function POST(req: NextRequest) {
         );
 
         console.log(
-          `[Appwrite Upload] Finding/creating trade-in lead for session: ${sessionId}`,
+          `[Appwrite Upload] Ensuring trade-in lead for session: ${sessionId}`,
         );
 
-        // Find active trade-in lead for this session
-        const { data: leads } = await supabase
-          .from("trade_in_leads")
-          .select("id")
-          .eq("session_id", sessionId)
-          .not("status", "in", "(completed,closed,archived)")
-          .order("created_at", { ascending: false })
-          .limit(1);
+        const ensured = await ensureTradeInLead({
+          sessionId,
+          channel: "chat",
+          initialMessage: `Trade-in session initiated via image upload (${file.name})`,
+        });
 
-        let leadId: string;
-
-        if (leads && leads.length > 0) {
-          leadId = leads[0].id;
-          console.log(`[Appwrite Upload] Found existing lead: ${leadId}`);
-        } else {
-          // No active lead found - create one automatically
-          console.log(
-            "[Appwrite Upload] No active lead found, creating new lead...",
-          );
-
-          const result = await ensureTradeInLead({
-            sessionId,
-            channel: "chat",
-            initialMessage: `Trade-in session initiated via image upload (${file.name})`,
-          });
-
-          leadId = result.leadId;
-          console.log(
-            `[Appwrite Upload] Created new lead: ${leadId} (status: ${result.status})`,
-          );
-        }
+        const leadId = ensured.leadId;
+        console.log(
+          `[Appwrite Upload] Ensured lead: ${leadId} (created: ${ensured.created}, status: ${ensured.status})`,
+        );
 
         console.log("[Appwrite Upload] Linking media to lead:", {
           requestId,
