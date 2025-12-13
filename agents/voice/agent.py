@@ -456,7 +456,6 @@ async def calculate_tradeup_pricing(
                 }
                 state = _get_checklist(session_id)
                 state.mark_trade_up()
-                state.collected_data["initial_quote_given"] = True
                 state.collected_data["force_new_lead"] = True
                 state.collected_data["source_device_name"] = source_device
                 state.collected_data["target_device_name"] = target_device
@@ -871,7 +870,6 @@ async def _tradein_update_lead_impl(
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    payload: Optional[Dict[str, Any]] = None,
     category: Optional[str] = None,
     brand: Optional[str] = None,
     model: Optional[str] = None,
@@ -888,23 +886,6 @@ async def tradein_update_lead(
     target_price_quoted: Optional[float] = None,
     top_up_amount: Optional[float] = None,
 ) -> str:
-    if payload and isinstance(payload, dict):
-        category = payload.get("category", category)
-        brand = payload.get("brand", brand)
-        model = payload.get("model", model)
-        storage = payload.get("storage", storage)
-        condition = payload.get("condition", condition)
-        contact_name = payload.get("contact_name", contact_name)
-        contact_phone = payload.get("contact_phone", contact_phone)
-        contact_email = payload.get("contact_email", contact_email)
-        preferred_payout = payload.get("preferred_payout", preferred_payout)
-        notes = payload.get("notes", notes)
-        target_device_name = payload.get("target_device_name", target_device_name)
-        photos_acknowledged = payload.get("photos_acknowledged", photos_acknowledged)
-        source_price_quoted = payload.get("source_price_quoted", source_price_quoted)
-        target_price_quoted = payload.get("target_price_quoted", target_price_quoted)
-        top_up_amount = payload.get("top_up_amount", top_up_amount)
-
     return await _tradein_update_lead_impl(
         context=context,
         category=category,
@@ -1455,6 +1436,8 @@ server.setup_fnc = prewarm
 async def entrypoint(ctx: JobContext):
     """Main entry point for LiveKit voice sessions"""
 
+    job_ctx = ctx
+
     # Store conversation for dashboard logging
     conversation_buffer = {"user_message": "", "bot_response": ""}
     room_name = ctx.room.name
@@ -1556,6 +1539,19 @@ async def entrypoint(ctx: JobContext):
                         k in checklist.collected_data
                         for k in ("source_price_quoted", "target_price_quoted", "top_up_amount")
                     )
+
+                    lower_content = content.lower()
+                    if (
+                        ("trades for" in lower_content)
+                        and ("top-up" in lower_content or "top up" in lower_content)
+                        and has_prices
+                    ):
+                        checklist.collected_data["initial_quote_given"] = True
+                        logger.info(
+                            "[QuoteState] ✅ Marked initial_quote_given=True after quote spoken. progress=%s",
+                            progress,
+                        )
+
                     said_proceed = "want to proceed" in content.lower()
                     if said_proceed and not conversation_buffer.get("quote_failsafe_sent"):
                         conversation_buffer["quote_failsafe_sent"] = True
@@ -1582,15 +1578,15 @@ async def entrypoint(ctx: JobContext):
                             )
                             checklist.collected_data["initial_quote_given"] = True
                         else:
-                            ctx = _tradeup_context.get(room_name) or {}
-                            if ctx.get("pending_clarification"):
+                            trade_ctx = _tradeup_context.get(room_name) or {}
+                            if trade_ctx.get("pending_clarification"):
                                 logger.warning(
                                     "[QuoteFailSafe] ⚠️ Proceed asked while pricing pending clarification. ctx=%s progress=%s",
-                                    ctx,
+                                    trade_ctx,
                                     progress,
                                 )
-                                needs_source = bool(ctx.get("needs_source"))
-                                needs_target = bool(ctx.get("needs_target"))
+                                needs_source = bool(trade_ctx.get("needs_source"))
+                                needs_target = bool(trade_ctx.get("needs_target"))
                                 if needs_source or needs_target:
                                     prompt = (
                                         "I still need one detail to price this. "
@@ -1630,13 +1626,16 @@ async def entrypoint(ctx: JobContext):
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
             # Get participant identity from room
             if not participant_identity:
-                for participant in ctx.room.remote_participants.values():
-                    if (
-                        participant.kind
-                        == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
-                    ):
-                        participant_identity = participant.identity
-                        break
+                try:
+                    for participant in job_ctx.room.remote_participants.values():
+                        if (
+                            participant.kind
+                            == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+                        ):
+                            participant_identity = participant.identity
+                            break
+                except Exception as e:
+                    logger.error(f"[Dashboard] ❌ Failed to read participant identity: {e}")
 
             user_id = participant_identity or room_name
 

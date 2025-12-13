@@ -151,8 +151,13 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             "ps4": {"brand": "Sony", "model": "PlayStation 4"},
             "xbox series x": {"brand": "Microsoft", "model": "Xbox Series X"},
             "xbox series s": {"brand": "Microsoft", "model": "Xbox Series S"},
-            "nintendo switch": {"brand": "Nintendo", "model": "Nintendo Switch"},
+            "nintendo switch 2": {"brand": "Nintendo", "model": "Nintendo Switch 2"},
             "switch 2": {"brand": "Nintendo", "model": "Nintendo Switch 2"},
+            "switch lite": {"brand": "Nintendo", "model": "Nintendo Switch Lite"},
+            "switch light": {"brand": "Nintendo", "model": "Nintendo Switch Lite"},
+            "switch gen 2": {"brand": "Nintendo", "model": "Nintendo Switch Gen 2"},
+            "switch gen 1": {"brand": "Nintendo", "model": "Nintendo Switch Gen 1"},
+            "nintendo switch": {"brand": "Nintendo", "model": "Nintendo Switch"},
         }
         
         for pattern, device_info in device_patterns.items():
