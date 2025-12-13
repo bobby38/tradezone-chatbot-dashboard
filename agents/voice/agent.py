@@ -258,8 +258,13 @@ async def check_tradein_price(
     # Get trade-in price
     price = lookup_price(device_name, "preowned")
     if price:
-        logger.info(f"[check_tradein_price] ✅ Found: ${price}")
-        return f"Your {device_name} is worth about S${int(price)} for trade-in."
+        # Voice-safe wording: avoid reading currency symbols awkwardly
+        price_int = int(price)
+        logger.info(f"[check_tradein_price] ✅ Found: ${price_int}")
+        return (
+            f"Your {device_name} is worth about {price_int} Singapore dollars for trade-in. "
+            f"(Shown as S${price_int}.) Want to start a trade-in?"
+        )
     else:
         logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
         return f"Sorry, I couldn't find trade-in pricing for {device_name}. Please provide the exact model."
