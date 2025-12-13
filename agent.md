@@ -9,7 +9,8 @@
 - **IMPROVED**: Name extraction patterns for "Family name Denny" and bulk input scenarios
 - Voice trade-in flow now reuses a single lead per LiveKit session and passes `leadId` on every update/submit to prevent fragmented leads.
 - Trade-up calls no longer send `preferred_payout` (enum mismatch fixed); payout step is skipped for trade-ups.
-- Deterministic checklist order enforced for voice: storage → condition → accessories/box → name → phone → email → payout → photos → recap → submit.
+- Deterministic checklist order enforced for voice: storage → condition → accessories/box → photos → name → phone → email → payout (trade-ins only) → recap → submit.
+- **NEW** (commit `79aa3b8`, Dec 13): Checklist gating now *blocks* contact fields until storage/condition/accessories/photos are saved. Auto-save and tool calls skip out-of-order fields, forcing the A→Z form sequence before recap/submit.
 - Pricing lookups upgraded: alias matching (Quest 3/3S, spacing), storage-aware selection (unique storage returns price directly), and variant options surfaced when multiple capacities exist.
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
