@@ -325,8 +325,10 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
     Find all variants of a device (different storage, editions, etc.)
     Returns list of {label, trade_in, retail, variant_info}
 
-    IMPORTANT: If exact match exists, return ONLY that match to avoid false clarifications.
-    Also: if user specified storage and only one variant matches that storage, return that directly.
+    IMPORTANT:
+    - If exact match exists, return ONLY that match.
+    - If user specified storage and exactly one variant matches, return that directly.
+    - If multiple variants remain, return them (caller can show options).
     """
     grid = load_price_grid()
     if not grid:
