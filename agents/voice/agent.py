@@ -806,17 +806,19 @@ class TradeInChecklistState:
     Prevents LLM from asking questions out of order or asking multiple fields at once.
     """
 
-    # Fixed order that CANNOT be changed (storage → condition → accessories → contact info → photos → recap)
+    # Fixed order that enforces the natural customer flow
+    # storage → condition → accessories → photos → contact info → payout → recap → submit
     STEPS = [
         "storage",  # 0
         "condition",  # 1
-        "accessories",  # 2 (box)
-        "name",  # 3
-        "phone",  # 4
-        "email",  # 5
-        "photos",  # 6
-        "recap",  # 7
-        "submit",  # 8
+        "accessories",  # 2
+        "photos",  # 3
+        "name",  # 4
+        "phone",  # 5
+        "email",  # 6
+        "payout",  # 7
+        "recap",  # 8
+        "submit",  # 9
     ]
 
     QUESTIONS = {
@@ -849,6 +851,40 @@ class TradeInChecklistState:
         """Mark that this device doesn't have storage (cameras, accessories, etc.)"""
         self.skip_storage = True
         logger.info("[ChecklistState] Device has no storage, will skip storage step")
+
+    def _storage_collected(self) -> bool:
+        return self.skip_storage or "storage" in self.collected_data
+
+    def ready_for_contact(self) -> bool:
+        """Determine if we have enough device details to request contact info"""
+        has_storage = self._storage_collected()
+        has_condition = "condition" in self.collected_data
+        has_accessories = "accessories" in self.collected_data
+        has_photos = "photos" in self.collected_data
+        ready = has_storage and has_condition and has_accessories and has_photos
+        logger.debug(
+            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s => %s",
+            has_storage,
+            has_condition,
+            has_accessories,
+            has_photos,
+            ready,
+        )
+        return ready
+
+    def ready_for_payout(self) -> bool:
+        """Payout comes after contact info (unless trade-up)."""
+        if self.is_trade_up:
+            return False
+        contact_fields = all(f in self.collected_data for f in ("name", "phone", "email"))
+        ready = self.ready_for_contact() and contact_fields
+        logger.debug(
+            "[ChecklistState] Payout readiness — contact_ready=%s contact_fields=%s => %s",
+            self.ready_for_contact(),
+            contact_fields,
+            ready,
+        )
+        return ready
 
     def mark_field_collected(self, field_name: str, value: any = True):
         """Mark a field as collected and advance if it's the current step"""
@@ -918,6 +954,7 @@ class TradeInChecklistState:
             "collected": list(self.collected_data.keys()),
             "is_trade_up": self.is_trade_up,
             "completed": self.completed,
+            "contact_ready": self.ready_for_contact(),
         }
 
 
