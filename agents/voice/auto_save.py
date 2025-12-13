@@ -187,17 +187,22 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
     # Email detection - improved to handle spelled out emails
     email_match = re.search(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", lower)
-    if email_match:
-        # Always extract email if found, even if already collected (to handle confirmations)
+    if (
+        email_match
+        and "email" not in checklist_state.collected_data
+        and checklist_state.get_current_step() == "email"
+    ):
         extracted_email = email_match.group(0)
-        # Clean up common spoken formats
         extracted_email = extracted_email.replace(" ", "").replace("- ", "").replace("_", "_")
         extracted["contact_email"] = extracted_email
         logger.warning(f"[auto-extract] 📧 Found email: {extracted['contact_email']}")
     
     # Also handle spelled out emails like "bobby underscore denny at hotmail dot com"
-    elif ("at" in lower and "hotmail" in lower) or ("at" in lower and "gmail" in lower):
-        # Simple pattern for spoken emails
+    elif (
+        checklist_state.get_current_step() == "email"
+        and "email" not in checklist_state.collected_data
+        and (("at" in lower and "hotmail" in lower) or ("at" in lower and "gmail" in lower))
+    ):
         words = message.lower().split()
         email_parts = []
         for word in words:
@@ -210,20 +215,19 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             elif word in ["dot", "."]:
                 email_parts.append(".")
         
-        if len(email_parts) >= 3:  # basic validation
+        if len(email_parts) >= 3:
             spoken_email = "".join(email_parts)
             extracted["contact_email"] = spoken_email
             logger.warning(f"[auto-extract] 📧 Found spoken email: {extracted['contact_email']}")
 
     # Phone detection (8+ digits) - improved to handle "848 9068" format
-    # Check if message is primarily numbers (with optional spaces/dashes)
     digits_only = re.sub(r"[^\d]", "", message)
     if (
         len(digits_only) >= 8
         and len(digits_only) <= 15
         and "phone" not in checklist_state.collected_data
+        and checklist_state.get_current_step() == "phone"
     ):
-        # If message is mostly digits (at least 50% of chars), it's likely a phone
         if len(digits_only) / max(len(message), 1) >= 0.5:
             extracted["contact_phone"] = digits_only
             logger.warning(
@@ -265,8 +269,11 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
                 logger.warning(f"[auto-extract] 💰 Found payout: {payout}")
                 break
 
-    # Name detection - improved to handle bulk input and various formats
-    if "name" not in checklist_state.collected_data:
+    # Name detection - only when we're explicitly on the name step
+    if (
+        "name" not in checklist_state.collected_data
+        and checklist_state.get_current_step() == "name"
+    ):
         # Skip if it's clearly not a name (has email, phone, storage, condition keywords)
         skip_keywords = [
             "@",
@@ -290,58 +297,70 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
         # Skip if it's mostly numbers (likely phone/storage)
         digit_ratio = len(re.sub(r"[^\d]", "", message)) / max(len(message), 1)
 
-        # Extract names from bulk input: "Bobby B-O-B-B-Y Family name Denny"
         if not has_skip and digit_ratio < 0.3:
-            # Look for name patterns in longer messages
             words = message.split()
-            
+
             # Pattern 1: "First Name" + "Family name" + "Last Name"
             if "family name" in lower or "last name" in lower:
                 name_parts = []
                 for i, word in enumerate(words):
                     if word.lower() in ["family", "last"] and i + 1 < len(words):
-                        # Next word is likely the last name
                         if i > 0:
-                            # Collect everything before "family/last" as first name
                             first_name = " ".join(words[:i]).strip()
                             last_name = words[i + 1].strip().rstrip(".,!?")
                             if first_name and last_name:
                                 name_parts = [first_name, last_name]
                                 break
-                
+
                 if name_parts:
                     full_name = " ".join(name_parts)
                     extracted["contact_name"] = full_name
-                    logger.warning(f"[auto-extract] 👤 Found name (bulk): {extracted['contact_name']}")
-            
+                    logger.warning(
+                        f"[auto-extract] 👤 Found name (bulk): {extracted['contact_name']}"
+                    )
+
             # Pattern 2: Simple name extraction for direct responses
-            elif checklist_state.get_current_step() == "name" and len(words) <= 4:
-                # Clean up name (remove extra punctuation, "B-O-B-B-Y" -> "BOBBY")
+            elif len(words) <= 4:
                 name = re.sub(r"[.!?]+$", "", message.strip())
-                name = re.sub(r"\s*-\s*", "", name)  # Remove hyphens in spelled names
-                if len(name) >= 2:  # At least 2 chars
+                name = re.sub(r"\s*-\s*", "", name)
+                if len(name) >= 2:
                     extracted["contact_name"] = name
-                    logger.warning(f"[auto-extract] 👤 Found name (direct): {extracted['contact_name']}")
-            
+                    logger.warning(
+                        f"[auto-extract] 👤 Found name (direct): {extracted['contact_name']}"
+                    )
+
             # Pattern 3: Skip confirmations like "Yes", "Correct", etc.
-            elif lower in ["yes", "correct", "ok", "okay", "yep", "yeah", "sure", "that's right"]:
+            elif lower in [
+                "yes",
+                "correct",
+                "ok",
+                "okay",
+                "yep",
+                "yeah",
+                "sure",
+                "that's right",
+            ]:
                 logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
+
             # Pattern 4: Extract potential name from mixed input
-            elif len(words) >= 2 and len(words) <= 6:
-                # Filter out non-name words
+            elif 2 <= len(words) <= 6:
                 name_words = []
                 for word in words:
                     word_clean = word.strip(".,!?")
-                    if (len(word_clean) >= 2 and 
-                        not word_clean.isdigit() and 
-                        "@" not in word_clean and
-                        not any(char.isdigit() for char in word_clean)):
+                    if (
+                        len(word_clean) >= 2
+                        and not word_clean.isdigit()
+                        and "@" not in word_clean
+                        and not any(char.isdigit() for char in word_clean)
+                    ):
                         name_words.append(word_clean)
-                
+
                 if name_words:
-                    potential_name = " ".join(name_words[:3])  # Max 3 words
+                    potential_name = " ".join(name_words[:3])
                     extracted["contact_name"] = potential_name
-                    logger.warning(f"[auto-extract] 👤 Found name (mixed): {extracted['contact_name']}")
+                    logger.warning(
+                        f"[auto-extract] 👤 Found name (mixed): {extracted['contact_name']}"
+                    )
 
     return extracted
 
@@ -371,6 +390,11 @@ async def force_save_to_db(
         data["brand"] = checklist_state.collected_data["brand"]
     if "model" in checklist_state.collected_data:
         data["model"] = checklist_state.collected_data["model"]
+    if "target_device_name" in checklist_state.collected_data:
+        data["target_device_name"] = checklist_state.collected_data["target_device_name"]
+    for price_field in ["source_price_quoted", "target_price_quoted", "top_up_amount"]:
+        if price_field in checklist_state.collected_data:
+            data[price_field] = checklist_state.collected_data[price_field]
     if "storage" in checklist_state.collected_data:
         data["storage"] = checklist_state.collected_data["storage"]
     if "condition" in checklist_state.collected_data:
@@ -637,23 +661,34 @@ async def auto_save_after_message(
         logger.info("[auto-save] No new data extracted")
         return
 
-    # Update checklist state
+    applied_fields: List[str] = []
+
+    # Update checklist state only for the fields we're ready to accept
     for field, value in extracted.items():
         if field == "contact_name":
             checklist_state.mark_field_collected("name", value)
+            applied_fields.append("name")
         elif field == "contact_phone":
             checklist_state.mark_field_collected("phone", value)
+            applied_fields.append("phone")
         elif field == "contact_email":
             checklist_state.mark_field_collected("email", value)
+            applied_fields.append("email")
         elif field == "accessories":
             checklist_state.mark_field_collected("accessories", value)
+            applied_fields.append("accessories")
         elif field == "photos_acknowledged":
             checklist_state.mark_field_collected("photos", value)
+            applied_fields.append("photos")
         else:
             checklist_state.mark_field_collected(field, value)
+            applied_fields.append(field)
 
-    # FORCE save to database
-    logger.warning(f"[auto-save] 💾 Saving {len(extracted)} fields...")
+    if not applied_fields:
+        logger.info("[auto-save] Extracted data not applicable for current step")
+        return
+
+    logger.warning(f"[auto-save] 💾 Saving {len(applied_fields)} fields...")
     success = await force_save_to_db(session_id, checklist_state, api_base_url, headers)
 
     if success:

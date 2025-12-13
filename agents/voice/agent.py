@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -73,6 +73,70 @@ else:
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
 # Session → leadId cache to keep a single lead per call
 _lead_ids: Dict[str, str] = {}
+# Session → trade-up context (target device + pricing)
+_tradeup_context: Dict[str, Dict[str, Any]] = {}
+
+VALID_PAYOUT_VALUES = {"cash", "paynow", "bank", "installment"}
+PAYOUT_NORMALIZATION_MAP = {
+    "cash": "cash",
+    "cash payout": "cash",
+    "cash payment": "cash",
+    "paynow": "paynow",
+    "pay now": "paynow",
+    "pay-now": "paynow",
+    "bank": "bank",
+    "bank transfer": "bank",
+    "bank account": "bank",
+    "wire transfer": "bank",
+    "installment": "installment",
+    "installments": "installment",
+    "instalment": "installment",
+    "instalments": "installment",
+    "installment plan": "installment",
+    "installment plans": "installment",
+    "payment plan": "installment",
+    "payment plans": "installment",
+    "monthly plan": "installment",
+    "monthly installment": "installment",
+}
+PAYOUT_KEYWORD_FALLBACKS = (
+    ("cash", "cash"),
+    ("pay now", "paynow"),
+    ("paynow", "paynow"),
+    ("bank transfer", "bank"),
+    ("bank account", "bank"),
+    ("wire transfer", "bank"),
+    ("bank", "bank"),
+    ("installment", "installment"),
+    ("instalment", "installment"),
+    ("payment plan", "installment"),
+    ("monthly", "installment"),
+)
+UNSUPPORTED_PAYOUT_KEYWORDS = ("top up", "topup", "top-up")
+
+def normalize_payout_value(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+
+    normalized = value.strip().lower()
+    normalized = normalized.replace("-", " ")
+    normalized = normalized.replace("_", " ")
+    normalized = " ".join(normalized.split())
+
+    mapped = PAYOUT_NORMALIZATION_MAP.get(normalized)
+    if mapped:
+        normalized = mapped
+    else:
+        for keyword, target in PAYOUT_KEYWORD_FALLBACKS:
+            if keyword in normalized:
+                normalized = target
+                break
+
+    for keyword in UNSUPPORTED_PAYOUT_KEYWORDS:
+        if keyword in normalized:
+            return None
+
+    return normalized if normalized in VALID_PAYOUT_VALUES else None
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -327,6 +391,30 @@ async def calculate_tradeup_pricing(
             logger.info(
                 f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}"
             )
+
+            # Cache trade-up context so subsequent tool calls always include target info
+            try:
+                room = get_job_context().room
+                session_id = room.name
+            except Exception:
+                session_id = None
+
+            if session_id:
+                _tradeup_context[session_id] = {
+                    "source_device": source_device,
+                    "target_device": target_device,
+                    "trade_value": trade_value,
+                    "retail_price": retail_price,
+                    "top_up": top_up,
+                }
+                state = _get_checklist(session_id)
+                state.mark_trade_up()
+                state.collected_data["source_device_name"] = source_device
+                state.collected_data["target_device_name"] = target_device
+                state.collected_data["source_price_quoted"] = trade_value
+                state.collected_data["target_price_quoted"] = retail_price
+                state.collected_data["top_up_amount"] = top_up
+
             return f"Your {source_device} trades for S${int(trade_value)}. The {target_device} is S${int(retail_price)}. Top-up: S${int(top_up)}."
 
         logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
@@ -340,18 +428,18 @@ async def calculate_tradeup_pricing(
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    category: str = "",
-    brand: str = "",
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
     model: Optional[str] = None,
-    storage: str = "",
-    condition: str = "",
+    storage: Optional[str] = None,
+    condition: Optional[str] = None,
     contact_name: Optional[str] = None,
     contact_phone: Optional[str] = None,
     contact_email: Optional[str] = None,
-    preferred_payout: str = "",
-    notes: str = "",
+    preferred_payout: Optional[str] = None,
+    notes: Optional[str] = None,
     target_device_name: Optional[str] = None,
-    photos_acknowledged: bool = False,
+    photos_acknowledged: Optional[bool] = None,
     source_price_quoted: Optional[float] = None,
     target_price_quoted: Optional[float] = None,
     top_up_amount: Optional[float] = None,
@@ -378,6 +466,27 @@ async def tradein_update_lead(
 
     # Use per-session checklist state
     state = _get_checklist(session_id)
+
+    # Enrich with cached trade-up context if available
+    context_data = _tradeup_context.get(session_id)
+    if context_data:
+        if target_device_name is None:
+            target_device_name = context_data.get("target_device")
+        if source_price_quoted is None:
+            source_price_quoted = context_data.get("trade_value")
+        if target_price_quoted is None:
+            target_price_quoted = context_data.get("retail_price")
+        if top_up_amount is None:
+            top_up_amount = context_data.get("top_up")
+        state.mark_trade_up()
+        if target_device_name:
+            state.collected_data.setdefault("target_device_name", target_device_name)
+        if source_price_quoted is not None:
+            state.collected_data.setdefault("source_price_quoted", source_price_quoted)
+        if target_price_quoted is not None:
+            state.collected_data.setdefault("target_price_quoted", target_price_quoted)
+        if top_up_amount is not None:
+            state.collected_data.setdefault("top_up_amount", top_up_amount)
 
     # Auto-detect if device has no storage based on category
     if category:
@@ -438,13 +547,35 @@ async def tradein_update_lead(
         "contact_email": "email",
     }
 
+    # Normalize common string inputs first so validation uses sanitized values
+    def _strip(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+    category = _strip(category)
+    brand = _strip(brand)
+    model = _strip(model)
+    storage = _strip(storage)
+    condition = _strip(condition)
+    notes = _strip(notes)
+
+    raw_preferred_payout = _strip(preferred_payout)
+    preferred_payout = normalize_payout_value(raw_preferred_payout)
+    if raw_preferred_payout and not preferred_payout:
+        logger.warning(
+            f"[tradein_update_lead] ⚠️ Dropping unsupported payout value: {raw_preferred_payout}"
+        )
+
     # Check if any field is being set that's not the current step
     fields_being_set = []
     if storage:
         fields_being_set.append("storage")
     if condition:
         fields_being_set.append("condition")
-    if notes and ("box" in notes.lower() or "accessories" in notes.lower()):
+    notes_lower = notes.lower() if notes else ""
+    if notes and ("box" in notes_lower or "accessories" in notes_lower):
         fields_being_set.append("accessories")
     if photos_acknowledged is not None:
         fields_being_set.append("photos")
@@ -456,23 +587,6 @@ async def tradein_update_lead(
         fields_being_set.append("email")
     if preferred_payout:
         fields_being_set.append("payout")
-
-    # Normalize empty strings to None to avoid sending blanks
-    if category == "":
-        category = None
-    if brand == "":
-        brand = None
-    if storage == "":
-        storage = None
-    if condition == "":
-        condition = None
-    if preferred_payout == "":
-        preferred_payout = None
-    if notes == "":
-        notes = None
-    if photos_acknowledged is False:
-        # Leave False as-is; but treat default False with no user confirmation as None
-        photos_acknowledged = None
 
     # Allow setting multiple fields on first call (when model/brand/category are provided)
     # But after initialization, ONLY allow current step
@@ -574,6 +688,14 @@ async def tradein_update_lead(
                 state.mark_field_collected("email", contact_email)
             if inferred_payout:
                 state.mark_field_collected("payout", inferred_payout)
+            if target_device_name:
+                state.collected_data["target_device_name"] = target_device_name
+            if source_price_quoted is not None:
+                state.collected_data["source_price_quoted"] = source_price_quoted
+            if target_price_quoted is not None:
+                state.collected_data["target_price_quoted"] = target_price_quoted
+            if top_up_amount is not None:
+                state.collected_data["top_up_amount"] = top_up_amount
 
             # Return the next required question with STRICT enforcement
             next_question = state.get_next_question()
@@ -684,9 +806,7 @@ class TradeInChecklistState:
     Prevents LLM from asking questions out of order or asking multiple fields at once.
     """
 
-    # Fixed order that CANNOT be changed
-    # API REQUIREMENT: name/phone/email MUST come BEFORE condition/accessories
-    # Strict deterministic order (matches voice flow described by user)
+    # Fixed order that CANNOT be changed (storage → condition → accessories → contact info → photos → recap)
     STEPS = [
         "storage",  # 0
         "condition",  # 1
@@ -975,13 +1095,18 @@ Example: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600."
 WAIT for "yes/okay/sure/let's do it" before continuing.
 If NO: "No problem! Need help with anything else?"
 
-**Step 6: Collect Contact Info FIRST** (ONLY if user said YES to proceed!)
-🔴 CRITICAL ORDER - API REQUIRES contact info BEFORE device details:
+**Step 6: Collect Device Details BEFORE contact info**
 1. ✅ Ask storage (if not mentioned): "Storage size?"
-2. ✅ Ask name: "Your name?"
-3. ✅ Ask phone: "Contact number?" → repeat back for confirmation
-4. ✅ Ask email: "Email address?" → repeat back for confirmation
-5. ✅ NOW call tradein_update_lead with EXACT field names:
+2. ✅ Ask condition next: "Condition of your {SOURCE}? Mint, good, fair, or faulty?"
+3. ✅ Ask accessories/box: "Got the box and accessories?"
+4. ✅ Nudge for photos: "Photos help—want to send one?"
+5. ✅ Call tradein_update_lead after EACH of these answers (storage → condition → accessories → photos) so the lead stays in sync.
+
+**Step 7: Collect Contact Info + pricing context**
+6. ✅ Ask name: "Your name?"
+7. ✅ Ask phone: "Contact number?" → repeat back for confirmation
+8. ✅ Ask email: "Email address?" → repeat back for confirmation
+9. ✅ After all three are confirmed, call tradein_update_lead with the full context:
    ```
    tradein_update_lead(
      model="MSI Claw",              # Source device model (NOT brand+model, just model)
@@ -995,15 +1120,9 @@ If NO: "No problem! Need help with anything else?"
      top_up_amount=600               # Top-up from calculate_tradeup_pricing
    )
    ```
-   🚨 If this call FAILS with "Invalid fields" error, DO NOT continue!
-   Tell user: "I'm having trouble saving the details. Let me connect you with staff."
-   Then call: sendemail(info_request="Trade-up submission failed - {SOURCE} for {TARGET}, contact {NAME} {PHONE}")
+   🚨 If this call FAILS with "Invalid fields" error, DO NOT continue! Tell user: "I'm having trouble saving the details. Let me connect you with staff." Then call sendemail with all contact info.
 
-**Step 7: Collect Device Details** (After contact info saved)
-6. ✅ Ask condition: "Condition of your {SOURCE}? Mint, good, fair, or faulty?"
-7. ✅ Ask accessories: "Got the box and accessories?"
-8. ✅ Call tradein_update_lead after EACH answer
-9. ✅ Ask for photo: "Photos help—want to send one?"
+**Step 8: Recap + Submit**
 10. ✅ Mini recap: "{SOURCE} {CONDITION}, {ACCESSORIES}, {NAME} {PHONE}, email noted. Correct?"
 11. ✅ Submit: Call tradein_submit_lead
 12. ✅ Confirm: "Trade-up submitted! We'll contact you to arrange. Anything else?"
@@ -1015,6 +1134,18 @@ User: "Yes"
 Agent: [calculate_tradeup_pricing(source_device="MSI Claw 1TB", target_device="PS5 Pro 2TB Digital")] [typing indicator shows]
 Agent: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600. Want to proceed?" [WAIT]
 User: "Yes"
+Agent: "Storage size?" [WAIT]
+User: "1TB"
+Agent: [tradein_update_lead(storage="1TB")]
+Agent: "Condition? Mint, good, fair, or faulty?" [WAIT]
+User: "Good"
+Agent: [tradein_update_lead(condition="good")]
+Agent: "Got the box and accessories?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(notes="Has box and accessories")]
+Agent: "Photos help—want to send one?" [WAIT]
+User: "No photos"
+Agent: [tradein_update_lead(photos_acknowledged=False)]
 Agent: "Your name?" [WAIT]
 User: "Bobby"
 Agent: "Contact number?" [WAIT]
@@ -1025,21 +1156,9 @@ Agent: "Email?" [WAIT]
 User: "bobby@hotmail.com"
 Agent: "bobby@hotmail.com, right?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead(model="Claw", storage="1TB", target_device_name="PS5 Pro 2TB Digital", contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com", source_price_quoted=300, target_price_quoted=900, top_up_amount=600)]
-Agent: "Condition of your MSI Claw? Mint, good, fair, or faulty?" [WAIT]
-User: "Good"
-Agent: [tradein_update_lead(condition="good")]
-Agent: "Got the box?" [WAIT]
-User: "Yes"
-Agent: [tradein_update_lead(has_box=true)]
-Agent: "Photos help—want to send one?" [WAIT]
-User: "No photos"
-Agent: [tradein_update_lead({photos_provided:false})]
-Agent: "Noted—final quote after inspection. Installments or cash top-up?"
-User: "Installments"
-Agent: [tradein_update_lead({preferred_payout:"installment"})]
-Agent: "PS4 Pro good, box, 8448 9068, bobby@hotmail.com, installments. Change anything?" [WAIT]
-User: "No"
+Agent: [tradein_update_lead(model="Claw", target_device_name="PS5 Pro 2TB Digital", contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com", source_price_quoted=300, target_price_quoted=900, top_up_amount=600)]
+Agent: "MSI Claw good, box, 8448 9068, bobby@hotmail.com. Everything correct?" [WAIT]
+User: "No changes"
 Agent: [tradein_submit_lead()]
 Agent: "Done! We'll review and contact you. Anything else?"
 
