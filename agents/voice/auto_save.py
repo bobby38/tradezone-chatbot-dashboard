@@ -280,24 +280,32 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             extracted["photos_acknowledged"] = wants_photos
             logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
 
-    # Payout method detection
-    if "payout" not in checklist_state.collected_data and not checklist_state.is_trade_up:
-        payout_keywords = {
-            "cash": "cash",
-            "paynow": "paynow", 
-            "pay now": "paynow",
-            "bank": "bank",
-            "transfer": "bank",
-            "installment": "installment",
-            "instalment": "installment",
-            "payment plan": "installment",
-        }
-        
-        for keyword, payout in payout_keywords.items():
-            if keyword in lower:
-                extracted["payout"] = payout
-                logger.warning(f"[auto-extract] 💰 Found payout: {payout}")
-                break
+    # Payout method detection (ONLY at payout step)
+    if (
+        "payout" not in checklist_state.collected_data
+        and not checklist_state.is_trade_up
+        and checklist_state.get_current_step() == "payout"
+    ):
+        # Never misinterpret top-up phrases as payout method
+        if any(token in lower for token in ["top up", "top-up", "topup"]):
+            logger.info("[auto-extract] ⏭️ Ignoring top-up phrase during payout step")
+        else:
+            payout_keywords = {
+                "cash": "cash",
+                "paynow": "paynow",
+                "pay now": "paynow",
+                "bank": "bank",
+                "transfer": "bank",
+                "installment": "installment",
+                "instalment": "installment",
+                "payment plan": "installment",
+            }
+
+            for keyword, payout in payout_keywords.items():
+                if keyword in lower:
+                    extracted["payout"] = payout
+                    logger.warning(f"[auto-extract] 💰 Found payout: {payout}")
+                    break
 
     # Name detection - only when we're explicitly on the name step
     if (
