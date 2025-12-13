@@ -712,7 +712,8 @@ export async function submitTradeInLead(
     .select(
       `id, status, channel, category, brand, model, storage, condition,
        defects, accessories, purchase_year, price_hint, range_min, range_max,
-       pricing_version, preferred_payout, preferred_fulfilment, contact_name,
+       pricing_version, source_device_name, target_device_name, source_price_quoted,
+       target_price_quoted, top_up_amount, preferred_payout, preferred_fulfilment, contact_name,
        contact_phone, contact_email, telegram_handle, notes, session_id,
        source_message_summary, created_at`,
     )
@@ -733,6 +734,16 @@ export async function submitTradeInLead(
     device: `${lead.brand} ${lead.model}`,
     status: lead.status,
   });
+
+  const hasTargetPrice =
+    lead.target_price_quoted !== null && lead.target_price_quoted !== undefined;
+  const hasTopUp = lead.top_up_amount !== null && lead.top_up_amount !== undefined;
+  const isTradeUp = Boolean(
+    (lead.target_device_name && lead.target_device_name.trim()) ||
+      (lead.source_device_name && lead.source_device_name.trim()) ||
+      hasTargetPrice ||
+      hasTopUp,
+  );
 
   const missingFields: string[] = [];
   const friendlyFieldNames: Record<string, string> = {
@@ -763,7 +774,7 @@ export async function submitTradeInLead(
   if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
-  if (!lead.preferred_payout?.trim()) {
+  if (!isTradeUp && !lead.preferred_payout?.trim()) {
     missingFields.push("preferred_payout");
   }
 
