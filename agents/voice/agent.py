@@ -257,7 +257,9 @@ async def calculate_tradeup_pricing(
         result = detect_and_fix_trade_up_prices(source_device, target_device)
 
         if not result:
-            logger.error(f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}")
+            logger.error(
+                f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}"
+            )
             return f"Sorry, I couldn't find pricing for {source_device} or {target_device}. Please provide the exact model."
 
         # Check if clarification is needed
@@ -278,7 +280,9 @@ async def calculate_tradeup_pricing(
         top_up = result.get("top_up")
 
         if trade_value and retail_price and top_up:
-            logger.info(f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}")
+            logger.info(
+                f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}"
+            )
             return f"Your {source_device} trades for S${int(trade_value)}. The {target_device} is S${int(retail_price)}. Top-up: S${int(top_up)}."
 
         logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
@@ -1043,7 +1047,7 @@ async def entrypoint(ctx: JobContext):
     # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
     def on_user_input(event):
-Only if the client insists or the agent can say, "Oh, we have just this thing, is pre-owned."         """Capture user's final transcribed message and auto-save data"""
+        """Capture user's final transcribed message and auto-save data"""
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
