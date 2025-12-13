@@ -1,10 +1,26 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
 ## Change Log — Dec 13, 2025 (Voice Agent - CRITICAL FIXES)
+
+### Contact Data Loss Bug Fix (Dec 13, 2025 - Latest)
+**Problem**: Voice agent was silently discarding contact information (name, phone, email) when collected out of order, causing submission failures with error "I'm having trouble saving the details."
+
+**Root Cause**: Commit `79aa3b8` added strict gating logic in `auto_save.py` (lines 668-691) that blocks contact field saving until device details (storage, condition, accessories, photos) are complete. However, the LLM was still asking for contact info prematurely, causing extracted data to be logged but not saved to checklist state.
+
+**Three-Pronged Fix Applied**:
+1. **Instructions Enhanced** (`agents/voice/agent.py` lines 991-999): Added forceful ⚠️ CRITICAL DATA LOSS WARNING at top of agent instructions explaining that contact info will be SILENTLY DISCARDED if asked too early
+2. **Tool Response Blocking** (`agents/voice/agent.py` lines 703-718): Enhanced `tradein_update_lead` tool response to actively detect and block out-of-order contact collection attempts, returning explicit warning message to LLM
+3. **Documentation Updated**: This change log entry documents the bug, root cause, and three-pronged solution approach
+
+**Impact**: Prevents silent data loss and ensures contact information is only collected after all device details are complete, eliminating submission failures.
+
+---
+
+### Previous Fixes (Dec 13, 2025)
 - **FIXED**: Voice agent auto-extraction now properly handles bulk contact information (name + phone + email in one message)
 - **FIXED**: Smart acknowledgment system prevents agent from asking for already-provided information
 - **FIXED**: Device brand/model auto-detection for Steam Deck, PS5, Xbox, Switch etc.
-- **FIXED**: Payout method detection (cash, PayNow, bank, installment) 
+- **FIXED**: Payout method detection (cash, PayNow, bank, installment)
 - **FIXED**: Email extraction now handles spoken formats ("bobby underscore denny at hotmail dot com")
 - **IMPROVED**: Name extraction patterns for "Family name Denny" and bulk input scenarios
 - Voice trade-in flow now reuses a single lead per LiveKit session and passes `leadId` on every update/submit to prevent fragmented leads.
