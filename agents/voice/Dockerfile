@@ -12,8 +12,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy agent code
+# Copy agent code and auto-save system
 COPY agent.py .
+COPY auto_save.py .
+COPY test_auto_save.py .
 
 # Download required model files for turn detector and VAD
 RUN python agent.py download-files
