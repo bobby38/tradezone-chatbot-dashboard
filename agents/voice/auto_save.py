@@ -309,61 +309,54 @@ async def force_save_to_db(
         return False
 
 
+def _alias_candidates(device_name: str) -> list[str]:
+    """Generate alias variants to improve matching (Quest 3 / Quest 3S / spacing)."""
+    base = device_name.lower().strip()
+    aliases = {base}
+    aliases.add(base.replace("3s", "3 s"))
+    aliases.add(base.replace("3 s", "3s"))
+    aliases.add(base.replace("quest 3s", "quest 3"))
+    aliases.add(base.replace("quest 3", "quest 3s"))
+    return [a for a in aliases if a]
+
+
 def find_all_variants(device_name: str) -> list[Dict[str, any]]:
     """
     Find all variants of a device (different storage, editions, etc.)
     Returns list of {label, trade_in, retail, variant_info}
 
     IMPORTANT: If exact match exists, return ONLY that match to avoid false clarifications.
+    Also: if user specified storage and only one variant matches that storage, return that directly.
     """
     grid = load_price_grid()
     if not grid:
         return []
 
-    device_lower = device_name.lower()
-    variants = []
+    # Extract storage token, e.g., 128GB / 256GB / 512GB
+    storage_token = None
+    m = re.search(r"(\\d+\\s*(gb|tb))", device_name.lower())
+    if m:
+        storage_token = m.group(1).replace(" ", "")
+
+    variants: list[Dict[str, any]] = []
     exact_match = None
 
-    # Search all categories
-    for category_data in grid.get("categories", {}).values():
-        preowned = category_data.get("preowned_trade_in", {})
-        brand_new = category_data.get("brand_new_retail", {})
+    for candidate in _alias_candidates(device_name):
+        device_lower = candidate.lower()
 
-        # Find matching devices
-        for label, trade_price in preowned.items():
-            label_lower = label.lower()
+        # Search all categories
+        for category_data in grid.get("categories", {}).values():
+            preowned = category_data.get("preowned_trade_in", {})
+            brand_new = category_data.get("brand_new_retail", {})
 
-            # Check for EXACT match first (highest priority)
-            if label_lower == device_lower:
-                retail_price = brand_new.get(label)
-                exact_match = {
-                    "label": label,
-                    "trade_in": trade_price[0]
-                    if isinstance(trade_price, list)
-                    else trade_price,
-                    "retail": retail_price[0]
-                    if isinstance(retail_price, list)
-                    else retail_price
-                    if retail_price
-                    else None,
-                    "variant_info": "",
-                }
-                # Don't break - continue checking other categories
-                continue
+            # Find matching devices
+            for label, trade_price in preowned.items():
+                label_lower = label.lower()
 
-            # Check if this is a variant of the device (fuzzy match)
-            device_tokens = set(device_lower.split())
-            label_tokens = set(label_lower.split())
-
-            # If device name is contained in label (e.g., "ps5" in "ps5 slim 1tb digital")
-            if device_tokens.issubset(label_tokens):
-                retail_price = brand_new.get(label)
-
-                # Extract variant info (storage, edition, etc.)
-                variant_info = label_tokens - device_tokens
-
-                variants.append(
-                    {
+                # Exact match
+                if label_lower == device_lower:
+                    retail_price = brand_new.get(label)
+                    exact_match = {
                         "label": label,
                         "trade_in": trade_price[0]
                         if isinstance(trade_price, list)
@@ -373,13 +366,42 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
                         else retail_price
                         if retail_price
                         else None,
-                        "variant_info": " ".join(sorted(variant_info)),
+                        "variant_info": "",
                     }
-                )
+                    continue
+
+                # Fuzzy variant: all tokens of device are in label
+                device_tokens = set(device_lower.split())
+                label_tokens = set(label_lower.split())
+                if device_tokens.issubset(label_tokens):
+                    retail_price = brand_new.get(label)
+                    variant_info = label_tokens - device_tokens
+                    variants.append(
+                        {
+                            "label": label,
+                            "trade_in": trade_price[0]
+                            if isinstance(trade_price, list)
+                            else trade_price,
+                            "retail": retail_price[0]
+                            if isinstance(retail_price, list)
+                            else retail_price
+                            if retail_price
+                            else None,
+                            "variant_info": " ".join(sorted(variant_info)),
+                        }
+                    )
 
     # If exact match found, return ONLY that (no clarification needed)
     if exact_match:
         return [exact_match]
+
+    # If storage was specified and uniquely identifies one variant, return it
+    if storage_token and variants:
+        storage_filtered = [v for v in variants if storage_token in v["label"].lower()]
+        if len(storage_filtered) == 1:
+            return storage_filtered
+        if storage_filtered:
+            variants = storage_filtered
 
     return variants
 
