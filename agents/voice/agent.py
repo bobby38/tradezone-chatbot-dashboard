@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -73,6 +73,71 @@ else:
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
 # Session → leadId cache to keep a single lead per call
 _lead_ids: Dict[str, str] = {}
+# Session → trade-up context (target device + pricing)
+_tradeup_context: Dict[str, Dict[str, Any]] = {}
+
+VALID_PAYOUT_VALUES = {"cash", "paynow", "bank", "installment"}
+PAYOUT_NORMALIZATION_MAP = {
+    "cash": "cash",
+    "cash payout": "cash",
+    "cash payment": "cash",
+    "paynow": "paynow",
+    "pay now": "paynow",
+    "pay-now": "paynow",
+    "bank": "bank",
+    "bank transfer": "bank",
+    "bank account": "bank",
+    "wire transfer": "bank",
+    "installment": "installment",
+    "installments": "installment",
+    "instalment": "installment",
+    "instalments": "installment",
+    "installment plan": "installment",
+    "installment plans": "installment",
+    "payment plan": "installment",
+    "payment plans": "installment",
+    "monthly plan": "installment",
+    "monthly installment": "installment",
+}
+PAYOUT_KEYWORD_FALLBACKS = (
+    ("cash", "cash"),
+    ("pay now", "paynow"),
+    ("paynow", "paynow"),
+    ("bank transfer", "bank"),
+    ("bank account", "bank"),
+    ("wire transfer", "bank"),
+    ("bank", "bank"),
+    ("installment", "installment"),
+    ("instalment", "installment"),
+    ("payment plan", "installment"),
+    ("monthly", "installment"),
+)
+UNSUPPORTED_PAYOUT_KEYWORDS = ("top up", "topup", "top-up")
+
+
+def normalize_payout_value(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+
+    normalized = value.strip().lower()
+    normalized = normalized.replace("-", " ")
+    normalized = normalized.replace("_", " ")
+    normalized = " ".join(normalized.split())
+
+    mapped = PAYOUT_NORMALIZATION_MAP.get(normalized)
+    if mapped:
+        normalized = mapped
+    else:
+        for keyword, target in PAYOUT_KEYWORD_FALLBACKS:
+            if keyword in normalized:
+                normalized = target
+                break
+
+    for keyword in UNSUPPORTED_PAYOUT_KEYWORDS:
+        if keyword in normalized:
+            return None
+
+    return normalized if normalized in VALID_PAYOUT_VALUES else None
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -327,7 +392,50 @@ async def calculate_tradeup_pricing(
             logger.info(
                 f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}"
             )
-            return f"Your {source_device} trades for S${int(trade_value)}. The {target_device} is S${int(retail_price)}. Top-up: S${int(top_up)}."
+
+            # Cache trade-up context so subsequent tool calls always include target info
+            try:
+                room = get_job_context().room
+                session_id = room.name
+            except Exception:
+                session_id = None
+
+            if session_id:
+                existing_ctx = _tradeup_context.get(session_id)
+                if existing_ctx:
+                    prev_source = (existing_ctx.get("source_device") or "").strip().lower()
+                    prev_target = (existing_ctx.get("target_device") or "").strip().lower()
+                    next_source = (source_device or "").strip().lower()
+                    next_target = (target_device or "").strip().lower()
+                    if prev_source != next_source or prev_target != next_target:
+                        _checklist_states[session_id] = TradeInChecklistState()
+                        _lead_ids.pop(session_id, None)
+                        logger.info(
+                            "[checklist] 🔄 New trade detected — reset checklist and lead cache"
+                        )
+
+                _tradeup_context[session_id] = {
+                    "source_device": source_device,
+                    "target_device": target_device,
+                    "trade_value": trade_value,
+                    "retail_price": retail_price,
+                    "top_up": top_up,
+                }
+                state = _get_checklist(session_id)
+                state.mark_trade_up()
+                state.collected_data["force_new_lead"] = True
+                state.collected_data["source_device_name"] = source_device
+                state.collected_data["target_device_name"] = target_device
+                state.collected_data["source_price_quoted"] = trade_value
+                state.collected_data["target_price_quoted"] = retail_price
+                state.collected_data["top_up_amount"] = top_up
+
+            return (
+                f"Your {source_device} trades for S${int(trade_value)}. "
+                f"The {target_device} is S${int(retail_price)}. "
+                f"Top-up: S${int(top_up)}. Want to proceed? "
+                f"🚨 SYSTEM RULE: If user says yes, ask ONLY 'Storage size?' next."
+            )
 
         logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
         return "Unable to calculate complete pricing. Please verify the device models."
@@ -340,18 +448,18 @@ async def calculate_tradeup_pricing(
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    category: str = "",
-    brand: str = "",
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
     model: Optional[str] = None,
-    storage: str = "",
-    condition: str = "",
+    storage: Optional[str] = None,
+    condition: Optional[str] = None,
     contact_name: Optional[str] = None,
     contact_phone: Optional[str] = None,
     contact_email: Optional[str] = None,
-    preferred_payout: str = "",
-    notes: str = "",
-    target_device_name: Optional[str] = None,
-    photos_acknowledged: bool = False,
+    preferred_payout: Optional[str] = None,
+    notes: Optional[str] = None,
+    target_device_name: str = "",
+    photos_acknowledged: Optional[bool] = None,
     source_price_quoted: Optional[float] = None,
     target_price_quoted: Optional[float] = None,
     top_up_amount: Optional[float] = None,
@@ -378,6 +486,31 @@ async def tradein_update_lead(
 
     # Use per-session checklist state
     state = _get_checklist(session_id)
+
+    # Normalize empty string back to None so payload doesn't write empties
+    if isinstance(target_device_name, str) and not target_device_name.strip():
+        target_device_name = None
+
+    # Enrich with cached trade-up context if available
+    context_data = _tradeup_context.get(session_id)
+    if context_data:
+        if target_device_name is None:
+            target_device_name = context_data.get("target_device")
+        if source_price_quoted is None:
+            source_price_quoted = context_data.get("trade_value")
+        if target_price_quoted is None:
+            target_price_quoted = context_data.get("retail_price")
+        if top_up_amount is None:
+            top_up_amount = context_data.get("top_up")
+        state.mark_trade_up()
+        if target_device_name:
+            state.collected_data.setdefault("target_device_name", target_device_name)
+        if source_price_quoted is not None:
+            state.collected_data.setdefault("source_price_quoted", source_price_quoted)
+        if target_price_quoted is not None:
+            state.collected_data.setdefault("target_price_quoted", target_price_quoted)
+        if top_up_amount is not None:
+            state.collected_data.setdefault("top_up_amount", top_up_amount)
 
     # Auto-detect if device has no storage based on category
     if category:
@@ -416,7 +549,7 @@ async def tradein_update_lead(
         # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
         import re
 
-        storage_pattern = r"\b(\d+\s*(gb|tb|mb))\b"
+        storage_pattern = r"\\b(\\d+\\s*(gb|tb|mb))\\b"
         if re.search(storage_pattern, model_lower):
             logger.info(
                 f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
@@ -438,13 +571,35 @@ async def tradein_update_lead(
         "contact_email": "email",
     }
 
+    # Normalize common string inputs first so validation uses sanitized values
+    def _strip(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+    category = _strip(category)
+    brand = _strip(brand)
+    model = _strip(model)
+    storage = _strip(storage)
+    condition = _strip(condition)
+    notes = _strip(notes)
+
+    raw_preferred_payout = _strip(preferred_payout)
+    preferred_payout = normalize_payout_value(raw_preferred_payout)
+    if raw_preferred_payout and not preferred_payout:
+        logger.warning(
+            f"[tradein_update_lead] ⚠️ Dropping unsupported payout value: {raw_preferred_payout}"
+        )
+
     # Check if any field is being set that's not the current step
     fields_being_set = []
     if storage:
         fields_being_set.append("storage")
     if condition:
         fields_being_set.append("condition")
-    if notes and ("box" in notes.lower() or "accessories" in notes.lower()):
+    notes_lower = notes.lower() if notes else ""
+    if notes and ("box" in notes_lower or "accessories" in notes_lower):
         fields_being_set.append("accessories")
     if photos_acknowledged is not None:
         fields_being_set.append("photos")
@@ -456,23 +611,6 @@ async def tradein_update_lead(
         fields_being_set.append("email")
     if preferred_payout:
         fields_being_set.append("payout")
-
-    # Normalize empty strings to None to avoid sending blanks
-    if category == "":
-        category = None
-    if brand == "":
-        brand = None
-    if storage == "":
-        storage = None
-    if condition == "":
-        condition = None
-    if preferred_payout == "":
-        preferred_payout = None
-    if notes == "":
-        notes = None
-    if photos_acknowledged is False:
-        # Leave False as-is; but treat default False with no user confirmation as None
-        photos_acknowledged = None
 
     # Allow setting multiple fields on first call (when model/brand/category are provided)
     # But after initialization, ONLY allow current step
@@ -500,6 +638,42 @@ async def tradein_update_lead(
                 elif field == "payout":
                     preferred_payout = None
 
+    # Work out whether contact info can be saved AFTER this payload
+    storage_in_payload = bool(storage)
+    condition_in_payload = bool(condition)
+    accessories_in_payload = bool(
+        notes and ("box" in notes.lower() or "accessories" in notes.lower())
+    )
+    photos_in_payload = photos_acknowledged is not None
+
+    will_have_storage = (
+        storage_in_payload or "storage" in state.collected_data or state.skip_storage
+    )
+    will_have_condition = condition_in_payload or "condition" in state.collected_data
+    will_have_accessories = (
+        accessories_in_payload or "accessories" in state.collected_data
+    )
+    will_have_photos = photos_in_payload or "photos" in state.collected_data
+
+    # NEW FLOW: contact comes after storage + accessories (box).
+    # Condition/payout can be asked later before recap/submit.
+    ready_after_payload = will_have_storage and will_have_accessories
+
+    blocked_contact_fields = []
+
+    def _contact_allowed(field_name: str) -> bool:
+        return ready_after_payload or field_name in state.collected_data
+
+    if contact_name and not _contact_allowed("name"):
+        blocked_contact_fields.append("name")
+        contact_name = None
+    if contact_phone and not _contact_allowed("phone"):
+        blocked_contact_fields.append("phone")
+        contact_phone = None
+    if contact_email and not _contact_allowed("email"):
+        blocked_contact_fields.append("email")
+        contact_email = None
+
     # Detect trade-up (target device present) → do NOT send payout (enum mismatch in API)
     inferred_payout = preferred_payout
     if target_device_name:
@@ -517,6 +691,7 @@ async def tradein_update_lead(
                     # API expects camelCase sessionId (not session_id)
                     "sessionId": session_id,
                     "leadId": _lead_ids.get(session_id),
+                    "forceNew": bool(state.collected_data.get("force_new_lead")),
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -549,6 +724,10 @@ async def tradein_update_lead(
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
 
+            # After first successful save on a new trade, drop the force-new flag.
+            if state.collected_data.get("force_new_lead"):
+                state.collected_data.pop("force_new_lead", None)
+
             # Cache leadId for this session so all subsequent saves/uploads use the same lead
             lead_id = result.get("lead", {}).get("id")
             if lead_id:
@@ -574,6 +753,14 @@ async def tradein_update_lead(
                 state.mark_field_collected("email", contact_email)
             if inferred_payout:
                 state.mark_field_collected("payout", inferred_payout)
+            if target_device_name:
+                state.collected_data["target_device_name"] = target_device_name
+            if source_price_quoted is not None:
+                state.collected_data["source_price_quoted"] = source_price_quoted
+            if target_price_quoted is not None:
+                state.collected_data["target_price_quoted"] = target_price_quoted
+            if top_up_amount is not None:
+                state.collected_data["top_up_amount"] = top_up_amount
 
             # Return the next required question with STRICT enforcement
             next_question = state.get_next_question()
@@ -582,25 +769,27 @@ async def tradein_update_lead(
                 f"[tradein_update_lead] 📋 Current step: {current_step}, Next question: {next_question}"
             )
 
-            # 🔒 BLOCK OUT-OF-ORDER CONTACT COLLECTION
-            # If contact fields were attempted but blocked, warn the LLM
-            contact_fields_attempted = []
-            if contact_name and "name" not in state.collected_data:
-                contact_fields_attempted.append("name")
-            if contact_phone and "phone" not in state.collected_data:
-                contact_fields_attempted.append("phone")
-            if contact_email and "email" not in state.collected_data:
-                contact_fields_attempted.append("email")
-            
-            if contact_fields_attempted and not state.ready_for_contact():
-                blocked_fields = ", ".join(contact_fields_attempted)
+            if blocked_contact_fields:
+                blocked_fields = ", ".join(blocked_contact_fields)
+                missing_parts = []
+                if "storage" not in state.collected_data and not state.skip_storage:
+                    missing_parts.append("storage")
+                if "condition" not in state.collected_data:
+                    missing_parts.append("condition")
+                if "accessories" not in state.collected_data:
+                    missing_parts.append("accessories")
+                if "photos" not in state.collected_data:
+                    missing_parts.append("photos")
+
+                missing_text = (
+                    ", ".join(missing_parts) if missing_parts else "device details"
+                )
                 logger.warning(
                     f"[tradein_update_lead] 🚨 BLOCKED out-of-order contact collection: {blocked_fields}"
                 )
                 return (
-                    f"⚠️ CRITICAL DATA LOSS WARNING: Contact information ({blocked_fields}) was NOT saved because device details are incomplete. "
-                    f"You MUST complete ALL device details first: storage, condition, accessories, photos. "
-                    f"Current step: {current_step}. 🚨 SYSTEM RULE: Ask ONLY '{next_question}' next."
+                    f"⚠️ CRITICAL DATA LOSS WARNING: Contact information ({blocked_fields}) was NOT saved because {missing_text} are incomplete. "
+                    f"You MUST finish those steps first. Current step: {current_step}. 🚨 SYSTEM RULE: Ask ONLY '{next_question}' next."
                 )
 
             # 🔒 FORCE the exact next question - LLM MUST ask this and ONLY this
@@ -706,28 +895,28 @@ class TradeInChecklistState:
     """
 
     # Fixed order that CANNOT be changed
-    # API REQUIREMENT: name/phone/email MUST come BEFORE condition/accessories
-    # Strict deterministic order (matches voice flow described by user)
+    # Device details (including photos acknowledgement) must be locked before contact data
     STEPS = [
-        "storage",  # 0
-        "condition",  # 1
-        "accessories",  # 2 (box)
-        "name",  # 3
-        "phone",  # 4
-        "email",  # 5
-        "photos",  # 6
-        "recap",  # 7
-        "submit",  # 8
+        "storage",
+        "accessories",
+        "name",
+        "phone",
+        "email",
+        "condition",
+        "photos",
+        "payout",
+        "recap",
+        "submit",
     ]
 
     QUESTIONS = {
         "storage": "Storage size?",
-        "condition": "Condition?",
         "accessories": "Got the box?",
-        "photos": "Photos help—want to send one?",
         "name": "Your name?",
         "phone": "Phone number?",
         "email": "Email?",
+        "condition": "Condition?",
+        "photos": "Photos help—want to send one?",
         "payout": "Cash, PayNow, bank, or installments?",
         "recap": "recap",  # Special: triggers summary
         "submit": "submit",  # Special: triggers submission
@@ -750,6 +939,46 @@ class TradeInChecklistState:
         """Mark that this device doesn't have storage (cameras, accessories, etc.)"""
         self.skip_storage = True
         logger.info("[ChecklistState] Device has no storage, will skip storage step")
+
+    def _storage_collected(self) -> bool:
+        return self.skip_storage or "storage" in self.collected_data
+
+    def ready_for_contact(self) -> bool:
+        has_storage = self._storage_collected()
+        has_accessories = "accessories" in self.collected_data
+        ready = has_storage and has_accessories
+        logger.debug(
+            "[ChecklistState] Contact readiness — storage=%s accessories=%s => %s",
+            has_storage,
+            has_accessories,
+            ready,
+        )
+        return ready
+
+    def ready_for_payout(self) -> bool:
+        if self.is_trade_up:
+            return False
+        contact_fields = all(
+            f in self.collected_data for f in ("name", "phone", "email")
+        )
+        ready = self.ready_for_contact() and contact_fields
+        logger.debug(
+            "[ChecklistState] Payout readiness — contact_ready=%s contact_fields=%s => %s",
+            self.ready_for_contact(),
+            contact_fields,
+            ready,
+        )
+        return ready
+
+    def can_collect_contact(self, field_name: str) -> bool:
+        """Return True only when we're ready to collect the specified contact field."""
+        if field_name == "name":
+            return self.ready_for_contact()
+        if field_name == "phone":
+            return self.ready_for_contact() and "name" in self.collected_data
+        if field_name == "email":
+            return self.ready_for_contact() and "phone" in self.collected_data
+        return True
 
     def mark_field_collected(self, field_name: str, value: any = True):
         """Mark a field as collected and advance if it's the current step"""
@@ -819,6 +1048,7 @@ class TradeInChecklistState:
             "collected": list(self.collected_data.keys()),
             "is_trade_up": self.is_trade_up,
             "completed": self.completed,
+            "contact_ready": self.ready_for_contact(),
         }
 
 
@@ -1006,35 +1236,25 @@ Example: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600."
 WAIT for "yes/okay/sure/let's do it" before continuing.
 If NO: "No problem! Need help with anything else?"
 
-**Step 6: Collect Contact Info FIRST** (ONLY if user said YES to proceed!)
-🔴 CRITICAL ORDER - API REQUIRES contact info BEFORE device details:
+**Step 6: Collect Device Details** (ONLY if user said YES to proceed!)
 1. ✅ Ask storage (if not mentioned): "Storage size?"
-2. ✅ Ask name: "Your name?"
-3. ✅ Ask phone: "Contact number?" → repeat back for confirmation
-4. ✅ Ask email: "Email address?" → repeat back for confirmation
-5. ✅ NOW call tradein_update_lead with EXACT field names:
+2. ✅ Ask condition: "Condition of your {SOURCE}? Mint, good, fair, or faulty?"
+3. ✅ Ask accessories: "Got the box and accessories?"
+4. ✅ Ask for photo: "Photos help—want to send one?"
+5. ✅ Call tradein_update_lead after EACH answer
+
+**Step 7: Collect Contact Info** (After device details saved)
+6. ✅ Ask name: "Your name?"
+7. ✅ Ask phone: "Contact number?" → repeat back for confirmation
+8. ✅ Ask email: "Email address?" → repeat back for confirmation
+9. ✅ NOW call tradein_update_lead with contact info:
    ```
    tradein_update_lead(
-     model="MSI Claw",              # Source device model (NOT brand+model, just model)
-     storage="1TB",                  # Storage size
-     target_device_name="PS5 Pro 2TB Digital",  # Full target device name
-     contact_name="John",            # User's name
-     contact_phone="84489068",       # Phone WITHOUT dashes/spaces
-     contact_email="john@example.com",  # Email address
-     source_price_quoted=300,        # Trade-in value from calculate_tradeup_pricing
-     target_price_quoted=900,        # Retail price from calculate_tradeup_pricing
-     top_up_amount=600               # Top-up from calculate_tradeup_pricing
+     contact_name="John",
+     contact_phone="84489068",
+     contact_email="john@example.com"
    )
    ```
-   🚨 If this call FAILS with "Invalid fields" error, DO NOT continue!
-   Tell user: "I'm having trouble saving the details. Let me connect you with staff."
-   Then call: sendemail(info_request="Trade-up submission failed - {SOURCE} for {TARGET}, contact {NAME} {PHONE}")
-
-**Step 7: Collect Device Details** (After contact info saved)
-6. ✅ Ask condition: "Condition of your {SOURCE}? Mint, good, fair, or faulty?"
-7. ✅ Ask accessories: "Got the box and accessories?"
-8. ✅ Call tradein_update_lead after EACH answer
-9. ✅ Ask for photo: "Photos help—want to send one?"
 10. ✅ Mini recap: "{SOURCE} {CONDITION}, {ACCESSORIES}, {NAME} {PHONE}, email noted. Correct?"
 11. ✅ Submit: Call tradein_submit_lead
 12. ✅ Confirm: "Trade-up submitted! We'll contact you to arrange. Anything else?"
@@ -1046,6 +1266,18 @@ User: "Yes"
 Agent: [calculate_tradeup_pricing(source_device="MSI Claw 1TB", target_device="PS5 Pro 2TB Digital")] [typing indicator shows]
 Agent: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600. Want to proceed?" [WAIT]
 User: "Yes"
+Agent: "Storage size?" [WAIT]
+User: "1TB"
+Agent: [tradein_update_lead(storage="1TB")]
+Agent: "Condition of your MSI Claw? Mint, good, fair, or faulty?" [WAIT]
+User: "Good"
+Agent: [tradein_update_lead(condition="good")]
+Agent: "Got the box and accessories?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(notes="Has box and accessories")]
+Agent: "Photos help—want to send one?" [WAIT]
+User: "No photos"
+Agent: [tradein_update_lead(photos_acknowledged=False)]
 Agent: "Your name?" [WAIT]
 User: "Bobby"
 Agent: "Contact number?" [WAIT]
@@ -1056,20 +1288,11 @@ Agent: "Email?" [WAIT]
 User: "bobby@hotmail.com"
 Agent: "bobby@hotmail.com, right?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead(model="Claw", storage="1TB", target_device_name="PS5 Pro 2TB Digital", contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com", source_price_quoted=300, target_price_quoted=900, top_up_amount=600)]
-Agent: "Condition of your MSI Claw? Mint, good, fair, or faulty?" [WAIT]
-User: "Good"
-Agent: [tradein_update_lead(condition="good")]
-Agent: "Got the box?" [WAIT]
-User: "Yes"
-Agent: [tradein_update_lead(has_box=true)]
-Agent: "Photos help—want to send one?" [WAIT]
-User: "No photos"
-Agent: [tradein_update_lead({photos_provided:false})]
+Agent: [tradein_update_lead(contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com")]
 Agent: "Noted—final quote after inspection. Installments or cash top-up?"
 User: "Installments"
-Agent: [tradein_update_lead({preferred_payout:"installment"})]
-Agent: "PS4 Pro good, box, 8448 9068, bobby@hotmail.com, installments. Change anything?" [WAIT]
+Agent: [tradein_update_lead(preferred_payout="installment")]
+Agent: "MSI Claw 1TB, good condition, with box and accessories. Contact: Bobby, 84489068, bobby@hotmail.com. Payout via installments. Change anything?" [WAIT]
 User: "No"
 Agent: [tradein_submit_lead()]
 Agent: "Done! We'll review and contact you. Anything else?"
@@ -1177,16 +1400,20 @@ async def entrypoint(ctx: JobContext):
                     headers=build_auth_headers(),
                 )
             )
-            
+
             # 🔥 SMART ACKNOWLEDGMENT: Check what was extracted and acknowledge
             extracted = extract_data_from_message(event.transcript, checklist)
             if extracted:
                 acknowledgment = build_smart_acknowledgment(extracted, checklist)
                 if acknowledgment:
                     # Log acknowledgment for debugging
-                    logger.info(f"[SmartAck] 📝 Prepared acknowledgment: {acknowledgment}")
+                    logger.info(
+                        f"[SmartAck] 📝 Prepared acknowledgment: {acknowledgment}"
+                    )
                     # Store in conversation buffer for next response
-                    conversation_buffer["pending_acknowledgment"] = " | ".join(acknowledgment)
+                    conversation_buffer["pending_acknowledgment"] = " | ".join(
+                        acknowledgment
+                    )
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
