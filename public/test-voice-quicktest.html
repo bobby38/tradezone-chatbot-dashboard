@@ -1,0 +1,322 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Voice Agent Quick Test</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 20px;
+                background: #f5f5f5;
+            }
+            .container {
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                color: #333;
+                margin-bottom: 20px;
+            }
+            .status {
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 5px;
+                font-weight: 500;
+            }
+            .status.info {
+                background: #e3f2fd;
+                color: #1976d2;
+            }
+            .status.success {
+                background: #e8f5e9;
+                color: #388e3c;
+            }
+            .status.error {
+                background: #ffebee;
+                color: #c62828;
+            }
+            .status.warning {
+                background: #fff3e0;
+                color: #f57c00;
+            }
+
+            button {
+                padding: 15px 30px;
+                font-size: 16px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                margin: 10px 10px 10px 0;
+                transition: all 0.3s;
+            }
+            button.primary {
+                background: #8b5cf6;
+                color: white;
+            }
+            button.primary:hover {
+                background: #7c3aed;
+            }
+            button.danger {
+                background: #ef4444;
+                color: white;
+            }
+            button.danger:hover {
+                background: #dc2626;
+            }
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .log {
+                background: #1e1e1e;
+                color: #d4d4d4;
+                padding: 15px;
+                border-radius: 5px;
+                max-height: 400px;
+                overflow-y: auto;
+                font-family: "Monaco", "Courier New", monospace;
+                font-size: 13px;
+                line-height: 1.6;
+                margin-top: 20px;
+            }
+            .log-entry {
+                margin: 5px 0;
+                padding: 3px 0;
+            }
+            .log-user {
+                color: #4fc3f7;
+            }
+            .log-agent {
+                color: #81c784;
+            }
+            .log-system {
+                color: #ffd54f;
+            }
+            .log-error {
+                color: #e57373;
+            }
+
+            .controls {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎤 Voice Agent Quick Test</h1>
+
+            <div id="status" class="status info">
+                Click "Connect" to start testing the voice agent
+            </div>
+
+            <div class="controls">
+                <button id="connectBtn" class="primary">Connect</button>
+                <button id="disconnectBtn" class="danger" disabled>
+                    Disconnect
+                </button>
+            </div>
+
+            <div class="log" id="log"></div>
+        </div>
+
+        <script src="https://unpkg.com/@livekit/components-core@0.12.7/dist/livekit-components-core.umd.js"></script>
+        <script src="https://unpkg.com/livekit-client@2.7.4/dist/livekit-client.umd.min.js"></script>
+        <script>
+            const LivekitClient = window.LivekitClient || window;
+            const { Room, RoomEvent, Track } = LivekitClient;
+
+            let room = null;
+            let audioContext = null;
+            let audioQueue = [];
+            let isPlaying = false;
+            let agentJoined = false;
+
+            const statusEl = document.getElementById("status");
+            const logEl = document.getElementById("log");
+            const connectBtn = document.getElementById("connectBtn");
+            const disconnectBtn = document.getElementById("disconnectBtn");
+
+            function log(message, type = "system") {
+                const entry = document.createElement("div");
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logEl.appendChild(entry);
+                logEl.scrollTop = logEl.scrollHeight;
+                console.log(message);
+            }
+
+            function updateStatus(message, type) {
+                statusEl.textContent = message;
+                statusEl.className = `status ${type}`;
+                log(message, type === "error" ? "error" : "system");
+            }
+
+            async function getToken() {
+                const roomName = "test-" + Date.now();
+                const participantName = "user-" + Date.now();
+
+                log(`Requesting token for room: ${roomName}`);
+
+                const response = await fetch(
+                    "http://localhost:3000/api/livekit/token",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ roomName, participantName }),
+                    },
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Token request failed: ${response.statusText}`,
+                    );
+                }
+
+                const data = await response.json();
+                log(`Token received, URL: ${data.url}`);
+                return data;
+            }
+
+            async function connect() {
+                try {
+                    updateStatus("🔄 Connecting to LiveKit...", "info");
+                    connectBtn.disabled = true;
+
+                    const { token, url } = await getToken();
+
+                    room = new Room();
+
+                    // Track subscribed event
+                    room.on(
+                        RoomEvent.TrackSubscribed,
+                        (track, publication, participant) => {
+                            log(
+                                `Track subscribed from ${participant.identity}: ${track.kind}`,
+                                "system",
+                            );
+
+                            if (track.kind === Track.Kind.Audio) {
+                                log(
+                                    "Audio track received from agent!",
+                                    "success",
+                                );
+                                const audioEl = track.attach();
+                                audioEl
+                                    .play()
+                                    .catch((e) =>
+                                        log(
+                                            `Play error: ${e.message}`,
+                                            "error",
+                                        ),
+                                    );
+                                document.body.appendChild(audioEl);
+                            }
+                        },
+                    );
+
+                    // Participant connected
+                    room.on(RoomEvent.ParticipantConnected, (participant) => {
+                        log(
+                            `Participant joined: ${participant.identity}`,
+                            "system",
+                        );
+                        if (
+                            participant.identity.includes("agent") ||
+                            participant.identity.includes("amara")
+                        ) {
+                            agentJoined = true;
+                            updateStatus(
+                                "✅ Agent joined! You should hear audio now.",
+                                "success",
+                            );
+                        }
+                    });
+
+                    // Data received
+                    room.on(RoomEvent.DataReceived, (payload, participant) => {
+                        try {
+                            const data = JSON.parse(
+                                new TextDecoder().decode(payload),
+                            );
+                            log(
+                                `Data from ${participant?.identity}: ${JSON.stringify(data)}`,
+                                "agent",
+                            );
+                        } catch (e) {
+                            log(
+                                `Data received (non-JSON): ${payload.length} bytes`,
+                                "system",
+                            );
+                        }
+                    });
+
+                    // Connection state
+                    room.on(RoomEvent.ConnectionStateChanged, (state) => {
+                        log(`Connection state: ${state}`, "system");
+                    });
+
+                    // Connect to room
+                    await room.connect(url, token);
+                    log("Connected to room!", "success");
+
+                    // Enable microphone
+                    await room.localParticipant.setMicrophoneEnabled(true);
+                    log("Microphone enabled", "success");
+
+                    updateStatus(
+                        "🎤 Connected! Speak into your microphone...",
+                        "success",
+                    );
+                    disconnectBtn.disabled = false;
+
+                    // Check for agent after 5 seconds
+                    setTimeout(() => {
+                        if (!agentJoined) {
+                            updateStatus(
+                                "⚠️ Agent hasn't joined yet. Check agent logs.",
+                                "warning",
+                            );
+                            log(
+                                "No agent detected. Agent may need to be restarted.",
+                                "warning",
+                            );
+                        }
+                    }, 5000);
+                } catch (error) {
+                    log(`Connection error: ${error.message}`, "error");
+                    updateStatus(
+                        `❌ Connection failed: ${error.message}`,
+                        "error",
+                    );
+                    connectBtn.disabled = false;
+                }
+            }
+
+            async function disconnect() {
+                if (room) {
+                    room.disconnect();
+                    room = null;
+                }
+                agentJoined = false;
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                updateStatus("Disconnected", "info");
+                log("Disconnected from room", "system");
+            }
+
+            connectBtn.addEventListener("click", connect);
+            disconnectBtn.addEventListener("click", disconnect);
+
+            log("Test page loaded. Ready to connect.", "system");
+        </script>
+    </body>
+</html>

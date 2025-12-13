@@ -11,6 +11,12 @@ import re
 from typing import Dict, Optional
 
 import httpx
+
+# Import our auto-save system
+from auto_save import (
+    auto_save_after_message,
+    check_for_confirmation_and_submit,
+)
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -123,6 +129,139 @@ async def log_to_dashboard(
         logger.error(f"[Dashboard] ❌ Failed to log: {e}")
 
 
+async def force_save_tradein_data(
+    session_id: str, checklist_state: "TradeInChecklistState"
+) -> bool:
+    """
+    FORCE save all collected trade-in data to the database.
+    This is called by Python code, NOT by LLM, to ensure data is saved.
+    Returns True if successful, False otherwise.
+    """
+    logger.warning("=" * 80)
+    logger.warning("[force_save_tradein_data] 🔥 PYTHON FORCING SAVE TO DATABASE")
+    logger.warning(f"[force_save_tradein_data] session_id={session_id}")
+    logger.warning(
+        f"[force_save_tradein_data] collected_data={checklist_state.collected_data}"
+    )
+    logger.warning("=" * 80)
+
+    headers = build_auth_headers()
+    if not headers:
+        logger.error("[force_save_tradein_data] ❌ No API key, cannot save")
+        return False
+
+    # Build payload from checklist state
+    data = {
+        "sessionId": session_id,
+    }
+
+    # Add all collected fields
+    if "brand" in checklist_state.collected_data:
+        data["brand"] = checklist_state.collected_data["brand"]
+    if "model" in checklist_state.collected_data:
+        data["model"] = checklist_state.collected_data["model"]
+    if "storage" in checklist_state.collected_data:
+        data["storage"] = checklist_state.collected_data["storage"]
+    if "condition" in checklist_state.collected_data:
+        data["condition"] = checklist_state.collected_data["condition"]
+    if "accessories" in checklist_state.collected_data:
+        data["notes"] = (
+            "Has box and accessories"
+            if checklist_state.collected_data["accessories"]
+            else "No box/accessories"
+        )
+    if "photos" in checklist_state.collected_data:
+        data["notes"] = (
+            data.get("notes", "")
+            + " | Photos: "
+            + (
+                "Provided"
+                if checklist_state.collected_data["photos"]
+                else "Not provided"
+            )
+        ).strip()
+    if "name" in checklist_state.collected_data:
+        data["contact_name"] = checklist_state.collected_data["name"]
+    if "phone" in checklist_state.collected_data:
+        data["contact_phone"] = checklist_state.collected_data["phone"]
+    if "email" in checklist_state.collected_data:
+        data["contact_email"] = checklist_state.collected_data["email"]
+    if "payout" in checklist_state.collected_data and not checklist_state.is_trade_up:
+        data["preferred_payout"] = checklist_state.collected_data["payout"]
+
+    logger.warning(f"[force_save_tradein_data] 💾 Payload to save: {data}")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/update",
+                json=data,
+                headers=headers,
+                timeout=10.0,
+            )
+
+            if response.status_code >= 400:
+                logger.error(
+                    f"[force_save_tradein_data] ❌ Save failed: {response.status_code} - {response.text}"
+                )
+                return False
+
+            result = response.json()
+            logger.warning(f"[force_save_tradein_data] ✅ SAVE SUCCESS: {result}")
+            return True
+
+    except Exception as e:
+        logger.error(f"[force_save_tradein_data] ❌ Exception: {e}")
+        return False
+
+
+async def force_submit_tradein(session_id: str) -> dict:
+    """
+    FORCE submit the trade-in lead to the database and send email.
+    This is called by Python code, NOT by LLM, to ensure submission happens.
+    Returns the API response.
+    """
+    logger.warning("=" * 80)
+    logger.warning("[force_submit_tradein] 🔥 PYTHON FORCING SUBMISSION")
+    logger.warning(f"[force_submit_tradein] session_id={session_id}")
+    logger.warning("=" * 80)
+
+    headers = build_auth_headers()
+    if not headers:
+        logger.error("[force_submit_tradein] ❌ No API key, cannot submit")
+        return {"success": False, "error": "No API key"}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/submit",
+                json={"sessionId": session_id, "notify": True},
+                headers=headers,
+                timeout=10.0,
+            )
+
+            if response.status_code >= 400:
+                logger.error(
+                    f"[force_submit_tradein] ❌ Submit failed: {response.status_code} - {response.text}"
+                )
+                return {
+                    "success": False,
+                    "error": response.text,
+                    "status": response.status_code,
+                }
+
+            result = response.json()
+            logger.warning(f"[force_submit_tradein] ✅ SUBMIT SUCCESS: {result}")
+            logger.warning(
+                f"[force_submit_tradein] Email sent: {result.get('emailSent', False)}"
+            )
+            return result
+
+    except Exception as e:
+        logger.error(f"[force_submit_tradein] ❌ Exception: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # ============================================================================
 # TOOL FUNCTIONS (must have RunContext as first parameter)
 # ============================================================================
@@ -230,17 +369,67 @@ async def calculate_tradeup_pricing(
     Use this when customer wants to trade Device A for Device B.
     Returns: trade-in value, retail price, and top-up amount.
     """
-    logger.warning(
-        f"[calculate_tradeup_pricing] ⚠️ CALLED with: source={source_device}, target={target_device}"
-    )
+    logger.warning("=" * 80)
+    logger.warning("[calculate_tradeup_pricing] 🔵 TOOL CALLED - PRICING")
+    logger.warning(f"[calculate_tradeup_pricing] source={source_device}")
+    logger.warning(f"[calculate_tradeup_pricing] target={target_device}")
+    logger.warning("=" * 80)
+
     headers = build_auth_headers()
 
     # Get session ID from room name
     try:
         room = get_job_context().room
         session_id = room.name
+        logger.warning(f"[calculate_tradeup_pricing] session_id={session_id}")
     except Exception:
         session_id = "voice_pricing_calc"
+        logger.error(
+            f"[calculate_tradeup_pricing] Failed to get session, using fallback: {session_id}"
+        )
+
+    # 🔥 AUTO-SAVE brand/model to checklist state IMMEDIATELY
+    checklist_state = _get_checklist(session_id)
+    checklist_state.mark_field_collected(
+        "brand", source_device.split()[0] if source_device else None
+    )
+    checklist_state.mark_field_collected("model", source_device)
+    checklist_state.is_trade_up = True
+    checklist_state.mark_field_collected("payout", "trade-up")
+    logger.warning(
+        f"[calculate_tradeup_pricing] 💾 Auto-saved to checklist: brand={source_device.split()[0]}, model={source_device}, trade_up=True"
+    )
+
+    # 🔥 ALSO save to database IMMEDIATELY via update API
+    try:
+        async with httpx.AsyncClient() as update_client:
+            brand_guess = source_device.split()[0] if source_device else None
+            update_data = {
+                "sessionId": session_id,
+                "brand": brand_guess,
+                "model": source_device,
+                "target_device_name": target_device,
+                "notes": f"Trade-up: {source_device} → {target_device}",
+            }
+            logger.warning(
+                f"[calculate_tradeup_pricing] 💾 Saving to DB: {update_data}"
+            )
+            update_response = await update_client.post(
+                f"{API_BASE_URL}/api/tradein/update",
+                json=update_data,
+                headers=headers,
+                timeout=10.0,
+            )
+            if update_response.status_code >= 400:
+                logger.error(
+                    f"[calculate_tradeup_pricing] ❌ DB save failed: {update_response.status_code} - {update_response.text}"
+                )
+            else:
+                logger.warning(
+                    f"[calculate_tradeup_pricing] ✅ DB save SUCCESS: {update_response.status_code}"
+                )
+    except Exception as save_err:
+        logger.error(f"[calculate_tradeup_pricing] ❌ DB save exception: {save_err}")
 
     async with httpx.AsyncClient() as client:
         try:
@@ -310,9 +499,18 @@ async def tradein_update_lead(
     top_up_amount: float = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
+    logger.warning("=" * 80)
+    logger.warning("[tradein_update_lead] 🔵 TOOL CALLED")
+    logger.warning(f"[tradein_update_lead] brand={brand}, model={model}")
+    logger.warning(f"[tradein_update_lead] storage={storage}, condition={condition}")
     logger.warning(
-        f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
+        f"[tradein_update_lead] name={contact_name}, phone={contact_phone}, email={contact_email}"
     )
+    logger.warning(
+        f"[tradein_update_lead] payout={preferred_payout}, photos_ack={photos_acknowledged}"
+    )
+    logger.warning(f"[tradein_update_lead] target={target_device_name}, notes={notes}")
+    logger.warning("=" * 80)
     headers = build_auth_headers()
 
     # Get session ID from room name
@@ -464,69 +662,99 @@ async def tradein_update_lead(
     if trade_up_mode:
         preferred_payout = None
 
-    # Hard guards: enforce strict step-by-step collection
-    current_step = checklist_state.get_current_step()
+    # # Hard guards: enforce strict step-by-step collection
+    # current_step = checklist_state.get_current_step()
 
-    if current_step == "storage":
-        if not storage:
-            return "🚨 SYSTEM RULE: Storage missing. Ask for storage size (e.g., 1TB/512GB) and call tradein_update_lead again."
+    # if current_step == "storage":
+    #     if not storage:
+    #         return "🚨 SYSTEM RULE: Storage missing. Ask for storage size (e.g., 1TB/512GB) and call tradein_update_lead again."
 
-    # Always require device brand/model before proceeding to contact steps
-    if not brand or not model:
-        return "🚨 SYSTEM RULE: Device brand/model missing. Ask for the exact device name (brand + model), then call tradein_update_lead."
+    # # Always require device brand/model before proceeding to contact steps
+    # if not brand or not model:
+    #     return "🚨 SYSTEM RULE: Device brand/model missing. Ask for the exact device name (brand + model), then call tradein_update_lead."
 
-    if current_step == "condition":
-        if not condition:
-            return "🚨 SYSTEM RULE: Condition missing. Ask for device condition (mint/good/fair/faulty) and call tradein_update_lead again."
+    # if current_step == "condition":
+    #     if not condition:
+    #         return "🚨 SYSTEM RULE: Condition missing. Ask for device condition (mint/good/fair/faulty) and call tradein_update_lead again."
 
-    if current_step == "accessories":
-        if not notes or (
-            "box" not in notes.lower() and "accessor" not in notes.lower()
-        ):
-            return "🚨 SYSTEM RULE: Box/accessories not captured. Ask if they have the box and accessories, then call tradein_update_lead."
+    # if current_step == "accessories":
+    #     if not notes or (
+    #         "box" not in notes.lower() and "accessor" not in notes.lower()
+    #     ):
+    #         return "🚨 SYSTEM RULE: Box/accessories not captured. Ask if they have the box and accessories, then call tradein_update_lead."
 
-    if current_step == "photos":
-        if photos_acknowledged is None:
-            return "🚨 SYSTEM RULE: Photos step not acknowledged. Ask if they can provide photos; if no, note it, then call tradein_update_lead."
+    # if current_step == "photos":
+    #     if photos_acknowledged is None:
+    #         return "🚨 SYSTEM RULE: Photos step not acknowledged. Ask if they can provide photos; if no, note it, then call tradein_update_lead."
 
-    if current_step == "name":
-        if not contact_name:
-            return "🚨 SYSTEM RULE: Name missing. Ask for their full name, then call tradein_update_lead."
+    # if current_step == "name":
+    #     if not contact_name:
+    #         return "🚨 SYSTEM RULE: Name missing. Ask for their full name, then call tradein_update_lead."
 
-    if current_step == "phone":
-        if not contact_phone or len(re.sub(r"\\D", "", contact_phone)) < 8:
-            return "🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead."
+    # if current_step == "phone":
+    #     if not contact_phone or len(re.sub(r"\\D", "", contact_phone)) < 8:
+    #         return "🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead."
 
-    if current_step == "email":
-        if not contact_email or not re.match(
-            r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", contact_email
-        ):
-            return "🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead."
+    # if current_step == "email":
+    #     if not contact_email or not re.match(
+    #         r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", contact_email
+    #     ):
+    #         return "🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead."
 
-    if current_step == "payout":
-        if not trade_up_mode and not preferred_payout:
-            return "🚨 SYSTEM RULE: Payout missing. Ask for payout preference (cash / PayNow / bank / installment) and call tradein_update_lead."
+    # if current_step == "payout":
+    #     if not trade_up_mode and not preferred_payout:
+    #         return "🚨 SYSTEM RULE: Payout missing. Ask for payout preference (cash / PayNow / bank / installment) and call tradein_update_lead."
 
     # Optimistically advance local checklist when a field is provided,
     # so we keep asking the next step even if the API call fails.
+    logger.warning("[tradein_update_lead] 📝 Updating checklist state...")
+    if brand:
+        checklist_state.mark_field_collected("brand", brand)
+        logger.warning(f"[tradein_update_lead] ✓ Marked brand: {brand}")
+    if model:
+        checklist_state.mark_field_collected("model", model)
+        logger.warning(f"[tradein_update_lead] ✓ Marked model: {model}")
     if storage:
         checklist_state.mark_field_collected("storage", storage)
+        logger.warning(f"[tradein_update_lead] ✓ Marked storage: {storage}")
     if condition:
         checklist_state.mark_field_collected("condition", condition)
+        logger.warning(f"[tradein_update_lead] ✓ Marked condition: {condition}")
     if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
         checklist_state.mark_field_collected("accessories", True)
+        logger.warning(f"[tradein_update_lead] ✓ Marked accessories: True")
     if photos_acknowledged is not None:
         checklist_state.mark_field_collected("photos", photos_acknowledged)
+        logger.warning(f"[tradein_update_lead] ✓ Marked photos: {photos_acknowledged}")
     if contact_name:
         checklist_state.mark_field_collected("name", contact_name)
+        logger.warning(f"[tradein_update_lead] ✓ Marked name: {contact_name}")
     if contact_phone:
         checklist_state.mark_field_collected("phone", contact_phone)
+        logger.warning(f"[tradein_update_lead] ✓ Marked phone: {contact_phone}")
     if contact_email:
         checklist_state.mark_field_collected("email", contact_email)
+        logger.warning(f"[tradein_update_lead] ✓ Marked email: {contact_email}")
     if trade_up_mode:
         checklist_state.mark_field_collected("payout", "trade-up")
+        logger.warning(f"[tradein_update_lead] ✓ Marked payout: trade-up")
     elif preferred_payout:
         checklist_state.mark_field_collected("payout", preferred_payout)
+        logger.warning(f"[tradein_update_lead] ✓ Marked payout: {preferred_payout}")
+
+    logger.warning(
+        f"[tradein_update_lead] 📊 Checklist state now: {checklist_state.collected_data}"
+    )
+
+    # 🔥 FORCE SAVE using Python - don't rely on LLM to save data
+    logger.warning("[tradein_update_lead] 🔥 Calling force_save_tradein_data...")
+    save_success = await force_save_tradein_data(session_id, checklist_state)
+
+    if not save_success:
+        logger.error("[tradein_update_lead] ❌ Force save failed!")
+        # Continue anyway - will try individual save below
+    else:
+        logger.warning("[tradein_update_lead] ✅ Force save completed successfully")
 
     async with httpx.AsyncClient() as client:
         try:
@@ -596,7 +824,10 @@ async def tradein_update_lead(
 @function_tool
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
-    logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
+    logger.warning("=" * 80)
+    logger.warning("[tradein_submit_lead] 🟢 TOOL CALLED - SUBMITTING LEAD")
+    logger.warning(f"[tradein_submit_lead] summary={summary}")
+    logger.warning("=" * 80)
     headers = build_auth_headers()
 
     # Get session ID from room name (voice sessions do not expose leadId directly)
@@ -1276,14 +1507,27 @@ async def entrypoint(ctx: JobContext):
             preemptive_generation=False,  # listen for full turn before speaking
         )
 
-    # Event handlers for dashboard logging
+    # Event handlers for dashboard logging + auto-save
     @session.on("user_input_transcribed")
     def on_user_input(event):
-        """Capture user's final transcribed message"""
+        """Capture user's final transcribed message and trigger auto-save"""
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
             logger.info(f"[Voice] User said: {event.transcript}")
+
+            # 🔥 AUTO-SAVE: Extract and save data from user message immediately
+            checklist_state = _get_checklist(room_name)
+            headers = build_auth_headers()
+            asyncio.create_task(
+                auto_save_after_message(
+                    session_id=room_name,
+                    user_message=event.transcript,
+                    checklist_state=checklist_state,
+                    api_base_url=API_BASE_URL,
+                    headers=headers,
+                )
+            )
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
@@ -1320,6 +1564,20 @@ async def entrypoint(ctx: JobContext):
                     user_message=conversation_buffer["user_message"],
                     bot_response=conversation_buffer["bot_response"],
                     session_id=room_name,
+                )
+            )
+
+            # 🔥 AUTO-SUBMIT: Check if user is confirming and auto-submit
+            checklist_state = _get_checklist(room_name)
+            headers = build_auth_headers()
+            asyncio.create_task(
+                check_for_confirmation_and_submit(
+                    session_id=room_name,
+                    user_message=conversation_buffer["user_message"],
+                    bot_response=conversation_buffer["bot_response"],
+                    checklist_state=checklist_state,
+                    api_base_url=API_BASE_URL,
+                    headers=headers,
                 )
             )
 

@@ -3997,7 +3997,6 @@ npm run test:ui
 **Deployment Ready:** ✅ All critical optimizations validated and tested
 
 ---
-
 ### January 18, 2025 - Bundle Search & Product Links Fix ✅
 
 **Status:** Critical user-facing issues resolved
@@ -5351,3 +5350,9 @@ After deployment, test:
 ### Deploy / DB notes (2025-11-29)
 
 - Run `supabase/migrations/20251129_add_chatlog_metadata_channel.sql` to add `metadata` + `channel` columns to `chat_logs`. This unblocks voice transcripts from being logged and visible in the dashboard/export filters (`channel:voice`).
+
+### December 13, 2025 - Voice Agent Lead-Saving Fix
+**Status**: ✅ Live
+- **Problem**: The voice agent was successfully collecting all trade-in details (name, phone, condition, etc.) during a conversation but failed to save them to the database. The trade-in lead was created empty, often only containing a photo if one was uploaded.
+- **Root Cause**: The `tradein_update_lead` tool in `agents/voice/agent.py` contained overly strict validation guards. It was designed to only accept one piece of information at a time, in a rigid order. When the LLM tried to efficiently send a batch of collected data (e.g., name, phone, and email together), the validation would fail, and the data was never sent to the backend API.
+- **Fix**: The restrictive step-by-step validation guards have been removed from the `tradein_update_lead` tool. The function now correctly accepts and processes all provided data at once, ensuring that all collected lead details are reliably persisted to the database.

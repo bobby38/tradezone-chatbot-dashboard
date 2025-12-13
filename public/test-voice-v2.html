@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Voice Test v2</title>
+  <style>
+    body {
+      font-family: system-ui;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .status {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+    .info { background: #e3f2fd; }
+    .success { background: #e8f5e9; }
+    .error { background: #ffebee; }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+    }
+    .primary { background: #8b5cf6; color: white; }
+    .danger { background: #ef4444; color: white; }
+    #log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Voice Test v2</h1>
+  <div id="status" class="status info">Ready to connect</div>
+  <button id="connect" class="primary">Connect</button>
+  <button id="disconnect" class="danger" disabled>Disconnect</button>
+  <div id="log"></div>
+
+  <script src="/widget/livekit-client.umd.js"></script>
+  <script>
+    const log = (msg) => {
+      const time = new Date().toLocaleTimeString();
+      document.getElementById('log').innerHTML += `[${time}] ${msg}<br>`;
+      console.log(msg);
+    };
+
+    const setStatus = (msg, type = 'info') => {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = `status ${type}`;
+    };
+
+    let room = null;
+
+    document.getElementById('connect').onclick = async () => {
+      try {
+        setStatus('Connecting...', 'info');
+        log('Requesting token...');
+
+        const res = await fetch('http://localhost:3000/api/livekit/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomName: 'test-' + Date.now(),
+            participantName: 'user-' + Date.now()
+          })
+        });
+
+        const { token, url } = await res.json();
+        log(`Token received, connecting to ${url}`);
+
+        room = new LivekitClient.Room();
+
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+          log(`🎵 Track from ${participant.identity}: ${track.kind}`);
+          if (track.kind === LivekitClient.Track.Kind.Audio) {
+            const el = track.attach();
+            el.play();
+            document.body.appendChild(el);
+            setStatus('✅ Audio playing!', 'success');
+          }
+        });
+
+        room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+          log(`👤 ${participant.identity} joined`);
+          if (participant.identity.includes('agent')) {
+            setStatus('🤖 Agent joined! Speak now...', 'success');
+          }
+        });
+
+        await room.connect(url, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+
+        log('✅ Connected and mic enabled');
+        setStatus('🎤 Mic active - speak!', 'success');
+        document.getElementById('connect').disabled = true;
+        document.getElementById('disconnect').disabled = false;
+
+      } catch (e) {
+        log(`❌ Error: ${e.message}`);
+        setStatus('Error: ' + e.message, 'error');
+      }
+    };
+
+    document.getElementById('disconnect').onclick = () => {
+      if (room) {
+        room.disconnect();
+        room = null;
+      }
+      setStatus('Disconnected', 'info');
+      log('Disconnected');
+      document.getElementById('connect').disabled = false;
+      document.getElementById('disconnect').disabled = true;
+    };
+
+    log('Page loaded - using local LiveKit SDK');
+  </script>
+</body>
+</html>
