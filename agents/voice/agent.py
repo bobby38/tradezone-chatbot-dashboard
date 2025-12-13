@@ -70,6 +70,8 @@ else:
 
 # Session-scoped checklist states (keyed by LiveKit room/session id)
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
+We shouldn't have clear things, and what is the problem? Fix one by one, and after a bit, we're okay. It's like 10 hours, 15 hours, two days of crap. No, no, it's enough. Do it the right way. # Session → leadId cache to keep a single lead per call
+_lead_ids: Dict[str, str] = {}
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -514,6 +516,7 @@ async def tradein_update_lead(
                 for k, v in {
                     # API expects camelCase sessionId (not session_id)
                     "sessionId": session_id,
+                    "leadId": _lead_ids.get(session_id),
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -545,6 +548,14 @@ async def tradein_update_lead(
                 return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
+
+            # Cache leadId for this session so all subsequent saves/uploads use the same lead
+            lead_id = result.get("lead", {}).get("id")
+            if lead_id:
+                _lead_ids[session_id] = lead_id
+                logger.info(
+                    f"[tradein_update_lead] 📌 Cached leadId for session {session_id}: {lead_id}"
+                )
 
             # Track state: mark fields as collected
             if storage:
@@ -598,12 +609,20 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     except Exception:
         session_id = None
 
+    # Reuse cached leadId if we have one
+    cached_lead = _lead_ids.get(session_id) if session_id else None
+
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/submit",
                 # API expects camelCase sessionId
-                json={"sessionId": session_id, "summary": summary, "notify": True},
+                json={
+                    "sessionId": session_id,
+                    "leadId": cached_lead,
+                    "summary": summary,
+                    "notify": True,
+                },
                 headers=headers,
                 timeout=10.0,
             )
