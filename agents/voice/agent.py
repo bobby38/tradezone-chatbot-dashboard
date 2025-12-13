@@ -704,6 +704,27 @@ async def tradein_update_lead(
                 f"[tradein_update_lead] 📋 Current step: {current_step}, Next question: {next_question}"
             )
 
+            # 🔒 BLOCK OUT-OF-ORDER CONTACT COLLECTION
+            # If contact fields were attempted but blocked, warn the LLM
+            contact_fields_attempted = []
+            if contact_name and "name" not in state.collected_data:
+                contact_fields_attempted.append("name")
+            if contact_phone and "phone" not in state.collected_data:
+                contact_fields_attempted.append("phone")
+            if contact_email and "email" not in state.collected_data:
+                contact_fields_attempted.append("email")
+            
+            if contact_fields_attempted and not state.ready_for_contact():
+                blocked_fields = ", ".join(contact_fields_attempted)
+                logger.warning(
+                    f"[tradein_update_lead] 🚨 BLOCKED out-of-order contact collection: {blocked_fields}"
+                )
+                return (
+                    f"⚠️ CRITICAL DATA LOSS WARNING: Contact information ({blocked_fields}) was NOT saved because device details are incomplete. "
+                    f"You MUST complete ALL device details first: storage, condition, accessories, photos. "
+                    f"Current step: {current_step}. 🚨 SYSTEM RULE: Ask ONLY '{next_question}' next."
+                )
+
             # 🔒 FORCE the exact next question - LLM MUST ask this and ONLY this
             if next_question == "recap":
                 return "✅ Information saved. 🚨 SYSTEM RULE: You MUST now display the complete trade-in summary and ask for confirmation. DO NOT ask any other questions."
@@ -988,7 +1009,17 @@ class TradeZoneAgent(Agent):
                 tradein_submit_lead,
                 sendemail,
             ],
-            instructions="""🔴 CRITICAL: Always speak and respond in ENGLISH ONLY, regardless of customer's accent or language.
+            instructions="""⚠️ CRITICAL DATA LOSS WARNING ⚠️
+NEVER ask for contact information (name, phone, email) until ALL device details are complete:
+- Storage capacity (MUST be saved first)
+- Device condition (MUST be saved)
+- Accessories included (MUST be saved)
+- Photos uploaded/acknowledged (MUST be saved)
+
+If you ask for contact info too early, it will be SILENTLY DISCARDED and cause submission failure.
+The system BLOCKS saving contact data until device details are complete.
+
+🔴 CRITICAL: Always speak and respond in ENGLISH ONLY, regardless of customer's accent or language.
 
 **Language Policy:**
 - ALWAYS respond in English (base language for all interactions)
