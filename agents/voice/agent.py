@@ -70,7 +70,7 @@ else:
 
 # Session-scoped checklist states (keyed by LiveKit room/session id)
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
-We shouldn't have clear things, and what is the problem? Fix one by one, and after a bit, we're okay. It's like 10 hours, 15 hours, two days of crap. No, no, it's enough. Do it the right way. # Session → leadId cache to keep a single lead per call
+# Session → leadId cache to keep a single lead per call
 _lead_ids: Dict[str, str] = {}
 
 
@@ -435,7 +435,6 @@ async def tradein_update_lead(
         "contact_name": "name",
         "contact_phone": "phone",
         "contact_email": "email",
-        "preferred_payout": "payout",
     }
 
     # Check if any field is being set that's not the current step
@@ -686,17 +685,17 @@ class TradeInChecklistState:
 
     # Fixed order that CANNOT be changed
     # API REQUIREMENT: name/phone/email MUST come BEFORE condition/accessories
+    # Strict deterministic order (matches voice flow described by user)
     STEPS = [
-        "storage",  # 0: Storage (if not already specified)
-        "name",  # 1: Contact name (MUST be before condition per API)
-        "phone",  # 2: Contact phone (MUST be before condition per API)
-        "email",  # 3: Contact email (MUST be before condition per API)
-        "condition",  # 4: Device condition (after contact info)
-        "accessories",  # 5: Box/accessories
-        "photos",  # 6: Photos acknowledgment
-        "payout",  # 7: Payout preference (skip for trade-up)
-        "recap",  # 8: Show summary
-        "submit",  # 9: Final submission
+        "storage",  # 0
+        "condition",  # 1
+        "accessories",  # 2 (box)
+        "name",  # 3
+        "phone",  # 4
+        "email",  # 5
+        "photos",  # 6
+        "recap",  # 7
+        "submit",  # 8
     ]
 
     QUESTIONS = {
