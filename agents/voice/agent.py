@@ -70,6 +70,8 @@ else:
 
 # Session-scoped checklist states (keyed by LiveKit room/session id)
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
+# Legacy single checklist handle (kept for tool functions that still reference it)
+_checklist_state: Optional["TradeInChecklistState"] = None
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
