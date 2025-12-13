@@ -4,13 +4,87 @@ This Python code handles ALL data extraction and saving,
 removing reliance on LLM tool calls.
 """
 
+import json
 import logging
+import os
 import re
 from typing import Any, Dict, Optional
 
 import httpx
 
 logger = logging.getLogger("agent-amara")
+
+# Load price grid on startup
+PRICE_GRID = None
+PRICE_GRID_PATH = os.path.join(
+    os.path.dirname(__file__), "../../data/trade_in_prices_2025.json"
+)
+
+
+def load_price_grid():
+    """Load the trade-in price grid from JSON file"""
+    global PRICE_GRID
+    if PRICE_GRID is not None:
+        return PRICE_GRID
+
+    try:
+        with open(PRICE_GRID_PATH, "r", encoding="utf-8") as f:
+            PRICE_GRID = json.load(f)
+            logger.info(
+                f"[PriceGrid] ✅ Loaded v{PRICE_GRID.get('version', 'unknown')}"
+            )
+            return PRICE_GRID
+    except Exception as e:
+        logger.error(f"[PriceGrid] ❌ Failed to load: {e}")
+        return None
+
+
+def lookup_price(device_name: str, price_type: str = "preowned") -> Optional[float]:
+    """
+    Look up exact price for a device.
+    price_type: 'preowned' (trade-in) or 'brand_new' (retail)
+    """
+    grid = load_price_grid()
+    if not grid:
+        return None
+
+    device_lower = device_name.lower()
+
+    # Search all categories
+    for category_data in grid.get("categories", {}).values():
+        # Check trade-in prices
+        if price_type == "preowned":
+            prices = category_data.get("preowned_trade_in", {})
+        else:
+            prices = category_data.get("brand_new_retail", {})
+
+        # Try exact match first (PRIORITY)
+        for label, price in prices.items():
+            if label.lower() == device_lower:
+                # Handle range prices [min, max]
+                if isinstance(price, list):
+                    return price[0]  # Use minimum
+                return float(price)
+
+        # Try fuzzy match (all tokens present AND same token count)
+        # This prevents "Switch 2" from matching "Switch Gen 2"
+        device_tokens = set(device_lower.split())
+        for label, price in prices.items():
+            label_tokens = set(label.lower().split())
+            label_words = label.lower().split()
+            device_words = device_lower.split()
+
+            # All device tokens must be in label AND token counts should be close
+            if (
+                device_tokens.issubset(label_tokens)
+                and abs(len(device_words) - len(label_words)) <= 1
+            ):
+                if isinstance(price, list):
+                    return price[0]
+                return float(price)
+
+    logger.warning(f"[PriceGrid] ⚠️ No match for: {device_name}")
+    return None
 
 
 def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, Any]:
@@ -190,6 +264,148 @@ async def force_save_to_db(
     except Exception as e:
         logger.error(f"[auto-save] ❌ Exception: {e}")
         return False
+
+
+def find_all_variants(device_name: str) -> list[Dict[str, any]]:
+    """
+    Find all variants of a device (different storage, editions, etc.)
+    Returns list of {label, trade_in, retail, variant_info}
+    """
+    grid = load_price_grid()
+    if not grid:
+        return []
+
+    device_lower = device_name.lower()
+    variants = []
+
+    # Search all categories
+    for category_data in grid.get("categories", {}).values():
+        preowned = category_data.get("preowned_trade_in", {})
+        brand_new = category_data.get("brand_new_retail", {})
+
+        # Find matching devices
+        for label, trade_price in preowned.items():
+            label_lower = label.lower()
+
+            # Check if this is a variant of the device (contains device name)
+            device_tokens = set(device_lower.split())
+            label_tokens = set(label_lower.split())
+
+            # If device name is contained in label (e.g., "ps5" in "ps5 slim 1tb digital")
+            if device_tokens.issubset(label_tokens):
+                retail_price = brand_new.get(label)
+
+                # Extract variant info (storage, edition, etc.)
+                variant_info = label_tokens - device_tokens
+
+                variants.append(
+                    {
+                        "label": label,
+                        "trade_in": trade_price[0]
+                        if isinstance(trade_price, list)
+                        else trade_price,
+                        "retail": retail_price[0]
+                        if isinstance(retail_price, list)
+                        else retail_price
+                        if retail_price
+                        else None,
+                        "variant_info": " ".join(sorted(variant_info)),
+                    }
+                )
+
+    return variants
+
+
+def needs_clarification(device_name: str) -> Optional[str]:
+    """
+    Check if device needs clarification (multiple variants exist).
+    Returns clarification question or None.
+    """
+    variants = find_all_variants(device_name)
+
+    if len(variants) <= 1:
+        return None
+
+    logger.warning("=" * 80)
+    logger.warning(f"[PythonPricing] ⚠️ MULTIPLE VARIANTS FOUND for: {device_name}")
+    for v in variants:
+        logger.warning(
+            f"  - {v['label']}: Trade ${v['trade_in']}, Retail ${v['retail']}"
+        )
+    logger.warning("=" * 80)
+
+    # Build smart clarification question based on price range
+    prices = [v["trade_in"] for v in variants if v["trade_in"]]
+    min_price = min(prices) if prices else 0
+    max_price = max(prices) if prices else 0
+
+    # List top 3 most common variants by name
+    variant_names = [v["label"] for v in variants[:3]]
+
+    if len(variant_names) == 2:
+        options = f"{variant_names[0]} or {variant_names[1]}"
+    elif len(variant_names) == 3:
+        options = f"{variant_names[0]}, {variant_names[1]}, or {variant_names[2]}"
+    else:
+        options = ", ".join(variant_names[:2]) + f", or {len(variants) - 2} others"
+
+    # Emphasize price difference if significant
+    if max_price - min_price >= 100:
+        return f"Which {device_name}? {options}. Price ranges ${int(min_price)}-${int(max_price)}."
+    else:
+        return f"Which {device_name}? {options}."
+
+
+def detect_and_fix_trade_up_prices(
+    source_device: str, target_device: str
+) -> Optional[Dict[str, any]]:
+    """
+    Detect trade-up intent and return CORRECT prices from price grid.
+    Returns: {trade_value, retail_price, top_up, needs_clarification, clarification_question} or None
+    """
+    logger.warning("=" * 80)
+    logger.warning("[PythonPricing] 🐍 PYTHON TAKING OVER PRICING!")
+    logger.warning(f"[PythonPricing] Source: {source_device}")
+    logger.warning(f"[PythonPricing] Target: {target_device}")
+
+    # Check if either device needs clarification
+    source_clarification = needs_clarification(source_device)
+    target_clarification = needs_clarification(target_device)
+
+    if source_clarification or target_clarification:
+        logger.warning("[PythonPricing] ⚠️ NEEDS CLARIFICATION!")
+        return {
+            "needs_clarification": True,
+            "source_question": source_clarification,
+            "target_question": target_clarification,
+        }
+
+    # Look up trade-in value for source device
+    trade_value = lookup_price(source_device, "preowned")
+
+    # Look up retail price for target device
+    retail_price = lookup_price(target_device, "brand_new")
+
+    if trade_value and retail_price:
+        top_up = retail_price - trade_value
+        logger.warning(f"[PythonPricing] ✅ Trade-in: ${trade_value}")
+        logger.warning(f"[PythonPricing] ✅ Retail: ${retail_price}")
+        logger.warning(f"[PythonPricing] ✅ Top-up: ${top_up}")
+        logger.warning("=" * 80)
+
+        return {
+            "needs_clarification": False,
+            "trade_value": trade_value,
+            "retail_price": retail_price,
+            "top_up": top_up,
+        }
+    else:
+        if not trade_value:
+            logger.error(f"[PythonPricing] ❌ No trade-in price for: {source_device}")
+        if not retail_price:
+            logger.error(f"[PythonPricing] ❌ No retail price for: {target_device}")
+        logger.warning("=" * 80)
+        return None
 
 
 async def auto_save_after_message(
