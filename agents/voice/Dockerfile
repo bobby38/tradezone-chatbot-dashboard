@@ -17,6 +17,9 @@ COPY agent.py .
 COPY auto_save.py .
 COPY test_auto_save.py .
 
+# Copy price grid JSON file (copied to agents/voice directory for Docker build)
+COPY trade_in_prices_2025.json ./trade_in_prices_2025.json
+
 # Download required model files for turn detector and VAD
 RUN python agent.py download-files
 

@@ -16,9 +16,13 @@ logger = logging.getLogger("agent-amara")
 
 # Load price grid on startup
 PRICE_GRID = None
-PRICE_GRID_PATH = os.path.join(
-    os.path.dirname(__file__), "../../data/trade_in_prices_2025.json"
-)
+# Price grid path - in Docker it's in /app, locally it's in ../../data
+PRICE_GRID_PATH = os.path.join(os.path.dirname(__file__), "trade_in_prices_2025.json")
+if not os.path.exists(PRICE_GRID_PATH):
+    # Fallback for local development
+    PRICE_GRID_PATH = os.path.join(
+        os.path.dirname(__file__), "../../data/trade_in_prices_2025.json"
+    )
 
 
 def load_price_grid():

@@ -1,0 +1,7 @@
+# Don't ignore the price grid JSON - we need it in the build
+!trade_in_prices_2025.json
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
