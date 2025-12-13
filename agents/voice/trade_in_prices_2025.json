@@ -1,0 +1,266 @@
+{
+  "version": "2025-01-19",
+  "currency": "SGD",
+  "last_updated": "2025-01-19",
+  "categories": {
+    "steam_deck": {
+      "name": "Steam Deck LCD / OLED",
+      "preowned_trade_in": {
+        "Steam Deck LCD 64GB": 200,
+        "Steam Deck LCD 512GB": 250,
+        "Steam Deck LCD 1TB": 300,
+        "Steam Deck OLED 512GB": 400,
+        "Steam Deck OLED 1TB": 550,
+        "Steam Deck OLED 2TB": 650
+      },
+      "brand_new_retail": {
+        "Steam Deck OLED 512GB": 550,
+        "Steam Deck OLED 1TB": 700
+      }
+    },
+    "asus_rog_ally": {
+      "name": "ASUS ROG ALLY X / XBOX",
+      "preowned_trade_in": {
+        "Asus ROG Ally 512GB": 300,
+        "Asus ROG Ally 1TB": 400,
+        "Asus ROG Ally X 1TB": 600,
+        "Asus ROG Ally X 2TB": 700,
+        "Asus ROG Ally X Xbox 512GB": 400,
+        "Asus ROG Ally X Xbox 1TB": 700,
+        "Asus ROG Ally X Xbox 2TB": 800
+      },
+      "brand_new_retail": {
+        "Asus ROG Ally X 1TB": 800,
+        "Asus ROG Ally X 2TB": 900,
+        "Asus ROG Ally X Xbox 512GB": 600,
+        "Asus ROG Ally X Xbox 1TB": 900,
+        "Asus ROG Ally X Xbox 2TB": 1000
+      }
+    },
+    "lenovo_legion_go": {
+      "name": "Lenovo Legion GO / 2",
+      "preowned_trade_in": {
+        "Lenovo Legion Go Gen 1 512GB": 400,
+        "Lenovo Legion Go Gen 1 1TB": 450,
+        "Lenovo Legion Go Gen 1 2TB": 500,
+        "Legion GO S Z1 Ext 1TB": 600,
+        "Lenovo Legion Go 2 1TB": 1100,
+        "Lenovo Legion Go 2 2TB": 1300
+      },
+      "brand_new_retail": {
+        "Lenovo Legion Go Gen 1 512GB": 600,
+        "Lenovo Legion Go Gen 1 1TB": 650,
+        "Lenovo Legion Go Gen 1 2TB": 700,
+        "Legion GO S Z1 Ext 1TB": 800,
+        "Lenovo Legion Go 2 1TB": 1300,
+        "Lenovo Legion Go 2 2TB": 1400
+      }
+    },
+    "msi_claw": {
+      "name": "MSI Claw / A8 / 8AI+",
+      "preowned_trade_in": {
+        "MSI Claw 512GB": 200,
+        "MSI Claw 1TB": 300,
+        "MSI Claw A8 1TB": 700,
+        "MSI Claw 8AI+ 1TB": 900,
+        "MSI Claw 8AI+ 2TB": 1000
+      },
+      "brand_new_retail": {
+        "MSI Claw 512GB": 400,
+        "MSI Claw 1TB": 500,
+        "MSI Claw A8 1TB": 900,
+        "MSI Claw 8AI+ 1TB": 1100,
+        "MSI Claw 8AI+ 2TB": 1200
+      }
+    },
+    "nintendo_switch": {
+      "name": "Nintendo Switches",
+      "preowned_trade_in": {
+        "Nintendo Switch Lite": 60,
+        "Nintendo Switch Gen 1": 70,
+        "Nintendo Switch Gen 2": 70,
+        "Nintendo Switch OLED": 100,
+        "Nintendo Switch 2": 350
+      },
+      "brand_new_retail": {
+        "Nintendo Switch Lite": 110,
+        "Nintendo Switch Gen 1": 150,
+        "Nintendo Switch Gen 2": 150,
+        "Nintendo Switch OLED": 250,
+        "Nintendo Switch 2": 500
+      }
+    },
+    "ps4": {
+      "name": "PlayStation 4",
+      "preowned_trade_in": {
+        "PS4 Fat 500GB": 50,
+        "PS4 Fat 1TB": 60,
+        "PS4 Slim 500GB": 70,
+        "PS4 Slim 1TB": 80,
+        "PS4 Pro 1TB": 100,
+        "PS4 Pro 2TB": 120
+      },
+      "brand_new_retail": {}
+    },
+    "ps5": {
+      "name": "PlayStation 5",
+      "preowned_trade_in": {
+        "PS5 Fat 825GB Digital": 250,
+        "PS5 Fat 825GB Disc": 350,
+        "PS5 Slim 1TB Digital": 350,
+        "PS5 Slim 1TB Disc": 400,
+        "PS5 Pro 2TB Digital": 700
+      },
+      "brand_new_retail": {
+        "PS5 Fat 825GB Digital": 400,
+        "PS5 Fat 825GB Disc": 500,
+        "PS5 Slim 1TB Digital": 500,
+        "PS5 Slim 1TB Disc": 600,
+        "PS5 Pro 2TB Digital": 900
+      },
+      "notes": {
+        "PS5 Fat": "Original 2020 model",
+        "PS5 Slim": "2023 redesign",
+        "PS5 Pro": "2024 premium model",
+        "important": "Always ask Digital or Disc edition for accurate pricing"
+      }
+    },
+    "ps_portal": {
+      "name": "PS Portal",
+      "preowned_trade_in": {
+        "Portal White": [100, 130],
+        "Portal Midnight Black": [110, 140]
+      },
+      "brand_new_retail": {
+        "Portal White": 200,
+        "Portal Midnight Black": 220
+      }
+    },
+    "psvr2": {
+      "name": "PlayStation VR 2",
+      "preowned_trade_in": {
+        "PlayStation VR 2": 250
+      },
+      "brand_new_retail": {
+        "PlayStation VR 2": 400
+      }
+    },
+    "xbox_series": {
+      "name": "Xbox Series",
+      "preowned_trade_in": {
+        "Xbox Series S": 150,
+        "Xbox Series X": 350,
+        "Xbox Series X Digital": 350
+      },
+      "brand_new_retail": {
+        "Xbox Series S": 300,
+        "Xbox Series X": 600,
+        "Xbox Series X Digital": 600
+      }
+    },
+    "meta_quest": {
+      "name": "Meta Quest 3",
+      "preowned_trade_in": {
+        "Meta Quest 3S 128GB": 250,
+        "Meta Quest 3S 256GB": 300,
+        "Meta Quest 3 512GB": 400
+      },
+      "brand_new_retail": {
+        "Meta Quest 3S 128GB": 400,
+        "Meta Quest 3S 256GB": 500,
+        "Meta Quest 3 512GB": 600
+      }
+    },
+    "pico": {
+      "name": "Pico 4",
+      "preowned_trade_in": {
+        "Pico 4 128GB": [100, 150],
+        "Pico 4 256GB": [150, 200],
+        "Pico 4 Ultra 256GB": [250, 300]
+      },
+      "brand_new_retail": {
+        "Pico 4 128GB": 300,
+        "Pico 4 256GB": 350,
+        "Pico 4 Ultra 256GB": 500
+      }
+    },
+    "dji_osmo": {
+      "name": "DJI Osmo Pocket 3",
+      "preowned_trade_in": {
+        "Osmo Pocket 3 Creator Combo": [350, 400],
+        "Osmo Pocket 3 Handheld": [300, 350]
+      },
+      "brand_new_retail": {
+        "Osmo Pocket 3 Creator Combo": 650,
+        "Osmo Pocket 3 Handheld": 500
+      }
+    }
+  },
+  "installment_plans": {
+    "3_months": {
+      "min_amount": 300,
+      "max_amount": 599,
+      "interest_rate": 0,
+      "description": "0% installment for 3 months"
+    },
+    "6_months": {
+      "min_amount": 600,
+      "max_amount": 999,
+      "interest_rate": 0,
+      "description": "0% installment for 6 months"
+    },
+    "12_months": {
+      "min_amount": 1000,
+      "max_amount": null,
+      "interest_rate": 0,
+      "description": "0% installment for 12 months"
+    }
+  },
+  "examples": {
+    "ps5_fat_to_pro": {
+      "trade_in_device": "PS5 Fat 825GB Disc",
+      "trade_in_value": 350,
+      "target_device": "PS5 Pro 2TB Digital",
+      "retail_price": 900,
+      "top_up": 550,
+      "installment_options": {
+        "3_months": 183.33,
+        "6_months": 91.67
+      }
+    },
+    "xbox_s_to_x": {
+      "trade_in_device": "Xbox Series S",
+      "trade_in_value": 150,
+      "target_device": "Xbox Series X",
+      "retail_price": 600,
+      "top_up": 450,
+      "installment_options": {
+        "3_months": 150
+      }
+    },
+    "rog_ally_to_x": {
+      "trade_in_device": "Asus ROG Ally 512GB",
+      "trade_in_value": 300,
+      "target_device": "Asus ROG Ally X 1TB",
+      "retail_price": 800,
+      "top_up": 500,
+      "installment_options": {
+        "3_months": 166.67,
+        "6_months": 83.33
+      }
+    }
+  },
+  "condition_grading": {
+    "mint": "Like new, no scratches, original box",
+    "good": "Minor wear, fully functional",
+    "fair": "Visible wear, fully functional",
+    "faulty": "Hardware issues, discounted further"
+  },
+  "important_notes": [
+    "All trade-in values are estimates subject to physical inspection",
+    "Always confirm storage capacity (64GB, 512GB, 1TB, 2TB)",
+    "For PS5 and Xbox, ask Digital or Disc edition",
+    "Final quote determined at store: 21 Hougang St 51, #02-09, 12pm-8pm",
+    "Contact: contactus@tradezone.sg"
+  ]
+}

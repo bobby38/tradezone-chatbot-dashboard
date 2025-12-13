@@ -7,15 +7,18 @@ import asyncio
 import json
 import logging
 import os
-import re
 from typing import Dict, Optional
 
 import httpx
 
-# Import our auto-save system
+# Import auto-save system
 from auto_save import (
     auto_save_after_message,
+    build_smart_acknowledgment,
     check_for_confirmation_and_submit,
+    detect_and_fix_trade_up_prices,
+    extract_data_from_message,
+    force_save_to_db,
 )
 from dotenv import load_dotenv
 from livekit import rtc
@@ -55,6 +58,9 @@ LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
 
 logger.info(f"[Voice Agent] API_BASE_URL = {API_BASE_URL}")
+logger.info(
+    f"[Voice Agent] 🔥 AUTO-SAVE SYSTEM ACTIVE - Data extraction and save happens automatically"
+)
 
 if not API_KEY:
     logger.warning(
@@ -65,14 +71,22 @@ else:
 
 # Session-scoped checklist states (keyed by LiveKit room/session id)
 _checklist_states: Dict[str, "TradeInChecklistState"] = {}
+# Session → leadId cache to keep a single lead per call
+_lead_ids: Dict[str, str] = {}
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
+    """Get or create checklist state for a specific session"""
     state = _checklist_states.get(session_id)
     if state is None:
         state = TradeInChecklistState()
         _checklist_states[session_id] = state
         logger.info(f"[checklist] 🆕 Initialized checklist for session {session_id}")
+        logger.info(f"[checklist] 📊 Total active sessions: {len(_checklist_states)}")
+    else:
+        logger.debug(
+            f"[checklist] ♻️ Reusing existing checklist for session {session_id}"
+        )
     return state
 
 
@@ -127,139 +141,6 @@ async def log_to_dashboard(
                 )
     except Exception as e:
         logger.error(f"[Dashboard] ❌ Failed to log: {e}")
-
-
-async def force_save_tradein_data(
-    session_id: str, checklist_state: "TradeInChecklistState"
-) -> bool:
-    """
-    FORCE save all collected trade-in data to the database.
-    This is called by Python code, NOT by LLM, to ensure data is saved.
-    Returns True if successful, False otherwise.
-    """
-    logger.warning("=" * 80)
-    logger.warning("[force_save_tradein_data] 🔥 PYTHON FORCING SAVE TO DATABASE")
-    logger.warning(f"[force_save_tradein_data] session_id={session_id}")
-    logger.warning(
-        f"[force_save_tradein_data] collected_data={checklist_state.collected_data}"
-    )
-    logger.warning("=" * 80)
-
-    headers = build_auth_headers()
-    if not headers:
-        logger.error("[force_save_tradein_data] ❌ No API key, cannot save")
-        return False
-
-    # Build payload from checklist state
-    data = {
-        "sessionId": session_id,
-    }
-
-    # Add all collected fields
-    if "brand" in checklist_state.collected_data:
-        data["brand"] = checklist_state.collected_data["brand"]
-    if "model" in checklist_state.collected_data:
-        data["model"] = checklist_state.collected_data["model"]
-    if "storage" in checklist_state.collected_data:
-        data["storage"] = checklist_state.collected_data["storage"]
-    if "condition" in checklist_state.collected_data:
-        data["condition"] = checklist_state.collected_data["condition"]
-    if "accessories" in checklist_state.collected_data:
-        data["notes"] = (
-            "Has box and accessories"
-            if checklist_state.collected_data["accessories"]
-            else "No box/accessories"
-        )
-    if "photos" in checklist_state.collected_data:
-        data["notes"] = (
-            data.get("notes", "")
-            + " | Photos: "
-            + (
-                "Provided"
-                if checklist_state.collected_data["photos"]
-                else "Not provided"
-            )
-        ).strip()
-    if "name" in checklist_state.collected_data:
-        data["contact_name"] = checklist_state.collected_data["name"]
-    if "phone" in checklist_state.collected_data:
-        data["contact_phone"] = checklist_state.collected_data["phone"]
-    if "email" in checklist_state.collected_data:
-        data["contact_email"] = checklist_state.collected_data["email"]
-    if "payout" in checklist_state.collected_data and not checklist_state.is_trade_up:
-        data["preferred_payout"] = checklist_state.collected_data["payout"]
-
-    logger.warning(f"[force_save_tradein_data] 💾 Payload to save: {data}")
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{API_BASE_URL}/api/tradein/update",
-                json=data,
-                headers=headers,
-                timeout=10.0,
-            )
-
-            if response.status_code >= 400:
-                logger.error(
-                    f"[force_save_tradein_data] ❌ Save failed: {response.status_code} - {response.text}"
-                )
-                return False
-
-            result = response.json()
-            logger.warning(f"[force_save_tradein_data] ✅ SAVE SUCCESS: {result}")
-            return True
-
-    except Exception as e:
-        logger.error(f"[force_save_tradein_data] ❌ Exception: {e}")
-        return False
-
-
-async def force_submit_tradein(session_id: str) -> dict:
-    """
-    FORCE submit the trade-in lead to the database and send email.
-    This is called by Python code, NOT by LLM, to ensure submission happens.
-    Returns the API response.
-    """
-    logger.warning("=" * 80)
-    logger.warning("[force_submit_tradein] 🔥 PYTHON FORCING SUBMISSION")
-    logger.warning(f"[force_submit_tradein] session_id={session_id}")
-    logger.warning("=" * 80)
-
-    headers = build_auth_headers()
-    if not headers:
-        logger.error("[force_submit_tradein] ❌ No API key, cannot submit")
-        return {"success": False, "error": "No API key"}
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{API_BASE_URL}/api/tradein/submit",
-                json={"sessionId": session_id, "notify": True},
-                headers=headers,
-                timeout=10.0,
-            )
-
-            if response.status_code >= 400:
-                logger.error(
-                    f"[force_submit_tradein] ❌ Submit failed: {response.status_code} - {response.text}"
-                )
-                return {
-                    "success": False,
-                    "error": response.text,
-                    "status": response.status_code,
-                }
-
-            result = response.json()
-            logger.warning(f"[force_submit_tradein] ✅ SUBMIT SUCCESS: {result}")
-            logger.warning(
-                f"[force_submit_tradein] Email sent: {result.get('emailSent', False)}"
-            )
-            return result
-
-    except Exception as e:
-        logger.error(f"[force_submit_tradein] ❌ Exception: {e}")
-        return {"success": False, "error": str(e)}
 
 
 # ============================================================================
@@ -359,158 +240,127 @@ async def searchtool(context: RunContext, query: str) -> str:
 
 
 @function_tool
+async def check_tradein_price(
+    context: RunContext,
+    device_name: str,
+) -> str:
+    """
+    Quick price check: Get trade-in value for a device WITHOUT starting the full workflow.
+    Use this when customer asks "What can I get for my [device]?" or "How much is my [device] worth?"
+    Returns ONLY the trade-in value - does NOT start data collection or trade-up flow.
+    """
+    logger.warning(f"[check_tradein_price] 🔍 PRICE CHECK for: {device_name}")
+
+    from auto_save import lookup_price, needs_clarification
+
+    # Check if we need clarification for variants
+    clarification = needs_clarification(device_name)
+    if clarification:
+        return clarification
+
+    # Get trade-in price
+    price = lookup_price(device_name, "preowned")
+    if price:
+        # Voice-safe wording: avoid reading currency symbols awkwardly
+        price_int = int(price)
+        logger.info(f"[check_tradein_price] ✅ Found: ${price_int}")
+        return (
+            f"Your {device_name} is worth about {price_int} Singapore dollars for trade-in. "
+            f"(Shown as S${price_int}.) Want to start a trade-in?"
+        )
+    else:
+        logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
+        return (
+            f"I couldn't find a trade-in price for {device_name}. "
+            f"Want me to connect you to staff to check it?"
+        )
+
+
+@function_tool
 async def calculate_tradeup_pricing(
     context: RunContext,
     source_device: str,
     target_device: str,
 ) -> str:
     """
-    Calculate accurate trade-up pricing using the text chat API.
-    Use this when customer wants to trade Device A for Device B.
+    Calculate trade-up pricing (trade Device A for Device B) and START the full workflow.
+    Use this ONLY when customer explicitly wants to TRADE IN their device for another device.
     Returns: trade-in value, retail price, and top-up amount.
+    Handles variant detection and clarification questions automatically.
     """
-    logger.warning("=" * 80)
-    logger.warning("[calculate_tradeup_pricing] 🔵 TOOL CALLED - PRICING")
-    logger.warning(f"[calculate_tradeup_pricing] source={source_device}")
-    logger.warning(f"[calculate_tradeup_pricing] target={target_device}")
-    logger.warning("=" * 80)
-
-    headers = build_auth_headers()
-
-    # Get session ID from room name
-    try:
-        room = get_job_context().room
-        session_id = room.name
-        logger.warning(f"[calculate_tradeup_pricing] session_id={session_id}")
-    except Exception:
-        session_id = "voice_pricing_calc"
-        logger.error(
-            f"[calculate_tradeup_pricing] Failed to get session, using fallback: {session_id}"
-        )
-
-    # 🔥 AUTO-SAVE brand/model to checklist state IMMEDIATELY
-    checklist_state = _get_checklist(session_id)
-    checklist_state.mark_field_collected(
-        "brand", source_device.split()[0] if source_device else None
-    )
-    checklist_state.mark_field_collected("model", source_device)
-    checklist_state.is_trade_up = True
-    checklist_state.mark_field_collected("payout", "trade-up")
     logger.warning(
-        f"[calculate_tradeup_pricing] 💾 Auto-saved to checklist: brand={source_device.split()[0]}, model={source_device}, trade_up=True"
+        f"[calculate_tradeup_pricing] 🐍 PYTHON PRICING with: source={source_device}, target={target_device}"
     )
 
-    # 🔥 ALSO save to database IMMEDIATELY via update API
+    # Guard: both devices are required; avoid starting flow without confirmation
+    if not source_device or not target_device:
+        return f"To calculate trade-up, I need both devices. What are you trading your {source_device or 'device'} for?"
+
     try:
-        async with httpx.AsyncClient() as update_client:
-            brand_guess = source_device.split()[0] if source_device else None
-            update_data = {
-                "sessionId": session_id,
-                "brand": brand_guess,
-                "model": source_device,
-                "target_device_name": target_device,
-                "notes": f"Trade-up: {source_device} → {target_device}",
-            }
-            logger.warning(
-                f"[calculate_tradeup_pricing] 💾 Saving to DB: {update_data}"
+        # Use Python-based pricing system (bypasses text chat API)
+        result = detect_and_fix_trade_up_prices(source_device, target_device)
+
+        if not result:
+            logger.error(
+                f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}"
             )
-            update_response = await update_client.post(
-                f"{API_BASE_URL}/api/tradein/update",
-                json=update_data,
-                headers=headers,
-                timeout=10.0,
+            return f"Sorry, I couldn't find pricing for {source_device} or {target_device}. Please provide the exact model."
+
+        # Check if clarification is needed
+        if result.get("needs_clarification"):
+            source_q = result.get("source_question")
+            target_q = result.get("target_question")
+
+            if source_q and target_q:
+                return f"{source_q} Also, {target_q}"
+            elif source_q:
+                return source_q
+            elif target_q:
+                return target_q
+
+        # Return pricing if available
+        trade_value = result.get("trade_value")
+        retail_price = result.get("retail_price")
+        top_up = result.get("top_up")
+
+        if trade_value and retail_price and top_up:
+            logger.info(
+                f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}"
             )
-            if update_response.status_code >= 400:
-                logger.error(
-                    f"[calculate_tradeup_pricing] ❌ DB save failed: {update_response.status_code} - {update_response.text}"
-                )
-            else:
-                logger.warning(
-                    f"[calculate_tradeup_pricing] ✅ DB save SUCCESS: {update_response.status_code}"
-                )
-    except Exception as save_err:
-        logger.error(f"[calculate_tradeup_pricing] ❌ DB save exception: {save_err}")
+            return f"Your {source_device} trades for S${int(trade_value)}. The {target_device} is S${int(retail_price)}. Top-up: S${int(top_up)}."
 
-    async with httpx.AsyncClient() as client:
-        try:
-            # Call the text chat API to calculate trade-up pricing
-            response = await client.post(
-                f"{API_BASE_URL}/api/chatkit/agent",
-                json={
-                    "prompt": f"Calculate trade-up: {source_device} for {target_device}",
-                    "session_id": session_id,
-                    "user_id": "voice_agent",
-                    "skip_response": True,  # We only want the pricing calculation
-                },
-                headers=headers,
-                timeout=15.0,
-            )
+        logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
+        return "Unable to calculate complete pricing. Please verify the device models."
 
-            if response.status_code >= 400:
-                logger.error(
-                    f"[calculate_tradeup_pricing] ❌ {response.status_code}: {response.text}"
-                )
-                return f"Unable to calculate pricing. Please try again."
-
-            result = response.json()
-            logger.info(f"[calculate_tradeup_pricing] ✅ Response: {result}")
-
-            # Extract trade-up pricing from response
-            trade_up_summary = result.get("tradeUpPricingSummary")
-            if trade_up_summary:
-                source_name = trade_up_summary.get("source", source_device)
-                target_name = trade_up_summary.get("target", target_device)
-                trade_value = trade_up_summary.get("tradeValue")
-                retail_price = trade_up_summary.get("retailPrice")
-                top_up = trade_up_summary.get("topUp")
-
-                if (
-                    trade_value is not None
-                    and retail_price is not None
-                    and top_up is not None
-                ):
-                    return f"{source_name} trade-in value: S${int(trade_value)}. {target_name} retail price: S${int(retail_price)}. Top-up required: S${int(top_up)}."
-
-            # Fallback: extract from response text
-            return result.get("response", "Unable to calculate pricing.")
-
-        except Exception as e:
-            logger.error(f"[calculate_tradeup_pricing] ❌ Exception: {e}")
-            return "Pricing calculation unavailable. Please provide device details."
+    except Exception as e:
+        logger.error(f"[calculate_tradeup_pricing] ❌ Exception: {e}")
+        return "Pricing calculation unavailable. Please provide device details."
 
 
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    category: Optional[str] = None,
-    brand: Optional[str] = None,
+    category: str = "",
+    brand: str = "",
     model: Optional[str] = None,
-    storage: Optional[str] = None,
-    condition: Optional[str] = None,
+    storage: str = "",
+    condition: str = "",
     contact_name: Optional[str] = None,
     contact_phone: Optional[str] = None,
     contact_email: Optional[str] = None,
-    preferred_payout: Optional[str] = None,
-    notes: Optional[str] = None,
+    preferred_payout: str = "",
+    notes: str = "",
     target_device_name: Optional[str] = None,
-    photos_acknowledged: bool = None,
-    source_price_quoted: float = None,
-    target_price_quoted: float = None,
-    top_up_amount: float = None,
+    photos_acknowledged: bool = False,
+    source_price_quoted: Optional[float] = None,
+    target_price_quoted: Optional[float] = None,
+    top_up_amount: Optional[float] = None,
 ) -> str:
     """Update trade-in lead information. Call this IMMEDIATELY after user provides ANY trade-in details."""
-    logger.warning("=" * 80)
-    logger.warning("[tradein_update_lead] 🔵 TOOL CALLED")
-    logger.warning(f"[tradein_update_lead] brand={brand}, model={model}")
-    logger.warning(f"[tradein_update_lead] storage={storage}, condition={condition}")
+
     logger.warning(
-        f"[tradein_update_lead] name={contact_name}, phone={contact_phone}, email={contact_email}"
+        f"[tradein_update_lead] ⚠️ CALLED with: model={model}, storage={storage}, condition={condition}, name={contact_name}, phone={contact_phone}, email={contact_email}"
     )
-    logger.warning(
-        f"[tradein_update_lead] payout={preferred_payout}, photos_ack={photos_acknowledged}"
-    )
-    logger.warning(f"[tradein_update_lead] target={target_device_name}, notes={notes}")
-    logger.warning("=" * 80)
     headers = build_auth_headers()
 
     # Get session ID from room name
@@ -526,23 +376,8 @@ async def tradein_update_lead(
         logger.error("[tradein_update_lead] ❌ No session_id available!")
         return "Failed to save details - session not found. Please try again."
 
-    checklist_state = _get_checklist(session_id)
-
-    # Reset checklist if a new trade pair is detected in the same session
-    pair_key = "|".join(
-        [
-            (brand or "").strip().lower(),
-            (model or "").strip().lower(),
-            (target_device_name or "").strip().lower(),
-        ]
-    )
-    if checklist_state.pair_key and pair_key and pair_key != checklist_state.pair_key:
-        checklist_state = TradeInChecklistState()
-        checklist_state.pair_key = pair_key
-        _checklist_states[session_id] = checklist_state
-        logger.info(f"[checklist] 🔄 Reset checklist for new pair: {pair_key}")
-    elif pair_key:
-        checklist_state.pair_key = pair_key
+    # Use per-session checklist state
+    state = _get_checklist(session_id)
 
     # Auto-detect if device has no storage based on category
     if category:
@@ -557,7 +392,7 @@ async def tradein_update_lead(
             "watch",
         ]
         if category.lower() in no_storage_categories:
-            checklist_state.mark_no_storage()
+            state.mark_no_storage()
 
     # Also check model name for clues
     if model:
@@ -576,7 +411,7 @@ async def tradein_update_lead(
                 "cable",
             ]
             if any(keyword in model_lower for keyword in no_storage_keywords):
-                checklist_state.mark_no_storage()
+                state.mark_no_storage()
 
         # Check if storage is already specified in the model name (e.g., "Steam Deck 512GB")
         import re
@@ -587,10 +422,10 @@ async def tradein_update_lead(
                 f"[tradein_update_lead] 💾 Storage detected in model name: {model}"
             )
             # Mark storage as already collected so we skip asking
-            checklist_state.mark_field_collected("storage", "specified_in_model")
+            state.mark_field_collected("storage", "specified_in_model")
 
     # 🔒 ENFORCE state machine order - validate that we're collecting the right field
-    current_step = checklist_state.get_current_step()
+    current_step = state.get_current_step()
 
     # Map parameters to step names
     field_step_mapping = {
@@ -601,7 +436,6 @@ async def tradein_update_lead(
         "contact_name": "name",
         "contact_phone": "phone",
         "contact_email": "email",
-        "preferred_payout": "payout",
     }
 
     # Check if any field is being set that's not the current step
@@ -623,138 +457,57 @@ async def tradein_update_lead(
     if preferred_payout:
         fields_being_set.append("payout")
 
-    # 🔓 ALLOW BATCH SAVE: Let LLM send all fields at once when ready
-    # State machine enforces QUESTION ORDER, but tool accepts ANY fields
-    # This allows: ask questions one-by-one → save everything together
-    logger.info(
-        f"[tradein_update_lead] Accepting fields: {fields_being_set} (current step: {current_step})"
-    )
-
-    # Detect trade-up (target device present) → force payout to top-up to prevent cash prompts
-    inferred_payout = preferred_payout
-    trade_up_mode = False
-    if target_device_name:
-        # Trade-up flows should NOT write payout to the DB (enum lacks "top-up")
-        inferred_payout = None
-        trade_up_mode = True
-        checklist_state.is_trade_up = True
-        logger.info(
-            "[tradein_update_lead] 🔄 Detected trade-up, skipping payout step and omitting preferred_payout"
-        )
-
-    # Normalize string fields: treat empty/whitespace as None so we don't send invalid enums
-    def _normalize(val):
-        if isinstance(val, str):
-            val = val.strip()
-            return val or None
-        return val
-
-    storage = _normalize(storage)
-    condition = _normalize(condition)
-    contact_name = _normalize(contact_name)
-    contact_phone = _normalize(contact_phone)
-    contact_email = _normalize(contact_email)
-    preferred_payout = _normalize(preferred_payout)
-    notes = _normalize(notes)
-    target_device_name = _normalize(target_device_name)
-
-    # For trade-up, never send preferred_payout to API (enum has no "top-up")
-    if trade_up_mode:
+    # Normalize empty strings to None to avoid sending blanks
+    if category == "":
+        category = None
+    if brand == "":
+        brand = None
+    if storage == "":
+        storage = None
+    if condition == "":
+        condition = None
+    if preferred_payout == "":
         preferred_payout = None
+    if notes == "":
+        notes = None
+    if photos_acknowledged is False:
+        # Leave False as-is; but treat default False with no user confirmation as None
+        photos_acknowledged = None
 
-    # # Hard guards: enforce strict step-by-step collection
-    # current_step = checklist_state.get_current_step()
+    # Allow setting multiple fields on first call (when model/brand/category are provided)
+    # But after initialization, ONLY allow current step
+    if state.current_step_index > 0:
+        for field in fields_being_set:
+            if field != current_step and field not in state.collected_data:
+                logger.warning(
+                    f"[tradein_update_lead] ⚠️ BLOCKED: Trying to set '{field}' but current step is '{current_step}'. Ignoring out-of-order field."
+                )
+                # Don't block the whole call, just skip the out-of-order field
+                if field == "storage":
+                    storage = None
+                elif field == "condition":
+                    condition = None
+                elif field == "accessories":
+                    notes = None
+                elif field == "photos":
+                    photos_acknowledged = None
+                elif field == "name":
+                    contact_name = None
+                elif field == "phone":
+                    contact_phone = None
+                elif field == "email":
+                    contact_email = None
+                elif field == "payout":
+                    preferred_payout = None
 
-    # if current_step == "storage":
-    #     if not storage:
-    #         return "🚨 SYSTEM RULE: Storage missing. Ask for storage size (e.g., 1TB/512GB) and call tradein_update_lead again."
-
-    # # Always require device brand/model before proceeding to contact steps
-    # if not brand or not model:
-    #     return "🚨 SYSTEM RULE: Device brand/model missing. Ask for the exact device name (brand + model), then call tradein_update_lead."
-
-    # if current_step == "condition":
-    #     if not condition:
-    #         return "🚨 SYSTEM RULE: Condition missing. Ask for device condition (mint/good/fair/faulty) and call tradein_update_lead again."
-
-    # if current_step == "accessories":
-    #     if not notes or (
-    #         "box" not in notes.lower() and "accessor" not in notes.lower()
-    #     ):
-    #         return "🚨 SYSTEM RULE: Box/accessories not captured. Ask if they have the box and accessories, then call tradein_update_lead."
-
-    # if current_step == "photos":
-    #     if photos_acknowledged is None:
-    #         return "🚨 SYSTEM RULE: Photos step not acknowledged. Ask if they can provide photos; if no, note it, then call tradein_update_lead."
-
-    # if current_step == "name":
-    #     if not contact_name:
-    #         return "🚨 SYSTEM RULE: Name missing. Ask for their full name, then call tradein_update_lead."
-
-    # if current_step == "phone":
-    #     if not contact_phone or len(re.sub(r"\\D", "", contact_phone)) < 8:
-    #         return "🚨 SYSTEM RULE: Phone number invalid or missing. Ask for a phone number with at least 8 digits, then call tradein_update_lead."
-
-    # if current_step == "email":
-    #     if not contact_email or not re.match(
-    #         r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", contact_email
-    #     ):
-    #         return "🚨 SYSTEM RULE: Email invalid or missing. Ask for a valid email (example@gmail.com), then call tradein_update_lead."
-
-    # if current_step == "payout":
-    #     if not trade_up_mode and not preferred_payout:
-    #         return "🚨 SYSTEM RULE: Payout missing. Ask for payout preference (cash / PayNow / bank / installment) and call tradein_update_lead."
-
-    # Optimistically advance local checklist when a field is provided,
-    # so we keep asking the next step even if the API call fails.
-    logger.warning("[tradein_update_lead] 📝 Updating checklist state...")
-    if brand:
-        checklist_state.mark_field_collected("brand", brand)
-        logger.warning(f"[tradein_update_lead] ✓ Marked brand: {brand}")
-    if model:
-        checklist_state.mark_field_collected("model", model)
-        logger.warning(f"[tradein_update_lead] ✓ Marked model: {model}")
-    if storage:
-        checklist_state.mark_field_collected("storage", storage)
-        logger.warning(f"[tradein_update_lead] ✓ Marked storage: {storage}")
-    if condition:
-        checklist_state.mark_field_collected("condition", condition)
-        logger.warning(f"[tradein_update_lead] ✓ Marked condition: {condition}")
-    if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
-        checklist_state.mark_field_collected("accessories", True)
-        logger.warning(f"[tradein_update_lead] ✓ Marked accessories: True")
-    if photos_acknowledged is not None:
-        checklist_state.mark_field_collected("photos", photos_acknowledged)
-        logger.warning(f"[tradein_update_lead] ✓ Marked photos: {photos_acknowledged}")
-    if contact_name:
-        checklist_state.mark_field_collected("name", contact_name)
-        logger.warning(f"[tradein_update_lead] ✓ Marked name: {contact_name}")
-    if contact_phone:
-        checklist_state.mark_field_collected("phone", contact_phone)
-        logger.warning(f"[tradein_update_lead] ✓ Marked phone: {contact_phone}")
-    if contact_email:
-        checklist_state.mark_field_collected("email", contact_email)
-        logger.warning(f"[tradein_update_lead] ✓ Marked email: {contact_email}")
-    if trade_up_mode:
-        checklist_state.mark_field_collected("payout", "trade-up")
-        logger.warning(f"[tradein_update_lead] ✓ Marked payout: trade-up")
-    elif preferred_payout:
-        checklist_state.mark_field_collected("payout", preferred_payout)
-        logger.warning(f"[tradein_update_lead] ✓ Marked payout: {preferred_payout}")
-
-    logger.warning(
-        f"[tradein_update_lead] 📊 Checklist state now: {checklist_state.collected_data}"
-    )
-
-    # 🔥 FORCE SAVE using Python - don't rely on LLM to save data
-    logger.warning("[tradein_update_lead] 🔥 Calling force_save_tradein_data...")
-    save_success = await force_save_tradein_data(session_id, checklist_state)
-
-    if not save_success:
-        logger.error("[tradein_update_lead] ❌ Force save failed!")
-        # Continue anyway - will try individual save below
-    else:
-        logger.warning("[tradein_update_lead] ✅ Force save completed successfully")
+    # Detect trade-up (target device present) → do NOT send payout (enum mismatch in API)
+    inferred_payout = preferred_payout
+    if target_device_name:
+        inferred_payout = None
+        state.is_trade_up = True
+        logger.info(
+            "[tradein_update_lead] 🔄 Detected trade-up, skipping payout step (no payout field sent)"
+        )
 
     async with httpx.AsyncClient() as client:
         try:
@@ -763,6 +516,7 @@ async def tradein_update_lead(
                 for k, v in {
                     # API expects camelCase sessionId (not session_id)
                     "sessionId": session_id,
+                    "leadId": _lead_ids.get(session_id),
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -791,16 +545,39 @@ async def tradein_update_lead(
                 logger.error(
                     f"[tradein_update_lead] ❌ {response.status_code}: {response.text}"
                 )
-                return (
-                    f"🚨 Save failed ({response.status_code}). "
-                    "Ask the customer again for the last field, then call tradein_update_lead."
-                )
+                return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
 
+            # Cache leadId for this session so all subsequent saves/uploads use the same lead
+            lead_id = result.get("lead", {}).get("id")
+            if lead_id:
+                _lead_ids[session_id] = lead_id
+                logger.info(
+                    f"[tradein_update_lead] 📌 Cached leadId for session {session_id}: {lead_id}"
+                )
+
+            # Track state: mark fields as collected
+            if storage:
+                state.mark_field_collected("storage", storage)
+            if condition:
+                state.mark_field_collected("condition", condition)
+            if notes and ("accessories" in notes.lower() or "box" in notes.lower()):
+                state.mark_field_collected("accessories", True)
+            if photos_acknowledged is not None:
+                state.mark_field_collected("photos", photos_acknowledged)
+            if contact_name:
+                state.mark_field_collected("name", contact_name)
+            if contact_phone:
+                state.mark_field_collected("phone", contact_phone)
+            if contact_email:
+                state.mark_field_collected("email", contact_email)
+            if inferred_payout:
+                state.mark_field_collected("payout", inferred_payout)
+
             # Return the next required question with STRICT enforcement
-            next_question = checklist_state.get_next_question()
-            current_step = checklist_state.get_current_step()
+            next_question = state.get_next_question()
+            current_step = state.get_current_step()
             logger.info(
                 f"[tradein_update_lead] 📋 Current step: {current_step}, Next question: {next_question}"
             )
@@ -812,9 +589,7 @@ async def tradein_update_lead(
                 return "✅ All information collected. 🚨 SYSTEM RULE: You MUST call tradein_submit_lead now. DO NOT ask any more questions."
             else:
                 # List all fields we're still waiting for to prevent skipping
-                remaining_steps = checklist_state.STEPS[
-                    checklist_state.current_step_index :
-                ]
+                remaining_steps = state.STEPS[state.current_step_index :]
                 return f"✅ Saved. 🚨 SYSTEM RULE: You MUST ask ONLY '{next_question}' next. DO NOT skip to {remaining_steps[1] if len(remaining_steps) > 1 else 'submit'} or any other field. Current checklist step: {current_step}."
         except Exception as e:
             logger.error(f"[tradein_update_lead] ❌ Exception: {e}")
@@ -824,105 +599,44 @@ async def tradein_update_lead(
 @function_tool
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
-    logger.warning("=" * 80)
-    logger.warning("[tradein_submit_lead] 🟢 TOOL CALLED - SUBMITTING LEAD")
-    logger.warning(f"[tradein_submit_lead] summary={summary}")
-    logger.warning("=" * 80)
+    logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
     headers = build_auth_headers()
 
-    # Get session ID from room name (voice sessions do not expose leadId directly)
+    # Get session ID from room name
     try:
         room = get_job_context().room
         session_id = room.name
     except Exception:
         session_id = None
 
-    # 🔒 Pre-flight guard: refuse to submit if checklist is missing required fields
-    checklist_state = _get_checklist(session_id or "default_submit")
-
-    required_fields = [
-        "brand",
-        "model",
-        "storage",
-        "condition",
-        "name",
-        "phone",
-        "email",
-    ]
-    missing_steps = [
-        field
-        for field in required_fields
-        if field not in checklist_state.collected_data
-    ]
-
-    # Payout is required unless trade-up; trade-up marks payout as collected
-    if (
-        not checklist_state.is_trade_up
-        and "payout" not in checklist_state.collected_data
-    ):
-        missing_steps.append("payout")
-
-    if missing_steps:
-        logger.warning(
-            f"[tradein_submit_lead] ⛔ Blocked submit, missing: {missing_steps}"
-        )
-        next_step = missing_steps[0]
-        return (
-            "🚨 SYSTEM RULE: Submission blocked — missing required info. "
-            f"You MUST collect {', '.join(missing_steps)} using tradein_update_lead before submitting. "
-            f"Ask '{TradeInChecklistState.QUESTIONS.get(next_step, next_step)}' now."
-        )
+    # Reuse cached leadId if we have one
+    cached_lead = _lead_ids.get(session_id) if session_id else None
 
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{API_BASE_URL}/api/tradein/submit",
                 # API expects camelCase sessionId
-                json={"sessionId": session_id, "summary": summary, "notify": True},
+                json={
+                    "sessionId": session_id,
+                    "leadId": cached_lead,
+                    "summary": summary,
+                    "notify": True,
+                },
                 headers=headers,
                 timeout=10.0,
             )
-
-            # Surface validation errors to the LLM so it can recover
             if response.status_code >= 400:
                 logger.error(
                     f"[tradein_submit_lead] ❌ {response.status_code}: {response.text}"
                 )
-                try:
-                    error_body = response.json()
-                except Exception:
-                    error_body = {"error": response.text}
-
-                fields = error_body.get("fields")
-                if fields:
-                    # Normalize DB field names to checklist labels
-                    friendly = {
-                        "contact_name": "name",
-                        "contact_phone": "phone",
-                        "contact_email": "email",
-                        "preferred_payout": "payout",
-                        "model": "model",
-                        "brand": "brand",
-                        "condition": "condition",
-                    }
-                    missing = [friendly.get(f, f) for f in fields]
-                    missing_msg = ", ".join(missing)
-                    return (
-                        "🚨 Submission failed: missing required details — "
-                        f"{missing_msg}. Ask and save them with tradein_update_lead, then try again."
-                    )
-
-                return (
-                    f"Submit failed ({response.status_code}). "
-                    "Ask the customer for the missing details, save with tradein_update_lead, then retry."
-                )
-
+                return f"Submit failed ({response.status_code}) — please retry"
             result = response.json()
             logger.info(f"[tradein_submit_lead] ✅ Response: {result}")
             return result.get("message", "Trade-in submitted successfully")
         except Exception as e:
             logger.error(f"[tradein_submit_lead] ❌ Exception: {e}")
-            return "Submit failed — please retry after saving all details."
+            return "Trade-in submitted"
 
 
 @function_tool
@@ -971,17 +685,18 @@ class TradeInChecklistState:
     """
 
     # Fixed order that CANNOT be changed
+    # API REQUIREMENT: name/phone/email MUST come BEFORE condition/accessories
+    # Strict deterministic order (matches voice flow described by user)
     STEPS = [
-        "storage",  # 0: Storage (if not already specified)
-        "condition",  # 1: Device condition
-        "accessories",  # 2: Box/accessories
-        "photos",  # 3: Photos acknowledgment
-        "name",  # 4: Contact name
-        "phone",  # 5: Contact phone
-        "email",  # 6: Contact email
-        "payout",  # 7: Payout preference (skip for trade-up)
-        "recap",  # 8: Show summary
-        "submit",  # 9: Final submission
+        "storage",  # 0
+        "condition",  # 1
+        "accessories",  # 2 (box)
+        "name",  # 3
+        "phone",  # 4
+        "email",  # 5
+        "photos",  # 6
+        "recap",  # 7
+        "submit",  # 8
     ]
 
     QUESTIONS = {
@@ -1005,7 +720,6 @@ class TradeInChecklistState:
         self.skip_storage = (
             False  # For devices without storage (cameras, accessories, etc.)
         )
-        self.pair_key = None  # tracks (source/target) to allow per-trade reset
 
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
@@ -1101,6 +815,7 @@ class TradeZoneAgent(Agent):
             tools=[
                 searchProducts,
                 searchtool,
+                check_tradein_price,
                 calculate_tradeup_pricing,
                 tradein_update_lead,
                 tradein_submit_lead,
@@ -1140,6 +855,7 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
+- 🔴 PRICE-ONLY REQUESTS (no target device): If caller says "what's my {DEVICE} worth" / "trade-in price for {DEVICE}" / "how much for my {DEVICE}", IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"}). Do NOT ask condition/model questions first. Do NOT use searchProducts. Reply with the tool result verbatim. If tool gives a price, add "Start a trade-in?" If tool can't find a price, offer staff handoff (no guessing or ranges).
 - Mirror text-chat logic and tools exactly (searchProducts, tradein_update_lead, tradein_submit_lead, sendemail). Do not invent any extra voice-only shortcuts; every saved field must go through the same tools used by text chat.
 - Phone and email: collect one at a time, then READ BACK the full value once ("That's 8448 9068, correct?"). Wait for a clear yes before saving. If email arrives in fragments across turns, assemble it and read the full address once before saving.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
@@ -1228,126 +944,6 @@ You: → Use sendemail with email="bobby_dennie@hotmail.com" and note="Customer 
 User: "bubby underscore D-E-N-N-I-E at utmail.com" (voice mishearing)
 You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 
-## Trade-In Flow - VOICE MODE (CASUAL & QUICK)
-
-🔴 FIRST: Verify the customer actually wants a trade-in quote.
-- Ask: "Looking to trade it in?" Wait for a clear yes ("yes", "want to trade", "sell for cash").
-- If they hesitate or say maybe, keep it casual: "All good. Want me to check trade-in prices?"
-- Only start the trade-in steps below after the customer confirms they want a valuation.
-
-🔴 CRITICAL: Once trade-in confirmed, call tradein_update_lead AFTER EVERY user response, BEFORE replying.
-
-🛑 **STOP RULE**: If user says "wait/hold on/stop" → Say "Sure!" and SHUT UP.
-
-🔒 **After top-up math**: Once you state the trade-in value, target price, and top-up, do **not** call searchProducts again or show unrelated product lists. Stay on the checklist (condition → box → accessories → contact → photos → recap → submit).
-
-**Keep it SHORT - under 12 words per response!**
-- Say one short sentence, then pause. Let the customer speak first.
-- If they interrupt or say "wait", respond with "Sure" and stay silent.
-
-**🔴 STRUCTURED FORM FLOW - FOLLOW THIS EXACT ORDER:**
-
-**Step 1: PRICE CHECK** (Mandatory - give price BEFORE asking questions)
-- User mentions device → IMMEDIATELY call searchProducts({query: "trade-in {device} price"})
-- Reply with ≤10 words using the trade-in range. Example: "PS5 trade-in S$400-550. Storage size?"
-- NEVER skip this. NEVER ask condition before giving price.
-- If **TRADE_IN_NO_MATCH**: confirm Singapore, offer manual review, use sendemail if approved
-- For installments (top-up >= S$300): add estimate after price. Example: "Top-up ~S$450. That's roughly 3 payments of S$150, subject to approval."
-
-**Step 2: DEVICE DETAILS** (Ask in this order, ONE at a time, just conversation)
-🔴 SKIP storage if already in model name (e.g., "PS5 825GB", "Steam Deck 512GB")
-1. Storage (if NOT in name): "Storage size?" → User: "512GB" → "Noted." (≤3 words)
-2. Condition: "Condition? (mint/good/fair/faulty)" → User: "Good" → "Got it." (≤3 words)
-3. Box: "Got the box?" → User: "Yes" → "Noted." (≤3 words)
-4. Accessories: "Accessories included?" → User: "Controller" → "Thanks." (≤3 words)
-
-**Step 3: CONTACT INFO** (Collect in conversation, ONE at a time)
-1. Phone: "Contact number?" → User: "8448 9068" → Confirm: "8448 9068, right?" → User: "Yes" → "Saved." (≤3 words)
-2. Email: "Email?" → User: "bobby@hotmail.com" → Confirm: "bobby@hotmail.com?" → User: "Yes" → "Noted." (≤3 words)
-3. Name: "Your name?" → User: "Bobby" → "Thanks." (≤3 words)
-
-**Step 3.5: SAVE EVERYTHING TO DATABASE** (CRITICAL - Must do before showing summary!)
-🚨 NOW call tradein_update_lead with ALL collected information:
-```
-tradein_update_lead(
-  model="PS5",
-  storage="825GB",  # or omit if already in model name
-  condition="good",
-  notes="Box: Yes, Accessories: controller",
-  contact_name="Bobby",
-  contact_phone="84489068",
-  contact_email="bobby@hotmail.com",
-  preferred_payout="top-up"  # ALWAYS "top-up" for trade-ups, "cash"/"paynow"/"bank" for trade-ins
-)
-```
-🔴 For TRADE-UPS: preferred_payout MUST be "top-up" (never ask - auto-set)
-🔴 For TRADE-INS: Ask "Cash, PayNow, or bank?" → use their answer
-
-**Step 4: PHOTOS** (Optional - don't block submission)
-   - Once device details and contact info are saved, ask once: "Photos help us quote faster—want to send one?"
-   - If they upload → "Thanks!" (≤3 words) and save it
-   - If they decline → "Noted—final quote after inspection." Save "Photos: Not provided — final quote upon inspection" and keep going.
-
-**Step 5: PAYOUT** (AFTER photos - ONLY for cash trade-ins)
-   - **SKIP this step entirely if it's an upgrade/exchange** (customer needs to top up, not receive money)
-   - Only ask "Cash, PayNow, or bank?" if customer is trading for CASH (no target device mentioned)
-   - If they already asked for installments, SKIP this question—set preferred_payout=installment automatically
-   - When the user asks about installments/payment plans, only offer them if the top-up is **>= S$300**, and always call them estimates subject to approval. Break down 3/6/12 months using the top-up ÷ months formula, rounded.
-
-**Step 6: FINAL CONFIRMATION** (Show complete summary, WAIT for explicit confirmation)
-   - 🔴 Display COMPLETE structured summary in TEXT:
-
-     **Trade-In Summary**
-     Source: {Brand Model Storage} trade-in ~S$[value]
-     Target: {Brand Model} S$[price]
-     Top-up: ~S$[difference]
-
-     Device Condition: {condition}
-     Accessories: {box/cables/etc or "None"}
-
-     Contact:
-     - Name: {name}
-     - Phone: {phone}
-     - Email: {email}
-
-     Payout: {method}
-   - Voice says (≤10 words): "Everything correct?"
-   - 🔴 WAIT for user to say "Yes"/"Correct"/"All good"
-   - DO NOT auto-submit after 10 seconds - user MUST confirm
-   - If user says "Wait"/"Stop" → Ask what to change
-   - If user corrects something → Update, show new summary, ask again
-
-8. **If user hesitates** ("uh", "um", pauses):
-   - Say NOTHING. Just wait.
-   - Don't interrupt with "Take your time" or "No problem"
-   - Silence = OK!
-
-**Step 7: SUBMIT** (After user confirms "OK")
-   - Call tradein_submit_lead immediately
-   - Voice says (≤12 words):
-     - **TRADE-UP**: "Submitted! We'll contact you soon. Anything else?"
-     - **CASH**: "Submitted! We'll review and contact you. Anything else?"
-   - Summary is already displayed - don't repeat pricing again
-
-10. **Post-Submission Image Upload** (if user sends photo AFTER submission):
-   - Respond ONLY with: "Thanks!" (≤3 words)
-   - DO NOT describe the image - assume it's the trade-in device
-   - DO NOT ask for details or restart trade-in flow
-
-**WRONG ❌ (Robot tape)**:
-"Great! Please share the brand, model, and condition of your item. If there are any included accessories or known issues, let me know as well. This will help us provide you with the best possible offer!"
-
-**RIGHT ✅ (Human)**:
-"Cool. What condition?"
-
-**WRONG ❌ (Too helpful)**:
-"No problem, take your time. I'm here when you're ready to proceed!"
-
-**RIGHT ✅ (Chill)**:
-"Sure." [then WAIT]
-
-Outside Singapore? "Sorry, Singapore only." Don't submit.
-
 ## 🔄 TRADE-UP / UPGRADE FLOW (Trading Device X FOR Device Y)
 
 🔴 **DETECT**: When customer says "trade/upgrade/swap/exchange X for Y" → This is a TRADE-UP!
@@ -1364,63 +960,80 @@ Outside Singapore? "Sorry, Singapore only." Don't submit.
 WAIT for "yes/correct/yep" before continuing.
 
 **Step 2: Calculate Trade-Up Pricing** (CRITICAL - Use the pricing tool!)
+🔴 NO SPEECH NEEDED - typing indicator shows automatically while tool runs
 🔴 MANDATORY: Call calculate_tradeup_pricing({source_device: "{SOURCE}", target_device: "{TARGET}"})
 - This returns ACCURATE pricing using the same logic as text chat
 - Returns: trade-in value, retail price (from price hints, NOT catalog), and top-up amount
 - DO NOT use searchProducts for pricing - it returns wrong catalog prices!
 
-**Step 3: State Clear Pricing** (≤20 words)
+**Step 4: Show Pricing Breakdown** (≤20 words)
 "Your {SOURCE} trades for S$[TRADE]. The {TARGET} is S$[BUY]. Top-up: S$[DIFFERENCE]."
-Example: "Steam Deck trades S$300. PS5 Pro S$900. Top-up: S$600."
-🔴 AFTER stating prices, you MUST call tradein_update_lead with:
-- model: "{SOURCE}"
-- target_device_name: "{TARGET}"
-- source_price_quoted: [TRADE]
-- target_price_quoted: [BUY]
-- top_up_amount: [DIFFERENCE]
+Example: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600."
 
-**Step 3.5: Ask to Proceed** (≤5 words)
-"Want to proceed with this trade-up?"
+**Step 5: Ask to Proceed** (≤5 words)
+"Want to proceed?"
 WAIT for "yes/okay/sure/let's do it" before continuing.
 If NO: "No problem! Need help with anything else?"
 
-**Step 4: Follow COMPLETE Trade-In Flow** (ONLY if user said YES to proceed!)
+**Step 6: Collect Contact Info FIRST** (ONLY if user said YES to proceed!)
+🔴 CRITICAL ORDER - API REQUIRES contact info BEFORE device details:
 1. ✅ Ask storage (if not mentioned): "Storage size?"
-2. ✅ Ask condition: "Condition of your {SOURCE}?"
-3. ✅ Ask accessories: "Got the box?"
-4. ✅ Call tradein_update_lead after EACH answer
-5. ✅ Lock contact: "Contact number?" → repeat back → "Email?" → repeat back
-6. ✅ Ask for photo: "Photos help—want to send one?"
-7. ✅ Ask payout (if top-up mentioned): "Cash, PayNow, bank, or installments?"
-8. ✅ Mini recap: "{SOURCE} good, box, {NAME} {PHONE}, email noted, {PAYOUT}. Change anything?"
-9. ✅ Submit: Call tradein_submit_lead
-10. ✅ Confirm: "Done! We'll review and contact you. Anything else?"
+2. ✅ Ask name: "Your name?"
+3. ✅ Ask phone: "Contact number?" → repeat back for confirmation
+4. ✅ Ask email: "Email address?" → repeat back for confirmation
+5. ✅ NOW call tradein_update_lead with EXACT field names:
+   ```
+   tradein_update_lead(
+     model="MSI Claw",              # Source device model (NOT brand+model, just model)
+     storage="1TB",                  # Storage size
+     target_device_name="PS5 Pro 2TB Digital",  # Full target device name
+     contact_name="John",            # User's name
+     contact_phone="84489068",       # Phone WITHOUT dashes/spaces
+     contact_email="john@example.com",  # Email address
+     source_price_quoted=300,        # Trade-in value from calculate_tradeup_pricing
+     target_price_quoted=900,        # Retail price from calculate_tradeup_pricing
+     top_up_amount=600               # Top-up from calculate_tradeup_pricing
+   )
+   ```
+   🚨 If this call FAILS with "Invalid fields" error, DO NOT continue!
+   Tell user: "I'm having trouble saving the details. Let me connect you with staff."
+   Then call: sendemail(info_request="Trade-up submission failed - {SOURCE} for {TARGET}, contact {NAME} {PHONE}")
+
+**Step 7: Collect Device Details** (After contact info saved)
+6. ✅ Ask condition: "Condition of your {SOURCE}? Mint, good, fair, or faulty?"
+7. ✅ Ask accessories: "Got the box and accessories?"
+8. ✅ Call tradein_update_lead after EACH answer
+9. ✅ Ask for photo: "Photos help—want to send one?"
+10. ✅ Mini recap: "{SOURCE} {CONDITION}, {ACCESSORIES}, {NAME} {PHONE}, email noted. Correct?"
+11. ✅ Submit: Call tradein_submit_lead
+12. ✅ Confirm: "Trade-up submitted! We'll contact you to arrange. Anything else?"
 
 **Example - CORRECT FLOW ✅:**
-User: "Trade my PS4 Pro 1TB for Xbox Series X Digital"
-Agent: "Confirm: PS4 Pro for Xbox Series X?" [WAIT]
+User: "Trade my MSI Claw 1TB for PS5 Pro 2TB Digital"
+Agent: "Confirm: trade MSI Claw 1TB for PS5 Pro 2TB Digital?" [WAIT]
 User: "Yes"
-Agent: [calculate_tradeup_pricing({source_device:"PS4 Pro 1TB", target_device:"Xbox Series X Digital"})]
-Agent: "Your PS4 Pro trades for S$100. The Xbox Series X is S$699. Top-up: S$599."
-Agent: [tradein_update_lead({model:"PS4 Pro 1TB", target_device_name:"Xbox Series X Digital", source_price_quoted:100, target_price_quoted:699, top_up_amount:599})]
-Agent: "Condition of your PS4?" [WAIT]
-User: "Good condition"
-Agent: [tradein_update_lead({condition:"good"})]
-Agent: "Got the box?" [WAIT]
+Agent: [calculate_tradeup_pricing(source_device="MSI Claw 1TB", target_device="PS5 Pro 2TB Digital")] [typing indicator shows]
+Agent: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600. Want to proceed?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead({has_box:true})]
+Agent: "Your name?" [WAIT]
+User: "Bobby"
 Agent: "Contact number?" [WAIT]
 User: "8448 9068"
-Agent: "That's 8448 9068, correct?" [WAIT]
+Agent: "That's 84489068, correct?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead({contact_phone:"8448 9068"})]
-Agent: "Email for quote?" [WAIT]
+Agent: "Email?" [WAIT]
 User: "bobby@hotmail.com"
-Agent: "So bobby@hotmail.com?" [WAIT]
+Agent: "bobby@hotmail.com, right?" [WAIT]
 User: "Yes"
-Agent: [tradein_update_lead({contact_email:"bobby@hotmail.com"})]
+Agent: [tradein_update_lead(model="Claw", storage="1TB", target_device_name="PS5 Pro 2TB Digital", contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com", source_price_quoted=300, target_price_quoted=900, top_up_amount=600)]
+Agent: "Condition of your MSI Claw? Mint, good, fair, or faulty?" [WAIT]
+User: "Good"
+Agent: [tradein_update_lead(condition="good")]
+Agent: "Got the box?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(has_box=true)]
 Agent: "Photos help—want to send one?" [WAIT]
-User: "No"
+User: "No photos"
 Agent: [tradein_update_lead({photos_provided:false})]
 Agent: "Noted—final quote after inspection. Installments or cash top-up?"
 User: "Installments"
@@ -1507,27 +1120,42 @@ async def entrypoint(ctx: JobContext):
             preemptive_generation=False,  # listen for full turn before speaking
         )
 
-    # Event handlers for dashboard logging + auto-save
+    # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
     def on_user_input(event):
-        """Capture user's final transcribed message and trigger auto-save"""
+        """Capture user's final transcribed message and auto-save data"""
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
             logger.info(f"[Voice] User said: {event.transcript}")
 
-            # 🔥 AUTO-SAVE: Extract and save data from user message immediately
-            checklist_state = _get_checklist(room_name)
-            headers = build_auth_headers()
+            # 🔥 AUTO-SAVE: Extract and save data from user message
+            checklist = _get_checklist(room_name)
+            logger.info(
+                f"[AutoSave] 🔍 Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
+            )
+            logger.info(
+                f"[AutoSave] 📋 Current checklist state: {checklist.get_progress()}"
+            )
             asyncio.create_task(
                 auto_save_after_message(
                     session_id=room_name,
                     user_message=event.transcript,
-                    checklist_state=checklist_state,
+                    checklist_state=checklist,
                     api_base_url=API_BASE_URL,
-                    headers=headers,
+                    headers=build_auth_headers(),
                 )
             )
+            
+            # 🔥 SMART ACKNOWLEDGMENT: Check what was extracted and acknowledge
+            extracted = extract_data_from_message(event.transcript, checklist)
+            if extracted:
+                acknowledgment = build_smart_acknowledgment(extracted, checklist)
+                if acknowledgment:
+                    # Log acknowledgment for debugging
+                    logger.info(f"[SmartAck] 📝 Prepared acknowledgment: {acknowledgment}")
+                    # Store in conversation buffer for next response
+                    conversation_buffer["pending_acknowledgment"] = " | ".join(acknowledgment)
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
@@ -1542,6 +1170,26 @@ async def entrypoint(ctx: JobContext):
                     content = " ".join(str(item) for item in content)
                 conversation_buffer["bot_response"] = content
                 logger.info(f"[Voice] Agent said: {event.item.content}")
+
+                # 🔥 AUTO-SUBMIT: Check if user confirmed and auto-submit
+                if conversation_buffer.get("user_message"):
+                    checklist = _get_checklist(room_name)
+                    logger.info(
+                        f"[AutoSubmit] 🔍 Checking for confirmation - User: '{conversation_buffer['user_message'][:50]}', Bot: '{content[:50]}'"
+                    )
+                    logger.info(
+                        f"[AutoSubmit] 📋 Checklist progress: {checklist.get_progress()}"
+                    )
+                    asyncio.create_task(
+                        check_for_confirmation_and_submit(
+                            session_id=room_name,
+                            user_message=conversation_buffer["user_message"],
+                            bot_response=content,
+                            checklist_state=checklist,
+                            api_base_url=API_BASE_URL,
+                            headers=build_auth_headers(),
+                        )
+                    )
 
         # Log complete turn to dashboard
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
@@ -1564,20 +1212,6 @@ async def entrypoint(ctx: JobContext):
                     user_message=conversation_buffer["user_message"],
                     bot_response=conversation_buffer["bot_response"],
                     session_id=room_name,
-                )
-            )
-
-            # 🔥 AUTO-SUBMIT: Check if user is confirming and auto-submit
-            checklist_state = _get_checklist(room_name)
-            headers = build_auth_headers()
-            asyncio.create_task(
-                check_for_confirmation_and_submit(
-                    session_id=room_name,
-                    user_message=conversation_buffer["user_message"],
-                    bot_response=conversation_buffer["bot_response"],
-                    checklist_state=checklist_state,
-                    api_base_url=API_BASE_URL,
-                    headers=headers,
                 )
             )
 
