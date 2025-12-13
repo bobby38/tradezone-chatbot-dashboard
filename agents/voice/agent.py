@@ -376,12 +376,14 @@ async def calculate_tradeup_pricing(
             source_q = result.get("source_question")
             target_q = result.get("target_question")
 
+            suffix = " 🚨 SYSTEM RULE: After the user answers, you MUST call calculate_tradeup_pricing again with the clarified device name(s) BEFORE asking 'Want to proceed?'."
+
             if source_q and target_q:
-                return f"{source_q} Also, {target_q}"
+                return f"{source_q} Also, {target_q}{suffix}"
             elif source_q:
-                return source_q
+                return f"{source_q}{suffix}"
             elif target_q:
-                return target_q
+                return f"{target_q}{suffix}"
 
         # Return pricing if available
         trade_value = result.get("trade_value")
@@ -808,22 +810,42 @@ async def _tradein_update_lead_impl(
 
 
 @function_tool
-async def tradein_update_lead(context: RunContext, payload: Dict[str, Any]) -> str:
-    category = payload.get("category")
-    brand = payload.get("brand")
-    model = payload.get("model")
-    storage = payload.get("storage")
-    condition = payload.get("condition")
-    contact_name = payload.get("contact_name")
-    contact_phone = payload.get("contact_phone")
-    contact_email = payload.get("contact_email")
-    preferred_payout = payload.get("preferred_payout")
-    notes = payload.get("notes")
-    target_device_name = payload.get("target_device_name") or ""
-    photos_acknowledged = payload.get("photos_acknowledged")
-    source_price_quoted = payload.get("source_price_quoted")
-    target_price_quoted = payload.get("target_price_quoted")
-    top_up_amount = payload.get("top_up_amount")
+async def tradein_update_lead(
+    context: RunContext,
+    payload: Optional[Dict[str, Any]] = None,
+    category: Optional[str] = None,
+    brand: Optional[str] = None,
+    model: Optional[str] = None,
+    storage: Optional[str] = None,
+    condition: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    contact_phone: Optional[str] = None,
+    contact_email: Optional[str] = None,
+    preferred_payout: Optional[str] = None,
+    notes: Optional[str] = None,
+    target_device_name: Optional[str] = None,
+    photos_acknowledged: Optional[bool] = None,
+    source_price_quoted: Optional[float] = None,
+    target_price_quoted: Optional[float] = None,
+    top_up_amount: Optional[float] = None,
+) -> str:
+    if payload and isinstance(payload, dict):
+        category = payload.get("category", category)
+        brand = payload.get("brand", brand)
+        model = payload.get("model", model)
+        storage = payload.get("storage", storage)
+        condition = payload.get("condition", condition)
+        contact_name = payload.get("contact_name", contact_name)
+        contact_phone = payload.get("contact_phone", contact_phone)
+        contact_email = payload.get("contact_email", contact_email)
+        preferred_payout = payload.get("preferred_payout", preferred_payout)
+        notes = payload.get("notes", notes)
+        target_device_name = payload.get("target_device_name", target_device_name)
+        photos_acknowledged = payload.get("photos_acknowledged", photos_acknowledged)
+        source_price_quoted = payload.get("source_price_quoted", source_price_quoted)
+        target_price_quoted = payload.get("target_price_quoted", target_price_quoted)
+        top_up_amount = payload.get("top_up_amount", top_up_amount)
+
     return await _tradein_update_lead_impl(
         context=context,
         category=category,
@@ -836,7 +858,7 @@ async def tradein_update_lead(context: RunContext, payload: Dict[str, Any]) -> s
         contact_email=contact_email,
         preferred_payout=preferred_payout,
         notes=notes,
-        target_device_name=target_device_name,
+        target_device_name=target_device_name or "",
         photos_acknowledged=photos_acknowledged,
         source_price_quoted=source_price_quoted,
         target_price_quoted=target_price_quoted,
