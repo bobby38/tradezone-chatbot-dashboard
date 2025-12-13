@@ -9,9 +9,10 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Annotated
 
 import httpx
+from pydantic import Field
 
 # Import auto-save system
 from auto_save import (
@@ -178,6 +179,18 @@ async def _persist_quote_flag(session_id: str, quote_timestamp: Optional[str]) -
                 )
     except Exception as e:
         logger.error(f"[QuoteState] ❌ Persist failed: {e}")
+
+
+async def _async_generate_reply(
+    session: AgentSession, instructions: str, allow_interruptions: bool = True
+) -> None:
+    try:
+        await session.generate_reply(
+            instructions=instructions,
+            allow_interruptions=allow_interruptions,
+        )
+    except Exception as e:
+        logger.error(f"[VoiceReply] ❌ Failed to generate reply: {e}")
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -558,6 +571,12 @@ async def calculate_tradeup_pricing(
                 if inferred_brand:
                     state.collected_data["brand"] = inferred_brand
                 state.collected_data["model"] = source_device
+
+                # Switch consoles do not have a meaningful storage choice in this flow
+                lower_source = (source_device or "").lower()
+                lower_target = (target_device or "").lower()
+                if "switch" in lower_source or "switch" in lower_target:
+                    state.mark_no_storage()
 
                 next_question = state.get_next_question() or next_question
 
@@ -970,21 +989,21 @@ async def _tradein_update_lead_impl(
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    category: Optional[str] = None,
-    brand: Optional[str] = None,
-    model: Optional[str] = None,
-    storage: Optional[str] = None,
-    condition: Optional[str] = None,
-    contact_name: Optional[str] = None,
-    contact_phone: Optional[str] = None,
-    contact_email: Optional[str] = None,
-    preferred_payout: Optional[str] = None,
-    notes: Optional[str] = None,
-    target_device_name: Optional[str] = None,
-    photos_acknowledged: Optional[bool] = None,
-    source_price_quoted: Optional[float] = None,
-    target_price_quoted: Optional[float] = None,
-    top_up_amount: Optional[float] = None,
+    category: Annotated[Optional[str], Field(default=None)] = None,
+    brand: Annotated[Optional[str], Field(default=None)] = None,
+    model: Annotated[Optional[str], Field(default=None)] = None,
+    storage: Annotated[Optional[str], Field(default=None)] = None,
+    condition: Annotated[Optional[str], Field(default=None)] = None,
+    contact_name: Annotated[Optional[str], Field(default=None)] = None,
+    contact_phone: Annotated[Optional[str], Field(default=None)] = None,
+    contact_email: Annotated[Optional[str], Field(default=None)] = None,
+    preferred_payout: Annotated[Optional[str], Field(default=None)] = None,
+    notes: Annotated[Optional[str], Field(default=None)] = None,
+    target_device_name: Annotated[Optional[str], Field(default=None)] = None,
+    photos_acknowledged: Annotated[Optional[bool], Field(default=None)] = None,
+    source_price_quoted: Annotated[Optional[float], Field(default=None)] = None,
+    target_price_quoted: Annotated[Optional[float], Field(default=None)] = None,
+    top_up_amount: Annotated[Optional[float], Field(default=None)] = None,
 ) -> str:
     return await _tradein_update_lead_impl(
         context=context,
@@ -1677,7 +1696,8 @@ async def entrypoint(ctx: JobContext):
                                 progress,
                             )
                             asyncio.create_task(
-                                session.generate_reply(
+                                _async_generate_reply(
+                                    session,
                                     instructions=(
                                         f"Say exactly: Your {src} trades for S${int(trade_value)}. "
                                         f"The {tgt} is S${int(retail_price)}. "
@@ -1704,7 +1724,8 @@ async def entrypoint(ctx: JobContext):
                                         ""
                                     )
                                     asyncio.create_task(
-                                        session.generate_reply(
+                                        _async_generate_reply(
+                                            session,
                                             instructions=f"Say exactly: {prompt}",
                                             allow_interruptions=True,
                                         )
