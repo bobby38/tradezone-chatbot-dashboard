@@ -337,18 +337,18 @@ async def calculate_tradeup_pricing(
 @function_tool
 async def tradein_update_lead(
     context: RunContext,
-    category: Optional[str] = None,
-    brand: Optional[str] = None,
+    category: str = "",
+    brand: str = "",
     model: Optional[str] = None,
-    storage: Optional[str] = None,
-    condition: Optional[str] = None,
+    storage: str = "",
+    condition: str = "",
     contact_name: Optional[str] = None,
     contact_phone: Optional[str] = None,
     contact_email: Optional[str] = None,
-    preferred_payout: Optional[str] = None,
-    notes: Optional[str] = None,
+    preferred_payout: str = "",
+    notes: str = "",
     target_device_name: Optional[str] = None,
-    photos_acknowledged: Optional[bool] = None,
+    photos_acknowledged: bool = False,
     source_price_quoted: Optional[float] = None,
     target_price_quoted: Optional[float] = None,
     top_up_amount: Optional[float] = None,
@@ -457,6 +457,23 @@ async def tradein_update_lead(
         fields_being_set.append("email")
     if preferred_payout:
         fields_being_set.append("payout")
+
+    # Normalize empty strings to None to avoid sending blanks
+    if category == "":
+        category = None
+    if brand == "":
+        brand = None
+    if storage == "":
+        storage = None
+    if condition == "":
+        condition = None
+    if preferred_payout == "":
+        preferred_payout = None
+    if notes == "":
+        notes = None
+    if photos_acknowledged is False:
+        # Leave False as-is; but treat default False with no user confirmation as None
+        photos_acknowledged = None
 
     # Allow setting multiple fields on first call (when model/brand/category are provided)
     # But after initialization, ONLY allow current step
