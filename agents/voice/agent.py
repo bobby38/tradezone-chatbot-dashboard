@@ -244,7 +244,7 @@ async def check_tradein_price(
     """
     Quick price check: Get trade-in value for a device WITHOUT starting the full workflow.
     Use this when customer asks "What can I get for my [device]?" or "How much is my [device] worth?"
-    Returns ONLY the trade-in value - does NOT start data collection.
+    Returns ONLY the trade-in value - does NOT start data collection or trade-up flow.
     """
     logger.warning(f"[check_tradein_price] 🔍 PRICE CHECK for: {device_name}")
 
@@ -280,6 +280,10 @@ async def calculate_tradeup_pricing(
     logger.warning(
         f"[calculate_tradeup_pricing] 🐍 PYTHON PRICING with: source={source_device}, target={target_device}"
     )
+
+    # Guard: both devices are required; avoid starting flow without confirmation
+    if not source_device or not target_device:
+        return f"To calculate trade-up, I need both devices. What are you trading your {source_device or 'device'} for?"
 
     try:
         # Use Python-based pricing system (bypasses text chat API)
@@ -770,6 +774,7 @@ class TradeZoneAgent(Agent):
             tools=[
                 searchProducts,
                 searchtool,
+                check_tradein_price,
                 calculate_tradeup_pricing,
                 tradein_update_lead,
                 tradein_submit_lead,
@@ -809,6 +814,7 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
  - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
+- If caller only asks price for their device (no target): use check_tradein_price, give the estimate, then ask "Start a trade-in?" Wait for a clear yes before starting the checklist or any trade-up flow.
 - Mirror text-chat logic and tools exactly (searchProducts, tradein_update_lead, tradein_submit_lead, sendemail). Do not invent any extra voice-only shortcuts; every saved field must go through the same tools used by text chat.
 - Phone and email: collect one at a time, then READ BACK the full value once ("That's 8448 9068, correct?"). Wait for a clear yes before saving. If email arrives in fragments across turns, assemble it and read the full address once before saving.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
