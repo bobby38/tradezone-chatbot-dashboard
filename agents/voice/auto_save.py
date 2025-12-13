@@ -167,7 +167,11 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
     # Storage detection (512GB, 1TB, etc.)
     storage_match = re.search(r"\b(\d+\s*(gb|tb|mb))\b", lower)
-    if storage_match and "storage" not in checklist_state.collected_data:
+    if (
+        storage_match
+        and "storage" not in checklist_state.collected_data
+        and checklist_state.get_current_step() == "storage"
+    ):
         extracted["storage"] = storage_match.group(1).upper().replace(" ", "")
         logger.warning(f"[auto-extract] 💾 Found storage: {extracted['storage']}")
 
@@ -180,7 +184,11 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
         "broken": "faulty",
     }
     for keyword, condition in condition_keywords.items():
-        if keyword in lower and "condition" not in checklist_state.collected_data:
+        if (
+            keyword in lower
+            and "condition" not in checklist_state.collected_data
+            and checklist_state.get_current_step() == "condition"
+        ):
             extracted["condition"] = condition
             logger.warning(f"[auto-extract] ✨ Found condition: {condition}")
             break
@@ -236,16 +244,20 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
     # Box/accessories
     if (
-        "box" in lower or "accessor" in lower
-    ) and "accessories" not in checklist_state.collected_data:
+        ("box" in lower or "accessor" in lower)
+        and "accessories" not in checklist_state.collected_data
+        and checklist_state.get_current_step() == "accessories"
+    ):
         has_box = "yes" in lower or "have" in lower or "got" in lower
         extracted["accessories"] = has_box
         logger.warning(f"[auto-extract] 📦 Box/accessories: {has_box}")
 
     # Photos acknowledgment
     if (
-        "photo" in lower or "picture" in lower or "image" in lower
-    ) and "photos" not in checklist_state.collected_data:
+        ("photo" in lower or "picture" in lower or "image" in lower)
+        and "photos" not in checklist_state.collected_data
+        and checklist_state.get_current_step() == "photos"
+    ):
         wants_photos = not any(word in lower for word in ["no", "don't", "not", "none"])
         extracted["photos_acknowledged"] = wants_photos
         logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
@@ -274,6 +286,23 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
         "name" not in checklist_state.collected_data
         and checklist_state.get_current_step() == "name"
     ):
+        normalized_lower = lower.strip().strip(".!?,")
+
+        # Never treat confirmations as names
+        if normalized_lower in [
+            "yes",
+            "correct",
+            "ok",
+            "okay",
+            "yep",
+            "yeah",
+            "sure",
+            "that's right",
+            "no",
+        ]:
+            logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
+            return extracted
+
         # Skip if it's clearly not a name (has email, phone, storage, condition keywords)
         skip_keywords = [
             "@",
@@ -291,6 +320,8 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             "yahoo",
             ".com",
             ".sg",
+            "buy",
+            "by ",
         ]
         has_skip = any(keyword in lower for keyword in skip_keywords)
 
@@ -321,6 +352,9 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
             # Pattern 2: Simple name extraction for direct responses
             elif len(words) <= 4:
+                if len(words) == 2 and words[0].lower() in ["by", "buy"]:
+                    logger.info(f"[auto-extract] ⏭️ Skipping non-name phrase: {message}")
+                    return extracted
                 name = re.sub(r"[.!?]+$", "", message.strip())
                 name = re.sub(r"\s*-\s*", "", name)
                 if len(name) >= 2:
@@ -328,19 +362,6 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
                     logger.warning(
                         f"[auto-extract] 👤 Found name (direct): {extracted['contact_name']}"
                     )
-
-            # Pattern 3: Skip confirmations like "Yes", "Correct", etc.
-            elif lower in [
-                "yes",
-                "correct",
-                "ok",
-                "okay",
-                "yep",
-                "yeah",
-                "sure",
-                "that's right",
-            ]:
-                logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
 
             # Pattern 4: Extract potential name from mixed input
             elif 2 <= len(words) <= 6:

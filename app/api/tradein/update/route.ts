@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   try {
     const body = await request.json();
-    const { leadId, sessionId, ...updateFields } = body || {};
+    const { leadId, sessionId, forceNew, ...updateFields } = body || {};
 
     // Accept either leadId or sessionId - create lead if needed
     let finalLeadId = leadId;
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         sessionId,
         channel: "chat",
         source: "voice_chat",
+        forceNew: Boolean(forceNew),
       });
       finalLeadId = newLeadId;
     }

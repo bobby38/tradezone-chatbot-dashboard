@@ -8,8 +8,8 @@
 **Root Cause**: Commit `79aa3b8` added strict gating logic in `auto_save.py` (lines 668-691) that blocks contact field saving until device details (storage, condition, accessories, photos) are complete. However, the LLM was still asking for contact info prematurely, causing extracted data to be logged but not saved to checklist state.
 
 **Three-Pronged Fix Applied**:
-1. **Instructions Enhanced** (`agents/voice/agent.py` lines 991-999): Added forceful ⚠️ CRITICAL DATA LOSS WARNING at top of agent instructions explaining that contact info will be SILENTLY DISCARDED if asked too early
-2. **Tool Response Blocking** (`agents/voice/agent.py` lines 703-718): Enhanced `tradein_update_lead` tool response to actively detect and block out-of-order contact collection attempts, returning explicit warning message to LLM
+1. **Instructions Enhanced** (`agents/voice/agent.py`): Reinforced deterministic trade checklist order in the voice agent instructions to prevent out-of-order data collection.
+2. **Tool Response Blocking** (`agents/voice/agent.py`): `tradein_update_lead` returns strict next-step instructions and blocks out-of-order field updates.
 3. **Documentation Updated**: This change log entry documents the bug, root cause, and three-pronged solution approach
 
 **Impact**: Prevents silent data loss and ensures contact information is only collected after all device details are complete, eliminating submission failures.
@@ -25,8 +25,7 @@
 - **IMPROVED**: Name extraction patterns for "Family name Denny" and bulk input scenarios
 - Voice trade-in flow now reuses a single lead per LiveKit session and passes `leadId` on every update/submit to prevent fragmented leads.
 - Trade-up calls no longer send `preferred_payout` (enum mismatch fixed); payout step is skipped for trade-ups.
-- Deterministic checklist order enforced for voice: storage → condition → accessories/box → photos → name → phone → email → payout (trade-ins only) → recap → submit.
-- **NEW** (commit `79aa3b8`, Dec 13): Checklist gating now *blocks* contact fields until storage/condition/accessories/photos are saved. Auto-save and tool calls skip out-of-order fields, forcing the A→Z form sequence before recap/submit.
+- Deterministic checklist order enforced for voice: storage → accessories/box → name → phone → email → condition → photos → payout (trade-ins only) → recap → submit.
 - Pricing lookups upgraded: alias matching (Quest 3/3S, spacing), storage-aware selection (unique storage returns price directly), and variant options surfaced when multiple capacities exist.
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
