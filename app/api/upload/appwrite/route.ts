@@ -64,7 +64,12 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const sessionId = formData.get("sessionId") as string;
+    const rawSessionId = formData.get("sessionId") as string;
+    const sessionId = rawSessionId
+      ? rawSessionId.startsWith("chat-")
+        ? rawSessionId
+        : `chat-${rawSessionId}`
+      : rawSessionId;
 
     if (!file) {
       return NextResponse.json(
@@ -72,6 +77,12 @@ export async function POST(req: NextRequest) {
         { status: 400, headers: corsHeaders },
       );
     }
+
+    console.log("[Appwrite Upload] Session normalization:", {
+      requestId,
+      rawSessionId,
+      sessionId,
+    });
 
     // Appwrite configuration from env
     const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
@@ -212,6 +223,13 @@ export async function POST(req: NextRequest) {
             `[Appwrite Upload] Created new lead: ${leadId} (status: ${result.status})`,
           );
         }
+
+        console.log("[Appwrite Upload] Linking media to lead:", {
+          requestId,
+          sessionId,
+          leadId,
+          fileId: data.$id,
+        });
 
         const { recordTradeInMediaEntry } = await import(
           "@/lib/trade-in/service"
