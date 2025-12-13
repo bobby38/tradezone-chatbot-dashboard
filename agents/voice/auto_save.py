@@ -8,34 +8,73 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, Dict, Optional
 
 import httpx
 
 logger = logging.getLogger("agent-amara")
 
-# Load price grid on startup
+# Price grid caching (fetched from API, cached for 5 minutes)
 PRICE_GRID = None
-# Price grid path - in Docker it's in /app, locally it's in ../../data
-PRICE_GRID_PATH = os.path.join(os.path.dirname(__file__), "trade_in_prices_2025.json")
-if not os.path.exists(PRICE_GRID_PATH):
-    # Fallback for local development
-    PRICE_GRID_PATH = os.path.join(
-        os.path.dirname(__file__), "../../data/trade_in_prices_2025.json"
-    )
+PRICE_GRID_LAST_FETCH = 0
+PRICE_GRID_CACHE_TTL = 300  # 5 minutes
+
+# API endpoint for price grid (production app serves this)
+API_BASE_URL = (
+    os.getenv("API_BASE_URL")
+    or os.getenv("NEXT_PUBLIC_API_URL")
+    or "https://trade.rezult.co"
+)
+PRICE_GRID_API = f"{API_BASE_URL}/api/pricing/grid"
 
 
 def load_price_grid():
-    """Load the trade-in price grid from JSON file"""
-    global PRICE_GRID
-    if PRICE_GRID is not None:
+    """
+    Load the trade-in price grid from API with caching.
+    Falls back to local JSON file if API is unavailable.
+    Cache refreshes every 5 minutes to get latest prices.
+    """
+    global PRICE_GRID, PRICE_GRID_LAST_FETCH
+
+    # Return cached version if still fresh
+    now = time.time()
+    if PRICE_GRID is not None and (now - PRICE_GRID_LAST_FETCH) < PRICE_GRID_CACHE_TTL:
         return PRICE_GRID
 
+    # Try to fetch from API first (synchronous call)
     try:
-        with open(PRICE_GRID_PATH, "r", encoding="utf-8") as f:
+        with httpx.Client() as client:
+            response = client.get(PRICE_GRID_API, timeout=5.0)
+            if response.status_code == 200:
+                PRICE_GRID = response.json()
+                PRICE_GRID_LAST_FETCH = now
+                logger.info(
+                    f"[PriceGrid] ✅ Fetched from API v{PRICE_GRID.get('version', 'unknown')}"
+                )
+                return PRICE_GRID
+            else:
+                logger.warning(
+                    f"[PriceGrid] API returned {response.status_code}, falling back to local file"
+                )
+    except Exception as e:
+        logger.warning(f"[PriceGrid] API fetch failed: {e}, falling back to local file")
+
+    # Fallback: Load from local JSON file
+    price_grid_path = os.path.join(
+        os.path.dirname(__file__), "trade_in_prices_2025.json"
+    )
+    if not os.path.exists(price_grid_path):
+        price_grid_path = os.path.join(
+            os.path.dirname(__file__), "../../data/trade_in_prices_2025.json"
+        )
+
+    try:
+        with open(price_grid_path, "r", encoding="utf-8") as f:
             PRICE_GRID = json.load(f)
+            PRICE_GRID_LAST_FETCH = now
             logger.info(
-                f"[PriceGrid] ✅ Loaded v{PRICE_GRID.get('version', 'unknown')}"
+                f"[PriceGrid] ✅ Loaded from file v{PRICE_GRID.get('version', 'unknown')}"
             )
             return PRICE_GRID
     except Exception as e:
