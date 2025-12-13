@@ -140,8 +140,10 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
     # Device brand/model detection - for when user mentions devices
     if "brand" not in checklist_state.collected_data or "model" not in checklist_state.collected_data:
-        # Common device patterns
+        # Common device patterns - ORDER MATTERS! More specific first.
         device_patterns = {
+            "asus rog ally": {"brand": "ASUS", "model": "ROG Ally"},
+            "rog ally": {"brand": "ASUS", "model": "ROG Ally"},
             "steam deck": {"brand": "Valve", "model": "Steam Deck"},
             "playstation 5": {"brand": "Sony", "model": "PlayStation 5"},
             "ps5": {"brand": "Sony", "model": "PlayStation 5"},
