@@ -22,6 +22,21 @@ def _is_valid_contact_name(name: str) -> bool:
     trimmed = name.strip()
     if len(trimmed) < 2 or len(trimmed) > 80:
         return False
+    lower_trimmed = trimmed.lower()
+    if lower_trimmed in {
+        "what",
+        "what was",
+        "what's next",
+        "whats next",
+        "who",
+        "who is",
+        "why",
+        "when",
+        "where",
+        "how",
+        "nani",
+    }:
+        return False
     if not re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed):
         return False
     letters = re.sub(r"[^A-Za-z]", "", trimmed)
@@ -380,6 +395,16 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             elif len(words) <= 4:
                 if len(words) == 2 and words[0].lower() in ["by", "buy"]:
                     logger.info(f"[auto-extract] ⏭️ Skipping non-name phrase: {message}")
+                    return extracted
+                if words and words[0].lower() in {
+                    "what",
+                    "who",
+                    "why",
+                    "when",
+                    "where",
+                    "how",
+                }:
+                    logger.info(f"[auto-extract] ⏭️ Skipping likely question, not a name: {message}")
                     return extracted
                 name = re.sub(r"[.!?]+$", "", message.strip())
                 name = re.sub(r"\s*-\s*", "", name)

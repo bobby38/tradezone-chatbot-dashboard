@@ -1038,6 +1038,33 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     except Exception:
         session_id = None
 
+    if session_id:
+        try:
+            state = _get_checklist(session_id)
+            missing = [
+                key
+                for key in ("name", "phone", "email")
+                if key not in state.collected_data
+            ]
+            if missing:
+                next_question = state.get_next_question()
+                logger.warning(
+                    "[tradein_submit_lead] 🚫 Blocked submit: missing=%s progress=%s",
+                    missing,
+                    state.get_progress(),
+                )
+                if next_question:
+                    return (
+                        f"Cannot submit yet — missing {', '.join(missing)}. "
+                        f"Ask the customer: {next_question}"
+                    )
+                return (
+                    f"Cannot submit yet — missing {', '.join(missing)}. "
+                    "Please collect the missing contact details first."
+                )
+        except Exception as e:
+            logger.error(f"[tradein_submit_lead] ❌ Failed checklist guard: {e}")
+
     # Reuse cached leadId if we have one
     cached_lead = _lead_ids.get(session_id) if session_id else None
 
@@ -1628,12 +1655,15 @@ async def entrypoint(ctx: JobContext):
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
+            conversation_buffer["order_failsafe_sent"] = False
+            conversation_buffer["quote_failsafe_sent"] = False
+            conversation_buffer["step_failsafe_sent"] = False
             logger.info(f"[Voice] User said: {event.transcript}")
 
-            # 🔥 AUTO-SAVE: Extract and save data from user message
+            # AUTO-SAVE: Extract and save data from user message
             checklist = _get_checklist(room_name)
             logger.info(
-                f"[AutoSave] 🔍 Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
+                f"[AutoSave] Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
             )
             logger.info(
                 f"[AutoSave] 📋 Current checklist state: {checklist.get_progress()}"
@@ -1684,6 +1714,54 @@ async def entrypoint(ctx: JobContext):
                         k in checklist.collected_data
                         for k in ("source_price_quoted", "target_price_quoted", "top_up_amount")
                     )
+
+                    current_step = checklist.get_current_step()
+                    next_question = checklist.get_next_question()
+                    lower = content.lower()
+                    asked_step = None
+                    if "storage size" in lower:
+                        asked_step = "storage"
+                    elif "condition of" in lower or lower.strip().startswith("condition"):
+                        asked_step = "condition"
+                    elif ("box" in lower and "accessor" in lower) or "got the box" in lower:
+                        asked_step = "accessories"
+                    elif "upload photo" in lower or "upload photos" in lower:
+                        asked_step = "photos"
+                    elif "your name" in lower or "provide your name" in lower:
+                        asked_step = "name"
+                    elif "contact number" in lower or "phone number" in lower:
+                        asked_step = "phone"
+                    elif "email address" in lower or lower.strip().startswith("email"):
+                        asked_step = "email"
+                    elif "payout" in lower:
+                        asked_step = "payout"
+                    elif "here's the summary" in lower or lower.strip().startswith("here is the summary"):
+                        asked_step = "recap"
+
+                    if (
+                        asked_step
+                        and current_step
+                        and next_question
+                        and ("?" in content)
+                        and not checklist.is_complete()
+                        and asked_step != current_step
+                        and not conversation_buffer.get("step_failsafe_sent")
+                    ):
+                        conversation_buffer["step_failsafe_sent"] = True
+                        logger.warning(
+                            "[StepFailSafe] ⚠️ Wrong step asked (asked=%s current=%s). Forcing next question: %s progress=%s",
+                            asked_step,
+                            current_step,
+                            next_question,
+                            progress,
+                        )
+                        asyncio.create_task(
+                            _async_generate_reply(
+                                session,
+                                instructions=f"Say exactly: {next_question}",
+                                allow_interruptions=True,
+                            )
+                        )
 
                     lower_content = content.lower()
                     if (
@@ -1755,9 +1833,13 @@ async def entrypoint(ctx: JobContext):
                                         )
                                     )
 
-                    # Guardrail: if the model tries to close the call early, force the next checklist question.
-                    # Keeps the flow seamless and prevents missing-field dead ends.
                     lower = content.lower()
+                    should_force_next = (
+                        bool(checklist.get_next_question())
+                        and not checklist.is_complete()
+                        and not conversation_buffer.get("order_failsafe_sent")
+                        and checklist.get_next_question().lower() not in lower
+                    )
                     looks_like_close = any(
                         phrase in lower
                         for phrase in (
@@ -1768,16 +1850,17 @@ async def entrypoint(ctx: JobContext):
                             "we will review",
                             "we'll contact you",
                             "anything else",
+                            "further assistance",
+                            "let me know if you need",
                         )
                     )
                     next_question = checklist.get_next_question()
-                    if (
-                        looks_like_close
-                        and next_question
-                        and not checklist.is_complete()
-                        and not conversation_buffer.get("order_failsafe_sent")
-                        and next_question.lower() not in lower
-                    ):
+                    looks_like_drift = (
+                        bool(next_question)
+                        and ("?" not in content)
+                        and ("please" in lower and "assist" in lower)
+                    )
+                    if should_force_next and next_question and (looks_like_close or looks_like_drift):
                         conversation_buffer["order_failsafe_sent"] = True
                         logger.warning(
                             "[OrderFailSafe] ⚠️ Model attempted to end early. Forcing next question: %s progress=%s",
