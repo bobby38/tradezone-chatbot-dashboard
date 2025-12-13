@@ -270,14 +270,15 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
         logger.warning(f"[auto-extract] 📦 Box/accessories: {has_box}")
 
     # Photos acknowledgment
-    if (
-        ("photo" in lower or "picture" in lower or "image" in lower)
-        and "photos" not in checklist_state.collected_data
-        and checklist_state.get_current_step() == "photos"
-    ):
-        wants_photos = not any(word in lower for word in ["no", "don't", "not", "none"])
-        extracted["photos_acknowledged"] = wants_photos
-        logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
+    if "photos" not in checklist_state.collected_data and checklist_state.get_current_step() == "photos":
+        # Accept either explicit photo keywords or a plain yes/no.
+        mentions_photo = "photo" in lower or "picture" in lower or "image" in lower
+        plain_yes = lower.strip() in ("yes", "yeah", "yep", "ok", "okay", "sure")
+        plain_no = lower.strip() in ("no", "nope", "nah")
+        if mentions_photo or plain_yes or plain_no:
+            wants_photos = not any(word in lower for word in ["no", "don't", "not", "none", "nope", "nah"])
+            extracted["photos_acknowledged"] = wants_photos
+            logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
 
     # Payout method detection
     if "payout" not in checklist_state.collected_data and not checklist_state.is_trade_up:
@@ -781,6 +782,8 @@ async def check_for_confirmation_and_submit(
         "confirm",
         "is that right",
         "sound good",
+        "change anything",
+        "correct",
     ]
 
     # Check if user confirmed
@@ -797,8 +800,17 @@ async def check_for_confirmation_and_submit(
         logger.warning(f"[auto-submit] User: {user_message}")
         logger.warning("=" * 80)
 
-        # Check if we have all required data
-        required = ["brand", "model", "condition", "name", "phone", "email"]
+        # Check if we have all required data aligned to the checklist order
+        required = [
+            "brand",
+            "model",
+            "condition",
+            "accessories",
+            "photos",
+            "name",
+            "phone",
+            "email",
+        ]
         has_all = all(f in checklist_state.collected_data for f in required)
 
         if has_all or checklist_state.is_complete():

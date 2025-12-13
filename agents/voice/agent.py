@@ -1079,6 +1079,26 @@ async def sendemail(
 ) -> str:
     """Send support escalation to TradeZone staff. Only use when customer explicitly requests human follow-up."""
     logger.info(f"[sendemail] CALLED: type={email_type}")
+
+    # Never create support-form submissions during an active trade flow.
+    # If user wants staff during a trade, they should cancel the trade flow first.
+    try:
+        room = get_job_context().room
+        session_id = room.name
+    except Exception:
+        session_id = None
+    if session_id:
+        state = _get_checklist(session_id)
+        in_trade_flow = bool(state.collected_data) or bool(state.is_trade_up)
+        if in_trade_flow:
+            logger.warning(
+                "[sendemail] 🚫 Blocked support escalation during active trade flow (session=%s)",
+                session_id,
+            )
+            return (
+                "Trade-in is in progress. Finish the trade first. "
+                "If you want a staff member instead, say: cancel trade and talk to staff."
+            )
     headers = build_auth_headers()
     async with httpx.AsyncClient() as client:
         try:
@@ -1117,12 +1137,12 @@ class TradeInChecklistState:
     # Device details (including photos acknowledgement) must be locked before contact data
     STEPS = [
         "storage",
+        "condition",
         "accessories",
+        "photos",
         "name",
         "phone",
         "email",
-        "condition",
-        "photos",
         "payout",
         "recap",
         "submit",
@@ -1130,12 +1150,12 @@ class TradeInChecklistState:
 
     QUESTIONS = {
         "storage": "Storage size?",
+        "condition": "Condition?",
         "accessories": "Got the box?",
+        "photos": "Want to upload photos now?",
         "name": "Your name?",
         "phone": "Phone number?",
         "email": "Email?",
-        "condition": "Condition?",
-        "photos": "Photos help—want to send one?",
         "payout": "Cash, PayNow, bank, or installments?",
         "recap": "recap",  # Special: triggers summary
         "submit": "submit",  # Special: triggers submission
@@ -1164,12 +1184,16 @@ class TradeInChecklistState:
 
     def ready_for_contact(self) -> bool:
         has_storage = self._storage_collected()
+        has_condition = "condition" in self.collected_data
         has_accessories = "accessories" in self.collected_data
-        ready = has_storage and has_accessories
+        has_photos = "photos" in self.collected_data
+        ready = has_storage and has_condition and has_accessories and has_photos
         logger.debug(
-            "[ChecklistState] Contact readiness — storage=%s accessories=%s => %s",
+            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s => %s",
             has_storage,
+            has_condition,
             has_accessories,
+            has_photos,
             ready,
         )
         return ready
@@ -1730,6 +1754,43 @@ async def entrypoint(ctx: JobContext):
                                             allow_interruptions=True,
                                         )
                                     )
+
+                    # Guardrail: if the model tries to close the call early, force the next checklist question.
+                    # Keeps the flow seamless and prevents missing-field dead ends.
+                    lower = content.lower()
+                    looks_like_close = any(
+                        phrase in lower
+                        for phrase in (
+                            "all done",
+                            "done",
+                            "have a great day",
+                            "we'll review",
+                            "we will review",
+                            "we'll contact you",
+                            "anything else",
+                        )
+                    )
+                    next_question = checklist.get_next_question()
+                    if (
+                        looks_like_close
+                        and next_question
+                        and not checklist.is_complete()
+                        and not conversation_buffer.get("order_failsafe_sent")
+                        and next_question.lower() not in lower
+                    ):
+                        conversation_buffer["order_failsafe_sent"] = True
+                        logger.warning(
+                            "[OrderFailSafe] ⚠️ Model attempted to end early. Forcing next question: %s progress=%s",
+                            next_question,
+                            progress,
+                        )
+                        asyncio.create_task(
+                            _async_generate_reply(
+                                session,
+                                instructions=f"Say exactly: {next_question}",
+                                allow_interruptions=True,
+                            )
+                        )
                 except Exception as e:
                     logger.error(f"[QuoteFailSafe] ❌ Failed: {e}")
 
