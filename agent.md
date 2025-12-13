@@ -1,5 +1,17 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 13, 2025 (Voice Agent - CRITICAL FIXES)
+- **FIXED**: Voice agent auto-extraction now properly handles bulk contact information (name + phone + email in one message)
+- **FIXED**: Smart acknowledgment system prevents agent from asking for already-provided information
+- **FIXED**: Device brand/model auto-detection for Steam Deck, PS5, Xbox, Switch etc.
+- **FIXED**: Payout method detection (cash, PayNow, bank, installment) 
+- **FIXED**: Email extraction now handles spoken formats ("bobby underscore denny at hotmail dot com")
+- **IMPROVED**: Name extraction patterns for "Family name Denny" and bulk input scenarios
+- Voice trade-in flow now reuses a single lead per LiveKit session and passes `leadId` on every update/submit to prevent fragmented leads.
+- Trade-up calls no longer send `preferred_payout` (enum mismatch fixed); payout step is skipped for trade-ups.
+- Deterministic checklist order enforced for voice: storage → condition → accessories/box → name → phone → email → payout → photos → recap → submit.
+- Pricing lookups upgraded: alias matching (Quest 3/3S, spacing), storage-aware selection (unique storage returns price directly), and variant options surfaced when multiple capacities exist.
+
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
 
 **Status**: Production-ready Python agent running on LiveKit Cloud  
@@ -373,16 +385,23 @@ The agent needs logic to:
 
 **This is a code logic bug**, not prompt/model behavior.
 
-**Status**: ⚠️ **TODO** - Add smart extraction acknowledgment logic
+**Status**: ✅ **FIXED** - Smart extraction acknowledgment logic implemented
 
-**Recommendation**: Agent should check extracted fields and say:
+**Solution Implemented**: 
+- Added `build_smart_acknowledgment()` function in `auto_save.py`
+- Agent now acknowledges extracted data: "Got your name: Bobby Denny", "Got your email: bobby_dennie@hotmail.com"
+- Handles bulk input: "Bobby B-O-B-B-Y Family name Denny" → extracts full name correctly
+- Prevents asking for already-provided information
+- Logs all acknowledgments for debugging
+
+**Example Flow**:
 ```
-User: "joe doe 8448 9068 bobby_dennie@hotmail.com"
-Agent: "Perfect! I got all three:
-  - Name: Joe Doe
-  - Phone: 8448 9068  
+User: "Bobby B-O-B-B-Y Family name Denny 8448 9068 bobby_dennie@hotmail.com"
+Agent: "Perfect! I got:
+  - Name: Bobby Denny
+  - Phone: 84489068
   - Email: bobby_dennie@hotmail.com
-Now, got photos? Helps us quote faster."
+What's the condition of your Steam Deck?"
 ```
 
 ---

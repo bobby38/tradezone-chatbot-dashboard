@@ -14,6 +14,7 @@ import httpx
 # Import auto-save system
 from auto_save import (
     auto_save_after_message,
+    build_smart_acknowledgment,
     check_for_confirmation_and_submit,
     detect_and_fix_trade_up_prices,
     extract_data_from_message,
@@ -1145,6 +1146,16 @@ async def entrypoint(ctx: JobContext):
                     headers=build_auth_headers(),
                 )
             )
+            
+            # 🔥 SMART ACKNOWLEDGMENT: Check what was extracted and acknowledge
+            extracted = extract_data_from_message(event.transcript, checklist)
+            if extracted:
+                acknowledgment = build_smart_acknowledgment(extracted, checklist)
+                if acknowledgment:
+                    # Log acknowledgment for debugging
+                    logger.info(f"[SmartAck] 📝 Prepared acknowledgment: {acknowledgment}")
+                    # Store in conversation buffer for next response
+                    conversation_buffer["pending_acknowledgment"] = " | ".join(acknowledgment)
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):

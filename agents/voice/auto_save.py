@@ -9,7 +9,7 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Union
 
 import httpx
 
@@ -138,6 +138,31 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
     lower = message.lower()
     extracted = {}
 
+    # Device brand/model detection - for when user mentions devices
+    if "brand" not in checklist_state.collected_data or "model" not in checklist_state.collected_data:
+        # Common device patterns
+        device_patterns = {
+            "steam deck": {"brand": "Valve", "model": "Steam Deck"},
+            "playstation 5": {"brand": "Sony", "model": "PlayStation 5"},
+            "ps5": {"brand": "Sony", "model": "PlayStation 5"},
+            "playstation 4": {"brand": "Sony", "model": "PlayStation 4"},
+            "ps4": {"brand": "Sony", "model": "PlayStation 4"},
+            "xbox series x": {"brand": "Microsoft", "model": "Xbox Series X"},
+            "xbox series s": {"brand": "Microsoft", "model": "Xbox Series S"},
+            "nintendo switch": {"brand": "Nintendo", "model": "Nintendo Switch"},
+            "switch 2": {"brand": "Nintendo", "model": "Nintendo Switch 2"},
+        }
+        
+        for pattern, device_info in device_patterns.items():
+            if pattern in lower:
+                if "brand" not in checklist_state.collected_data:
+                    extracted["brand"] = device_info["brand"]
+                    logger.warning(f"[auto-extract] 🏷️ Found brand: {device_info['brand']}")
+                if "model" not in checklist_state.collected_data:
+                    extracted["model"] = device_info["model"]
+                    logger.warning(f"[auto-extract] 🎮 Found model: {device_info['model']}")
+                break
+
     # Storage detection (512GB, 1TB, etc.)
     storage_match = re.search(r"\b(\d+\s*(gb|tb|mb))\b", lower)
     if storage_match and "storage" not in checklist_state.collected_data:
@@ -158,11 +183,35 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             logger.warning(f"[auto-extract] ✨ Found condition: {condition}")
             break
 
-    # Email detection
+    # Email detection - improved to handle spelled out emails
     email_match = re.search(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", lower)
-    if email_match and "email" not in checklist_state.collected_data:
-        extracted["contact_email"] = email_match.group(0)
+    if email_match:
+        # Always extract email if found, even if already collected (to handle confirmations)
+        extracted_email = email_match.group(0)
+        # Clean up common spoken formats
+        extracted_email = extracted_email.replace(" ", "").replace("- ", "").replace("_", "_")
+        extracted["contact_email"] = extracted_email
         logger.warning(f"[auto-extract] 📧 Found email: {extracted['contact_email']}")
+    
+    # Also handle spelled out emails like "bobby underscore denny at hotmail dot com"
+    elif ("at" in lower and "hotmail" in lower) or ("at" in lower and "gmail" in lower):
+        # Simple pattern for spoken emails
+        words = message.lower().split()
+        email_parts = []
+        for word in words:
+            if "@" in word or ".com" in word:
+                email_parts.append(word)
+            elif word in ["underscore", "underscore"]:
+                email_parts.append("_")
+            elif word in ["at", "@"]:
+                email_parts.append("@")
+            elif word in ["dot", "."]:
+                email_parts.append(".")
+        
+        if len(email_parts) >= 3:  # basic validation
+            spoken_email = "".join(email_parts)
+            extracted["contact_email"] = spoken_email
+            logger.warning(f"[auto-extract] 📧 Found spoken email: {extracted['contact_email']}")
 
     # Phone detection (8+ digits) - improved to handle "848 9068" format
     # Check if message is primarily numbers (with optional spaces/dashes)
@@ -195,7 +244,26 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
         extracted["photos_acknowledged"] = wants_photos
         logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
 
-    # Name detection - improved to handle various name formats
+    # Payout method detection
+    if "payout" not in checklist_state.collected_data and not checklist_state.is_trade_up:
+        payout_keywords = {
+            "cash": "cash",
+            "paynow": "paynow", 
+            "pay now": "paynow",
+            "bank": "bank",
+            "transfer": "bank",
+            "installment": "installment",
+            "instalment": "installment",
+            "payment plan": "installment",
+        }
+        
+        for keyword, payout in payout_keywords.items():
+            if keyword in lower:
+                extracted["payout"] = payout
+                logger.warning(f"[auto-extract] 💰 Found payout: {payout}")
+                break
+
+    # Name detection - improved to handle bulk input and various formats
     if "name" not in checklist_state.collected_data:
         # Skip if it's clearly not a name (has email, phone, storage, condition keywords)
         skip_keywords = [
@@ -209,22 +277,69 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
             "box",
             "accessor",
             "photo",
+            "hotmail",
+            "gmail",
+            "yahoo",
+            ".com",
+            ".sg",
         ]
         has_skip = any(keyword in lower for keyword in skip_keywords)
 
         # Skip if it's mostly numbers (likely phone/storage)
         digit_ratio = len(re.sub(r"[^\d]", "", message)) / max(len(message), 1)
 
-        if not has_skip and digit_ratio < 0.3 and len(message.split()) <= 4:
-            # If current step is "name" OR if it's after a name question, extract it
-            if checklist_state.get_current_step() == "name":
-                # Clean up the name (remove extra punctuation)
+        # Extract names from bulk input: "Bobby B-O-B-B-Y Family name Denny"
+        if not has_skip and digit_ratio < 0.3:
+            # Look for name patterns in longer messages
+            words = message.split()
+            
+            # Pattern 1: "First Name" + "Family name" + "Last Name"
+            if "family name" in lower or "last name" in lower:
+                name_parts = []
+                for i, word in enumerate(words):
+                    if word.lower() in ["family", "last"] and i + 1 < len(words):
+                        # Next word is likely the last name
+                        if i > 0:
+                            # Collect everything before "family/last" as first name
+                            first_name = " ".join(words[:i]).strip()
+                            last_name = words[i + 1].strip().rstrip(".,!?")
+                            if first_name and last_name:
+                                name_parts = [first_name, last_name]
+                                break
+                
+                if name_parts:
+                    full_name = " ".join(name_parts)
+                    extracted["contact_name"] = full_name
+                    logger.warning(f"[auto-extract] 👤 Found name (bulk): {extracted['contact_name']}")
+            
+            # Pattern 2: Simple name extraction for direct responses
+            elif checklist_state.get_current_step() == "name" and len(words) <= 4:
+                # Clean up name (remove extra punctuation, "B-O-B-B-Y" -> "BOBBY")
                 name = re.sub(r"[.!?]+$", "", message.strip())
+                name = re.sub(r"\s*-\s*", "", name)  # Remove hyphens in spelled names
                 if len(name) >= 2:  # At least 2 chars
                     extracted["contact_name"] = name
-                    logger.warning(
-                        f"[auto-extract] 👤 Found name: {extracted['contact_name']}"
-                    )
+                    logger.warning(f"[auto-extract] 👤 Found name (direct): {extracted['contact_name']}")
+            
+            # Pattern 3: Skip confirmations like "Yes", "Correct", etc.
+            elif lower in ["yes", "correct", "ok", "okay", "yep", "yeah", "sure", "that's right"]:
+                logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
+            # Pattern 4: Extract potential name from mixed input
+            elif len(words) >= 2 and len(words) <= 6:
+                # Filter out non-name words
+                name_words = []
+                for word in words:
+                    word_clean = word.strip(".,!?")
+                    if (len(word_clean) >= 2 and 
+                        not word_clean.isdigit() and 
+                        "@" not in word_clean and
+                        not any(char.isdigit() for char in word_clean)):
+                        name_words.append(word_clean)
+                
+                if name_words:
+                    potential_name = " ".join(name_words[:3])  # Max 3 words
+                    extracted["contact_name"] = potential_name
+                    logger.warning(f"[auto-extract] 👤 Found name (mixed): {extracted['contact_name']}")
 
     return extracted
 
@@ -309,7 +424,7 @@ async def force_save_to_db(
         return False
 
 
-def _alias_candidates(device_name: str) -> list[str]:
+def _alias_candidates(device_name: str) -> list:
     """Generate alias variants to improve matching (Quest 3 / Quest 3S / spacing)."""
     base = device_name.lower().strip()
     aliases = {base}
@@ -320,7 +435,7 @@ def _alias_candidates(device_name: str) -> list[str]:
     return [a for a in aliases if a]
 
 
-def find_all_variants(device_name: str) -> list[Dict[str, any]]:
+def find_all_variants(device_name: str) -> list:
     """
     Find all variants of a device (different storage, editions, etc.)
     Returns list of {label, trade_in, retail, variant_info}
@@ -340,7 +455,7 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
     if m:
         storage_token = m.group(1).replace(" ", "")
 
-    variants: list[Dict[str, any]] = []
+    variants = []
     exact_match = None
 
     for candidate in _alias_candidates(device_name):
@@ -408,7 +523,7 @@ def find_all_variants(device_name: str) -> list[Dict[str, any]]:
     return variants
 
 
-def needs_clarification(device_name: str) -> Optional[str]:
+def needs_clarification(device_name: str):
     """
     Check if device needs clarification (multiple variants exist).
     Returns clarification question or None.
@@ -450,7 +565,7 @@ def needs_clarification(device_name: str) -> Optional[str]:
 
 def detect_and_fix_trade_up_prices(
     source_device: str, target_device: str
-) -> Optional[Dict[str, any]]:
+) -> Optional[Dict]:
     """
     Detect trade-up intent and return CORRECT prices from price grid.
     Returns: {trade_value, retail_price, top_up, needs_clarification, clarification_question} or None
@@ -614,3 +729,55 @@ async def check_for_confirmation_and_submit(
         else:
             missing = [f for f in required if f not in checklist_state.collected_data]
             logger.warning(f"[auto-submit] ⚠️ Missing: {missing}")
+
+
+def build_smart_acknowledgment(extracted: Dict[str, Any], checklist_state: Any) -> list:
+    """
+    Build smart acknowledgment messages for extracted data.
+    This prevents the agent from asking for already-provided information.
+    """
+    acknowledgments = []
+    
+    # Name acknowledgment
+    if "contact_name" in extracted:
+        name = extracted["contact_name"]
+        if name.lower() not in ["yes", "correct", "ok", "okay", "yep", "yeah", "sure"]:
+            acknowledgments.append(f"Got your name: {name}")
+    
+    # Email acknowledgment  
+    if "contact_email" in extracted:
+        email = extracted["contact_email"]
+        if "@" in email:  # Valid email format
+            acknowledgments.append(f"Got your email: {email}")
+    
+    # Phone acknowledgment
+    if "contact_phone" in extracted:
+        phone = extracted["contact_phone"]
+        if len(phone) >= 8:  # Valid phone length
+            acknowledgments.append(f"Got your phone: {phone}")
+    
+    # Device acknowledgment
+    if "brand" in extracted or "model" in extracted:
+        brand = extracted.get("brand", "")
+        model = extracted.get("model", "")
+        if brand and model:
+            acknowledgments.append(f"Got your device: {brand} {model}")
+        elif model:
+            acknowledgments.append(f"Got your device: {model}")
+    
+    # Storage acknowledgment
+    if "storage" in extracted:
+        storage = extracted["storage"]
+        acknowledgments.append(f"Got storage: {storage}")
+    
+    # Condition acknowledgment
+    if "condition" in extracted:
+        condition = extracted["condition"]
+        acknowledgments.append(f"Got condition: {condition}")
+    
+    # Payout acknowledgment
+    if "payout" in extracted:
+        payout = extracted["payout"]
+        acknowledgments.append(f"Got payout preference: {payout}")
+    
+    return acknowledgments
