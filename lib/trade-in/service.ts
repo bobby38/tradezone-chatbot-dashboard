@@ -714,6 +714,8 @@ export async function submitTradeInLead(
        defects, accessories, purchase_year, price_hint, range_min, range_max,
        pricing_version, preferred_payout, preferred_fulfilment, contact_name,
        contact_phone, contact_email, telegram_handle, notes, session_id,
+       source_device_name, target_device_name, source_price_quoted, target_price_quoted,
+       top_up_amount, initial_quote_given, quote_timestamp,
        source_message_summary, created_at`,
     )
     .eq("id", input.leadId)
@@ -733,6 +735,11 @@ export async function submitTradeInLead(
     device: `${lead.brand} ${lead.model}`,
     status: lead.status,
   });
+
+  const isTradeUpLead = Boolean(
+    hasMeaningfulValue(lead.target_device_name) &&
+      Number.isFinite(Number(lead.top_up_amount)),
+  );
 
   const missingFields: string[] = [];
   const friendlyFieldNames: Record<string, string> = {
@@ -763,7 +770,8 @@ export async function submitTradeInLead(
   if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
-  if (!lead.preferred_payout?.trim()) {
+  // Trade-ups do not require payout preference (top-up is paid separately).
+  if (!isTradeUpLead && !lead.preferred_payout?.trim()) {
     missingFields.push("preferred_payout");
   }
 
@@ -781,12 +789,31 @@ export async function submitTradeInLead(
   if (input.summary) {
     patch.notes = input.summary;
   }
-  if (input.status) {
-    patch.status = input.status;
-  }
+  // Default the status on submit so the lead reliably shows in the trade-in dashboard workflow.
+  patch.status = input.status || "in_review";
 
   if (Object.keys(patch).length > 0) {
     await updateTradeInLead(input.leadId, patch);
+  }
+
+  // Refresh the lead after patching status/notes so the caller and email
+  // reflect the canonical DB state (prevents confusion where response shows status='new').
+  const { data: refreshedLead, error: refreshError } = await supabaseAdmin
+    .from("trade_in_leads")
+    .select(
+      `id, status, channel, category, brand, model, storage, condition,
+       defects, accessories, purchase_year, price_hint, range_min, range_max,
+       pricing_version, preferred_payout, preferred_fulfilment, contact_name,
+       contact_phone, contact_email, telegram_handle, notes, session_id,
+       source_device_name, target_device_name, source_price_quoted, target_price_quoted,
+       top_up_amount, initial_quote_given, quote_timestamp,
+       source_message_summary, created_at`,
+    )
+    .eq("id", input.leadId)
+    .single();
+
+  if (!refreshError && refreshedLead) {
+    (lead as any) = refreshedLead;
   }
 
   let emailSent = false;
@@ -826,6 +853,13 @@ export async function submitTradeInLead(
       pricing_version: lead.pricing_version || "Not set",
       preferred_payout: lead.preferred_payout || "Not specified",
       preferred_fulfilment: lead.preferred_fulfilment || "Not specified",
+      source_device_name: lead.source_device_name || null,
+      target_device_name: lead.target_device_name || null,
+      source_price_quoted: lead.source_price_quoted ?? null,
+      target_price_quoted: lead.target_price_quoted ?? null,
+      top_up_amount: lead.top_up_amount ?? null,
+      initial_quote_given: lead.initial_quote_given ?? null,
+      quote_timestamp: lead.quote_timestamp ?? null,
       channel: lead.channel,
       session_id: lead.session_id,
       summary:
@@ -850,8 +884,10 @@ export async function submitTradeInLead(
       emailSent = false;
 
       // Surface email failure back to caller so LiveKit/Realtime can tell the user
+      const errorMessage =
+        emailError instanceof Error ? emailError.message : String(emailError);
       throw new Error(
-        `Trade-in saved but email notification failed: ${emailError?.message || emailError}`,
+        `Trade-in saved but email notification failed: ${errorMessage}`,
       );
     }
 
