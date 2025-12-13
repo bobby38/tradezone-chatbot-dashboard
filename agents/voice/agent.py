@@ -10,6 +10,14 @@ import os
 from typing import Dict
 
 import httpx
+
+# Import auto-save system
+from auto_save import (
+    auto_save_after_message,
+    check_for_confirmation_and_submit,
+    extract_data_from_message,
+    force_save_to_db,
+)
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -48,6 +56,9 @@ LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
 
 logger.info(f"[Voice Agent] API_BASE_URL = {API_BASE_URL}")
+logger.info(
+    f"[Voice Agent] 🔥 AUTO-SAVE SYSTEM ACTIVE - Data extraction and save happens automatically"
+)
 
 if not API_KEY:
     logger.warning(
@@ -56,9 +67,23 @@ if not API_KEY:
 else:
     logger.info(f"[Voice Agent] CHATKIT_API_KEY prefix = {API_KEY[:8]}")
 
-# Global state machine instance (shared across all sessions for now)
-# TODO: In production, use session-based state management
-_checklist_state = None
+# Session-scoped checklist states (keyed by LiveKit room/session id)
+_checklist_states: Dict[str, "TradeInChecklistState"] = {}
+
+
+def _get_checklist(session_id: str) -> "TradeInChecklistState":
+    """Get or create checklist state for a specific session"""
+    state = _checklist_states.get(session_id)
+    if state is None:
+        state = TradeInChecklistState()
+        _checklist_states[session_id] = state
+        logger.info(f"[checklist] 🆕 Initialized checklist for session {session_id}")
+        logger.info(f"[checklist] 📊 Total active sessions: {len(_checklist_states)}")
+    else:
+        logger.debug(
+            f"[checklist] ♻️ Reusing existing checklist for session {session_id}"
+        )
+    return state
 
 
 # ============================================================================
@@ -1034,11 +1059,29 @@ async def entrypoint(ctx: JobContext):
     # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
     def on_user_input(event):
-        """Capture user's final transcribed message"""
+        """Capture user's final transcribed message and auto-save data"""
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
             logger.info(f"[Voice] User said: {event.transcript}")
+
+            # 🔥 AUTO-SAVE: Extract and save data from user message
+            checklist = _get_checklist(room_name)
+            logger.info(
+                f"[AutoSave] 🔍 Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
+            )
+            logger.info(
+                f"[AutoSave] 📋 Current checklist state: {checklist.get_progress()}"
+            )
+            asyncio.create_task(
+                auto_save_after_message(
+                    session_id=room_name,
+                    user_message=event.transcript,
+                    checklist_state=checklist,
+                    api_base_url=API_BASE_URL,
+                    headers=build_auth_headers(),
+                )
+            )
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
@@ -1053,6 +1096,26 @@ async def entrypoint(ctx: JobContext):
                     content = " ".join(str(item) for item in content)
                 conversation_buffer["bot_response"] = content
                 logger.info(f"[Voice] Agent said: {event.item.content}")
+
+                # 🔥 AUTO-SUBMIT: Check if user confirmed and auto-submit
+                if conversation_buffer.get("user_message"):
+                    checklist = _get_checklist(room_name)
+                    logger.info(
+                        f"[AutoSubmit] 🔍 Checking for confirmation - User: '{conversation_buffer['user_message'][:50]}', Bot: '{content[:50]}'"
+                    )
+                    logger.info(
+                        f"[AutoSubmit] 📋 Checklist progress: {checklist.get_progress()}"
+                    )
+                    asyncio.create_task(
+                        check_for_confirmation_and_submit(
+                            session_id=room_name,
+                            user_message=conversation_buffer["user_message"],
+                            bot_response=content,
+                            checklist_state=checklist,
+                            api_base_url=API_BASE_URL,
+                            headers=build_auth_headers(),
+                        )
+                    )
 
         # Log complete turn to dashboard
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
