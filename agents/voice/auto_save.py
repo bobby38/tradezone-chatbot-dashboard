@@ -666,14 +666,29 @@ async def auto_save_after_message(
     # Update checklist state only for the fields we're ready to accept
     for field, value in extracted.items():
         if field == "contact_name":
-            checklist_state.mark_field_collected("name", value)
-            applied_fields.append("name")
+            if checklist_state.can_collect_contact("name"):
+                checklist_state.mark_field_collected("name", value)
+                applied_fields.append("name")
+            else:
+                logger.info(
+                    "[auto-save] ⏭️ Skipping name until device details complete"
+                )
         elif field == "contact_phone":
-            checklist_state.mark_field_collected("phone", value)
-            applied_fields.append("phone")
+            if checklist_state.can_collect_contact("phone"):
+                checklist_state.mark_field_collected("phone", value)
+                applied_fields.append("phone")
+            else:
+                logger.info(
+                    "[auto-save] ⏭️ Skipping phone until name captured"
+                )
         elif field == "contact_email":
-            checklist_state.mark_field_collected("email", value)
-            applied_fields.append("email")
+            if checklist_state.can_collect_contact("email"):
+                checklist_state.mark_field_collected("email", value)
+                applied_fields.append("email")
+            else:
+                logger.info(
+                    "[auto-save] ⏭️ Skipping email until phone captured"
+                )
         elif field == "accessories":
             checklist_state.mark_field_collected("accessories", value)
             applied_fields.append("accessories")

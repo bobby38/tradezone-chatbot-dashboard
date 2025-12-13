@@ -886,6 +886,16 @@ class TradeInChecklistState:
         )
         return ready
 
+    def can_collect_contact(self, field_name: str) -> bool:
+        """Return True only when we're ready to collect the specified contact field."""
+        if field_name == "name":
+            return self.ready_for_contact()
+        if field_name == "phone":
+            return self.ready_for_contact() and "name" in self.collected_data
+        if field_name == "email":
+            return self.ready_for_contact() and "phone" in self.collected_data
+        return True
+
     def mark_field_collected(self, field_name: str, value: any = True):
         """Mark a field as collected and advance if it's the current step"""
         self.collected_data[field_name] = value
