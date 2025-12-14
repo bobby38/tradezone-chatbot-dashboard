@@ -5,6 +5,8 @@ import {
   ensureTradeInLead,
 } from "@/lib/trade-in/service";
 
+const HANDLER_VERSION = "tradein-update-2025-12-14";
+
 // CORS headers
 const ALLOWED_ORIGINS = [
   "https://tradezone.sg",
@@ -48,6 +50,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   try {
     const body = await request.json();
     const { leadId, sessionId, forceNew, ...updateFields } = body || {};
@@ -89,14 +92,32 @@ export async function POST(request: NextRequest) {
 
     try {
       const { lead } = await updateTradeInLead(finalLeadId, patch);
+      console.log("[tradein/update]", {
+        requestId,
+        handlerVersion: HANDLER_VERSION,
+        finalLeadId,
+        hadLeadId: Boolean(leadId),
+        hadSessionId: Boolean(sessionId),
+        patchKeys: Object.keys(patch || {}),
+      });
       return NextResponse.json(
-        { success: true, lead },
+        {
+          success: true,
+          requestId,
+          handlerVersion: HANDLER_VERSION,
+          lead,
+        },
         { headers: corsHeaders },
       );
     } catch (err) {
       if (err instanceof TradeInValidationError) {
         return NextResponse.json(
-          { error: err.message, fields: err.fields },
+          {
+            error: err.message,
+            fields: err.fields,
+            requestId,
+            handlerVersion: HANDLER_VERSION,
+          },
           { status: 400, headers: corsHeaders },
         );
       }

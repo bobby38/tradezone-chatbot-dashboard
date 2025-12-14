@@ -2,6 +2,36 @@
 
 ## Change Log — Dec 13, 2025 (Voice Agent - CRITICAL FIXES)
 
+## Change Log — Dec 14, 2025 (Voice Trade-In - LeadId-First Unification)
+
+### LeadId-First Single-Lead Guarantee (Dec 14, 2025)
+**Goal**: Make voice behave exactly like text chat: **one lead per customer flow**, and all updates/uploads/submission apply to that one lead.
+
+**Problem observed in production logs**:
+- LiveKit voice flow was saving trade-in data against a lead created from the LiveKit room name (e.g. `chat-client_...`).
+- Appwrite uploads were sometimes creating a *second* lead from a different session identifier (e.g. `client_...`), causing photos to attach to a different lead than the one that gets submitted.
+
+**Fix** (leadId-first, no duplicates):
+- **Widget** (`public/widget/chat-widget-enhanced.js`)
+  - Caches `tradeInLeadId` by calling `POST /api/tradein/start` once per session.
+  - Sends `leadId` on:
+    - `tradein_update_lead` → `POST /api/tradein/update`
+    - `tradein_submit_lead` → `POST /api/tradein/submit`
+    - Appwrite uploads → `POST /api/upload/appwrite` as `formData.leadId`
+- **Upload API** (`app/api/upload/appwrite/route.ts`)
+  - Accepts optional `leadId` in form-data.
+  - When `leadId` is present, links media directly to that lead.
+  - Only falls back to session-based `ensureTradeInLead()` when `leadId` is missing.
+
+**Impact**:
+- Uploads cannot create a new lead when a lead already exists.
+- Media and trade-in details always converge on the same lead record.
+
+### Auto-save reliability hardening (Dec 14, 2025)
+- **Pending contact capture**: Phone/email/name are extracted even if the user answers “early”, stored as pending, and applied when the checklist reaches that step.
+- **Photo yes/no disambiguation**: A plain “yes/no” only counts as a photos answer if the previous bot prompt was asking about photos.
+
+
 ### Contact Data Loss Bug Fix (Dec 13, 2025 - Latest)
 **Problem**: Voice agent was silently discarding contact information (name, phone, email) when collected out of order, causing submission failures with error "I'm having trouble saving the details."
 
@@ -25,7 +55,7 @@
 - **IMPROVED**: Name extraction patterns for "Family name Denny" and bulk input scenarios
 - Voice trade-in flow now reuses a single lead per LiveKit session and passes `leadId` on every update/submit to prevent fragmented leads.
 - Trade-up calls no longer send `preferred_payout` (enum mismatch fixed); payout step is skipped for trade-ups.
-- Deterministic checklist order enforced for voice: storage → accessories/box → name → phone → email → condition → photos → payout (trade-ins only) → recap → submit.
+- Deterministic checklist order enforced for voice: storage → condition → accessories/box → photos → name → phone → email → payout → recap → submit.
 - Pricing lookups upgraded: alias matching (Quest 3/3S, spacing), storage-aware selection (unique storage returns price directly), and variant options surfaced when multiple capacities exist.
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅

@@ -468,7 +468,7 @@ export class EmailService {
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="https://trade.rezult.co/dashboard/submissions" class="action-button">
+              <a href="https://trade.rezult.co/dashboard/${isTradeIn ? "trade-in" : "submissions"}" class="action-button">
                 View in Dashboard
               </a>
               ${email !== "Not provided" ? `<a href="mailto:${email}" class="action-button">Reply via Email</a>` : ""}

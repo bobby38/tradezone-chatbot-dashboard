@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
+const HANDLER_VERSION = "leadid-first-2025-12-14";
+
 type UploadTelemetryEntry = {
   requestId: string;
   event: "upload_success" | "upload_failed";
@@ -61,10 +63,29 @@ export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
+  let linkedLeadId: string | null = null;
+  let mediaLinked = false;
+  let linkErrorMessage: string | null = null;
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const sessionId = formData.get("sessionId") as string;
+    const rawLeadId = formData.get("leadId") as string;
+    const rawSessionId = formData.get("sessionId") as string;
+    const sessionId = rawSessionId
+      ? rawSessionId.startsWith("chat-")
+        ? rawSessionId
+        : `chat-${rawSessionId}`
+      : rawSessionId;
+
+    const leadIdFromClient = typeof rawLeadId === "string" ? rawLeadId.trim() : "";
+    const looksLikeUuid = (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value,
+      );
+    const validatedLeadId = looksLikeUuid(leadIdFromClient)
+      ? leadIdFromClient
+      : null;
 
     if (!file) {
       return NextResponse.json(
@@ -72,6 +93,14 @@ export async function POST(req: NextRequest) {
         { status: 400, headers: corsHeaders },
       );
     }
+
+    console.log("[Appwrite Upload] Session normalization:", {
+      requestId,
+      handlerVersion: HANDLER_VERSION,
+      leadId: validatedLeadId,
+      rawSessionId,
+      sessionId,
+    });
 
     // Appwrite configuration from env
     const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
@@ -166,8 +195,8 @@ export async function POST(req: NextRequest) {
       console.error("[Upload Telemetry] Failed to log success", err),
     );
 
-    // Auto-create and link to trade-in lead
-    if (sessionId) {
+    // Link to trade-in lead (leadId-first)
+    if (validatedLeadId || sessionId) {
       try {
         const { createClient } = await import("@supabase/supabase-js");
         const { ensureTradeInLead } = await import("@/lib/trade-in/service");
@@ -177,41 +206,35 @@ export async function POST(req: NextRequest) {
           process.env.SUPABASE_SERVICE_ROLE_KEY!,
         );
 
-        console.log(
-          `[Appwrite Upload] Finding/creating trade-in lead for session: ${sessionId}`,
-        );
-
-        // Find active trade-in lead for this session
-        const { data: leads } = await supabase
-          .from("trade_in_leads")
-          .select("id")
-          .eq("session_id", sessionId)
-          .not("status", "in", "(completed,closed,archived)")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
         let leadId: string;
-
-        if (leads && leads.length > 0) {
-          leadId = leads[0].id;
-          console.log(`[Appwrite Upload] Found existing lead: ${leadId}`);
+        if (validatedLeadId) {
+          leadId = validatedLeadId;
+          linkedLeadId = leadId;
+          console.log(`[Appwrite Upload] Using provided leadId: ${leadId}`);
         } else {
-          // No active lead found - create one automatically
           console.log(
-            "[Appwrite Upload] No active lead found, creating new lead...",
+            `[Appwrite Upload] Ensuring trade-in lead for session: ${sessionId}`,
           );
 
-          const result = await ensureTradeInLead({
+          const ensured = await ensureTradeInLead({
             sessionId,
             channel: "chat",
             initialMessage: `Trade-in session initiated via image upload (${file.name})`,
           });
 
-          leadId = result.leadId;
+          leadId = ensured.leadId;
+          linkedLeadId = leadId;
           console.log(
-            `[Appwrite Upload] Created new lead: ${leadId} (status: ${result.status})`,
+            `[Appwrite Upload] Ensured lead: ${leadId} (created: ${ensured.created}, status: ${ensured.status})`,
           );
         }
+
+        console.log("[Appwrite Upload] Linking media to lead:", {
+          requestId,
+          sessionId,
+          leadId,
+          fileId: data.$id,
+        });
 
         const { recordTradeInMediaEntry } = await import(
           "@/lib/trade-in/service"
@@ -228,6 +251,8 @@ export async function POST(req: NextRequest) {
           mimeType: file.type,
           sizeBytes: file.size,
         });
+
+        mediaLinked = true;
 
         console.log(`[Appwrite Upload] Media record saved for lead ${leadId}`);
 
@@ -262,6 +287,8 @@ export async function POST(req: NextRequest) {
           "[Appwrite Upload] Failed to link to trade-in lead:",
           linkError,
         );
+        linkErrorMessage =
+          linkError instanceof Error ? linkError.message : String(linkError);
         // Don't fail the upload if linking fails - image still uploaded to Appwrite
       }
     }
@@ -269,8 +296,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
+        handlerVersion: HANDLER_VERSION,
         url: imageUrl,
         fileId: data.$id,
+        leadId: linkedLeadId,
+        sessionId,
+        validatedLeadId,
+        mediaLinked,
+        linkError: linkErrorMessage,
       },
       { headers: corsHeaders },
     );

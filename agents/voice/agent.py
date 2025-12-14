@@ -7,9 +7,12 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, Dict, Optional
+import re
+from datetime import datetime
+from typing import Any, Dict, Optional, Annotated
 
 import httpx
+from pydantic import Field
 
 # Import auto-save system
 from auto_save import (
@@ -39,6 +42,9 @@ from livekit.plugins import noise_cancellation, openai, silero
 from livekit.plugins.openai import realtime
 
 logger = logging.getLogger("agent-amara")
+
+_last_user_utterance: Dict[str, str] = {}
+_awaiting_recap_confirmation: Dict[str, bool] = {}
 
 load_dotenv(".env.local")
 
@@ -115,11 +121,11 @@ PAYOUT_KEYWORD_FALLBACKS = (
 UNSUPPORTED_PAYOUT_KEYWORDS = ("top up", "topup", "top-up")
 
 
-def normalize_payout_value(value: Optional[str]) -> Optional[str]:
-    if not value:
+def normalize_payout_value(raw: Optional[str]) -> Optional[str]:
+    if not raw:
         return None
 
-    normalized = value.strip().lower()
+    normalized = raw.strip().lower()
     normalized = normalized.replace("-", " ")
     normalized = normalized.replace("_", " ")
     normalized = " ".join(normalized.split())
@@ -138,6 +144,56 @@ def normalize_payout_value(value: Optional[str]) -> Optional[str]:
             return None
 
     return normalized if normalized in VALID_PAYOUT_VALUES else None
+
+
+def _infer_brand_from_device_name(device_name: Optional[str]) -> Optional[str]:
+    if not device_name or not isinstance(device_name, str):
+        return None
+    lower = device_name.lower()
+    if "iphone" in lower or "ipad" in lower or "macbook" in lower:
+        return "Apple"
+    if "switch" in lower:
+        return "Nintendo"
+    if "playstation" in lower or lower.startswith("ps"):
+        return "Sony"
+    if "xbox" in lower:
+        return "Microsoft"
+    return None
+
+
+async def _persist_quote_flag(session_id: str, quote_timestamp: Optional[str]) -> None:
+    try:
+        await _ensure_tradein_lead_for_session(session_id)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/update",
+                json={
+                    "sessionId": session_id,
+                    "leadId": _lead_ids.get(session_id),
+                    "initial_quote_given": True,
+                    "quote_timestamp": quote_timestamp,
+                },
+                headers=build_auth_headers(),
+                timeout=10.0,
+            )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[QuoteState] ❌ Failed to persist quote flag: {response.status_code} {response.text}"
+                )
+    except Exception as e:
+        logger.error(f"[QuoteState] ❌ Persist failed: {e}")
+
+
+async def _async_generate_reply(
+    session: AgentSession, instructions: str, allow_interruptions: bool = True
+) -> None:
+    try:
+        await session.generate_reply(
+            instructions=instructions,
+            allow_interruptions=allow_interruptions,
+        )
+    except Exception as e:
+        logger.error(f"[VoiceReply] ❌ Failed to generate reply: {e}")
 
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
@@ -170,6 +226,58 @@ def build_auth_headers() -> Dict[str, str]:
         headers["X-API-Key"] = API_KEY
         headers["Authorization"] = f"Bearer {API_KEY}"
     return headers
+
+
+def _is_valid_contact_name(name: Optional[str]) -> bool:
+    if not name or not isinstance(name, str):
+        return False
+    trimmed = name.strip()
+    if len(trimmed) < 2 or len(trimmed) > 80:
+        return False
+    # Only allow basic ASCII name chars to avoid garbled STT tokens corrupting the lead
+    allowed = re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed)
+    if not allowed:
+        return False
+    # Require at least 2 letters
+    letters = re.sub(r"[^A-Za-z]", "", trimmed)
+    return len(letters) >= 2
+
+
+async def _ensure_tradein_lead_for_session(session_id: str) -> Optional[str]:
+    if not session_id:
+        return None
+    if session_id in _lead_ids:
+        return _lead_ids.get(session_id)
+
+    headers = build_auth_headers()
+    if not headers:
+        logger.warning("[tradein_start] ⚠️ Missing auth headers; cannot ensure lead")
+        return None
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/start",
+                json={"sessionId": session_id},
+                headers=headers,
+                timeout=10.0,
+            )
+            if response.status_code >= 400:
+                logger.error(
+                    f"[tradein_start] ❌ {response.status_code}: {response.text}"
+                )
+                return None
+            result = response.json() if response.content else {}
+            lead_id = result.get("leadId") or result.get("lead", {}).get("id")
+            if lead_id:
+                _lead_ids[session_id] = lead_id
+                logger.info(
+                    f"[tradein_start] 📌 Cached leadId for session {session_id}: {lead_id}"
+                )
+            return lead_id
+        except Exception as e:
+            logger.error(f"[tradein_start] ❌ Exception: {e}")
+            return None
 
 
 async def log_to_dashboard(
@@ -376,12 +484,35 @@ async def calculate_tradeup_pricing(
             source_q = result.get("source_question")
             target_q = result.get("target_question")
 
+            try:
+                room = get_job_context().room
+                session_id = room.name
+            except Exception:
+                session_id = None
+
+            if session_id:
+                _tradeup_context[session_id] = {
+                    "source_device": source_device,
+                    "target_device": target_device,
+                    "pending_clarification": True,
+                    "needs_source": bool(source_q),
+                    "needs_target": bool(target_q),
+                }
+                logger.warning(
+                    "[calculate_tradeup_pricing] ⚠️ Pending clarification stored for session %s (needs_source=%s needs_target=%s)",
+                    session_id,
+                    bool(source_q),
+                    bool(target_q),
+                )
+
+            suffix = " 🚨 SYSTEM RULE: After the user answers, you MUST call calculate_tradeup_pricing again with the clarified device name(s) BEFORE asking 'Want to proceed?'."
+
             if source_q and target_q:
-                return f"{source_q} Also, {target_q}"
+                return f"{source_q} Also, {target_q}{suffix}"
             elif source_q:
-                return source_q
+                return f"{source_q}{suffix}"
             elif target_q:
-                return target_q
+                return f"{target_q}{suffix}"
 
         # Return pricing if available
         trade_value = result.get("trade_value")
@@ -400,6 +531,7 @@ async def calculate_tradeup_pricing(
             except Exception:
                 session_id = None
 
+            next_question = "Storage size?"
             if session_id:
                 existing_ctx = _tradeup_context.get(session_id)
                 if existing_ctx:
@@ -408,11 +540,19 @@ async def calculate_tradeup_pricing(
                     next_source = (source_device or "").strip().lower()
                     next_target = (target_device or "").strip().lower()
                     if prev_source != next_source or prev_target != next_target:
-                        _checklist_states[session_id] = TradeInChecklistState()
-                        _lead_ids.pop(session_id, None)
-                        logger.info(
-                            "[checklist] 🔄 New trade detected — reset checklist and lead cache"
-                        )
+                        state = _get_checklist(session_id)
+                        if state.current_step_index == 0 and not state.collected_data:
+                            _checklist_states[session_id] = TradeInChecklistState()
+                            _lead_ids.pop(session_id, None)
+                            logger.info(
+                                "[checklist] 🔄 New trade detected at start — reset checklist and lead cache"
+                            )
+                        else:
+                            logger.warning(
+                                "[checklist] 🚫 Trade change ignored mid-flow (session=%s step=%s). Keep same trade unless user cancels.",
+                                session_id,
+                                state.get_current_step(),
+                            )
 
                 _tradeup_context[session_id] = {
                     "source_device": source_device,
@@ -420,21 +560,34 @@ async def calculate_tradeup_pricing(
                     "trade_value": trade_value,
                     "retail_price": retail_price,
                     "top_up": top_up,
+                    "pending_clarification": False,
                 }
                 state = _get_checklist(session_id)
                 state.mark_trade_up()
-                state.collected_data["force_new_lead"] = True
                 state.collected_data["source_device_name"] = source_device
                 state.collected_data["target_device_name"] = target_device
                 state.collected_data["source_price_quoted"] = trade_value
                 state.collected_data["target_price_quoted"] = retail_price
                 state.collected_data["top_up_amount"] = top_up
 
+                inferred_brand = _infer_brand_from_device_name(source_device)
+                if inferred_brand:
+                    state.collected_data["brand"] = inferred_brand
+                state.collected_data["model"] = source_device
+
+                # Switch consoles do not have a meaningful storage choice in this flow
+                lower_source = (source_device or "").lower()
+                lower_target = (target_device or "").lower()
+                if "switch" in lower_source or "switch" in lower_target:
+                    state.mark_no_storage()
+
+                next_question = state.get_next_question() or next_question
+
             return (
                 f"Your {source_device} trades for S${int(trade_value)}. "
                 f"The {target_device} is S${int(retail_price)}. "
                 f"Top-up: S${int(top_up)}. Want to proceed? "
-                f"🚨 SYSTEM RULE: If user says yes, ask ONLY 'Storage size?' next."
+                f"🚨 SYSTEM RULE: If user says yes, ask ONLY '{next_question}' next."
             )
 
         logger.error(f"[calculate_tradeup_pricing] ⚠️ Incomplete pricing data: {result}")
@@ -445,8 +598,7 @@ async def calculate_tradeup_pricing(
         return "Pricing calculation unavailable. Please provide device details."
 
 
-@function_tool
-async def tradein_update_lead(
+async def _tradein_update_lead_impl(
     context: RunContext,
     category: Optional[str] = None,
     brand: Optional[str] = None,
@@ -486,6 +638,47 @@ async def tradein_update_lead(
 
     # Use per-session checklist state
     state = _get_checklist(session_id)
+
+    if photos_acknowledged is not None:
+        last_utterance = (_last_user_utterance.get(session_id) or "").strip().lower()
+        if last_utterance not in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah"):
+            photos_acknowledged = None
+
+    if contact_name and "name" in state.collected_data:
+        existing_name = str(state.collected_data.get("name") or "").strip()
+        existing_ok = _is_valid_contact_name(existing_name)
+        incoming_ok = _is_valid_contact_name(contact_name)
+        if existing_ok and incoming_ok and existing_name.lower() != str(contact_name).strip().lower():
+            logger.warning(
+                "[tradein_update_lead] ⚠️ Ignoring new contact_name (already collected): existing=%s new=%s",
+                existing_name,
+                contact_name,
+            )
+            contact_name = None
+        elif (not existing_ok) and incoming_ok:
+            logger.warning(
+                "[tradein_update_lead] ✅ Replacing invalid existing contact_name: existing=%s new=%s",
+                existing_name,
+                contact_name,
+            )
+    if contact_phone and "phone" in state.collected_data:
+        existing_phone = str(state.collected_data.get("phone") or "").strip()
+        if existing_phone and existing_phone != str(contact_phone).strip():
+            logger.warning(
+                "[tradein_update_lead] ⚠️ Ignoring new contact_phone (already collected): existing=%s new=%s",
+                existing_phone,
+                contact_phone,
+            )
+            contact_phone = None
+    if contact_email and "email" in state.collected_data:
+        existing_email = str(state.collected_data.get("email") or "").strip()
+        if existing_email and existing_email.lower() != str(contact_email).strip().lower():
+            logger.warning(
+                "[tradein_update_lead] ⚠️ Ignoring new contact_email (already collected): existing=%s new=%s",
+                existing_email,
+                contact_email,
+            )
+            contact_email = None
 
     # Normalize empty string back to None so payload doesn't write empties
     if isinstance(target_device_name, str) and not target_device_name.strip():
@@ -630,10 +823,16 @@ async def tradein_update_lead(
                 elif field == "photos":
                     photos_acknowledged = None
                 elif field == "name":
+                    if contact_name:
+                        state.pending_contact["name"] = contact_name
                     contact_name = None
                 elif field == "phone":
+                    if contact_phone:
+                        state.pending_contact["phone"] = contact_phone
                     contact_phone = None
                 elif field == "email":
+                    if contact_email:
+                        state.pending_contact["email"] = contact_email
                     contact_email = None
                 elif field == "payout":
                     preferred_payout = None
@@ -655,9 +854,10 @@ async def tradein_update_lead(
     )
     will_have_photos = photos_in_payload or "photos" in state.collected_data
 
-    # NEW FLOW: contact comes after storage + accessories (box).
-    # Condition/payout can be asked later before recap/submit.
-    ready_after_payload = will_have_storage and will_have_accessories
+    # NEW FLOW: contact comes after storage + condition + accessories + photos.
+    ready_after_payload = (
+        will_have_storage and will_have_condition and will_have_accessories and will_have_photos
+    )
 
     blocked_contact_fields = []
 
@@ -666,12 +866,15 @@ async def tradein_update_lead(
 
     if contact_name and not _contact_allowed("name"):
         blocked_contact_fields.append("name")
+        state.pending_contact["name"] = contact_name
         contact_name = None
     if contact_phone and not _contact_allowed("phone"):
         blocked_contact_fields.append("phone")
+        state.pending_contact["phone"] = contact_phone
         contact_phone = None
     if contact_email and not _contact_allowed("email"):
         blocked_contact_fields.append("email")
+        state.pending_contact["email"] = contact_email
         contact_email = None
 
     # Detect trade-up (target device present) → do NOT send payout (enum mismatch in API)
@@ -691,7 +894,6 @@ async def tradein_update_lead(
                     # API expects camelCase sessionId (not session_id)
                     "sessionId": session_id,
                     "leadId": _lead_ids.get(session_id),
-                    "forceNew": bool(state.collected_data.get("force_new_lead")),
                     "category": category,
                     "brand": brand,
                     "model": model,
@@ -723,10 +925,6 @@ async def tradein_update_lead(
                 return f"Failed to save info ({response.status_code})"
             result = response.json()
             logger.info(f"[tradein_update_lead] ✅ Response: {result}")
-
-            # After first successful save on a new trade, drop the force-new flag.
-            if state.collected_data.get("force_new_lead"):
-                state.collected_data.pop("force_new_lead", None)
 
             # Cache leadId for this session so all subsequent saves/uploads use the same lead
             lead_id = result.get("lead", {}).get("id")
@@ -807,6 +1005,45 @@ async def tradein_update_lead(
 
 
 @function_tool
+async def tradein_update_lead(
+    context: RunContext,
+    category: Annotated[Optional[str], Field(default=None)] = None,
+    brand: Annotated[Optional[str], Field(default=None)] = None,
+    model: Annotated[Optional[str], Field(default=None)] = None,
+    storage: Annotated[Optional[str], Field(default=None)] = None,
+    condition: Annotated[Optional[str], Field(default=None)] = None,
+    contact_name: Annotated[Optional[str], Field(default=None)] = None,
+    contact_phone: Annotated[Optional[str], Field(default=None)] = None,
+    contact_email: Annotated[Optional[str], Field(default=None)] = None,
+    preferred_payout: Annotated[Optional[str], Field(default=None)] = None,
+    notes: Annotated[Optional[str], Field(default=None)] = None,
+    target_device_name: Annotated[Optional[str], Field(default=None)] = None,
+    photos_acknowledged: Annotated[Optional[bool], Field(default=None)] = None,
+    source_price_quoted: Annotated[Optional[float], Field(default=None)] = None,
+    target_price_quoted: Annotated[Optional[float], Field(default=None)] = None,
+    top_up_amount: Annotated[Optional[float], Field(default=None)] = None,
+) -> str:
+    return await _tradein_update_lead_impl(
+        context=context,
+        category=category,
+        brand=brand,
+        model=model,
+        storage=storage,
+        condition=condition,
+        contact_name=contact_name,
+        contact_phone=contact_phone,
+        contact_email=contact_email,
+        preferred_payout=preferred_payout,
+        notes=notes,
+        target_device_name=target_device_name or "",
+        photos_acknowledged=photos_acknowledged,
+        source_price_quoted=source_price_quoted,
+        target_price_quoted=target_price_quoted,
+        top_up_amount=top_up_amount,
+    )
+
+
+@function_tool
 async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     """Submit the complete trade-in lead. Only call when all required info is collected."""
     logger.warning(f"[tradein_submit_lead] ⚠️ CALLED with summary: {summary}")
@@ -818,6 +1055,33 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
         session_id = room.name
     except Exception:
         session_id = None
+
+    if session_id:
+        try:
+            state = _get_checklist(session_id)
+            missing = [
+                key
+                for key in ("name", "phone", "email")
+                if key not in state.collected_data
+            ]
+            if missing:
+                next_question = state.get_next_question()
+                logger.warning(
+                    "[tradein_submit_lead] 🚫 Blocked submit: missing=%s progress=%s",
+                    missing,
+                    state.get_progress(),
+                )
+                if next_question:
+                    return (
+                        f"Cannot submit yet — missing {', '.join(missing)}. "
+                        f"Ask the customer: {next_question}"
+                    )
+                return (
+                    f"Cannot submit yet — missing {', '.join(missing)}. "
+                    "Please collect the missing contact details first."
+                )
+        except Exception as e:
+            logger.error(f"[tradein_submit_lead] ❌ Failed checklist guard: {e}")
 
     # Reuse cached leadId if we have one
     cached_lead = _lead_ids.get(session_id) if session_id else None
@@ -846,7 +1110,7 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
             return result.get("message", "Trade-in submitted successfully")
         except Exception as e:
             logger.error(f"[tradein_submit_lead] ❌ Exception: {e}")
-            return "Trade-in submitted"
+            return "Submit failed — please retry"
 
 
 @function_tool
@@ -860,6 +1124,26 @@ async def sendemail(
 ) -> str:
     """Send support escalation to TradeZone staff. Only use when customer explicitly requests human follow-up."""
     logger.info(f"[sendemail] CALLED: type={email_type}")
+
+    # Never create support-form submissions during an active trade flow.
+    # If user wants staff during a trade, they should cancel the trade flow first.
+    try:
+        room = get_job_context().room
+        session_id = room.name
+    except Exception:
+        session_id = None
+    if session_id:
+        state = _get_checklist(session_id)
+        in_trade_flow = bool(state.collected_data) or bool(state.is_trade_up)
+        if in_trade_flow:
+            logger.warning(
+                "[sendemail] 🚫 Blocked support escalation during active trade flow (session=%s)",
+                session_id,
+            )
+            return (
+                "Trade-in is in progress. Finish the trade first. "
+                "If you want a staff member instead, say: cancel trade and talk to staff."
+            )
     headers = build_auth_headers()
     async with httpx.AsyncClient() as client:
         try:
@@ -898,12 +1182,12 @@ class TradeInChecklistState:
     # Device details (including photos acknowledgement) must be locked before contact data
     STEPS = [
         "storage",
+        "condition",
         "accessories",
+        "photos",
         "name",
         "phone",
         "email",
-        "condition",
-        "photos",
         "payout",
         "recap",
         "submit",
@@ -911,12 +1195,12 @@ class TradeInChecklistState:
 
     QUESTIONS = {
         "storage": "Storage size?",
+        "condition": "Condition?",
         "accessories": "Got the box?",
+        "photos": "Want to upload photos now?",
         "name": "Your name?",
         "phone": "Phone number?",
         "email": "Email?",
-        "condition": "Condition?",
-        "photos": "Photos help—want to send one?",
         "payout": "Cash, PayNow, bank, or installments?",
         "recap": "recap",  # Special: triggers summary
         "submit": "submit",  # Special: triggers submission
@@ -925,11 +1209,39 @@ class TradeInChecklistState:
     def __init__(self):
         self.current_step_index = 0
         self.collected_data = {}
+        self.pending_contact = {}
         self.is_trade_up = False
         self.completed = False
         self.skip_storage = (
             False  # For devices without storage (cameras, accessories, etc.)
         )
+
+    def _apply_pending_contact_for_current_step(self) -> bool:
+        """Apply any pending contact data when we reach the contact steps.
+
+        Returns True if we applied something (which can advance steps).
+        """
+        current_step = self.STEPS[self.current_step_index] if self.current_step_index < len(self.STEPS) else None
+        if current_step not in ("name", "phone", "email"):
+            return False
+
+        if current_step == "name" and "name" not in self.collected_data:
+            value = self.pending_contact.get("name")
+            if value and self.can_collect_contact("name"):
+                self.mark_field_collected("name", value)
+                return True
+        if current_step == "phone" and "phone" not in self.collected_data:
+            value = self.pending_contact.get("phone")
+            if value and self.can_collect_contact("phone"):
+                self.mark_field_collected("phone", value)
+                return True
+        if current_step == "email" and "email" not in self.collected_data:
+            value = self.pending_contact.get("email")
+            if value and self.can_collect_contact("email"):
+                self.mark_field_collected("email", value)
+                return True
+
+        return False
 
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
@@ -945,12 +1257,16 @@ class TradeInChecklistState:
 
     def ready_for_contact(self) -> bool:
         has_storage = self._storage_collected()
+        has_condition = "condition" in self.collected_data
         has_accessories = "accessories" in self.collected_data
-        ready = has_storage and has_accessories
+        has_photos = "photos" in self.collected_data
+        ready = has_storage and has_condition and has_accessories and has_photos
         logger.debug(
-            "[ChecklistState] Contact readiness — storage=%s accessories=%s => %s",
+            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s => %s",
             has_storage,
+            has_condition,
             has_accessories,
+            has_photos,
             ready,
         )
         return ready
@@ -1012,6 +1328,13 @@ class TradeInChecklistState:
                 self.completed = True
                 return "completed"
             step = self.STEPS[self.current_step_index]
+
+        # If we have pending contact info, auto-apply it when we reach contact steps
+        try:
+            if self._apply_pending_contact_for_current_step():
+                return self.get_current_step()
+        except Exception as e:
+            logger.error(f"[ChecklistState] ❌ Failed applying pending contact: {e}")
 
         # Skip storage for devices that don't have storage (cameras, accessories, etc.)
         if step == "storage" and self.skip_storage:
@@ -1336,10 +1659,14 @@ server.setup_fnc = prewarm
 async def entrypoint(ctx: JobContext):
     """Main entry point for LiveKit voice sessions"""
 
+    job_ctx = ctx
+
     # Store conversation for dashboard logging
     conversation_buffer = {"user_message": "", "bot_response": ""}
     room_name = ctx.room.name
     participant_identity = None
+
+    asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
 
     # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
     if VOICE_STACK == "realtime":
@@ -1381,12 +1708,19 @@ async def entrypoint(ctx: JobContext):
         nonlocal conversation_buffer
         if event.is_final:  # Only capture final transcripts
             conversation_buffer["user_message"] = event.transcript
+            conversation_buffer["order_failsafe_sent"] = False
+            conversation_buffer["quote_failsafe_sent"] = False
+            conversation_buffer["step_failsafe_sent"] = False
+            _last_user_utterance[room_name] = event.transcript
+            lower_user = (event.transcript or "").strip().lower()
+            if lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah", "correct"):
+                _awaiting_recap_confirmation[room_name] = False
             logger.info(f"[Voice] User said: {event.transcript}")
 
-            # 🔥 AUTO-SAVE: Extract and save data from user message
+            # AUTO-SAVE: Extract and save data from user message
             checklist = _get_checklist(room_name)
             logger.info(
-                f"[AutoSave] 🔍 Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
+                f"[AutoSave] Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
             )
             logger.info(
                 f"[AutoSave] 📋 Current checklist state: {checklist.get_progress()}"
@@ -1398,11 +1732,14 @@ async def entrypoint(ctx: JobContext):
                     checklist_state=checklist,
                     api_base_url=API_BASE_URL,
                     headers=build_auth_headers(),
+                    last_bot_prompt=conversation_buffer.get("bot_response"),
                 )
             )
 
             # 🔥 SMART ACKNOWLEDGMENT: Check what was extracted and acknowledge
-            extracted = extract_data_from_message(event.transcript, checklist)
+            extracted = extract_data_from_message(
+                event.transcript, checklist, conversation_buffer.get("bot_response")
+            )
             if extracted:
                 acknowledgment = build_smart_acknowledgment(extracted, checklist)
                 if acknowledgment:
@@ -1429,6 +1766,201 @@ async def entrypoint(ctx: JobContext):
                 conversation_buffer["bot_response"] = content
                 logger.info(f"[Voice] Agent said: {event.item.content}")
 
+                try:
+                    checklist = _get_checklist(room_name)
+                    progress = checklist.get_progress()
+                    has_quote = bool(checklist.collected_data.get("initial_quote_given"))
+                    has_prices = all(
+                        k in checklist.collected_data
+                        for k in ("source_price_quoted", "target_price_quoted", "top_up_amount")
+                    )
+
+                    current_step = checklist.get_current_step()
+                    next_question = checklist.get_next_question()
+                    lower = content.lower()
+                    asked_step = None
+                    if "everything correct" in lower or "is that correct" in lower or "correct?" in lower:
+                        asked_step = "recap"
+                    elif "storage size" in lower:
+                        asked_step = "storage"
+                    elif "condition of" in lower or lower.strip().startswith("condition"):
+                        asked_step = "condition"
+                    elif ("box" in lower and "accessor" in lower) or "got the box" in lower:
+                        asked_step = "accessories"
+                    elif "upload photo" in lower or "upload photos" in lower:
+                        asked_step = "photos"
+                    elif "your name" in lower or "provide your name" in lower:
+                        asked_step = "name"
+                    elif "contact number" in lower or "phone number" in lower:
+                        asked_step = "phone"
+                    elif "email address" in lower or lower.strip().startswith("email"):
+                        asked_step = "email"
+                    elif "payout" in lower:
+                        asked_step = "payout"
+                    elif "here's the summary" in lower or lower.strip().startswith("here is the summary"):
+                        asked_step = "recap"
+
+                    if (
+                        asked_step
+                        and current_step
+                        and next_question
+                        and ("?" in content)
+                        and not checklist.is_complete()
+                        and asked_step != current_step
+                        and not conversation_buffer.get("step_failsafe_sent")
+                    ):
+                        conversation_buffer["step_failsafe_sent"] = True
+                        forced = next_question
+                        if forced == "recap":
+                            forced = "Everything correct? Please say yes or no."
+                        logger.warning(
+                            "[StepFailSafe] ⚠️ Wrong step asked (asked=%s current=%s). Forcing next question: %s progress=%s",
+                            asked_step,
+                            current_step,
+                            forced,
+                            progress,
+                        )
+                        asyncio.create_task(
+                            _async_generate_reply(
+                                session,
+                                instructions=f"Say exactly: {forced}",
+                                allow_interruptions=True,
+                            )
+                        )
+
+                    if asked_step == "recap" and current_step == "recap":
+                        _awaiting_recap_confirmation[room_name] = True
+
+                    if _awaiting_recap_confirmation.get(room_name):
+                        assistant_confirms = lower.strip().startswith("yes") or "we'll proceed" in lower or "we will proceed" in lower
+                        if assistant_confirms:
+                            asyncio.create_task(
+                                _async_generate_reply(
+                                    session,
+                                    instructions="Say exactly: Please answer yes or no.",
+                                    allow_interruptions=True,
+                                )
+                            )
+
+                    lower_content = content.lower()
+                    if (
+                        ("trades for" in lower_content)
+                        and ("top-up" in lower_content or "top up" in lower_content)
+                        and has_prices
+                    ):
+                        checklist.collected_data["initial_quote_given"] = True
+                        checklist.collected_data["quote_timestamp"] = datetime.utcnow().isoformat()
+                        logger.info(
+                            "[QuoteState] ✅ Marked initial_quote_given=True after quote spoken. progress=%s",
+                            progress,
+                        )
+
+                        asyncio.create_task(
+                            _persist_quote_flag(
+                                room_name,
+                                checklist.collected_data.get("quote_timestamp"),
+                            )
+                        )
+
+                    said_proceed = "want to proceed" in content.lower()
+                    if said_proceed and not conversation_buffer.get("quote_failsafe_sent"):
+                        conversation_buffer["quote_failsafe_sent"] = True
+
+                        if (not has_quote) and has_prices:
+                            src = checklist.collected_data.get("source_device_name")
+                            tgt = checklist.collected_data.get("target_device_name")
+                            trade_value = checklist.collected_data.get("source_price_quoted")
+                            retail_price = checklist.collected_data.get("target_price_quoted")
+                            top_up = checklist.collected_data.get("top_up_amount")
+                            logger.warning(
+                                "[QuoteFailSafe] ⚠️ Agent asked to proceed without quoting. Injecting quote. progress=%s",
+                                progress,
+                            )
+                            asyncio.create_task(
+                                _async_generate_reply(
+                                    session,
+                                    instructions=(
+                                        f"Say exactly: Your {src} trades for S${int(trade_value)}. "
+                                        f"The {tgt} is S${int(retail_price)}. "
+                                        f"Top-up: S${int(top_up)}. Want to proceed?"
+                                    ),
+                                    allow_interruptions=True,
+                                )
+                            )
+                            checklist.collected_data["initial_quote_given"] = True
+                        else:
+                            trade_ctx = _tradeup_context.get(room_name) or {}
+                            if trade_ctx.get("pending_clarification"):
+                                logger.warning(
+                                    "[QuoteFailSafe] ⚠️ Proceed asked while pricing pending clarification. ctx=%s progress=%s",
+                                    trade_ctx,
+                                    progress,
+                                )
+                                needs_source = bool(trade_ctx.get("needs_source"))
+                                needs_target = bool(trade_ctx.get("needs_target"))
+                                if needs_source or needs_target:
+                                    prompt = (
+                                        "I still need one detail to price this. "
+                                        "Please repeat the exact model name." 
+                                        ""
+                                    )
+                                    asyncio.create_task(
+                                        _async_generate_reply(
+                                            session,
+                                            instructions=f"Say exactly: {prompt}",
+                                            allow_interruptions=True,
+                                        )
+                                    )
+
+                    lower = content.lower()
+                    should_force_next = (
+                        bool(checklist.get_next_question())
+                        and not checklist.is_complete()
+                        and not conversation_buffer.get("order_failsafe_sent")
+                        and checklist.get_next_question().lower() not in lower
+                    )
+                    looks_like_close = any(
+                        phrase in lower
+                        for phrase in (
+                            "all done",
+                            "done",
+                            "have a great day",
+                            "we'll review",
+                            "we will review",
+                            "we'll contact you",
+                            "we'll proceed",
+                            "we will proceed",
+                            "anything else",
+                            "further assistance",
+                            "let me know if you need",
+                        )
+                    )
+                    next_question = checklist.get_next_question()
+                    looks_like_drift = (
+                        bool(next_question)
+                        and ("?" not in content)
+                        and ("please" in lower and "assist" in lower)
+                    )
+                    if should_force_next and next_question and (looks_like_close or looks_like_drift):
+                        conversation_buffer["order_failsafe_sent"] = True
+                        forced = next_question
+                        if forced == "recap":
+                            forced = "Everything correct? Please say yes or no."
+                        logger.warning(
+                            "[OrderFailSafe] ⚠️ Model attempted to end early. Forcing next question: %s progress=%s",
+                            forced,
+                            progress,
+                        )
+                        asyncio.create_task(
+                            _async_generate_reply(
+                                session,
+                                instructions=f"Say exactly: {forced}",
+                                allow_interruptions=True,
+                            )
+                        )
+                except Exception as e:
+                    logger.error(f"[QuoteFailSafe] ❌ Failed: {e}")
+
                 # 🔥 AUTO-SUBMIT: Check if user confirmed and auto-submit
                 if conversation_buffer.get("user_message"):
                     checklist = _get_checklist(room_name)
@@ -1453,13 +1985,16 @@ async def entrypoint(ctx: JobContext):
         if conversation_buffer["user_message"] and conversation_buffer["bot_response"]:
             # Get participant identity from room
             if not participant_identity:
-                for participant in ctx.room.remote_participants.values():
-                    if (
-                        participant.kind
-                        == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
-                    ):
-                        participant_identity = participant.identity
-                        break
+                try:
+                    for participant in job_ctx.room.remote_participants.values():
+                        if (
+                            participant.kind
+                            == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+                        ):
+                            participant_identity = participant.identity
+                            break
+                except Exception as e:
+                    logger.error(f"[Dashboard] ❌ Failed to read participant identity: {e}")
 
             user_id = participant_identity or room_name
 

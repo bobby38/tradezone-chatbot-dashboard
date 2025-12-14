@@ -34,6 +34,22 @@ const resolveOrgId = () => {
 
 const DEFAULT_ORG_ID = resolveOrgId();
 
+function normalizeLeadHash(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return normalized;
+
+  // Collapse widget/LiveKit session ids like:
+  // - client_..._<timestamp>
+  // - chat-client_..._<timestamp>
+  // into a stable hash based on the client id portion.
+  const match = normalized.match(/^(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i);
+  if (match && match[2]) {
+    return match[2];
+  }
+
+  return normalized;
+}
+
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   throw new Error(
     "Missing Supabase configuration. NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.",
@@ -232,18 +248,28 @@ export interface TradeInSubmitInput {
 export async function ensureTradeInLead(
   params: EnsureTradeInLeadParams,
 ): Promise<EnsureTradeInLeadResult> {
-  const leadHash = (params.leadHash || params.sessionId || "")
-    .trim()
-    .toLowerCase();
+  const rawSession = (params.leadHash || params.sessionId || "").trim().toLowerCase();
+  const leadHash = normalizeLeadHash(rawSession);
 
   if (!leadHash) {
     throw new TradeInValidationError("Lead hash or session id is required");
   }
 
+  const leadHashCandidates = new Set<string>();
+  leadHashCandidates.add(leadHash);
+  if (rawSession) {
+    leadHashCandidates.add(rawSession);
+    if (rawSession.startsWith("chat-")) {
+      leadHashCandidates.add(rawSession.replace(/^chat-/, ""));
+    } else {
+      leadHashCandidates.add(`chat-${rawSession}`);
+    }
+  }
+
   const { data: existingLead, error: existingError } = await supabaseAdmin
     .from("trade_in_leads")
     .select("id, status, created_at")
-    .eq("lead_hash", leadHash)
+    .in("lead_hash", Array.from(leadHashCandidates))
     .not("status", "in", "(completed,closed,archived)")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -707,25 +733,28 @@ export async function submitTradeInLead(
 
   console.log("[TradeIn] Fetching lead:", input.leadId);
 
-  const { data: lead, error } = await supabaseAdmin
+  const { data: loadedLead, error } = await supabaseAdmin
     .from("trade_in_leads")
     .select(
       `id, status, channel, category, brand, model, storage, condition,
        defects, accessories, purchase_year, price_hint, range_min, range_max,
-       pricing_version, source_device_name, target_device_name, source_price_quoted,
-       target_price_quoted, top_up_amount, preferred_payout, preferred_fulfilment, contact_name,
+       pricing_version, preferred_payout, preferred_fulfilment, contact_name,
        contact_phone, contact_email, telegram_handle, notes, session_id,
+       source_device_name, target_device_name, source_price_quoted, target_price_quoted,
+       top_up_amount, initial_quote_given, quote_timestamp,
        source_message_summary, created_at`,
     )
     .eq("id", input.leadId)
     .single();
 
-  if (error || !lead) {
+  if (error || !loadedLead) {
     console.error("[TradeIn] Lead not found:", error);
     throw new Error(
       `Trade-in lead not found: ${error?.message ?? "unknown error"}`,
     );
   }
+
+  let lead: any = loadedLead;
 
   console.log("[TradeIn] Lead loaded:", {
     id: lead.id,
@@ -735,14 +764,9 @@ export async function submitTradeInLead(
     status: lead.status,
   });
 
-  const hasTargetPrice =
-    lead.target_price_quoted !== null && lead.target_price_quoted !== undefined;
-  const hasTopUp = lead.top_up_amount !== null && lead.top_up_amount !== undefined;
-  const isTradeUp = Boolean(
-    (lead.target_device_name && lead.target_device_name.trim()) ||
-      (lead.source_device_name && lead.source_device_name.trim()) ||
-      hasTargetPrice ||
-      hasTopUp,
+  const isTradeUpLead = Boolean(
+    hasMeaningfulValue(lead.target_device_name) &&
+      Number.isFinite(Number(lead.top_up_amount)),
   );
 
   const missingFields: string[] = [];
@@ -774,7 +798,8 @@ export async function submitTradeInLead(
   if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
-  if (!isTradeUp && !lead.preferred_payout?.trim()) {
+  // Trade-ups do not require payout preference (top-up is paid separately).
+  if (!isTradeUpLead && !lead.preferred_payout?.trim()) {
     missingFields.push("preferred_payout");
   }
 
@@ -792,12 +817,31 @@ export async function submitTradeInLead(
   if (input.summary) {
     patch.notes = input.summary;
   }
-  if (input.status) {
-    patch.status = input.status;
-  }
+  // Default the status on submit so the lead reliably shows in the trade-in dashboard workflow.
+  patch.status = input.status || "in_review";
 
   if (Object.keys(patch).length > 0) {
     await updateTradeInLead(input.leadId, patch);
+  }
+
+  // Refresh the lead after patching status/notes so the caller and email
+  // reflect the canonical DB state (prevents confusion where response shows status='new').
+  const { data: refreshedLead, error: refreshError } = await supabaseAdmin
+    .from("trade_in_leads")
+    .select(
+      `id, status, channel, category, brand, model, storage, condition,
+       defects, accessories, purchase_year, price_hint, range_min, range_max,
+       pricing_version, preferred_payout, preferred_fulfilment, contact_name,
+       contact_phone, contact_email, telegram_handle, notes, session_id,
+       source_device_name, target_device_name, source_price_quoted, target_price_quoted,
+       top_up_amount, initial_quote_given, quote_timestamp,
+       source_message_summary, created_at`,
+    )
+    .eq("id", input.leadId)
+    .single();
+
+  if (!refreshError && refreshedLead) {
+    lead = refreshedLead;
   }
 
   let emailSent = false;
@@ -837,6 +881,13 @@ export async function submitTradeInLead(
       pricing_version: lead.pricing_version || "Not set",
       preferred_payout: lead.preferred_payout || "Not specified",
       preferred_fulfilment: lead.preferred_fulfilment || "Not specified",
+      source_device_name: lead.source_device_name || null,
+      target_device_name: lead.target_device_name || null,
+      source_price_quoted: lead.source_price_quoted ?? null,
+      target_price_quoted: lead.target_price_quoted ?? null,
+      top_up_amount: lead.top_up_amount ?? null,
+      initial_quote_given: lead.initial_quote_given ?? null,
+      quote_timestamp: lead.quote_timestamp ?? null,
       channel: lead.channel,
       session_id: lead.session_id,
       summary:
@@ -861,8 +912,10 @@ export async function submitTradeInLead(
       emailSent = false;
 
       // Surface email failure back to caller so LiveKit/Realtime can tell the user
+      const errorMessage =
+        emailError instanceof Error ? emailError.message : String(emailError);
       throw new Error(
-        `Trade-in saved but email notification failed: ${emailError?.message || emailError}`,
+        `Trade-in saved but email notification failed: ${errorMessage}`,
       );
     }
 

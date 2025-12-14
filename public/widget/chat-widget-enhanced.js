@@ -28,6 +28,7 @@
   "use strict";
 
   const TradeZoneChatEnhanced = {
+    widgetVersion: "livekit-voice-2025-12-14",
     config: {
       apiUrl: "",
       position: "bottom-right",
@@ -55,6 +56,7 @@
 
     sessionId: null,
     clientId: null, // Persistent client identifier
+    tradeInLeadId: null,
     isOpen: false,
     messages: [],
     mode: "text", // 'text' or 'voice'
@@ -104,6 +106,36 @@
       '- If they confirm, collect name, phone, and email, then call sendemail with emailType:"contact" and include a note like "Manual trade-in review needed" plus the device details.',
       "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
     ].join("\n"),
+
+    ensureTradeInLeadId: async function () {
+      try {
+        if (this.tradeInLeadId) return this.tradeInLeadId;
+        if (!this.sessionId) return null;
+        const response = await fetch(`${this.config.apiUrl}/api/tradein/start`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": this.config.apiKey || "",
+          },
+          body: JSON.stringify({
+            clientId: this.clientId,
+            sessionId: this.sessionId,
+            channel: "chat",
+            initialMessage: "Trade-in session initiated via widget",
+          }),
+        });
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        if (data && data.leadId) {
+          this.tradeInLeadId = data.leadId;
+        }
+        return this.tradeInLeadId;
+      } catch (e) {
+        return null;
+      }
+    },
     voiceStopWords: new Set([
       "a",
       "an",
@@ -2151,209 +2183,6 @@
       }
     },
 
-    // Ensure LiveKit library is present (injects script tag if missing)
-    ensureLiveKit: async function () {
-      const existing =
-        window.LivekitClient || window.LiveKitClient || window.LiveKit;
-      if (existing) return existing;
-
-      // Avoid duplicate loads
-      if (!this._livekitLoadPromise) {
-        const primary =
-          this.config.livekitScriptUrl ||
-          `${this.config.apiUrl}/widget/livekit-client.umd.js`;
-        const fallback =
-          "https://unpkg.com/livekit-client@2.5.7/dist/livekit-client.umd.js";
-
-        this._livekitLoadPromise = new Promise((resolve, reject) => {
-          const load = (url, triedFallback = false) => {
-            const script = document.createElement("script");
-            script.src = url;
-            script.async = true;
-            script.onload = () => {
-              const lk =
-                window.LivekitClient || window.LiveKitClient || window.LiveKit;
-              if (lk) return resolve(lk);
-              if (!triedFallback) return load(fallback, true);
-              reject(new Error("LiveKit global not found after load"));
-            };
-            script.onerror = () => {
-              if (!triedFallback) {
-                console.warn("[Voice] Primary LiveKit script failed, trying CDN");
-                return load(fallback, true);
-              }
-              reject(new Error("Failed to load LiveKit script (primary+CDN)"));
-            };
-            document.head.appendChild(script);
-          };
-          load(primary, false);
-        });
-      }
-
-      return this._livekitLoadPromise.catch((err) => {
-        console.error("[Voice] LiveKit load failed", err);
-        return null;
-      });
-    },
-
-    startVoice: async function () {
-      try {
-        console.log("[Voice] Starting LiveKit voice mode...");
-        this.updateVoiceStatus("Connecting...");
-
-        // Get microphone first
-        const LiveKit = await this.ensureLiveKit();
-        if (!LiveKit) {
-          throw new Error(
-            "LiveKit library not loaded. Please refresh the page.",
-          );
-        }
-        const audioTrack = await LiveKit.createLocalAudioTrack({
-          echoCancellation: true,
-          noiseSuppression: true,
-        });
-        this.voiceState.audioTrack = audioTrack;
-        console.log("[Voice] Microphone ready");
-
-        // Get LiveKit token
-        const roomName = `chat-${this.sessionId || Date.now()}`;
-        const response = await fetch(
-          `${this.config.apiUrl}/api/livekit/token`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              roomName,
-              participantName: this.clientId || "user-" + Date.now(),
-            }),
-          },
-        );
-
-        const { token, url } = await response.json();
-        console.log("[Voice] Token received");
-
-        // Connect to LiveKit room
-        this.voiceState.room = new LiveKit.Room();
-
-        // Set up event listeners BEFORE connecting
-        this.voiceState.room.on(
-          LiveKit.RoomEvent.ParticipantConnected,
-          (participant) => {
-            console.log("[Voice] Participant joined:", participant.identity);
-            if (participant.identity.startsWith("agent-")) {
-              this.updateVoiceStatus("Agent joined! Speak now");
-              // Don't add to text chat - keep voice and text separate
-            }
-          },
-        );
-
-        this.voiceState.room.on(
-          LiveKit.RoomEvent.TrackSubscribed,
-          (track, publication, participant) => {
-            if (track.kind === LiveKit.Track.Kind.Audio) {
-              console.log("[Voice] Receiving audio from", participant.identity);
-              const audioElement = track.attach();
-              document.body.appendChild(audioElement);
-            }
-          },
-        );
-
-        // Listen for transcription events from LiveKit
-        this.voiceState.room.on(
-          LiveKit.RoomEvent.TranscriptionReceived,
-          (transcriptions, participant) => {
-            console.log(
-              `[Voice] Transcription from ${participant.identity}:`,
-              transcriptions,
-            );
-
-            // Process each transcription segment
-            transcriptions.forEach((segment) => {
-              if (segment.final && segment.text) {
-                // Determine if this is from user or agent
-                if (participant.identity.startsWith("agent-")) {
-                  // Agent speaking
-                  this.voicePendingAssistantTranscript = segment.text;
-                  this.addTranscript(segment.text, "assistant");
-                } else {
-                  // User speaking
-                  this.voicePendingUserTranscript = segment.text;
-                  this.addTranscript(segment.text, "user");
-                }
-              }
-            });
-          },
-        );
-
-        // Listen for product data from the agent (tool results)
-        this.voiceState.room.on(
-          LiveKit.RoomEvent.DataReceived,
-          (payload, participant, kind, topic) => {
-            if (topic === "tool-results") {
-              try {
-                const decoder = new TextDecoder();
-                const data = JSON.parse(decoder.decode(payload));
-                console.log("[Voice] Tool result received:", data);
-
-                if (data.type === "product_results" && data.products) {
-                  // Display product cards in transcript
-                  this.displayProductCards(data.products);
-                }
-              } catch (err) {
-                console.error("[Voice] Error parsing tool result:", err);
-              }
-            }
-          },
-        );
-
-        this.voiceState.room.on(LiveKit.RoomEvent.Disconnected, () => {
-          console.log("[Voice] Disconnected from room");
-          this.updateVoiceStatus("Disconnected");
-          this.isRecording = false;
-          this.updateVoiceButton();
-        });
-
-        // Connect to room
-        await this.voiceState.room.connect(url, token, { autoSubscribe: true });
-        console.log("[Voice] Connected to LiveKit room");
-        this.updateVoiceStatus("Connected - Publishing audio...");
-
-        // Publish microphone
-        await this.voiceState.room.localParticipant.publishTrack(audioTrack);
-        console.log("[Voice] Microphone published");
-
-        this.updateVoiceStatus("🎤 Speaking mode active");
-        this.isRecording = true;
-        this.updateVoiceButton();
-      } catch (error) {
-        console.error("[Voice] Error:", error);
-        this.updateVoiceStatus(
-          "Error: " + (error.message || "Failed to start"),
-        );
-        alert(
-          "Voice error: " + error.message + "\n\nCheck console for details.",
-        );
-      }
-    },
-
-    stopVoice: function () {
-      console.log("[Voice] Stopping voice mode");
-
-      if (this.voiceState.room) {
-        this.voiceState.room.disconnect();
-        this.voiceState.room = null;
-      }
-
-      if (this.voiceState.audioTrack) {
-        this.voiceState.audioTrack.stop();
-        this.voiceState.audioTrack = null;
-      }
-
-      this.isRecording = false;
-      this.updateVoiceButton();
-      this.updateVoiceStatus("Stopped");
-    },
-
     // OLD OpenAI Realtime code - no longer needed with LiveKit
     initAudio_DEPRECATED: async function () {
       // Initialize audio queue
@@ -2850,6 +2679,9 @@
           }
         } else if (name === "tradein_update_lead") {
           console.log("[Tool] Updating trade-in lead:", parsedArgs);
+          if (!this.tradeInLeadId) {
+            await this.ensureTradeInLeadId();
+          }
           const response = await fetch(
             `${this.config.apiUrl}/api/tradein/update`,
             {
@@ -2860,6 +2692,7 @@
               },
               body: JSON.stringify({
                 sessionId: this.sessionId,
+                leadId: this.tradeInLeadId || undefined,
                 ...parsedArgs,
               }),
             },
@@ -2871,6 +2704,9 @@
           console.log("[Tool] Trade-in update result:", result);
         } else if (name === "tradein_submit_lead") {
           console.log("[Tool] Submitting trade-in lead:", parsedArgs);
+          if (!this.tradeInLeadId) {
+            await this.ensureTradeInLeadId();
+          }
           const response = await fetch(
             `${this.config.apiUrl}/api/tradein/submit`,
             {
@@ -2881,6 +2717,7 @@
               },
               body: JSON.stringify({
                 sessionId: this.sessionId,
+                leadId: this.tradeInLeadId || undefined,
                 summary:
                   parsedArgs.summary || "Trade-in request from voice chat",
                 notify: parsedArgs.notify !== false,
@@ -3358,20 +3195,24 @@
       }
     },
 
-    uploadToAppwrite: async function (file) {
+    uploadToAppwrite: async function (file, type = "image") {
       try {
-        // Use API endpoint to handle upload with server-side API key
+        // Ensure we have a trade-in leadId first so uploads always link to the same lead
+        if (!this.tradeInLeadId) {
+          await this.ensureTradeInLeadId();
+        }
         const formData = new FormData();
         formData.append("file", file);
         formData.append("sessionId", this.sessionId);
+        if (this.tradeInLeadId) {
+          formData.append("leadId", this.tradeInLeadId);
+        }
+        formData.append("widgetVersion", this.widgetVersion); // Add widget version
 
-        const response = await fetch(
-          `${this.config.apiUrl}/api/upload/appwrite`,
-          {
-            method: "POST",
-            body: formData,
-          },
-        );
+        const response = await fetch(`${this.config.apiUrl}/api/upload/appwrite`, {
+          method: "POST",
+          body: formData,
+        });
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -3384,6 +3225,17 @@
 
         if (data.url) {
           console.log("[Appwrite] Upload successful:", data.url);
+          if ("mediaLinked" in data || "leadId" in data || "linkError" in data) {
+            console.log("[Appwrite] Trade-in media link result:", {
+              leadId: data.leadId || null,
+              mediaLinked: Boolean(data.mediaLinked),
+              linkError: data.linkError || null,
+              sessionId: this.sessionId,
+            });
+            if (data.mediaLinked === false && data.linkError) {
+              console.warn("[Appwrite] Media upload succeeded but linking failed:", data.linkError);
+            }
+          }
           return data.url;
         } else {
           throw new Error("No URL returned from upload");
