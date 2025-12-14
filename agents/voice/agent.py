@@ -81,6 +81,8 @@ _checklist_states: Dict[str, "TradeInChecklistState"] = {}
 _lead_ids: Dict[str, str] = {}
 # Session → trade-up context (target device + pricing)
 _tradeup_context: Dict[str, Dict[str, Any]] = {}
+# Session → waiting for photo upload (blocks further questions until photo received or user says done)
+_waiting_for_photo: Dict[str, bool] = {}
 
 VALID_PAYOUT_VALUES = {"cash", "paynow", "bank", "installment"}
 PAYOUT_NORMALIZATION_MAP = {
@@ -1193,17 +1195,31 @@ class TradeInChecklistState:
         "submit",
     ]
 
+    # Exact questions to ask - NO deviation allowed
     QUESTIONS = {
         "storage": "Storage size?",
-        "condition": "Condition?",
+        "condition": "Condition? Mint, good, fair, or faulty?",
         "accessories": "Got the box?",
-        "photos": "Want to upload photos now?",
+        "photos": "Photos help. Want to send one?",
         "name": "Your name?",
-        "phone": "Phone number?",
-        "email": "Email?",
+        "phone": "Contact number?",
+        "email": "Email address?",
         "payout": "Cash, PayNow, bank, or installments?",
         "recap": "recap",  # Special: triggers summary
         "submit": "submit",  # Special: triggers submission
+    }
+    
+    # Acknowledgments for each step (said BEFORE asking next question)
+    ACKNOWLEDGMENTS = {
+        "storage": "Got it.",
+        "condition": "Noted.",
+        "accessories": "Okay.",
+        "photos": "Go ahead, send it.",  # Special: wait for upload
+        "photos_no": "No problem.",  # If user says no to photos
+        "name": "Thanks!",
+        "phone": "Got it.",
+        "email": "Noted.",
+        "payout": "Okay.",
     }
 
     def __init__(self):
@@ -1358,6 +1374,38 @@ class TradeInChecklistState:
             return None
 
         return self.QUESTIONS.get(current_step, current_step)
+    
+    def get_forced_response(self, just_collected_step: str = None, user_said_no_photos: bool = False) -> str:
+        """
+        Get the EXACT response the agent must say.
+        This is the state machine - no LLM freedom allowed.
+        Returns: "Acknowledgment. Next question?" or just "Next question?" if no ack needed.
+        """
+        current_step = self.get_current_step()
+        
+        if current_step == "completed":
+            return None
+        
+        # Build response: acknowledgment (if we just collected something) + next question
+        parts = []
+        
+        # Add acknowledgment for what was just collected
+        if just_collected_step:
+            if just_collected_step == "photos" and user_said_no_photos:
+                ack = self.ACKNOWLEDGMENTS.get("photos_no", "Okay.")
+            elif just_collected_step == "photos":
+                # User said yes to photos - just acknowledge and WAIT (no next question yet)
+                return self.ACKNOWLEDGMENTS.get("photos", "Go ahead, send it.")
+            else:
+                ack = self.ACKNOWLEDGMENTS.get(just_collected_step, "Got it.")
+            parts.append(ack)
+        
+        # Add next question
+        next_q = self.QUESTIONS.get(current_step)
+        if next_q and next_q not in ("recap", "submit"):
+            parts.append(next_q)
+        
+        return " ".join(parts) if parts else None
 
     def is_complete(self) -> bool:
         """Check if all required fields are collected"""
@@ -1720,6 +1768,27 @@ async def entrypoint(ctx: JobContext):
             if lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah", "correct"):
                 _awaiting_recap_confirmation[room_name] = False
             logger.info(f"[Voice] User said: {event.transcript}")
+            
+            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
+            checklist_for_photo = _get_checklist(room_name)
+            bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
+            is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
+            user_said_yes = lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "yes.")
+            user_said_no = lower_user in ("no", "nope", "nah", "no.", "skip", "later")
+            
+            if is_photo_prompt and checklist_for_photo.get_current_step() == "photos":
+                if user_said_yes:
+                    _waiting_for_photo[room_name] = True
+                    logger.warning(f"[PhotoWait] 📸 User said YES to photos - entering WAIT mode. Agent should NOT ask more questions!")
+                elif user_said_no:
+                    _waiting_for_photo[room_name] = False
+                    logger.info(f"[PhotoWait] User said NO to photos - continuing flow")
+            
+            # Detect if user mentions uploading/sending photo - exit wait mode
+            if "upload" in lower_user or "sent" in lower_user or "sending" in lower_user or "done" in lower_user:
+                if _waiting_for_photo.get(room_name):
+                    _waiting_for_photo[room_name] = False
+                    logger.warning(f"[PhotoWait] 📸 User mentioned upload/done - exiting WAIT mode")
 
             # AUTO-SAVE: Extract and save data from user message
             checklist = _get_checklist(room_name)
@@ -1740,10 +1809,40 @@ async def entrypoint(ctx: JobContext):
                 )
             )
 
-            # 🔥 SMART ACKNOWLEDGMENT: Check what was extracted and acknowledge
+            # 🔥 STATE MACHINE: Force exact response based on what was extracted
             extracted = extract_data_from_message(
                 event.transcript, checklist, conversation_buffer.get("bot_response")
             )
+            
+            # 🔴 STATE MACHINE ENFORCER: Generate forced response
+            if extracted and checklist.collected_data.get("initial_quote_given"):
+                # Determine what step was just collected
+                just_collected = None
+                user_said_no_photos = False
+                
+                if "condition" in extracted:
+                    just_collected = "condition"
+                elif "accessories" in extracted:
+                    just_collected = "accessories"
+                elif "photos_acknowledged" in extracted:
+                    just_collected = "photos"
+                    user_said_no_photos = not extracted.get("photos_acknowledged", True)
+                elif "contact_name" in extracted or "name" in extracted:
+                    just_collected = "name"
+                elif "contact_phone" in extracted:
+                    just_collected = "phone"
+                elif "contact_email" in extracted:
+                    just_collected = "email"
+                elif "payout" in extracted:
+                    just_collected = "payout"
+                elif "storage" in extracted:
+                    just_collected = "storage"
+                
+                if just_collected:
+                    forced_response = checklist.get_forced_response(just_collected, user_said_no_photos)
+                    if forced_response:
+                        logger.warning(f"[StateMachine] 🎯 FORCING response: '{forced_response}' (collected: {just_collected})")
+                        conversation_buffer["forced_next_response"] = forced_response
             if extracted:
                 acknowledgment = build_smart_acknowledgment(extracted, checklist)
                 if acknowledgment:
@@ -1782,27 +1881,64 @@ async def entrypoint(ctx: JobContext):
                     current_step = checklist.get_current_step()
                     next_question = checklist.get_next_question()
                     lower = content.lower()
+                    
+                    # 🔴 STATE MACHINE: Check if we have a forced response waiting
+                    forced_response = conversation_buffer.get("forced_next_response")
+                    if forced_response and has_quote:
+                        # Check if agent said something different than what we want
+                        agent_said_correct = forced_response.lower() in lower or lower in forced_response.lower()
+                        
+                        # Detect if agent is asking multiple questions or wrong question
+                        has_multiple_questions = lower.count("?") > 1
+                        mentions_name = "your name" in lower or "what's your name" in lower
+                        mentions_phone = "contact number" in lower or "phone" in lower
+                        mentions_email = "email" in lower
+                        
+                        # If agent asked multiple questions or wrong question, force correct one
+                        if has_multiple_questions or (not agent_said_correct and "?" in content):
+                            logger.warning(
+                                f"[StateMachine] 🚨 Agent deviated! Said: '{content[:60]}...' Expected: '{forced_response}'"
+                            )
+                            if not conversation_buffer.get("state_machine_override_sent"):
+                                conversation_buffer["state_machine_override_sent"] = True
+                                asyncio.create_task(
+                                    _async_generate_reply(
+                                        session,
+                                        instructions=f"Say ONLY this, nothing else: {forced_response}",
+                                        allow_interruptions=True,
+                                    )
+                                )
+                        # Clear the forced response after use
+                        conversation_buffer["forced_next_response"] = None
+                        conversation_buffer["state_machine_override_sent"] = False
+                    
+                    # 🔴 PHOTO WAIT: If waiting for photo, block any questions
+                    if _waiting_for_photo.get(room_name) and "?" in content:
+                        # Agent is asking a question while we should be waiting for photo
+                        if not conversation_buffer.get("photo_wait_override_sent"):
+                            conversation_buffer["photo_wait_override_sent"] = True
+                            logger.warning(f"[PhotoWait] 🚨 Agent asked question while waiting for photo! Blocking.")
+                            # Don't say anything - just wait silently
+                    
                     asked_step = None
                     if "everything correct" in lower or "is that correct" in lower or "correct?" in lower:
                         asked_step = "recap"
                     elif "storage size" in lower:
                         asked_step = "storage"
-                    elif "condition of" in lower or lower.strip().startswith("condition"):
+                    elif "condition" in lower and "?" in lower:
                         asked_step = "condition"
-                    elif ("box" in lower and "accessor" in lower) or "got the box" in lower:
+                    elif "box" in lower and "?" in lower:
                         asked_step = "accessories"
-                    elif "upload photo" in lower or "upload photos" in lower:
+                    elif "photo" in lower and "?" in lower:
                         asked_step = "photos"
-                    elif "your name" in lower or "provide your name" in lower:
+                    elif "your name" in lower or "what's your name" in lower:
                         asked_step = "name"
-                    elif "contact number" in lower or "phone number" in lower:
+                    elif "contact number" in lower or "phone number" in lower or "phone?" in lower:
                         asked_step = "phone"
-                    elif "email address" in lower or lower.strip().startswith("email"):
+                    elif "email" in lower and "?" in lower:
                         asked_step = "email"
                     elif "payout" in lower:
                         asked_step = "payout"
-                    elif "here's the summary" in lower or lower.strip().startswith("here is the summary"):
-                        asked_step = "recap"
 
                     if (
                         asked_step
