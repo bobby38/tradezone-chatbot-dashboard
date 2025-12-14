@@ -11,7 +11,12 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || undefined;
     const limit = limitParam ? Number(limitParam) : undefined;
 
+    console.log("[tradein/leads] Fetching leads with params:", { status, limit, search });
     const leads = await listTradeInLeads({ status, limit, search });
+    console.log("[tradein/leads] Found", leads?.length || 0, "leads");
+    if (leads && leads.length > 0) {
+      console.log("[tradein/leads] First lead:", leads[0]?.id, leads[0]?.model, leads[0]?.status);
+    }
     return NextResponse.json({ leads }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
