@@ -182,8 +182,47 @@
       },
     ],
 
+    getWidgetScriptUrl: function () {
+      try {
+        const current = document.currentScript;
+        const src = current?.src;
+        if (src && src.includes("chat-widget-enhanced.js")) {
+          return src;
+        }
+      } catch (_) {}
+
+      try {
+        const scripts = Array.from(document.getElementsByTagName("script"));
+        const found = scripts.find((s) =>
+          (s?.src || "").includes("chat-widget-enhanced.js"),
+        );
+        return found?.src || null;
+      } catch (_) {
+        return null;
+      }
+    },
+
+    inferApiUrlFromScript: function () {
+      try {
+        const scriptUrl = this.getWidgetScriptUrl();
+        if (!scriptUrl) return null;
+        const url = new URL(scriptUrl);
+        return url.origin;
+      } catch (_) {
+        return null;
+      }
+    },
+
     init: function (options) {
       this.config = { ...this.config, ...options };
+
+      if (!this.config.apiUrl) {
+        const inferred = this.inferApiUrlFromScript();
+        if (inferred) {
+          this.config.apiUrl = inferred;
+        }
+      }
+
       this.clientId = this.getOrCreateClientId();
       this.sessionId = this.getOrCreateSessionId();
 
