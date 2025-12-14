@@ -2179,7 +2179,7 @@
 
     loadLiveKitClient: function () {
       if (this._livekitLoading) return this._livekitLoading;
-      if (window.livekit || window.LiveKitClient) {
+      if (window.livekit || window.LiveKitClient || window.LivekitClient) {
         this._livekitLoading = Promise.resolve();
         return this._livekitLoading;
       }
@@ -2220,7 +2220,7 @@
 
         await this.loadLiveKitClient();
 
-        const livekit = window.livekit || window.LiveKitClient;
+        const livekit = window.livekit || window.LiveKitClient || window.LivekitClient;
         const Room = livekit?.Room;
         const RoomEvent = livekit?.RoomEvent;
 
