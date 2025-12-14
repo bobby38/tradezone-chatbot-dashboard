@@ -572,8 +572,10 @@ async def calculate_tradeup_pricing(
             try:
                 room = get_job_context().room
                 session_id = room.name
-            except Exception:
+                logger.warning(f"[calculate_tradeup_pricing] 🔑 Session ID from room: {session_id}")
+            except Exception as e:
                 session_id = None
+                logger.error(f"[calculate_tradeup_pricing] ❌ Failed to get session ID: {e}")
 
             next_question = "Storage size?"
             if session_id:
@@ -608,16 +610,24 @@ async def calculate_tradeup_pricing(
                 }
                 state = _get_checklist(session_id)
                 state.mark_trade_up()
+                
+                # 🔴 CRITICAL: Always overwrite device info when pricing is calculated
+                # This ensures the correct device is saved even if agent misheard earlier
                 state.collected_data["source_device_name"] = source_device
                 state.collected_data["target_device_name"] = target_device
                 state.collected_data["source_price_quoted"] = trade_value
                 state.collected_data["target_price_quoted"] = retail_price
                 state.collected_data["top_up_amount"] = top_up
+                state.collected_data["initial_quote_given"] = True
+                state.collected_data["quote_timestamp"] = datetime.now().isoformat()
 
+                # 🔴 ALWAYS overwrite brand/model to match the source device from pricing
                 inferred_brand = _infer_brand_from_device_name(source_device)
                 if inferred_brand:
                     state.collected_data["brand"] = inferred_brand
+                    logger.info(f"[calculate_tradeup_pricing] 🏷️ Set brand: {inferred_brand}")
                 state.collected_data["model"] = source_device
+                logger.info(f"[calculate_tradeup_pricing] 📱 Set model: {source_device}")
 
                 # Switch consoles do not have a meaningful storage choice in this flow
                 lower_source = (source_device or "").lower()
@@ -1871,12 +1881,54 @@ async def entrypoint(ctx: JobContext):
                 _awaiting_recap_confirmation[room_name] = False
             logger.info(f"[Voice] User said: {event.transcript}")
             
-            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
-            checklist_for_photo = _get_checklist(room_name)
+            # 🔴 IMMEDIATE YES/NO CAPTURE: When user says yes/no, LOCK IT for current step
+            checklist_for_yes = _get_checklist(room_name)
             bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
+            user_said_yes = lower_user.rstrip(".!?,") in ("yes", "yeah", "yep", "ok", "okay", "sure")
+            user_said_no = lower_user.rstrip(".!?,") in ("no", "nope", "nah", "skip", "later")
+            current_step = checklist_for_yes.get_current_step()
+            
+            # 🔴 ACCESSORIES: If user says yes/no and bot asked about box/accessories
+            if current_step == "accessories" and (user_said_yes or user_said_no):
+                if "box" in bot_prompt or "accessor" in bot_prompt:
+                    checklist_for_yes.collected_data["accessories"] = user_said_yes
+                    checklist_for_yes.mark_field_collected("accessories")
+                    logger.warning(f"[DirectCapture] 📦 LOCKED accessories={user_said_yes} - advancing to next step")
+            
+            # 🔴 NAME: If bot asked for name and user provides something that looks like a name
+            if current_step == "name" and "name" not in checklist_for_yes.collected_data:
+                if "name" in bot_prompt or "your name" in bot_prompt:
+                    # Extract name - remove common prefixes and clean up
+                    name_text = event.transcript.strip().rstrip(".!?,")
+                    # Skip if it's just yes/no
+                    if name_text.lower() not in ("yes", "no", "yeah", "nope", "ok", "okay"):
+                        checklist_for_yes.collected_data["name"] = name_text
+                        checklist_for_yes.mark_field_collected("name")
+                        logger.warning(f"[DirectCapture] 👤 LOCKED name={name_text} - advancing to next step")
+            
+            # 🔴 PHONE: If bot asked for phone and user provides digits
+            if current_step == "phone" and "phone" not in checklist_for_yes.collected_data:
+                if "number" in bot_prompt or "phone" in bot_prompt or "contact" in bot_prompt:
+                    import re
+                    digits = re.sub(r'[^\d]', '', event.transcript)
+                    if len(digits) >= 8:
+                        checklist_for_yes.collected_data["phone"] = digits
+                        checklist_for_yes.mark_field_collected("phone")
+                        logger.warning(f"[DirectCapture] 📞 LOCKED phone={digits} - advancing to next step")
+            
+            # 🔴 EMAIL: If bot asked for email and user provides an email
+            if current_step == "email" and "email" not in checklist_for_yes.collected_data:
+                if "email" in bot_prompt:
+                    import re
+                    email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', event.transcript.lower())
+                    if email_match:
+                        checklist_for_yes.collected_data["email"] = email_match.group(0)
+                        checklist_for_yes.mark_field_collected("email")
+                        logger.warning(f"[DirectCapture] 📧 LOCKED email={email_match.group(0)} - advancing to next step")
+            
+            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
+            checklist_for_photo = checklist_for_yes
             is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
-            user_said_yes = lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "yes.")
-            user_said_no = lower_user in ("no", "nope", "nah", "no.", "skip", "later")
             
             if is_photo_prompt and checklist_for_photo.get_current_step() == "photos":
                 if user_said_yes:
