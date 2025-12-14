@@ -507,7 +507,7 @@ async def calculate_tradeup_pricing(
             logger.error(
                 f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}"
             )
-            return f"I don't have trade-in pricing for '{source_device}' or '{target_device}' in my system. Let me connect you with our staff who can help with this trade. 🚨 SYSTEM: Do NOT ask for contact details - just say you'll have staff reach out and end the conversation politely."
+            return f"I don't have the exact pricing for '{source_device}' or '{target_device}' in my system yet. Would you like me to connect you with our staff? They can check the trade-in value for you. 🚨 SYSTEM: If user says yes, ask for their name and phone number, then call sendemail(email_type='support', name=<name>, phone_number=<phone>) to send inquiry to staff."
 
         # Check if clarification is needed
         if result.get("needs_clarification"):
@@ -1197,8 +1197,12 @@ async def sendemail(
         session_id = None
     if session_id:
         state = _get_checklist(session_id)
-        in_trade_flow = bool(state.collected_data) or bool(state.is_trade_up)
-        if in_trade_flow:
+        # Only block if we have actual trade data (quote given, device details collected)
+        # Allow sendemail if we just failed to find pricing (no quote given yet)
+        has_quote = state.collected_data.get("initial_quote_given", False)
+        has_device_details = "condition" in state.collected_data or "storage" in state.collected_data
+        in_active_trade = has_quote and has_device_details
+        if in_active_trade:
             logger.warning(
                 "[sendemail] 🚫 Blocked support escalation during active trade flow (session=%s)",
                 session_id,
