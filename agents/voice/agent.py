@@ -163,6 +163,38 @@ def _infer_brand_from_device_name(device_name: Optional[str]) -> Optional[str]:
     return None
 
 
+async def _force_submit_tradein(session_id: str, checklist: "TradeInChecklistState") -> None:
+    """Force submit the trade-in when agent self-confirms or user confirms recap."""
+    logger.warning(f"[ForceSubmit] 🚀 Force submitting trade-in for session {session_id}")
+    
+    try:
+        headers = build_auth_headers()
+        lead_id = _lead_ids.get(session_id)
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/submit",
+                json={
+                    "sessionId": session_id,
+                    "leadId": lead_id,
+                    "notify": True,
+                    "status": "submitted",
+                },
+                headers=headers,
+                timeout=15.0,
+            )
+            
+            if response.status_code >= 400:
+                logger.error(f"[ForceSubmit] ❌ Failed: {response.status_code} - {response.text}")
+            else:
+                result = response.json()
+                logger.warning(f"[ForceSubmit] ✅ SUCCESS: {result}")
+                logger.warning(f"[ForceSubmit] Email sent: {result.get('emailSent', False)}")
+                checklist.completed = True
+    except Exception as e:
+        logger.error(f"[ForceSubmit] ❌ Exception: {e}")
+
+
 async def _persist_quote_flag(session_id: str, quote_timestamp: Optional[str]) -> None:
     try:
         await _ensure_tradein_lead_for_session(session_id)
@@ -1785,6 +1817,18 @@ async def entrypoint(ctx: JobContext):
             conversation_buffer["step_failsafe_sent"] = False
             _last_user_utterance[room_name] = event.transcript
             lower_user = (event.transcript or "").strip().lower()
+            
+            # 🔴 USER CONFIRMS RECAP: If user says yes after recap, force submit!
+            if _awaiting_recap_confirmation.get(room_name):
+                user_confirms = lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "correct", "yes.", "that's correct", "thats correct")
+                if user_confirms:
+                    logger.warning(f"[UserConfirm] ✅ User confirmed recap! Forcing tradein_submit_lead call.")
+                    _awaiting_recap_confirmation[room_name] = False
+                    checklist_for_submit = _get_checklist(room_name)
+                    asyncio.create_task(
+                        _force_submit_tradein(room_name, checklist_for_submit)
+                    )
+            
             if lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah", "correct"):
                 _awaiting_recap_confirmation[room_name] = False
             logger.info(f"[Voice] User said: {event.transcript}")
@@ -2009,14 +2053,23 @@ async def entrypoint(ctx: JobContext):
                         _awaiting_recap_confirmation[room_name] = True
 
                     if _awaiting_recap_confirmation.get(room_name):
-                        assistant_confirms = lower.strip().startswith("yes") or "we'll proceed" in lower or "we will proceed" in lower
+                        assistant_confirms = (
+                            lower.strip().startswith("yes") 
+                            or "we'll proceed" in lower 
+                            or "we will proceed" in lower
+                            or "we'll finalize" in lower
+                            or "all correct" in lower
+                            or "that's correct" in lower
+                        )
                         if assistant_confirms:
+                            # 🔴 CRITICAL: Agent self-confirmed! This means it thinks it has all the info.
+                            # Force submit the trade-in NOW since agent clearly believes flow is complete.
+                            logger.warning(f"[SelfConfirm] 🚨 Agent self-confirmed recap! Forcing tradein_submit_lead call.")
+                            _awaiting_recap_confirmation[room_name] = False
+                            
+                            # Force submit - the agent has all the info, just didn't call the function
                             asyncio.create_task(
-                                _async_generate_reply(
-                                    session,
-                                    instructions="Say exactly: Please answer yes or no.",
-                                    allow_interruptions=True,
-                                )
+                                _force_submit_tradein(room_name, checklist)
                             )
 
                     lower_content = content.lower()
