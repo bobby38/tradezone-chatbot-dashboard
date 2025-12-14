@@ -1306,6 +1306,7 @@ class TradeInChecklistState:
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
         self.is_trade_up = True
+        logger.warning("[ChecklistState] 🔄 MARKED AS TRADE-UP - payout step will be skipped")
 
     def mark_no_storage(self):
         """Mark that this device doesn't have storage (cameras, accessories, etc.)"""
@@ -2002,8 +2003,18 @@ async def entrypoint(ctx: JobContext):
                             # Don't say anything - just wait silently
                     
                     asked_step = None
-                    if "everything correct" in lower or "is that correct" in lower or "correct?" in lower:
+                    # Detect recap - agent summarizes and asks for confirmation
+                    is_recap = (
+                        "everything correct" in lower 
+                        or "is that correct" in lower 
+                        or "correct?" in lower
+                        or "want to proceed" in lower
+                        or "proceed with" in lower
+                        or "change anything" in lower
+                    )
+                    if is_recap:
                         asked_step = "recap"
+                        logger.warning(f"[RecapDetect] 🎯 Detected recap question: {content[:60]}")
                     elif "storage size" in lower:
                         asked_step = "storage"
                     elif "condition" in lower and "?" in lower:
@@ -2049,9 +2060,25 @@ async def entrypoint(ctx: JobContext):
                             )
                         )
 
-                    if asked_step == "recap" and current_step == "recap":
+                    # 🔴 CRITICAL: If agent asks recap question, set awaiting confirmation
+                    # Don't require current_step == "recap" - agent may skip ahead
+                    if asked_step == "recap":
                         _awaiting_recap_confirmation[room_name] = True
+                        logger.warning(f"[RecapDetect] ✅ Set _awaiting_recap_confirmation=True for {room_name}")
 
+                    # 🔴 CRITICAL: Detect when agent says "submitted" - force actual submit
+                    agent_claims_submitted = (
+                        "submitted" in lower
+                        or "we'll review" in lower
+                        or "we will review" in lower
+                        or "we'll contact you" in lower
+                    )
+                    if agent_claims_submitted and not checklist.completed:
+                        logger.warning(f"[SubmitDetect] 🚨 Agent claims submitted but checklist not complete! Forcing submit.")
+                        asyncio.create_task(
+                            _force_submit_tradein(room_name, checklist)
+                        )
+                    
                     if _awaiting_recap_confirmation.get(room_name):
                         assistant_confirms = (
                             lower.strip().startswith("yes") 
