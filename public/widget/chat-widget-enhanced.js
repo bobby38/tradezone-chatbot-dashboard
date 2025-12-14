@@ -2175,6 +2175,50 @@
       this.typingIndicatorEl = null;
     },
 
+    startVoice: async function () {
+      const startImpl =
+        this.startLiveKitVoiceMode ||
+        this.startVoiceMode ||
+        this.startLivekitVoiceMode ||
+        this.startLivekitVoice ||
+        this.startVoice_DEPRECATED;
+
+      if (typeof startImpl !== "function") {
+        console.error(
+          "[Voice] startVoice called but no voice start implementation is available",
+        );
+        this.updateVoiceStatus &&
+          this.updateVoiceStatus("Voice unavailable. Please refresh.");
+        return;
+      }
+
+      await startImpl.call(this);
+      this.isRecording = true;
+      if (this.voiceState) this.voiceState.isRecording = true;
+      this.updateVoiceButton && this.updateVoiceButton();
+    },
+
+    stopVoice: function () {
+      const stopImpl =
+        this.stopLiveKitVoiceMode ||
+        this.stopVoiceMode ||
+        this.stopLivekitVoiceMode ||
+        this.stopLivekitVoice ||
+        this.stopVoice_DEPRECATED;
+
+      if (typeof stopImpl === "function") {
+        try {
+          stopImpl.call(this);
+        } catch (err) {
+          console.warn("[Voice] stopVoice failed", err);
+        }
+      }
+
+      this.isRecording = false;
+      if (this.voiceState) this.voiceState.isRecording = false;
+      this.updateVoiceButton && this.updateVoiceButton();
+    },
+
     toggleVoice: async function () {
       if (!this.isRecording) {
         await this.startVoice();
