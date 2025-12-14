@@ -1856,194 +1856,174 @@ async def entrypoint(ctx: JobContext):
     # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
     def on_user_input(event):
-        """Capture user's final transcribed message and auto-save data"""
+        """
+        CLEAN STATE MACHINE:
+        1. Get current step
+        2. Capture user's answer for that step
+        3. Save to checklist
+        4. Trigger DB save
+        5. Advance to next step
+        """
         nonlocal conversation_buffer
-        if event.is_final:  # Only capture final transcripts
-            conversation_buffer["user_message"] = event.transcript
-            conversation_buffer["order_failsafe_sent"] = False
-            conversation_buffer["quote_failsafe_sent"] = False
-            conversation_buffer["step_failsafe_sent"] = False
-            _last_user_utterance[room_name] = event.transcript
-            lower_user = (event.transcript or "").strip().lower()
+        if not event.is_final:
+            return
             
-            # 🔴 USER CONFIRMS RECAP: If user says yes after recap, force submit!
-            if _awaiting_recap_confirmation.get(room_name):
-                user_confirms = lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "correct", "yes.", "that's correct", "thats correct")
-                if user_confirms:
-                    logger.warning(f"[UserConfirm] ✅ User confirmed recap! Forcing tradein_submit_lead call.")
-                    _awaiting_recap_confirmation[room_name] = False
-                    checklist_for_submit = _get_checklist(room_name)
-                    asyncio.create_task(
-                        _force_submit_tradein(room_name, checklist_for_submit)
-                    )
-            
-            if lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah", "correct"):
-                _awaiting_recap_confirmation[room_name] = False
-            logger.info(f"[Voice] User said: {event.transcript}")
-            
-            # 🔴 IMMEDIATE YES/NO CAPTURE: When user says yes/no, LOCK IT for current step
-            checklist_for_yes = _get_checklist(room_name)
-            bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
-            user_said_yes = lower_user.rstrip(".!?,") in ("yes", "yeah", "yep", "ok", "okay", "sure")
-            user_said_no = lower_user.rstrip(".!?,") in ("no", "nope", "nah", "skip", "later")
-            current_step = checklist_for_yes.get_current_step()
-            
-            # 🔴 ACCESSORIES: If user says yes/no and bot asked about box/accessories
-            if current_step == "accessories" and (user_said_yes or user_said_no):
-                if "box" in bot_prompt or "accessor" in bot_prompt:
-                    checklist_for_yes.collected_data["accessories"] = user_said_yes
-                    checklist_for_yes.mark_field_collected("accessories")
-                    logger.warning(f"[DirectCapture] 📦 LOCKED accessories={user_said_yes} - advancing to next step")
-            
-            # 🔴 NAME: If bot asked for name and user provides something that looks like a name
-            if current_step == "name" and "name" not in checklist_for_yes.collected_data:
-                if "name" in bot_prompt or "your name" in bot_prompt:
-                    # Extract name - remove common prefixes and clean up
-                    name_text = event.transcript.strip().rstrip(".!?,")
-                    # Skip if it's just yes/no
-                    if name_text.lower() not in ("yes", "no", "yeah", "nope", "ok", "okay"):
-                        checklist_for_yes.collected_data["name"] = name_text
-                        checklist_for_yes.mark_field_collected("name")
-                        logger.warning(f"[DirectCapture] 👤 LOCKED name={name_text} - advancing to next step")
-            
-            # 🔴 PHONE: If bot asked for phone and user provides digits
-            if current_step == "phone" and "phone" not in checklist_for_yes.collected_data:
-                if "number" in bot_prompt or "phone" in bot_prompt or "contact" in bot_prompt:
-                    import re
-                    digits = re.sub(r'[^\d]', '', event.transcript)
-                    if len(digits) >= 8:
-                        checklist_for_yes.collected_data["phone"] = digits
-                        checklist_for_yes.mark_field_collected("phone")
-                        logger.warning(f"[DirectCapture] 📞 LOCKED phone={digits} - advancing to next step")
-            
-            # 🔴 EMAIL: If bot asked for email and user provides an email
-            if current_step == "email" and "email" not in checklist_for_yes.collected_data:
-                if "email" in bot_prompt:
-                    import re
-                    email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', event.transcript.lower())
-                    if email_match:
-                        checklist_for_yes.collected_data["email"] = email_match.group(0)
-                        checklist_for_yes.mark_field_collected("email")
-                        logger.warning(f"[DirectCapture] 📧 LOCKED email={email_match.group(0)} - advancing to next step")
-            
-            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
-            checklist_for_photo = checklist_for_yes
-            is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
-            
-            if is_photo_prompt and checklist_for_photo.get_current_step() == "photos":
+        # Setup
+        conversation_buffer["user_message"] = event.transcript
+        conversation_buffer["order_failsafe_sent"] = False
+        conversation_buffer["quote_failsafe_sent"] = False
+        conversation_buffer["step_failsafe_sent"] = False
+        _last_user_utterance[room_name] = event.transcript
+        
+        user_text = event.transcript.strip()
+        lower_user = user_text.lower()
+        bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
+        
+        logger.info(f"[Voice] User said: {user_text}")
+        
+        # Get checklist state
+        checklist = _get_checklist(room_name)
+        current_step = checklist.get_current_step()
+        
+        # Common patterns
+        user_said_yes = lower_user.rstrip(".!?,") in ("yes", "yeah", "yep", "ok", "okay", "sure", "correct")
+        user_said_no = lower_user.rstrip(".!?,") in ("no", "nope", "nah", "skip", "later")
+        
+        logger.info(f"[StateMachine] Step={current_step}, Yes={user_said_yes}, No={user_said_no}")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # STEP HANDLERS - Capture answer for current step and advance
+        # ═══════════════════════════════════════════════════════════════════
+        
+        captured = False
+        
+        # STORAGE: Capture storage size (e.g., "1TB", "512GB")
+        if current_step == "storage" and "storage" not in checklist.collected_data:
+            import re
+            storage_match = re.search(r'(\d+)\s*(gb|tb)', lower_user)
+            if storage_match:
+                storage_val = f"{storage_match.group(1)}{storage_match.group(2).upper()}"
+                checklist.collected_data["storage"] = storage_val
+                checklist.mark_field_collected("storage")
+                logger.warning(f"[Capture] 💾 storage={storage_val}")
+                captured = True
+        
+        # CONDITION: Capture condition (mint/good/fair/faulty)
+        if current_step == "condition" and "condition" not in checklist.collected_data:
+            for cond in ["mint", "good", "fair", "faulty", "broken"]:
+                if cond in lower_user:
+                    cond_val = "faulty" if cond == "broken" else cond
+                    checklist.collected_data["condition"] = cond_val
+                    checklist.mark_field_collected("condition")
+                    logger.warning(f"[Capture] ✨ condition={cond_val}")
+                    captured = True
+                    break
+        
+        # ACCESSORIES: Capture yes/no for box/accessories
+        if current_step == "accessories" and "accessories" not in checklist.collected_data:
+            if "box" in bot_prompt or "accessor" in bot_prompt:
+                if user_said_yes or user_said_no:
+                    checklist.collected_data["accessories"] = user_said_yes
+                    checklist.mark_field_collected("accessories")
+                    logger.warning(f"[Capture] 📦 accessories={user_said_yes}")
+                    captured = True
+        
+        # PHOTOS: Capture yes/no for photos
+        if current_step == "photos" and "photos" not in checklist.collected_data:
+            if "photo" in bot_prompt or "picture" in bot_prompt:
                 if user_said_yes:
                     _waiting_for_photo[room_name] = True
-                    logger.warning(f"[PhotoWait] 📸 User said YES to photos - entering WAIT mode. Agent should NOT ask more questions!")
+                    checklist.collected_data["photos"] = True
+                    logger.warning(f"[Capture] 📸 photos=True, entering WAIT mode")
+                    captured = True
                 elif user_said_no:
-                    _waiting_for_photo[room_name] = False
-                    logger.info(f"[PhotoWait] User said NO to photos - continuing flow")
-            
-            # Detect if user mentions uploading/sending photo - exit wait mode
-            if "upload" in lower_user or "sent" in lower_user or "sending" in lower_user or "done" in lower_user or "send" in lower_user:
-                if _waiting_for_photo.get(room_name):
-                    _waiting_for_photo[room_name] = False
-                    logger.warning(f"[PhotoWait] 📸 User mentioned upload/done - exiting WAIT mode")
-                    # Also mark photos as collected so we can advance
-                    checklist_for_photo.mark_field_collected("photos")
-                    logger.warning(f"[PhotoWait] 📸 Auto-marking photos as collected to advance flow")
-                    
-                    # 🔴 CRITICAL: Force the next question (name) so agent doesn't say "Done!"
-                    next_q = checklist_for_photo.get_next_question()
-                    if next_q and next_q != "recap":
-                        conversation_buffer["forced_next_response"] = next_q
-                        conversation_buffer["photo_done_force_next"] = True
-                        logger.warning(f"[PhotoWait] 🎯 Setting forced next question: {next_q}")
-            
-            # 🔴 CRITICAL: If user provides contact info while stuck on photos, auto-advance past photos
-            # This prevents losing all contact data just because photo detection failed
-            if checklist_for_photo.get_current_step() == "photos":
-                # Check if user is providing contact info (name, phone, email)
-                has_name_pattern = len(lower_user.split()) <= 3 and lower_user.replace("-", "").replace(".", "").replace("_", "").isalpha()
-                has_phone_pattern = any(c.isdigit() for c in lower_user) and sum(c.isdigit() for c in lower_user) >= 6
-                has_email_pattern = "@" in lower_user
-                
-                if has_name_pattern or has_phone_pattern or has_email_pattern:
-                    logger.warning(f"[PhotoBypass] 🚨 User providing contact info while stuck on photos - auto-advancing!")
-                    _waiting_for_photo[room_name] = False
-                    checklist_for_photo.mark_field_collected("photos")
-                    logger.warning(f"[PhotoBypass] ✅ Photos marked as collected, flow can continue")
-
-            # AUTO-SAVE: Extract and save data from user message
-            checklist = _get_checklist(room_name)
-            
-            # 🔴 BLOCK EXTRACTION DURING PHOTO WAIT
-            # When waiting for photo, only process photo-related messages (done/sent/upload)
-            # Do NOT extract names or other data from random utterances
+                    checklist.collected_data["photos"] = False
+                    checklist.mark_field_collected("photos")
+                    logger.warning(f"[Capture] 📸 photos=False, skipping")
+                    captured = True
+            # Photo upload complete
             if _waiting_for_photo.get(room_name):
-                logger.warning(f"[PhotoWait] 🚫 BLOCKING auto-save during photo wait. User said: {event.transcript[:50]}")
-                # Only allow photo completion messages through
-                photo_done_words = ["done", "sent", "send", "upload", "attached", "sending"]
-                if not any(word in lower_user for word in photo_done_words):
-                    logger.warning(f"[PhotoWait] ⏳ Still waiting for photo - ignoring message")
-                    return  # Skip all extraction
-            
-            logger.info(
-                f"[AutoSave] Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
+                photo_done = any(w in lower_user for w in ["done", "sent", "send", "upload", "attached"])
+                if photo_done:
+                    _waiting_for_photo[room_name] = False
+                    checklist.mark_field_collected("photos")
+                    logger.warning(f"[Capture] 📸 Photo uploaded, advancing")
+                    captured = True
+        
+        # NAME: Capture name
+        if current_step == "name" and "name" not in checklist.collected_data:
+            if "name" in bot_prompt:
+                if not user_said_yes and not user_said_no and len(user_text) > 1:
+                    name_val = user_text.rstrip(".!?,")
+                    checklist.collected_data["name"] = name_val
+                    checklist.mark_field_collected("name")
+                    logger.warning(f"[Capture] 👤 name={name_val}")
+                    captured = True
+        
+        # PHONE: Capture phone number
+        if current_step == "phone" and "phone" not in checklist.collected_data:
+            if "number" in bot_prompt or "phone" in bot_prompt or "contact" in bot_prompt:
+                import re
+                digits = re.sub(r'[^\d]', '', user_text)
+                if len(digits) >= 8:
+                    checklist.collected_data["phone"] = digits
+                    checklist.mark_field_collected("phone")
+                    logger.warning(f"[Capture] 📞 phone={digits}")
+                    captured = True
+        
+        # EMAIL: Capture email
+        if current_step == "email" and "email" not in checklist.collected_data:
+            if "email" in bot_prompt:
+                import re
+                email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', lower_user)
+                if email_match:
+                    email_val = email_match.group(0)
+                    checklist.collected_data["email"] = email_val
+                    checklist.mark_field_collected("email")
+                    logger.warning(f"[Capture] 📧 email={email_val}")
+                    captured = True
+        
+        # PAYOUT: Capture payout method
+        if current_step == "payout" and "payout" not in checklist.collected_data:
+            payout_map = {"cash": "cash", "paynow": "paynow", "pay now": "paynow", "bank": "bank", "transfer": "bank"}
+            for keyword, payout_val in payout_map.items():
+                if keyword in lower_user:
+                    checklist.collected_data["payout"] = payout_val
+                    checklist.mark_field_collected("payout")
+                    logger.warning(f"[Capture] 💰 payout={payout_val}")
+                    captured = True
+                    break
+        
+        # RECAP: User confirms recap
+        if current_step == "recap" or _awaiting_recap_confirmation.get(room_name):
+            if user_said_yes:
+                logger.warning(f"[Capture] ✅ Recap confirmed! Submitting...")
+                _awaiting_recap_confirmation[room_name] = False
+                checklist.mark_field_collected("recap")
+                asyncio.create_task(_force_submit_tradein(room_name, checklist))
+                captured = True
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # SAVE TO DATABASE
+        # ═══════════════════════════════════════════════════════════════════
+        
+        if _waiting_for_photo.get(room_name) and not captured:
+            logger.info(f"[PhotoWait] Waiting for photo upload...")
+            return
+        
+        logger.info(f"[StateMachine] After capture: {checklist.get_progress()}")
+        
+        # Trigger async save to DB
+        asyncio.create_task(
+            auto_save_after_message(
+                session_id=room_name,
+                user_message=user_text,
+                checklist_state=checklist,
+                api_base_url=API_BASE_URL,
+                headers=build_auth_headers(),
+                last_bot_prompt=bot_prompt,
             )
-            logger.info(
-                f"[AutoSave] 📋 Current checklist state: {checklist.get_progress()}"
-            )
-            asyncio.create_task(
-                auto_save_after_message(
-                    session_id=room_name,
-                    user_message=event.transcript,
-                    checklist_state=checklist,
-                    api_base_url=API_BASE_URL,
-                    headers=build_auth_headers(),
-                    last_bot_prompt=conversation_buffer.get("bot_response"),
-                )
-            )
-
-            # 🔥 STATE MACHINE: Force exact response based on what was extracted
-            extracted = extract_data_from_message(
-                event.transcript, checklist, conversation_buffer.get("bot_response")
-            )
-            
-            # 🔴 STATE MACHINE ENFORCER: Generate forced response
-            if extracted and checklist.collected_data.get("initial_quote_given"):
-                # Determine what step was just collected
-                just_collected = None
-                user_said_no_photos = False
-                
-                if "condition" in extracted:
-                    just_collected = "condition"
-                elif "accessories" in extracted:
-                    just_collected = "accessories"
-                elif "photos_acknowledged" in extracted:
-                    just_collected = "photos"
-                    user_said_no_photos = not extracted.get("photos_acknowledged", True)
-                elif "contact_name" in extracted or "name" in extracted:
-                    just_collected = "name"
-                elif "contact_phone" in extracted:
-                    just_collected = "phone"
-                elif "contact_email" in extracted:
-                    just_collected = "email"
-                elif "payout" in extracted:
-                    just_collected = "payout"
-                elif "storage" in extracted:
-                    just_collected = "storage"
-                
-                if just_collected:
-                    forced_response = checklist.get_forced_response(just_collected, user_said_no_photos)
-                    if forced_response:
-                        logger.warning(f"[StateMachine] 🎯 FORCING response: '{forced_response}' (collected: {just_collected})")
-                        conversation_buffer["forced_next_response"] = forced_response
-            if extracted:
-                acknowledgment = build_smart_acknowledgment(extracted, checklist)
-                if acknowledgment:
-                    # Log acknowledgment for debugging
-                    logger.info(
-                        f"[SmartAck] 📝 Prepared acknowledgment: {acknowledgment}"
-                    )
-                    # Store in conversation buffer for next response
-                    conversation_buffer["pending_acknowledgment"] = " | ".join(
-                        acknowledgment
-                    )
+        )
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
