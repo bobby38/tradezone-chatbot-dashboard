@@ -910,12 +910,13 @@ async def check_for_confirmation_and_submit(
         logger.warning("=" * 80)
 
         # Check if we have all required data aligned to the checklist order
+        # RELAXED: photos is OPTIONAL - don't block submission just because photos wasn't collected
         required = [
             "brand",
             "model",
             "condition",
             "accessories",
-            "photos",
+            # "photos",  # OPTIONAL - don't require photos for submission
             "name",
             "phone",
             "email",
