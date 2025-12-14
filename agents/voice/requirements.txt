@@ -1,8 +1,8 @@
-livekit-agents==1.0.20
+livekit-agents
 livekit-plugins-assemblyai
-livekit-plugins-openai==1.0.20
+livekit-plugins-openai
 livekit-plugins-cartesia
-livekit-plugins-silero==1.0.20
+livekit-plugins-silero
 livekit-plugins-noise-cancellation
 livekit-plugins-turn-detector
 httpx
