@@ -279,22 +279,34 @@ def extract_data_from_message(
         extracted["accessories"] = has_box
         logger.warning(f"[auto-extract] 📦 Box/accessories: {has_box}")
 
-    # Photos acknowledgment
-    if "photos" not in checklist_state.collected_data and checklist_state.get_current_step() == "photos":
+    # Photos acknowledgment - be more lenient to avoid getting stuck
+    if "photos" not in checklist_state.collected_data:
+        current_step = checklist_state.get_current_step()
         mentions_photo = "photo" in lower or "picture" in lower or "image" in lower
+        mentions_upload = "upload" in lower or "sent" in lower or "sending" in lower
         plain_yes = lower.strip() in ("yes", "yeah", "yep", "ok", "okay", "sure")
-        plain_no = lower.strip() in ("no", "nope", "nah")
+        plain_no = lower.strip() in ("no", "nope", "nah", "skip", "later")
 
         bot_lower = (last_bot_prompt or "").lower()
         bot_was_photo_prompt = (
             "photo" in bot_lower or "photos" in bot_lower or "upload" in bot_lower
+            or "send" in bot_lower or "picture" in bot_lower
         )
 
-        # Only treat a plain yes/no as a photos answer if the bot was asking about photos.
-        if mentions_photo or (bot_was_photo_prompt and (plain_yes or plain_no)):
-            wants_photos = not any(word in lower for word in ["no", "don't", "not", "none", "nope", "nah"])
-            extracted["photos_acknowledged"] = wants_photos
-            logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
+        # Mark photos collected if:
+        # 1. We're on photos step and user says yes/no to photo prompt
+        # 2. User mentions they uploaded/sent a photo (regardless of step)
+        # 3. User says "no photos" or similar
+        if current_step == "photos":
+            if mentions_photo or (bot_was_photo_prompt and (plain_yes or plain_no)):
+                wants_photos = not any(word in lower for word in ["no", "don't", "not", "none", "nope", "nah", "skip", "later"])
+                extracted["photos_acknowledged"] = wants_photos
+                logger.warning(f"[auto-extract] 📸 Photos acknowledged: {wants_photos}")
+        
+        # Also detect if user mentions uploading/sending photo at any point
+        if mentions_upload and mentions_photo:
+            extracted["photos_acknowledged"] = True
+            logger.warning("[auto-extract] 📸 User mentioned uploading photo - marking photos done")
 
     # Payout method detection (ONLY at payout step)
     if (
