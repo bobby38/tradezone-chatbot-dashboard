@@ -1904,7 +1904,7 @@ async def entrypoint(ctx: JobContext):
         
         # 🔴 TRADE-UP CONFIRMATION: When user says "Yes" to proceed with trade-up pricing
         # Save all the trade-up data (source_device_name, target_device_name, prices) to DB
-        if user_said_yes and "top-up" in bot_prompt or "top up" in bot_prompt or "proceed" in bot_prompt:
+        if user_said_yes and ("top-up" in bot_prompt or "top up" in bot_prompt or "proceed" in bot_prompt):
             if checklist.is_trade_up and "source_device_name" in checklist.collected_data:
                 logger.warning(f"[Capture] 🔄 User confirmed trade-up, forcing save of pricing data")
                 captured = True  # Force save to persist trade-up data
