@@ -808,10 +808,20 @@ async def _tradein_update_lead_impl(
         fields_being_set.append("payout")
 
     # Allow setting multiple fields on first call (when model/brand/category are provided)
-    # But after initialization, ONLY allow current step
+    # But after initialization, enforce order for device details only
+    # RELAXED: photos is optional, so if current_step is "photos", allow contact fields through
+    contact_fields = {"name", "phone", "email"}
     if state.current_step_index > 0:
         for field in fields_being_set:
             if field != current_step and field not in state.collected_data:
+                # RELAXED: If we're stuck on photos step but receiving contact info, ALLOW IT
+                # Photos is optional - don't lose contact data just because photos wasn't detected
+                if current_step == "photos" and field in contact_fields:
+                    logger.info(
+                        f"[tradein_update_lead] ✅ Allowing '{field}' even though current step is 'photos' (photos is optional)"
+                    )
+                    continue  # Don't block contact fields when stuck on photos
+                
                 logger.warning(
                     f"[tradein_update_lead] ⚠️ BLOCKED: Trying to set '{field}' but current step is '{current_step}'. Ignoring out-of-order field."
                 )
@@ -856,10 +866,12 @@ async def _tradein_update_lead_impl(
     )
     will_have_photos = photos_in_payload or "photos" in state.collected_data
 
-    # NEW FLOW: contact comes after storage + condition + accessories + photos.
+    # RELAXED FLOW: photos is OPTIONAL - don't block contact info just because photos wasn't collected
+    # We still want storage + condition + accessories before contact, but photos can be skipped
     ready_after_payload = (
-        will_have_storage and will_have_condition and will_have_accessories and will_have_photos
+        will_have_storage and will_have_condition and will_have_accessories
     )
+    # Note: will_have_photos removed from requirement - photos is nice-to-have, not blocking
 
     blocked_contact_fields = []
 
@@ -1276,9 +1288,10 @@ class TradeInChecklistState:
         has_condition = "condition" in self.collected_data
         has_accessories = "accessories" in self.collected_data
         has_photos = "photos" in self.collected_data
-        ready = has_storage and has_condition and has_accessories and has_photos
+        # RELAXED: photos is OPTIONAL - don't block contact info just because photos wasn't collected
+        ready = has_storage and has_condition and has_accessories
         logger.debug(
-            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s => %s",
+            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s (optional) => %s",
             has_storage,
             has_condition,
             has_accessories,
