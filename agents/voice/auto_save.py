@@ -410,6 +410,9 @@ def extract_data_from_message(
             "damn",
             "dang",
             "oops",
+            "don",  # Common misheard "done"
+            "dawn",  # Common misheard "done"
+            "dun",  # Common misheard "done"
         ]:
             logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
             return extracted
