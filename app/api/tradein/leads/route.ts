@@ -12,7 +12,12 @@ export async function GET(request: NextRequest) {
     const limit = limitParam ? Number(limitParam) : undefined;
 
     const leads = await listTradeInLeads({ status, limit, search });
-    return NextResponse.json({ leads });
+    return NextResponse.json({ leads }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+      }
+    });
   } catch (error) {
     console.error("[tradein/leads] Unexpected error", error);
     return NextResponse.json(
