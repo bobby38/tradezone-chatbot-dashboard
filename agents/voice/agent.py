@@ -608,8 +608,10 @@ async def calculate_tradeup_pricing(
                     "top_up": top_up,
                     "pending_clarification": False,
                 }
+                logger.warning(f"[calculate_tradeup_pricing] 🔑 Saving trade-up context for session: {session_id}")
                 state = _get_checklist(session_id)
                 state.mark_trade_up()
+                logger.warning(f"[calculate_tradeup_pricing] ✅ Marked as trade-up. is_trade_up={state.is_trade_up}")
                 
                 # 🔴 CRITICAL: Always overwrite device info when pricing is calculated
                 # This ensures the correct device is saved even if agent misheard earlier
@@ -1884,6 +1886,8 @@ async def entrypoint(ctx: JobContext):
         # Get checklist state
         checklist = _get_checklist(room_name)
         current_step = checklist.get_current_step()
+        
+        logger.info(f"[StateMachine] 🔑 Session={room_name}, is_trade_up={checklist.is_trade_up}, collected={list(checklist.collected_data.keys())}")
         
         # Common patterns
         user_said_yes = lower_user.rstrip(".!?,") in ("yes", "yeah", "yep", "ok", "okay", "sure", "correct")
