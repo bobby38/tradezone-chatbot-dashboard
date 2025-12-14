@@ -364,10 +364,11 @@ def extract_data_from_message(
                     logger.warning(f"[auto-extract] 💰 Found payout: {payout}")
                     break
 
-    # Name detection - only when we're explicitly on the name step
+    # Name detection - when on name step OR stuck on photos (photos is optional)
+    current_step = checklist_state.get_current_step()
     if (
         "name" not in checklist_state.collected_data
-        and checklist_state.get_current_step() == "name"
+        and current_step in ("name", "photos")  # Also detect names when stuck on photos
     ):
         normalized_lower = lower.strip().strip(".!?,")
 

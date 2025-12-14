@@ -1316,7 +1316,14 @@ class TradeInChecklistState:
         return ready
 
     def can_collect_contact(self, field_name: str) -> bool:
-        """Return True only when we're ready to collect the specified contact field."""
+        """Return True only when we're ready to collect the specified contact field.
+        RELAXED: If stuck on photos step, allow contact collection (photos is optional).
+        """
+        # If stuck on photos, auto-advance and allow contact collection
+        if self.get_current_step() == "photos":
+            logger.info(f"[ChecklistState] Stuck on photos, auto-advancing to allow contact collection")
+            self.mark_field_collected("photos", True)  # Mark photos as done (optional)
+        
         if field_name == "name":
             return self.ready_for_contact()
         if field_name == "phone":
@@ -1798,10 +1805,27 @@ async def entrypoint(ctx: JobContext):
                     logger.info(f"[PhotoWait] User said NO to photos - continuing flow")
             
             # Detect if user mentions uploading/sending photo - exit wait mode
-            if "upload" in lower_user or "sent" in lower_user or "sending" in lower_user or "done" in lower_user:
+            if "upload" in lower_user or "sent" in lower_user or "sending" in lower_user or "done" in lower_user or "send" in lower_user:
                 if _waiting_for_photo.get(room_name):
                     _waiting_for_photo[room_name] = False
                     logger.warning(f"[PhotoWait] 📸 User mentioned upload/done - exiting WAIT mode")
+                    # Also mark photos as collected so we can advance
+                    checklist_for_photo.mark_field_collected("photos")
+                    logger.warning(f"[PhotoWait] 📸 Auto-marking photos as collected to advance flow")
+            
+            # 🔴 CRITICAL: If user provides contact info while stuck on photos, auto-advance past photos
+            # This prevents losing all contact data just because photo detection failed
+            if checklist_for_photo.get_current_step() == "photos":
+                # Check if user is providing contact info (name, phone, email)
+                has_name_pattern = len(lower_user.split()) <= 3 and lower_user.replace("-", "").replace(".", "").replace("_", "").isalpha()
+                has_phone_pattern = any(c.isdigit() for c in lower_user) and sum(c.isdigit() for c in lower_user) >= 6
+                has_email_pattern = "@" in lower_user
+                
+                if has_name_pattern or has_phone_pattern or has_email_pattern:
+                    logger.warning(f"[PhotoBypass] 🚨 User providing contact info while stuck on photos - auto-advancing!")
+                    _waiting_for_photo[room_name] = False
+                    checklist_for_photo.mark_field_collected("photos")
+                    logger.warning(f"[PhotoBypass] ✅ Photos marked as collected, flow can continue")
 
             # AUTO-SAVE: Extract and save data from user message
             checklist = _get_checklist(room_name)
