@@ -368,6 +368,18 @@ function normalizePatch(patch: TradeInUpdateInput) {
     delete patch.name;
   }
 
+  if (typeof patch.condition === "string") {
+    patch.condition = patch.condition.trim().toLowerCase();
+  }
+
+  if (typeof patch.preferred_payout === "string") {
+    patch.preferred_payout = patch.preferred_payout.trim().toLowerCase();
+  }
+
+  if (typeof patch.preferred_fulfilment === "string") {
+    patch.preferred_fulfilment = patch.preferred_fulfilment.trim().toLowerCase();
+  }
+
   const updatePayload: Record<string, any> = {};
   const invalidFields: string[] = [];
   const actions: Array<{ type: string; payload: Record<string, any> }> = [];
