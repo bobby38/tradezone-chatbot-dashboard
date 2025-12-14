@@ -248,16 +248,28 @@ export interface TradeInSubmitInput {
 export async function ensureTradeInLead(
   params: EnsureTradeInLeadParams,
 ): Promise<EnsureTradeInLeadResult> {
-  const leadHash = normalizeLeadHash(params.leadHash || params.sessionId || "");
+  const rawSession = (params.leadHash || params.sessionId || "").trim().toLowerCase();
+  const leadHash = normalizeLeadHash(rawSession);
 
   if (!leadHash) {
     throw new TradeInValidationError("Lead hash or session id is required");
   }
 
+  const leadHashCandidates = new Set<string>();
+  leadHashCandidates.add(leadHash);
+  if (rawSession) {
+    leadHashCandidates.add(rawSession);
+    if (rawSession.startsWith("chat-")) {
+      leadHashCandidates.add(rawSession.replace(/^chat-/, ""));
+    } else {
+      leadHashCandidates.add(`chat-${rawSession}`);
+    }
+  }
+
   const { data: existingLead, error: existingError } = await supabaseAdmin
     .from("trade_in_leads")
     .select("id, status, created_at")
-    .eq("lead_hash", leadHash)
+    .in("lead_hash", Array.from(leadHashCandidates))
     .not("status", "in", "(completed,closed,archived)")
     .order("created_at", { ascending: false })
     .limit(1)

@@ -4,6 +4,8 @@ import {
   submitTradeInLead,
 } from "@/lib/trade-in/service";
 
+const HANDLER_VERSION = "tradein-submit-2025-12-14";
+
 const DEFAULT_STATUS_ON_SUBMIT = "in_review";
 
 // CORS headers
@@ -49,6 +51,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   try {
     const body = await request.json();
     const {
@@ -115,14 +118,35 @@ export async function POST(request: NextRequest) {
         status,
       });
 
+      console.log("[tradein/submit]", {
+        requestId,
+        handlerVersion: HANDLER_VERSION,
+        finalLeadId,
+        hadLeadId: Boolean(leadId),
+        hadSessionId: Boolean(sessionId),
+        emailSent,
+        status: lead?.status,
+      });
+
       return NextResponse.json(
-        { success: true, lead, emailSent },
+        {
+          success: true,
+          requestId,
+          handlerVersion: HANDLER_VERSION,
+          lead,
+          emailSent,
+        },
         { headers: corsHeaders },
       );
     } catch (err) {
       if (err instanceof TradeInValidationError) {
         return NextResponse.json(
-          { error: err.message, fields: err.fields },
+          {
+            error: err.message,
+            fields: err.fields,
+            requestId,
+            handlerVersion: HANDLER_VERSION,
+          },
           { status: 400, headers: corsHeaders },
         );
       }

@@ -43,6 +43,9 @@ from livekit.plugins.openai import realtime
 
 logger = logging.getLogger("agent-amara")
 
+_last_user_utterance: Dict[str, str] = {}
+_awaiting_recap_confirmation: Dict[str, bool] = {}
+
 load_dotenv(".env.local")
 
 # Next.js API base URL (default to production; override via env for local dev/tests)
@@ -636,6 +639,11 @@ async def _tradein_update_lead_impl(
     # Use per-session checklist state
     state = _get_checklist(session_id)
 
+    if photos_acknowledged is not None:
+        last_utterance = (_last_user_utterance.get(session_id) or "").strip().lower()
+        if last_utterance not in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah"):
+            photos_acknowledged = None
+
     if contact_name and "name" in state.collected_data:
         existing_name = str(state.collected_data.get("name") or "").strip()
         existing_ok = _is_valid_contact_name(existing_name)
@@ -815,10 +823,16 @@ async def _tradein_update_lead_impl(
                 elif field == "photos":
                     photos_acknowledged = None
                 elif field == "name":
+                    if contact_name:
+                        state.pending_contact["name"] = contact_name
                     contact_name = None
                 elif field == "phone":
+                    if contact_phone:
+                        state.pending_contact["phone"] = contact_phone
                     contact_phone = None
                 elif field == "email":
+                    if contact_email:
+                        state.pending_contact["email"] = contact_email
                     contact_email = None
                 elif field == "payout":
                     preferred_payout = None
@@ -840,9 +854,10 @@ async def _tradein_update_lead_impl(
     )
     will_have_photos = photos_in_payload or "photos" in state.collected_data
 
-    # NEW FLOW: contact comes after storage + accessories (box).
-    # Condition/payout can be asked later before recap/submit.
-    ready_after_payload = will_have_storage and will_have_accessories
+    # NEW FLOW: contact comes after storage + condition + accessories + photos.
+    ready_after_payload = (
+        will_have_storage and will_have_condition and will_have_accessories and will_have_photos
+    )
 
     blocked_contact_fields = []
 
@@ -851,12 +866,15 @@ async def _tradein_update_lead_impl(
 
     if contact_name and not _contact_allowed("name"):
         blocked_contact_fields.append("name")
+        state.pending_contact["name"] = contact_name
         contact_name = None
     if contact_phone and not _contact_allowed("phone"):
         blocked_contact_fields.append("phone")
+        state.pending_contact["phone"] = contact_phone
         contact_phone = None
     if contact_email and not _contact_allowed("email"):
         blocked_contact_fields.append("email")
+        state.pending_contact["email"] = contact_email
         contact_email = None
 
     # Detect trade-up (target device present) → do NOT send payout (enum mismatch in API)
@@ -1092,7 +1110,7 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
             return result.get("message", "Trade-in submitted successfully")
         except Exception as e:
             logger.error(f"[tradein_submit_lead] ❌ Exception: {e}")
-            return "Trade-in submitted"
+            return "Submit failed — please retry"
 
 
 @function_tool
@@ -1191,11 +1209,39 @@ class TradeInChecklistState:
     def __init__(self):
         self.current_step_index = 0
         self.collected_data = {}
+        self.pending_contact = {}
         self.is_trade_up = False
         self.completed = False
         self.skip_storage = (
             False  # For devices without storage (cameras, accessories, etc.)
         )
+
+    def _apply_pending_contact_for_current_step(self) -> bool:
+        """Apply any pending contact data when we reach the contact steps.
+
+        Returns True if we applied something (which can advance steps).
+        """
+        current_step = self.STEPS[self.current_step_index] if self.current_step_index < len(self.STEPS) else None
+        if current_step not in ("name", "phone", "email"):
+            return False
+
+        if current_step == "name" and "name" not in self.collected_data:
+            value = self.pending_contact.get("name")
+            if value and self.can_collect_contact("name"):
+                self.mark_field_collected("name", value)
+                return True
+        if current_step == "phone" and "phone" not in self.collected_data:
+            value = self.pending_contact.get("phone")
+            if value and self.can_collect_contact("phone"):
+                self.mark_field_collected("phone", value)
+                return True
+        if current_step == "email" and "email" not in self.collected_data:
+            value = self.pending_contact.get("email")
+            if value and self.can_collect_contact("email"):
+                self.mark_field_collected("email", value)
+                return True
+
+        return False
 
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
@@ -1282,6 +1328,13 @@ class TradeInChecklistState:
                 self.completed = True
                 return "completed"
             step = self.STEPS[self.current_step_index]
+
+        # If we have pending contact info, auto-apply it when we reach contact steps
+        try:
+            if self._apply_pending_contact_for_current_step():
+                return self.get_current_step()
+        except Exception as e:
+            logger.error(f"[ChecklistState] ❌ Failed applying pending contact: {e}")
 
         # Skip storage for devices that don't have storage (cameras, accessories, etc.)
         if step == "storage" and self.skip_storage:
@@ -1658,6 +1711,10 @@ async def entrypoint(ctx: JobContext):
             conversation_buffer["order_failsafe_sent"] = False
             conversation_buffer["quote_failsafe_sent"] = False
             conversation_buffer["step_failsafe_sent"] = False
+            _last_user_utterance[room_name] = event.transcript
+            lower_user = (event.transcript or "").strip().lower()
+            if lower_user in ("yes", "yeah", "yep", "ok", "okay", "sure", "no", "nope", "nah", "correct"):
+                _awaiting_recap_confirmation[room_name] = False
             logger.info(f"[Voice] User said: {event.transcript}")
 
             # AUTO-SAVE: Extract and save data from user message
@@ -1675,11 +1732,14 @@ async def entrypoint(ctx: JobContext):
                     checklist_state=checklist,
                     api_base_url=API_BASE_URL,
                     headers=build_auth_headers(),
+                    last_bot_prompt=conversation_buffer.get("bot_response"),
                 )
             )
 
             # 🔥 SMART ACKNOWLEDGMENT: Check what was extracted and acknowledge
-            extracted = extract_data_from_message(event.transcript, checklist)
+            extracted = extract_data_from_message(
+                event.transcript, checklist, conversation_buffer.get("bot_response")
+            )
             if extracted:
                 acknowledgment = build_smart_acknowledgment(extracted, checklist)
                 if acknowledgment:
@@ -1719,7 +1779,9 @@ async def entrypoint(ctx: JobContext):
                     next_question = checklist.get_next_question()
                     lower = content.lower()
                     asked_step = None
-                    if "storage size" in lower:
+                    if "everything correct" in lower or "is that correct" in lower or "correct?" in lower:
+                        asked_step = "recap"
+                    elif "storage size" in lower:
                         asked_step = "storage"
                     elif "condition of" in lower or lower.strip().startswith("condition"):
                         asked_step = "condition"
@@ -1748,20 +1810,37 @@ async def entrypoint(ctx: JobContext):
                         and not conversation_buffer.get("step_failsafe_sent")
                     ):
                         conversation_buffer["step_failsafe_sent"] = True
+                        forced = next_question
+                        if forced == "recap":
+                            forced = "Everything correct? Please say yes or no."
                         logger.warning(
                             "[StepFailSafe] ⚠️ Wrong step asked (asked=%s current=%s). Forcing next question: %s progress=%s",
                             asked_step,
                             current_step,
-                            next_question,
+                            forced,
                             progress,
                         )
                         asyncio.create_task(
                             _async_generate_reply(
                                 session,
-                                instructions=f"Say exactly: {next_question}",
+                                instructions=f"Say exactly: {forced}",
                                 allow_interruptions=True,
                             )
                         )
+
+                    if asked_step == "recap" and current_step == "recap":
+                        _awaiting_recap_confirmation[room_name] = True
+
+                    if _awaiting_recap_confirmation.get(room_name):
+                        assistant_confirms = lower.strip().startswith("yes") or "we'll proceed" in lower or "we will proceed" in lower
+                        if assistant_confirms:
+                            asyncio.create_task(
+                                _async_generate_reply(
+                                    session,
+                                    instructions="Say exactly: Please answer yes or no.",
+                                    allow_interruptions=True,
+                                )
+                            )
 
                     lower_content = content.lower()
                     if (
@@ -1849,6 +1928,8 @@ async def entrypoint(ctx: JobContext):
                             "we'll review",
                             "we will review",
                             "we'll contact you",
+                            "we'll proceed",
+                            "we will proceed",
                             "anything else",
                             "further assistance",
                             "let me know if you need",
@@ -1862,15 +1943,18 @@ async def entrypoint(ctx: JobContext):
                     )
                     if should_force_next and next_question and (looks_like_close or looks_like_drift):
                         conversation_buffer["order_failsafe_sent"] = True
+                        forced = next_question
+                        if forced == "recap":
+                            forced = "Everything correct? Please say yes or no."
                         logger.warning(
                             "[OrderFailSafe] ⚠️ Model attempted to end early. Forcing next question: %s progress=%s",
-                            next_question,
+                            forced,
                             progress,
                         )
                         asyncio.create_task(
                             _async_generate_reply(
                                 session,
-                                instructions=f"Say exactly: {next_question}",
+                                instructions=f"Say exactly: {forced}",
                                 allow_interruptions=True,
                             )
                         )

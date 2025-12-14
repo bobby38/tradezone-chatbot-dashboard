@@ -37,7 +37,7 @@ def _is_valid_contact_name(name: str) -> bool:
         "nani",
     }:
         return False
-    if not re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed):
+    if not re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.,]{0,79}", trimmed):
         return False
     letters = re.sub(r"[^A-Za-z]", "", trimmed)
     return len(letters) >= 2
@@ -157,7 +157,9 @@ def lookup_price(device_name: str, price_type: str = "preowned") -> Optional[flo
     return None
 
 
-def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, Any]:
+def extract_data_from_message(
+    message: str, checklist_state: Any, last_bot_prompt: str | None = None
+) -> Dict[str, Any]:
     """
     Smart extraction: parse user messages for trade-in data.
     This runs on EVERY user message to auto-collect data without relying on LLM.
@@ -227,21 +229,15 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
     # Email detection - improved to handle spelled out emails
     email_match = re.search(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", lower)
-    if (
-        email_match
-        and "email" not in checklist_state.collected_data
-        and checklist_state.get_current_step() == "email"
-    ):
+    if email_match and "email" not in checklist_state.collected_data:
         extracted_email = email_match.group(0)
         extracted_email = extracted_email.replace(" ", "").replace("- ", "").replace("_", "_")
         extracted["contact_email"] = extracted_email
         logger.warning(f"[auto-extract] 📧 Found email: {extracted['contact_email']}")
     
     # Also handle spelled out emails like "bobby underscore denny at hotmail dot com"
-    elif (
-        checklist_state.get_current_step() == "email"
-        and "email" not in checklist_state.collected_data
-        and (("at" in lower and "hotmail" in lower) or ("at" in lower and "gmail" in lower))
+    elif "email" not in checklist_state.collected_data and (
+        ("at" in lower and "hotmail" in lower) or ("at" in lower and "gmail" in lower)
     ):
         words = message.lower().split()
         email_parts = []
@@ -266,7 +262,6 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
         len(digits_only) >= 8
         and len(digits_only) <= 15
         and "phone" not in checklist_state.collected_data
-        and checklist_state.get_current_step() == "phone"
     ):
         if len(digits_only) / max(len(message), 1) >= 0.5:
             extracted["contact_phone"] = digits_only
@@ -286,11 +281,17 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
 
     # Photos acknowledgment
     if "photos" not in checklist_state.collected_data and checklist_state.get_current_step() == "photos":
-        # Accept either explicit photo keywords or a plain yes/no.
         mentions_photo = "photo" in lower or "picture" in lower or "image" in lower
         plain_yes = lower.strip() in ("yes", "yeah", "yep", "ok", "okay", "sure")
         plain_no = lower.strip() in ("no", "nope", "nah")
-        if mentions_photo or plain_yes or plain_no:
+
+        bot_lower = (last_bot_prompt or "").lower()
+        bot_was_photo_prompt = (
+            "photo" in bot_lower or "photos" in bot_lower or "upload" in bot_lower
+        )
+
+        # Only treat a plain yes/no as a photos answer if the bot was asking about photos.
+        if mentions_photo or (bot_was_photo_prompt and (plain_yes or plain_no)):
             wants_photos = not any(word in lower for word in ["no", "don't", "not", "none", "nope", "nah"])
             extracted["photos_acknowledged"] = wants_photos
             logger.warning(f"[auto-extract] 📸 Photos: {wants_photos}")
@@ -407,7 +408,9 @@ def extract_data_from_message(message: str, checklist_state: Any) -> Dict[str, A
                     logger.info(f"[auto-extract] ⏭️ Skipping likely question, not a name: {message}")
                     return extracted
                 name = re.sub(r"[.!?]+$", "", message.strip())
-                name = re.sub(r"\s*-\s*", "", name)
+                name = name.replace(",", " ")
+                name = re.sub(r"\s*-\s*", " ", name)
+                name = re.sub(r"\s+", " ", name).strip()
                 if len(name) >= 2:
                     if _is_valid_contact_name(name):
                         extracted["contact_name"] = name
@@ -729,6 +732,7 @@ async def auto_save_after_message(
     checklist_state: Any,
     api_base_url: str,
     headers: Dict[str, str],
+    last_bot_prompt: str | None = None,
 ):
     """
     Automatically extract and save data after EVERY user message.
@@ -737,13 +741,39 @@ async def auto_save_after_message(
     logger.warning(f"[auto-save] 🤖 Processing: {user_message[:80]}")
 
     # Extract any data from the message
-    extracted = extract_data_from_message(user_message, checklist_state)
+    extracted = extract_data_from_message(user_message, checklist_state, last_bot_prompt)
 
     if not extracted:
         logger.info("[auto-save] No new data extracted")
         return
 
     applied_fields: List[str] = []
+
+    # Pending buffer so users don't need to repeat themselves when they answer early.
+    if not hasattr(checklist_state, "pending_contact"):
+        checklist_state.pending_contact = {}
+
+    def _set_pending(field_name: str, value: Any):
+        checklist_state.pending_contact[field_name] = value
+
+    def _maybe_apply_pending():
+        current = checklist_state.get_current_step()
+        if current == "name" and "name" not in checklist_state.collected_data:
+            value = checklist_state.pending_contact.get("name")
+            if value and checklist_state.can_collect_contact("name"):
+                checklist_state.mark_field_collected("name", value)
+                return ["name"]
+        if current == "phone" and "phone" not in checklist_state.collected_data:
+            value = checklist_state.pending_contact.get("phone")
+            if value and checklist_state.can_collect_contact("phone"):
+                checklist_state.mark_field_collected("phone", value)
+                return ["phone"]
+        if current == "email" and "email" not in checklist_state.collected_data:
+            value = checklist_state.pending_contact.get("email")
+            if value and checklist_state.can_collect_contact("email"):
+                checklist_state.mark_field_collected("email", value)
+                return ["email"]
+        return []
 
     # Update checklist state only for the fields we're ready to accept
     for field, value in extracted.items():
@@ -755,6 +785,7 @@ async def auto_save_after_message(
                 logger.info(
                     "[auto-save] ⏭️ Skipping name until device details complete"
                 )
+                _set_pending("name", value)
         elif field == "contact_phone":
             if checklist_state.can_collect_contact("phone"):
                 checklist_state.mark_field_collected("phone", value)
@@ -763,6 +794,7 @@ async def auto_save_after_message(
                 logger.info(
                     "[auto-save] ⏭️ Skipping phone until name captured"
                 )
+                _set_pending("phone", value)
         elif field == "contact_email":
             if checklist_state.can_collect_contact("email"):
                 checklist_state.mark_field_collected("email", value)
@@ -771,6 +803,7 @@ async def auto_save_after_message(
                 logger.info(
                     "[auto-save] ⏭️ Skipping email until phone captured"
                 )
+                _set_pending("email", value)
         elif field == "accessories":
             checklist_state.mark_field_collected("accessories", value)
             applied_fields.append("accessories")
@@ -782,8 +815,10 @@ async def auto_save_after_message(
             applied_fields.append(field)
 
     if not applied_fields:
-        logger.info("[auto-save] Extracted data not applicable for current step")
-        return
+        applied_fields = _maybe_apply_pending()
+        if not applied_fields:
+            logger.info("[auto-save] Extracted data not applicable for current step")
+            return
 
     logger.warning(f"[auto-save] 💾 Saving {len(applied_fields)} fields...")
     success = await force_save_to_db(session_id, checklist_state, api_base_url, headers)
