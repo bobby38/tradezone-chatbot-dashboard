@@ -2298,6 +2298,7 @@
 
         const attachedAudio = new Map();
         const transcriptionBuffer = new Map();
+        const emittedTranscriptionIds = new Set();
 
         room
           .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -2330,15 +2331,29 @@
                 const text = (seg?.text || "").trim();
                 if (!text) return;
 
+                // LiveKit often emits incremental transcripts where `seg.text` already contains
+                // the full utterance-so-far. Concatenating creates repeated prefixes.
+                const previous = transcriptionBuffer.get(segId) || "";
+                let nextText = text;
+                if (previous) {
+                  if (text.length >= previous.length && text.includes(previous)) {
+                    nextText = text;
+                  } else if (previous.length > text.length && previous.includes(text)) {
+                    nextText = previous;
+                  } else {
+                    // If we can't establish containment, prefer the longer string.
+                    nextText = text.length >= previous.length ? text : previous;
+                  }
+                }
+
+                transcriptionBuffer.set(segId, nextText);
+
                 if (seg?.final) {
-                  const pending = transcriptionBuffer.get(segId);
-                  const finalText = pending ? `${pending} ${text}`.trim() : text;
+                  if (emittedTranscriptionIds.has(segId)) return;
+                  emittedTranscriptionIds.add(segId);
+                  const finalText = transcriptionBuffer.get(segId) || nextText;
                   transcriptionBuffer.delete(segId);
                   this.addTranscript(finalText, role);
-                } else {
-                  const pending = transcriptionBuffer.get(segId) || "";
-                  const merged = `${pending} ${text}`.trim();
-                  transcriptionBuffer.set(segId, merged);
                 }
               });
             } catch (err) {
@@ -2360,6 +2375,7 @@
             });
             attachedAudio.clear();
             transcriptionBuffer.clear();
+            emittedTranscriptionIds.clear();
             this.isRecording = false;
             this.voiceState.isRecording = false;
             this.voiceState.room = null;
