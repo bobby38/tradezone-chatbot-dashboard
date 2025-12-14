@@ -2026,17 +2026,29 @@ async def entrypoint(ctx: JobContext):
         
         logger.info(f"[StateMachine] After capture: {checklist.get_progress()}")
         
-        # Trigger async save to DB
-        asyncio.create_task(
-            auto_save_after_message(
-                session_id=room_name,
-                user_message=user_text,
-                checklist_state=checklist,
-                api_base_url=API_BASE_URL,
-                headers=build_auth_headers(),
-                last_bot_prompt=bot_prompt,
+        # 🔴 CRITICAL: If we captured data, force save to DB immediately
+        if captured:
+            logger.warning(f"[StateMachine] 💾 Data captured, forcing save to DB")
+            asyncio.create_task(
+                force_save_to_db(
+                    session_id=room_name,
+                    checklist_state=checklist,
+                    api_base_url=API_BASE_URL,
+                    headers=build_auth_headers(),
+                )
             )
-        )
+        else:
+            # Fallback: try extraction-based save
+            asyncio.create_task(
+                auto_save_after_message(
+                    session_id=room_name,
+                    user_message=user_text,
+                    checklist_state=checklist,
+                    api_base_url=API_BASE_URL,
+                    headers=build_auth_headers(),
+                    last_bot_prompt=bot_prompt,
+                )
+            )
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
