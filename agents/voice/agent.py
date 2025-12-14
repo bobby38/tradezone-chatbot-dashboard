@@ -507,7 +507,7 @@ async def calculate_tradeup_pricing(
             logger.error(
                 f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}"
             )
-            return f"Sorry, I don't have pricing for '{source_device}' or '{target_device}' in my system. Could you check the exact model name on our website? Or I can help you with a different device."
+            return f"I don't have trade-in pricing for '{source_device}' or '{target_device}' in my system. Let me connect you with our staff who can help with this trade. 🚨 SYSTEM: Do NOT ask for contact details - just say you'll have staff reach out and end the conversation politely."
 
         # Check if clarification is needed
         if result.get("needs_clarification"):
