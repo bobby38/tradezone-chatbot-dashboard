@@ -568,13 +568,22 @@ async def calculate_tradeup_pricing(
                 f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}"
             )
 
-            # Cache trade-up context so subsequent tool calls always include target info
+            # Cache trade-up context - get session ID from context or job context
+            session_id = None
             try:
-                room = get_job_context().room
-                session_id = room.name
-                logger.warning(f"[calculate_tradeup_pricing] 🔑 Session ID from room: {session_id}")
+                # Try context first (from function_tool)
+                if hasattr(context, 'session') and hasattr(context.session, 'room'):
+                    session_id = context.session.room.name
+                    logger.warning(f"[calculate_tradeup_pricing] 🔑 Session ID from context: {session_id}")
+                elif hasattr(context, 'room'):
+                    session_id = context.room.name
+                    logger.warning(f"[calculate_tradeup_pricing] 🔑 Session ID from context.room: {session_id}")
+                else:
+                    # Fallback to job context
+                    room = get_job_context().room
+                    session_id = room.name
+                    logger.warning(f"[calculate_tradeup_pricing] 🔑 Session ID from job context: {session_id}")
             except Exception as e:
-                session_id = None
                 logger.error(f"[calculate_tradeup_pricing] ❌ Failed to get session ID: {e}")
 
             next_question = "Storage size?"
