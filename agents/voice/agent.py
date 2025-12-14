@@ -84,7 +84,7 @@ _tradeup_context: Dict[str, Dict[str, Any]] = {}
 # Session → waiting for photo upload (blocks further questions until photo received or user says done)
 _waiting_for_photo: Dict[str, bool] = {}
 
-VALID_PAYOUT_VALUES = {"cash", "paynow", "bank", "installment"}
+VALID_PAYOUT_VALUES = {"cash", "paynow", "bank"}
 PAYOUT_NORMALIZATION_MAP = {
     "cash": "cash",
     "cash payout": "cash",
@@ -96,16 +96,6 @@ PAYOUT_NORMALIZATION_MAP = {
     "bank transfer": "bank",
     "bank account": "bank",
     "wire transfer": "bank",
-    "installment": "installment",
-    "installments": "installment",
-    "instalment": "installment",
-    "instalments": "installment",
-    "installment plan": "installment",
-    "installment plans": "installment",
-    "payment plan": "installment",
-    "payment plans": "installment",
-    "monthly plan": "installment",
-    "monthly installment": "installment",
 }
 PAYOUT_KEYWORD_FALLBACKS = (
     ("cash", "cash"),
@@ -115,10 +105,6 @@ PAYOUT_KEYWORD_FALLBACKS = (
     ("bank account", "bank"),
     ("wire transfer", "bank"),
     ("bank", "bank"),
-    ("installment", "installment"),
-    ("instalment", "installment"),
-    ("payment plan", "installment"),
-    ("monthly", "installment"),
 )
 UNSUPPORTED_PAYOUT_KEYWORDS = ("top up", "topup", "top-up")
 
@@ -1279,7 +1265,7 @@ class TradeInChecklistState:
         "name": "Your name?",
         "phone": "Contact number?",
         "email": "Email address?",
-        "payout": "Cash, PayNow, bank, or installments?",
+        "payout": "Cash, PayNow, or bank transfer?",
         "recap": "recap",  # Special: triggers summary
         "submit": "submit",  # Special: triggers submission
     }
