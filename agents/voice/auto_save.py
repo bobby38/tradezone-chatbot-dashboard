@@ -269,15 +269,29 @@ def extract_data_from_message(
                 f"[auto-extract] 📞 Found phone: {extracted['contact_phone']}"
             )
 
-    # Box/accessories
+    # Box/accessories - detect yes/no answers when on accessories step
     if (
-        ("box" in lower or "accessor" in lower)
-        and "accessories" not in checklist_state.collected_data
+        "accessories" not in checklist_state.collected_data
         and checklist_state.get_current_step() == "accessories"
     ):
-        has_box = "yes" in lower or "have" in lower or "got" in lower
-        extracted["accessories"] = has_box
-        logger.warning(f"[auto-extract] 📦 Box/accessories: {has_box}")
+        mentions_box = "box" in lower or "accessor" in lower
+        plain_yes = lower.strip() in ("yes", "yeah", "yep", "ok", "okay", "sure", "yes.")
+        plain_no = lower.strip() in ("no", "nope", "nah", "no.")
+        
+        bot_lower = (last_bot_prompt or "").lower()
+        bot_was_accessories_prompt = (
+            "box" in bot_lower or "accessor" in bot_lower
+        )
+        
+        # Mark accessories if user mentions box/accessories OR answers yes/no to accessories question
+        if mentions_box:
+            has_box = "yes" in lower or "have" in lower or "got" in lower
+            extracted["accessories"] = has_box
+            logger.warning(f"[auto-extract] 📦 Box/accessories (explicit): {has_box}")
+        elif bot_was_accessories_prompt and (plain_yes or plain_no):
+            has_box = plain_yes
+            extracted["accessories"] = has_box
+            logger.warning(f"[auto-extract] 📦 Box/accessories (yes/no answer): {has_box}")
 
     # Photos acknowledgment - be more lenient to avoid getting stuck
     if "photos" not in checklist_state.collected_data:
