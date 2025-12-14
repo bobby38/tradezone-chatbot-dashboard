@@ -2297,6 +2297,7 @@
         });
 
         const attachedAudio = new Map();
+        const transcriptionBuffer = new Map();
 
         room
           .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -2313,6 +2314,37 @@
               console.warn("[Voice] Failed to attach remote track", err);
             }
           })
+          .on(RoomEvent.TranscriptionReceived, (segments, participant, publication) => {
+            try {
+              const segs = Array.isArray(segments) ? segments : [];
+              const identity = participant?.identity || "";
+              const participantKind = participant?.kind;
+              const isAgent =
+                String(identity).toLowerCase().startsWith("agent") ||
+                String(identity).toLowerCase().includes("amara") ||
+                String(participantKind).toLowerCase().includes("agent");
+              const role = isAgent ? "assistant" : "user";
+
+              segs.forEach((seg) => {
+                const segId = seg?.id || `${identity}-${seg?.startTime || ""}`;
+                const text = (seg?.text || "").trim();
+                if (!text) return;
+
+                if (seg?.final) {
+                  const pending = transcriptionBuffer.get(segId);
+                  const finalText = pending ? `${pending} ${text}`.trim() : text;
+                  transcriptionBuffer.delete(segId);
+                  this.addTranscript(finalText, role);
+                } else {
+                  const pending = transcriptionBuffer.get(segId) || "";
+                  const merged = `${pending} ${text}`.trim();
+                  transcriptionBuffer.set(segId, merged);
+                }
+              });
+            } catch (err) {
+              console.warn("[Voice] TranscriptionReceived handler failed", err);
+            }
+          })
           .on(RoomEvent.TrackUnsubscribed, (track) => {
             try {
               const el = attachedAudio.get(track.sid);
@@ -2327,6 +2359,7 @@
               } catch (_) {}
             });
             attachedAudio.clear();
+            transcriptionBuffer.clear();
             this.isRecording = false;
             this.voiceState.isRecording = false;
             this.voiceState.room = null;
