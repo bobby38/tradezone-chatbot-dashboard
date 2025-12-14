@@ -550,6 +550,8 @@ async def force_save_to_db(
         data["brand"] = checklist_state.collected_data["brand"]
     if "model" in checklist_state.collected_data:
         data["model"] = checklist_state.collected_data["model"]
+    if "source_device_name" in checklist_state.collected_data:
+        data["source_device_name"] = checklist_state.collected_data["source_device_name"]
     if "target_device_name" in checklist_state.collected_data:
         data["target_device_name"] = checklist_state.collected_data["target_device_name"]
     for price_field in ["source_price_quoted", "target_price_quoted", "top_up_amount"]:
