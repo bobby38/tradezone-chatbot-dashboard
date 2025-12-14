@@ -1253,8 +1253,8 @@ class TradeInChecklistState:
     QUESTIONS = {
         "storage": "Storage size?",
         "condition": "Condition? Mint, good, fair, or faulty?",
-        "accessories": "Got the box?",
-        "photos": "Photos help. Want to send one?",
+        "accessories": "Got the box and accessories?",
+        "photos": "Photos help—want to send one?",
         "name": "Your name?",
         "phone": "Contact number?",
         "email": "Email address?",
@@ -1750,7 +1750,23 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
 - ALWAYS complete full flow: prices → details → contact → photo → payout → recap → submit
 - ALWAYS use "buy price {TARGET}" query to get retail price
 - NEVER skip contact collection, photo prompt, or recap
-- ALWAYS call tradein_update_lead after each detail collected""",
+- ALWAYS call tradein_update_lead after each detail collected
+
+**🔴 AGENT CONTROLS THE FLOW - NOT THE USER:**
+- When user says "done" after uploading a photo, it means "I'm done uploading" - NOT "end the conversation"
+- YOU decide when the flow is complete, not the user
+- NEVER say "Done!" or end the flow until you have collected ALL of these:
+  1. Storage (or skipped for devices without storage)
+  2. Condition
+  3. Accessories (box)
+  4. Photo (yes or no)
+  5. Name
+  6. Phone
+  7. Email
+  8. Payout method (for regular trade-ins, skip for trade-ups)
+  9. Recap confirmation from user
+- After photo upload, ALWAYS continue to ask "Your name?" - do NOT end the flow
+- The ONLY time you say "Done! We'll review..." is AFTER tradein_submit_lead is called""",
         )
 
     async def on_enter(self):
@@ -1872,6 +1888,13 @@ async def entrypoint(ctx: JobContext):
                     # Also mark photos as collected so we can advance
                     checklist_for_photo.mark_field_collected("photos")
                     logger.warning(f"[PhotoWait] 📸 Auto-marking photos as collected to advance flow")
+                    
+                    # 🔴 CRITICAL: Force the next question (name) so agent doesn't say "Done!"
+                    next_q = checklist_for_photo.get_next_question()
+                    if next_q and next_q != "recap":
+                        conversation_buffer["forced_next_response"] = next_q
+                        conversation_buffer["photo_done_force_next"] = True
+                        logger.warning(f"[PhotoWait] 🎯 Setting forced next question: {next_q}")
             
             # 🔴 CRITICAL: If user provides contact info while stuck on photos, auto-advance past photos
             # This prevents losing all contact data just because photo detection failed
@@ -1981,6 +2004,14 @@ async def entrypoint(ctx: JobContext):
                 try:
                     checklist = _get_checklist(room_name)
                     progress = checklist.get_progress()
+                    
+                    # 🔴 BLOCK RESTART: If checklist is complete, don't let agent restart
+                    if checklist.completed:
+                        # Agent is trying to speak after flow is complete - block greetings
+                        if "hi" in content.lower()[:20] or "hello" in content.lower()[:20] or "amara here" in content.lower():
+                            logger.warning(f"[CompletedBlock] 🚫 Blocking agent restart greeting after completed flow")
+                            return  # Don't process this message
+                    
                     has_quote = bool(checklist.collected_data.get("initial_quote_given"))
                     has_prices = all(
                         k in checklist.collected_data
@@ -2096,18 +2127,86 @@ async def entrypoint(ctx: JobContext):
                         _awaiting_recap_confirmation[room_name] = True
                         logger.warning(f"[RecapDetect] ✅ Set _awaiting_recap_confirmation=True for {room_name}")
 
-                    # 🔴 CRITICAL: Detect when agent says "submitted" - force actual submit
-                    agent_claims_submitted = (
+                    # 🔴 CRITICAL: Detect when agent tries to end flow early
+                    agent_claims_done = (
                         "submitted" in lower
                         or "we'll review" in lower
                         or "we will review" in lower
                         or "we'll contact you" in lower
+                        or ("done" in lower and "!" in content)
+                        or "anything else" in lower
                     )
-                    if agent_claims_submitted and not checklist.completed:
-                        logger.warning(f"[SubmitDetect] 🚨 Agent claims submitted but checklist not complete! Forcing submit.")
-                        asyncio.create_task(
-                            _force_submit_tradein(room_name, checklist)
-                        )
+                    
+                    if agent_claims_done and not checklist.completed:
+                        # Check if we have all required contact info
+                        has_name = "name" in checklist.collected_data
+                        has_phone = "phone" in checklist.collected_data
+                        has_email = "email" in checklist.collected_data
+                        has_all_contact = has_name and has_phone and has_email
+                        
+                        if not has_all_contact:
+                            # 🔴 AGENT TRIED TO END WITHOUT CONTACT INFO - FORCE NEXT QUESTION
+                            next_q = checklist.get_next_question()
+                            if next_q and next_q not in ("recap", "submit"):
+                                logger.warning(f"[FlowControl] 🚨 Agent tried to end but missing contact info! Forcing: {next_q}")
+                                asyncio.create_task(
+                                    _async_generate_reply(
+                                        session,
+                                        instructions=f"Say exactly: {next_q}",
+                                        allow_interruptions=True,
+                                    )
+                                )
+                            else:
+                                # Missing contact but no next question - force name
+                                if not has_name:
+                                    logger.warning(f"[FlowControl] 🚨 Missing name! Forcing name question.")
+                                    asyncio.create_task(
+                                        _async_generate_reply(
+                                            session,
+                                            instructions="Say exactly: Your name?",
+                                            allow_interruptions=True,
+                                        )
+                                    )
+                        else:
+                            # Has all contact info - check if recap was shown
+                            recap_shown = _awaiting_recap_confirmation.get(room_name, False) or conversation_buffer.get("recap_shown")
+                            
+                            if not recap_shown:
+                                # 🔴 FORCE RECAP FIRST - don't submit without showing details
+                                logger.warning(f"[SubmitDetect] 🚨 Agent tried to end without recap! Forcing recap first.")
+                                conversation_buffer["recap_shown"] = True
+                                _awaiting_recap_confirmation[room_name] = True
+                                
+                                # Build recap from collected data
+                                data = checklist.collected_data
+                                device = data.get("model") or data.get("source_device_name") or "your device"
+                                condition = data.get("condition", "good")
+                                name = data.get("name", "")
+                                phone = data.get("phone", "")
+                                email = data.get("email", "")
+                                
+                                recap_text = f"Let me confirm: {device}, {condition} condition"
+                                if name:
+                                    recap_text += f", name {name}"
+                                if phone:
+                                    recap_text += f", phone {phone}"
+                                if email:
+                                    recap_text += f", email {email}"
+                                recap_text += ". Everything correct?"
+                                
+                                asyncio.create_task(
+                                    _async_generate_reply(
+                                        session,
+                                        instructions=f"Say exactly: {recap_text}",
+                                        allow_interruptions=True,
+                                    )
+                                )
+                            else:
+                                # Recap was shown, now submit
+                                logger.warning(f"[SubmitDetect] ✅ Recap was shown, now forcing submit.")
+                                asyncio.create_task(
+                                    _force_submit_tradein(room_name, checklist)
+                                )
                     
                     if _awaiting_recap_confirmation.get(room_name):
                         assistant_confirms = (
