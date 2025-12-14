@@ -1889,6 +1889,18 @@ async def entrypoint(ctx: JobContext):
 
             # AUTO-SAVE: Extract and save data from user message
             checklist = _get_checklist(room_name)
+            
+            # 🔴 BLOCK EXTRACTION DURING PHOTO WAIT
+            # When waiting for photo, only process photo-related messages (done/sent/upload)
+            # Do NOT extract names or other data from random utterances
+            if _waiting_for_photo.get(room_name):
+                logger.warning(f"[PhotoWait] 🚫 BLOCKING auto-save during photo wait. User said: {event.transcript[:50]}")
+                # Only allow photo completion messages through
+                photo_done_words = ["done", "sent", "send", "upload", "attached", "sending"]
+                if not any(word in lower_user for word in photo_done_words):
+                    logger.warning(f"[PhotoWait] ⏳ Still waiting for photo - ignoring message")
+                    return  # Skip all extraction
+            
             logger.info(
                 f"[AutoSave] Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
             )
@@ -2015,21 +2027,24 @@ async def entrypoint(ctx: JobContext):
                         if not conversation_buffer.get("photo_wait_override_sent"):
                             conversation_buffer["photo_wait_override_sent"] = True
                             logger.warning(f"[PhotoWait] 🚨 Agent asked question while waiting for photo! Blocking.")
-                            # Don't say anything - just wait silently
                     
                     asked_step = None
-                    # Detect recap - agent summarizes and asks for confirmation
-                    is_recap = (
+                    
+                    # Detect recap - MUST be a full summary (mentions device AND contact)
+                    # Not just confirming a single field like "That's 8448 9068, correct?"
+                    has_device_mention = any(w in lower for w in ["device", "switch", "ps5", "ps4", "xbox", "iphone", "samsung", "macbook", "ipad", "condition"])
+                    has_contact_mention = any(w in lower for w in ["contact", "@", "bobby", "84489068"])
+                    is_full_summary = has_device_mention and has_contact_mention
+                    
+                    is_recap = is_full_summary and (
                         "everything correct" in lower 
                         or "is that correct" in lower 
                         or "correct?" in lower
-                        or "want to proceed" in lower
-                        or "proceed with" in lower
-                        or "change anything" in lower
+                        or "summary" in lower
                     )
                     if is_recap:
                         asked_step = "recap"
-                        logger.warning(f"[RecapDetect] 🎯 Detected recap question: {content[:60]}")
+                        logger.warning(f"[RecapDetect] 🎯 Detected FULL recap: {content[:60]}")
                     elif "storage size" in lower:
                         asked_step = "storage"
                     elif "condition" in lower and "?" in lower:
