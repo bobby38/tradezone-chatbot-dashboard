@@ -166,6 +166,14 @@ def _infer_brand_from_device_name(device_name: Optional[str]) -> Optional[str]:
 async def _force_submit_tradein(session_id: str, checklist: "TradeInChecklistState") -> None:
     """Force submit the trade-in when agent self-confirms or user confirms recap."""
     logger.warning(f"[ForceSubmit] 🚀 Force submitting trade-in for session {session_id}")
+    logger.warning(f"[ForceSubmit] 📋 Checklist state: {checklist.get_progress()}")
+    
+    # Check if this is a trade-up from context (in case is_trade_up wasn't set)
+    trade_ctx = _tradeup_context.get(session_id)
+    if trade_ctx and trade_ctx.get("target_device"):
+        if not checklist.is_trade_up:
+            logger.warning(f"[ForceSubmit] 🔄 Setting is_trade_up=True from context (was False)")
+            checklist.is_trade_up = True
     
     try:
         headers = build_auth_headers()
@@ -1412,7 +1420,12 @@ class TradeInChecklistState:
             return self.get_current_step()
 
         # Skip payout for trade-ups
-        if step == "payout" and self.is_trade_up:
+        # Also check if we have target_device_name in collected_data (trade-up indicator)
+        has_target_device = bool(self.collected_data.get("target_device_name"))
+        if step == "payout" and (self.is_trade_up or has_target_device):
+            if not self.is_trade_up and has_target_device:
+                logger.warning(f"[ChecklistState] 🔄 Auto-setting is_trade_up=True (has target_device_name)")
+                self.is_trade_up = True
             logger.info(f"[ChecklistState] Skipping 'payout' (trade-up mode)")
             self.current_step_index += 1
             return self.get_current_step()

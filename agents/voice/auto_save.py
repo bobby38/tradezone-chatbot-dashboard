@@ -372,7 +372,7 @@ def extract_data_from_message(
     ):
         normalized_lower = lower.strip().strip(".!?,")
 
-        # Never treat confirmations as names
+        # Never treat confirmations or photo-related words as names
         if normalized_lower in [
             "yes",
             "correct",
@@ -383,6 +383,13 @@ def extract_data_from_message(
             "sure",
             "that's right",
             "no",
+            "send",
+            "sent",
+            "senz",  # Common misheard "send"
+            "done",
+            "upload",
+            "uploaded",
+            "sending",
         ]:
             logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
             return extracted
@@ -406,6 +413,9 @@ def extract_data_from_message(
             ".sg",
             "buy",
             "by ",
+            "send",
+            "sent",
+            "upload",
         ]
         has_skip = any(keyword in lower for keyword in skip_keywords)
 
@@ -894,6 +904,8 @@ async def check_for_confirmation_and_submit(
         "sound good",
         "change anything",
         "correct",
+        "want to proceed",
+        "proceed with",
     ]
 
     # Check if user confirmed
