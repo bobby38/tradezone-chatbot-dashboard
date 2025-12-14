@@ -1915,8 +1915,7 @@ async def entrypoint(ctx: JobContext):
             storage_match = re.search(r'(\d+)\s*(gb|tb)', lower_user)
             if storage_match:
                 storage_val = f"{storage_match.group(1)}{storage_match.group(2).upper()}"
-                checklist.collected_data["storage"] = storage_val
-                checklist.mark_field_collected("storage")
+                checklist.mark_field_collected("storage", storage_val)
                 logger.warning(f"[Capture] 💾 storage={storage_val}")
                 captured = True
         
@@ -1925,8 +1924,7 @@ async def entrypoint(ctx: JobContext):
             for cond in ["mint", "good", "fair", "faulty", "broken"]:
                 if cond in lower_user:
                     cond_val = "faulty" if cond == "broken" else cond
-                    checklist.collected_data["condition"] = cond_val
-                    checklist.mark_field_collected("condition")
+                    checklist.mark_field_collected("condition", cond_val)
                     logger.warning(f"[Capture] ✨ condition={cond_val}")
                     captured = True
                     break
@@ -1935,8 +1933,7 @@ async def entrypoint(ctx: JobContext):
         if current_step == "accessories" and "accessories" not in checklist.collected_data:
             if "box" in bot_prompt or "accessor" in bot_prompt:
                 if user_said_yes or user_said_no:
-                    checklist.collected_data["accessories"] = user_said_yes
-                    checklist.mark_field_collected("accessories")
+                    checklist.mark_field_collected("accessories", user_said_yes)
                     logger.warning(f"[Capture] 📦 accessories={user_said_yes}")
                     captured = True
         
@@ -1945,12 +1942,11 @@ async def entrypoint(ctx: JobContext):
             if "photo" in bot_prompt or "picture" in bot_prompt:
                 if user_said_yes:
                     _waiting_for_photo[room_name] = True
-                    checklist.collected_data["photos"] = True
+                    checklist.mark_field_collected("photos", True)
                     logger.warning(f"[Capture] 📸 photos=True, entering WAIT mode")
                     captured = True
                 elif user_said_no:
-                    checklist.collected_data["photos"] = False
-                    checklist.mark_field_collected("photos")
+                    checklist.mark_field_collected("photos", False)
                     logger.warning(f"[Capture] 📸 photos=False, skipping")
                     captured = True
             # Photo upload complete
@@ -1967,8 +1963,7 @@ async def entrypoint(ctx: JobContext):
             if "name" in bot_prompt:
                 if not user_said_yes and not user_said_no and len(user_text) > 1:
                     name_val = user_text.rstrip(".!?,")
-                    checklist.collected_data["name"] = name_val
-                    checklist.mark_field_collected("name")
+                    checklist.mark_field_collected("name", name_val)
                     logger.warning(f"[Capture] 👤 name={name_val}")
                     captured = True
         
@@ -1978,8 +1973,7 @@ async def entrypoint(ctx: JobContext):
                 import re
                 digits = re.sub(r'[^\d]', '', user_text)
                 if len(digits) >= 8:
-                    checklist.collected_data["phone"] = digits
-                    checklist.mark_field_collected("phone")
+                    checklist.mark_field_collected("phone", digits)
                     logger.warning(f"[Capture] 📞 phone={digits}")
                     captured = True
         
@@ -1990,8 +1984,7 @@ async def entrypoint(ctx: JobContext):
                 email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', lower_user)
                 if email_match:
                     email_val = email_match.group(0)
-                    checklist.collected_data["email"] = email_val
-                    checklist.mark_field_collected("email")
+                    checklist.mark_field_collected("email", email_val)
                     logger.warning(f"[Capture] 📧 email={email_val}")
                     captured = True
         
@@ -2000,8 +1993,7 @@ async def entrypoint(ctx: JobContext):
             payout_map = {"cash": "cash", "paynow": "paynow", "pay now": "paynow", "bank": "bank", "transfer": "bank"}
             for keyword, payout_val in payout_map.items():
                 if keyword in lower_user:
-                    checklist.collected_data["payout"] = payout_val
-                    checklist.mark_field_collected("payout")
+                    checklist.mark_field_collected("payout", payout_val)
                     logger.warning(f"[Capture] 💰 payout={payout_val}")
                     captured = True
                     break
