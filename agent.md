@@ -1,37 +1,5 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
-## Change Log — Dec 15, 2025 (Voice Agent - Critical Bug Fixes)
-
-### Contact Info Saving as Boolean Bug (Dec 15, 2025)
-**Problem**: Contact info (name, phone, email) was being saved as `True` instead of actual values, causing submission failures with error "Missing required trade-in details: contact name, contact email."
-
-**Root Causes**:
-1. **State machine double-write bug**: Code was setting `collected_data["name"] = name_val` then calling `mark_field_collected("name")` without the value, which overwrote with default `True`.
-2. **Boolean validation bypass**: `"True"` string passed name validation (4 letters, matches regex), so real names were rejected as "already collected."
-
-**Fixes Applied**:
-1. **Pass actual values to mark_field_collected** (`agents/voice/agent.py`): All field captures now pass the value directly instead of setting `collected_data` separately.
-2. **Reject boolean-like strings in validation** (`agents/voice/agent.py`): Added check to reject `"true"`, `"false"`, `"none"`, `"null"` in name/phone/email validation, allowing real values to replace them.
-
-### LiveKit SDK Compatibility (Dec 15, 2025)
-**Problem**: Agent started but crashed after greeting with `AttributeError: 'AudioStream' object has no attribute '_processor'`.
-
-**Root Cause**: LiveKit released `livekit` 1.0.21 with a bug. Dockerfile change to add `libX11` triggered full rebuild, pulling buggy version.
-
-**Fix**: Pinned `livekit==1.0.19` in `requirements.txt` while keeping `livekit-agents>=1.3.0` for `AgentServer` API.
-
-### Docker libX11 Missing (Dec 15, 2025)
-**Problem**: `OSError: libX11.so.6: cannot open shared object file` on container startup.
-
-**Fix**: Added `libx11-6`, `libxext6`, `libxrender1` to `Dockerfile`.
-
-### Trade-Up Recap Improvements (Dec 14-15, 2025)
-- **Removed "installment" from payout options**: Trade-ins only support cash/paynow/bank.
-- **Trade-up recap no longer mentions payout**: Trade-ups have top-up, not payout.
-- **Staff handoff when pricing not found**: Agent asks if user wants to connect with staff instead of hallucinating.
-
----
-
 ## Change Log — Dec 13, 2025 (Voice Agent - CRITICAL FIXES)
 
 ## Change Log — Dec 14, 2025 (Voice Trade-In - LeadId-First Unification)

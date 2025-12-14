@@ -298,11 +298,6 @@ def extract_data_from_message(
         current_step = checklist_state.get_current_step()
         mentions_photo = "photo" in lower or "picture" in lower or "image" in lower
         mentions_upload = "upload" in lower or "sent" in lower or "sending" in lower
-        # Detect when user says "sent", "done", "uploaded" etc. indicating photo upload complete
-        photo_done_phrases = lower.strip().rstrip(".!?,") in (
-            "sent", "done", "uploaded", "i sent it", "sent it", "there", "here",
-            "i uploaded it", "uploaded it", "finished", "ready"
-        )
         plain_yes = lower.strip() in ("yes", "yeah", "yep", "ok", "okay", "sure")
         plain_no = lower.strip() in ("no", "nope", "nah", "skip", "later")
 
@@ -311,26 +306,16 @@ def extract_data_from_message(
             "photo" in bot_lower or "photos" in bot_lower or "upload" in bot_lower
             or "send" in bot_lower or "picture" in bot_lower
         )
-        # Also detect if bot said "take your time" or similar waiting phrases
-        bot_was_waiting = (
-            "take your time" in bot_lower or "go ahead" in bot_lower 
-            or "waiting" in bot_lower or "sure" in bot_lower
-        )
 
         # Mark photos collected if:
         # 1. We're on photos step and user says yes/no to photo prompt
         # 2. User mentions they uploaded/sent a photo (regardless of step)
         # 3. User says "no photos" or similar
-        # 4. User says "sent", "done", "uploaded" etc. while on photos step
         if current_step == "photos":
             if mentions_photo or (bot_was_photo_prompt and (plain_yes or plain_no)):
                 wants_photos = not any(word in lower for word in ["no", "don't", "not", "none", "nope", "nah", "skip", "later"])
                 extracted["photos_acknowledged"] = wants_photos
                 logger.warning(f"[auto-extract] 📸 Photos acknowledged: {wants_photos}")
-            # NEW: Detect "sent", "done" etc. when we're waiting for photo upload
-            elif photo_done_phrases or (bot_was_waiting and mentions_upload):
-                extracted["photos_acknowledged"] = True
-                logger.warning(f"[auto-extract] 📸 Photo upload confirmed (user said: {message})")
         
         # Also detect if user mentions uploading/sending photo at any point
         if mentions_upload and mentions_photo:
@@ -364,28 +349,14 @@ def extract_data_from_message(
                     logger.warning(f"[auto-extract] 💰 Found payout: {payout}")
                     break
 
-    # Name detection - ONLY when bot actually asked for name
-    current_step = checklist_state.get_current_step()
-    bot_asked_for_name = False
-    if last_bot_prompt:
-        bot_lower = last_bot_prompt.lower()
-        bot_asked_for_name = (
-            "your name" in bot_lower 
-            or "what's your name" in bot_lower
-            or "may i have your name" in bot_lower
-            or "name?" in bot_lower
-        )
-    
-    # Only detect name if:
-    # 1. Bot explicitly asked for name, OR
-    # 2. Current step is "name" (not "photos" - that was causing false positives)
+    # Name detection - only when we're explicitly on the name step
     if (
         "name" not in checklist_state.collected_data
-        and (bot_asked_for_name or current_step == "name")
+        and checklist_state.get_current_step() == "name"
     ):
         normalized_lower = lower.strip().strip(".!?,")
 
-        # Never treat confirmations or photo-related words as names
+        # Never treat confirmations as names
         if normalized_lower in [
             "yes",
             "correct",
@@ -396,23 +367,6 @@ def extract_data_from_message(
             "sure",
             "that's right",
             "no",
-            "send",
-            "sent",
-            "senz",  # Common misheard "send"
-            "done",
-            "upload",
-            "uploaded",
-            "sending",
-            "attach",
-            "attached",
-            "a tach",  # Common misheard "attach"
-            "attaching",
-            "damn",
-            "dang",
-            "oops",
-            "don",  # Common misheard "done"
-            "dawn",  # Common misheard "done"
-            "dun",  # Common misheard "done"
         ]:
             logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
             return extracted
@@ -436,9 +390,6 @@ def extract_data_from_message(
             ".sg",
             "buy",
             "by ",
-            "send",
-            "sent",
-            "upload",
         ]
         has_skip = any(keyword in lower for keyword in skip_keywords)
 
@@ -550,8 +501,6 @@ async def force_save_to_db(
         data["brand"] = checklist_state.collected_data["brand"]
     if "model" in checklist_state.collected_data:
         data["model"] = checklist_state.collected_data["model"]
-    if "source_device_name" in checklist_state.collected_data:
-        data["source_device_name"] = checklist_state.collected_data["source_device_name"]
     if "target_device_name" in checklist_state.collected_data:
         data["target_device_name"] = checklist_state.collected_data["target_device_name"]
     for price_field in ["source_price_quoted", "target_price_quoted", "top_up_amount"]:
@@ -929,8 +878,6 @@ async def check_for_confirmation_and_submit(
         "sound good",
         "change anything",
         "correct",
-        "want to proceed",
-        "proceed with",
     ]
 
     # Check if user confirmed
@@ -948,13 +895,12 @@ async def check_for_confirmation_and_submit(
         logger.warning("=" * 80)
 
         # Check if we have all required data aligned to the checklist order
-        # RELAXED: photos is OPTIONAL - don't block submission just because photos wasn't collected
         required = [
             "brand",
             "model",
             "condition",
             "accessories",
-            # "photos",  # OPTIONAL - don't require photos for submission
+            "photos",
             "name",
             "phone",
             "email",
