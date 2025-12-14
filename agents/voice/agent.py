@@ -264,6 +264,9 @@ def _is_valid_contact_name(name: Optional[str]) -> bool:
     trimmed = name.strip()
     if len(trimmed) < 2 or len(trimmed) > 80:
         return False
+    # Reject boolean-like strings that got converted from True/False
+    if trimmed.lower() in ("true", "false", "none", "null"):
+        return False
     # Only allow basic ASCII name chars to avoid garbled STT tokens corrupting the lead
     allowed = re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed)
     if not allowed:
@@ -714,22 +717,38 @@ async def _tradein_update_lead_impl(
             )
     if contact_phone and "phone" in state.collected_data:
         existing_phone = str(state.collected_data.get("phone") or "").strip()
-        if existing_phone and existing_phone != str(contact_phone).strip():
+        # Reject boolean-like strings that got converted from True/False
+        existing_is_boolean = existing_phone.lower() in ("true", "false", "none", "null")
+        if existing_phone and not existing_is_boolean and existing_phone != str(contact_phone).strip():
             logger.warning(
                 "[tradein_update_lead] ⚠️ Ignoring new contact_phone (already collected): existing=%s new=%s",
                 existing_phone,
                 contact_phone,
             )
             contact_phone = None
+        elif existing_is_boolean:
+            logger.warning(
+                "[tradein_update_lead] ✅ Replacing invalid existing contact_phone: existing=%s new=%s",
+                existing_phone,
+                contact_phone,
+            )
     if contact_email and "email" in state.collected_data:
         existing_email = str(state.collected_data.get("email") or "").strip()
-        if existing_email and existing_email.lower() != str(contact_email).strip().lower():
+        # Reject boolean-like strings that got converted from True/False
+        existing_is_boolean = existing_email.lower() in ("true", "false", "none", "null")
+        if existing_email and not existing_is_boolean and existing_email.lower() != str(contact_email).strip().lower():
             logger.warning(
                 "[tradein_update_lead] ⚠️ Ignoring new contact_email (already collected): existing=%s new=%s",
                 existing_email,
                 contact_email,
             )
             contact_email = None
+        elif existing_is_boolean:
+            logger.warning(
+                "[tradein_update_lead] ✅ Replacing invalid existing contact_email: existing=%s new=%s",
+                existing_email,
+                contact_email,
+            )
 
     # Normalize empty string back to None so payload doesn't write empties
     if isinstance(target_device_name, str) and not target_device_name.strip():
