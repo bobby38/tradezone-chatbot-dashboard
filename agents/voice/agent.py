@@ -1759,13 +1759,15 @@ User: "bobby@hotmail.com"
 Agent: "bobby@hotmail.com, right?" [WAIT]
 User: "Yes"
 Agent: [tradein_update_lead(contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com")]
-Agent: "Noted—final quote after inspection. Installments or cash top-up?"
-User: "Installments"
-Agent: [tradein_update_lead(preferred_payout="installment")]
-Agent: "MSI Claw 1TB, good condition, with box and accessories. Contact: Bobby, 84489068, bobby@hotmail.com. Payout via installments. Change anything?" [WAIT]
-User: "No"
+Agent: "Let me confirm: Trading MSI Claw 1TB in good condition with box and accessories for PS5 Pro. Top-up: S$600. Contact: Bobby, 84489068, bobby@hotmail.com. Everything correct?" [WAIT]
+User: "Yes"
 Agent: [tradein_submit_lead()]
 Agent: "Done! We'll review and contact you. Anything else?"
+
+**🔴 TRADE-UP RECAP RULES:**
+- For TRADE-UPS: Say "Trading [SOURCE] for [TARGET]. Top-up: S$[AMOUNT]" - NO payout question!
+- For CASH TRADE-INS: Ask payout method (cash, PayNow, bank) and include in recap
+- NEVER mention "installments" or "payout" for trade-ups - they pay TOP-UP, not payout
 
 **Example - WRONG ❌:**
 User: "Trade PS4 for Xbox"
@@ -1909,6 +1911,13 @@ async def entrypoint(ctx: JobContext):
         # ═══════════════════════════════════════════════════════════════════
         
         captured = False
+        
+        # 🔴 TRADE-UP CONFIRMATION: When user says "Yes" to proceed with trade-up pricing
+        # Save all the trade-up data (source_device_name, target_device_name, prices) to DB
+        if user_said_yes and "top-up" in bot_prompt or "top up" in bot_prompt or "proceed" in bot_prompt:
+            if checklist.is_trade_up and "source_device_name" in checklist.collected_data:
+                logger.warning(f"[Capture] 🔄 User confirmed trade-up, forcing save of pricing data")
+                captured = True  # Force save to persist trade-up data
         
         # STORAGE: Capture storage size (e.g., "1TB", "512GB")
         if current_step == "storage" and "storage" not in checklist.collected_data:
