@@ -64,9 +64,11 @@
     currentImage: null, // Store selected image as base64
     typingIndicatorEl: null,
     viewportHandler: null,
+    isRecording: false,
     voiceState: {
       sessionId: null,
       isRecording: false,
+      room: null,
       ws: null,
       audioContext: null,
       mediaStream: null,
@@ -2173,6 +2175,162 @@
         this.typingIndicatorEl.parentNode.removeChild(this.typingIndicatorEl);
       }
       this.typingIndicatorEl = null;
+    },
+
+    loadLiveKitClient: function () {
+      if (this._livekitLoading) return this._livekitLoading;
+      if (window.livekit || window.LiveKitClient) {
+        this._livekitLoading = Promise.resolve();
+        return this._livekitLoading;
+      }
+
+      const scriptUrl =
+        this.config.livekitScriptUrl ||
+        `${this.config.apiUrl}/widget/livekit-client.umd.js` ||
+        "https://unpkg.com/livekit-client/dist/livekit-client.umd.js";
+
+      this._livekitLoading = new Promise((resolve, reject) => {
+        const existing = document.querySelector(
+          'script[data-livekit-client="true"]',
+        );
+        if (existing) {
+          existing.addEventListener("load", () => resolve());
+          existing.addEventListener("error", () =>
+            reject(new Error("Failed to load LiveKit client")),
+          );
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = scriptUrl;
+        script.async = true;
+        script.dataset.livekitClient = "true";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load LiveKit client"));
+        document.head.appendChild(script);
+      });
+
+      return this._livekitLoading;
+    },
+
+    startLiveKitVoiceMode: async function () {
+      try {
+        if (!this.sessionId) {
+          throw new Error("Missing sessionId");
+        }
+
+        await this.loadLiveKitClient();
+
+        const livekit = window.livekit || window.LiveKitClient;
+        const Room = livekit?.Room;
+        const RoomEvent = livekit?.RoomEvent;
+
+        if (!Room || !RoomEvent) {
+          throw new Error("LiveKit client not available on window");
+        }
+
+        const roomName = this.sessionId.startsWith("chat-")
+          ? this.sessionId
+          : `chat-${this.sessionId}`;
+        const participantName = this.clientId || `client-${Date.now()}`;
+
+        this.updateVoiceStatus && this.updateVoiceStatus("Connecting...");
+
+        const tokenRes = await fetch(`${this.config.apiUrl}/api/livekit/token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomName, participantName }),
+        });
+
+        const tokenData = await tokenRes.json().catch(() => ({}));
+        if (!tokenRes.ok || !tokenData?.token || !tokenData?.url) {
+          throw new Error(tokenData?.error || "Failed to get LiveKit token");
+        }
+
+        if (this.voiceState.room) {
+          try {
+            this.voiceState.room.disconnect();
+          } catch (_) {}
+        }
+
+        const room = new Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+
+        const attachedAudio = new Map();
+
+        room
+          .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+            try {
+              if (track?.kind === "audio") {
+                const el = track.attach();
+                el.autoplay = true;
+                el.playsInline = true;
+                el.dataset.livekitAudio = participant?.identity || "agent";
+                document.body.appendChild(el);
+                attachedAudio.set(track.sid, el);
+              }
+            } catch (err) {
+              console.warn("[Voice] Failed to attach remote track", err);
+            }
+          })
+          .on(RoomEvent.TrackUnsubscribed, (track) => {
+            try {
+              const el = attachedAudio.get(track.sid);
+              if (el && el.parentNode) el.parentNode.removeChild(el);
+              attachedAudio.delete(track.sid);
+            } catch (_) {}
+          })
+          .on(RoomEvent.Disconnected, () => {
+            attachedAudio.forEach((el) => {
+              try {
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+              } catch (_) {}
+            });
+            attachedAudio.clear();
+            this.isRecording = false;
+            this.voiceState.isRecording = false;
+            this.voiceState.room = null;
+            this.updateVoiceButton && this.updateVoiceButton();
+            this.updateVoiceStatus && this.updateVoiceStatus("Disconnected");
+          });
+
+        await room.connect(tokenData.url, tokenData.token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+
+        this.voiceState.room = room;
+        this.isRecording = true;
+        this.voiceState.isRecording = true;
+        this.updateVoiceButton && this.updateVoiceButton();
+        this.updateVoiceStatus && this.updateVoiceStatus("Listening...");
+      } catch (err) {
+        console.error("[Voice] LiveKit start failed", err);
+        this.updateVoiceStatus &&
+          this.updateVoiceStatus("Voice failed. Please try again.");
+        this.isRecording = false;
+        if (this.voiceState) this.voiceState.isRecording = false;
+        this.updateVoiceButton && this.updateVoiceButton();
+      }
+    },
+
+    stopLiveKitVoiceMode: function () {
+      try {
+        const room = this.voiceState?.room;
+        if (room) {
+          try {
+            room.localParticipant.setMicrophoneEnabled(false);
+          } catch (_) {}
+          try {
+            room.disconnect();
+          } catch (_) {}
+        }
+      } finally {
+        this.voiceState.room = null;
+        this.isRecording = false;
+        if (this.voiceState) this.voiceState.isRecording = false;
+        this.updateVoiceButton && this.updateVoiceButton();
+        this.updateVoiceStatus && this.updateVoiceStatus("Tap the mic to start");
+      }
     },
 
     startVoice: async function () {
