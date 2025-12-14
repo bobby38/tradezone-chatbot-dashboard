@@ -186,7 +186,7 @@ async def _force_submit_tradein(session_id: str, checklist: "TradeInChecklistSta
                     "sessionId": session_id,
                     "leadId": lead_id,
                     "notify": True,
-                    "status": "submitted",
+                    "status": "in_review",  # Valid enum value (not "submitted")
                 },
                 headers=headers,
                 timeout=15.0,
@@ -199,6 +199,8 @@ async def _force_submit_tradein(session_id: str, checklist: "TradeInChecklistSta
                 logger.warning(f"[ForceSubmit] ✅ SUCCESS: {result}")
                 logger.warning(f"[ForceSubmit] Email sent: {result.get('emailSent', False)}")
                 checklist.completed = True
+                checklist.current_step_index = len(checklist.STEPS)  # Mark as fully complete
+                logger.warning(f"[ForceSubmit] ✅ Checklist marked as COMPLETED")
     except Exception as e:
         logger.error(f"[ForceSubmit] ❌ Exception: {e}")
 

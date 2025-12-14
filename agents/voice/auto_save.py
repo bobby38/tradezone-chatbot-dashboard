@@ -390,6 +390,13 @@ def extract_data_from_message(
             "upload",
             "uploaded",
             "sending",
+            "attach",
+            "attached",
+            "a tach",  # Common misheard "attach"
+            "attaching",
+            "damn",
+            "dang",
+            "oops",
         ]:
             logger.info(f"[auto-extract] ⏭️ Skipping confirmation: {message}")
             return extracted
