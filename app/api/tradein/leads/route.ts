@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
     if (leads && leads.length > 0) {
       console.log("[tradein/leads] First lead:", leads[0]?.id, leads[0]?.model, leads[0]?.status);
     }
-    return NextResponse.json({ leads });
+    return NextResponse.json({ leads }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+      }
+    });
   } catch (error) {
     console.error("[tradein/leads] Unexpected error", error);
     return NextResponse.json(
