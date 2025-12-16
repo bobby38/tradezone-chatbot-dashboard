@@ -115,9 +115,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Realtime model: allow override; default to cost-efficient gpt-5-mini preview
+    // Realtime model: allow override; default to 2025-12-15 snapshot for improved performance
     const model =
-      process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-mini";
+      process.env.OPENAI_REALTIME_MODEL || "gpt-realtime-mini-2025-12-15";
 
     const config = {
       apiKey: process.env.OPENAI_API_KEY,

@@ -1848,7 +1848,7 @@ async def entrypoint(ctx: JobContext):
             llm=realtime.RealtimeModel(
                 model=os.getenv(
                     "VOICE_LLM_MODEL",
-                    "gpt-4o-mini-realtime-preview-2024-12-17",
+                    "gpt-realtime-mini-2025-12-15",
                 ),
                 voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
                 temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
