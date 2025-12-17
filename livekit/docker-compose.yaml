@@ -13,9 +13,9 @@ services:
       - "7881:7881"           # TCP fallback
       - "7881:7881/udp"       # WebRTC UDP
       - "50000-50100:50000-50100/udp"  # RTC port range (reduced for Coolify)
-    volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
-    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I="
+    command: ["--config-body", "port: 7880\nrtc:\n  port_range_start: 50000\n  port_range_end: 50100\n  tcp_port: 7881\n  use_external_ip: true\nlogging:\n  level: info"]
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
       interval: 30s
