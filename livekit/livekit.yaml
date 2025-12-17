@@ -4,13 +4,20 @@
 port: 7880
 
 rtc:
-  # WebRTC UDP port for media (reduced range for Coolify)
+  # WebRTC ports - using TCP only since UDP can't go through Traefik
   port_range_start: 50000
   port_range_end: 50100
-  # Use external IP for WebRTC candidates (required for NAT traversal)
   use_external_ip: true
-  # Enable TCP fallback for restrictive networks
   tcp_port: 7881
+  # Force TCP for WebRTC (required for reverse proxy setups)
+  prefer_tcp: true
+
+turn:
+  enabled: true
+  domain: livekit.rezult.co
+  tls_port: 5349
+  udp_port: 443
+  external_tls: true
 
 # API Keys - REPLACE THESE with your generated keys
 # Generate with:
