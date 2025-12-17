@@ -18,7 +18,7 @@ rtc:
 #   Secret:  openssl rand -base64 32
 keys:
   # Format: API_KEY: API_SECRET
-  APIrezultlivekit01: REPLACE_WITH_YOUR_GENERATED_SECRET_BASE64
+  API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=
 
 logging:
   level: info

@@ -39,8 +39,8 @@ openssl rand -base64 32
 ```bash
 # Replace Cloud credentials with self-hosted
 LIVEKIT_URL=wss://livekit.rezult.co
-LIVEKIT_API_KEY=<your-generated-key>
-LIVEKIT_API_SECRET=<your-generated-secret>
+LIVEKIT_API_KEY=API3da17ac5856eb78524a98386
+LIVEKIT_API_SECRET=xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=
 ```
 
 ### 🔄 ROLLBACK CHECKPOINT — LiveKit Cloud Credentials
