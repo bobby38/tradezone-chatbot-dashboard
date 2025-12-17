@@ -1,0 +1,28 @@
+# Caddy reverse proxy for LiveKit
+# Automatic HTTPS via Let's Encrypt
+
+livekit.rezult.co {
+    # WebSocket upgrade for LiveKit signaling
+    reverse_proxy localhost:7880 {
+        # Required headers for WebSocket
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        
+        # WebSocket support
+        transport http {
+            keepalive 30s
+            keepalive_idle_conns 10
+        }
+    }
+    
+    # Enable compression
+    encode gzip
+    
+    # Logging
+    log {
+        output file /var/log/caddy/livekit.log
+        format json
+    }
+}
