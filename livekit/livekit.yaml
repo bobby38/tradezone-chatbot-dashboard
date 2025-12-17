@@ -4,20 +4,22 @@
 port: 7880
 
 rtc:
-  # WebRTC ports - using TCP only since UDP can't go through Traefik
   port_range_start: 50000
   port_range_end: 50100
   use_external_ip: true
   tcp_port: 7881
-  # Force TCP for WebRTC (required for reverse proxy setups)
-  prefer_tcp: true
-
-turn:
-  enabled: true
-  domain: livekit.rezult.co
-  tls_port: 5349
-  udp_port: 443
-  external_tls: true
+  # Use Metered.ca free TURN for NAT traversal
+  turn_servers:
+    - host: a.relay.metered.ca
+      port: 80
+      protocol: udp
+      username: e8dd65c92f6ec4f4c5b85a9c
+      credential: uWdWNmkhvyqTEuTR
+    - host: a.relay.metered.ca
+      port: 443
+      protocol: tcp
+      username: e8dd65c92f6ec4f4c5b85a9c
+      credential: uWdWNmkhvyqTEuTR
 
 # API Keys - REPLACE THESE with your generated keys
 # Generate with:
