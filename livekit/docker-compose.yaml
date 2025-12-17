@@ -1,14 +1,23 @@
 # LiveKit Self-Hosted Deployment for livekit.rezult.co
-# Uses host network for direct UDP access (required for WebRTC)
+# Exposes UDP ports directly for WebRTC while keeping HTTP for Traefik
 
 version: '3.8'
+
+networks:
+  coolify:
+    external: true
 
 services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: livekit-server
     restart: unless-stopped
-    network_mode: host
+    networks:
+      - coolify
+    ports:
+      - "7881:7881/tcp"
+      - "7881:7881/udp"
+      - "50000-50100:50000-50100/udp"
     environment:
       LIVEKIT_CONFIG: |
         port: 7880
@@ -17,16 +26,27 @@ services:
           port_range_end: 50100
           tcp_port: 7881
           use_external_ip: true
+          enable_loopback_candidate: true
         keys:
           API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=
         logging:
           level: info
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.livekit-http.rule=Host(`livekit.rezult.co`)
+      - traefik.http.routers.livekit-http.entrypoints=http
+      - traefik.http.routers.livekit-http.middlewares=redirect-to-https
+      - traefik.http.routers.livekit-https.rule=Host(`livekit.rezult.co`)
+      - traefik.http.routers.livekit-https.entrypoints=https
+      - traefik.http.routers.livekit-https.tls=true
+      - traefik.http.routers.livekit-https.tls.certresolver=letsencrypt
+      - traefik.http.services.livekit.loadbalancer.server.port=7880
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-# Note: Using host network mode exposes ports directly on the host
-# Ports: 7880 (HTTP), 7881 (TCP), 50000-50100 (UDP)
-# Coolify proxy handles SSL for livekit.rezult.co -> localhost:7880
+# HTTP/WebSocket goes through Traefik (port 7880)
+# UDP ports exposed directly on host for WebRTC media
