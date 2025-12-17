@@ -1,5 +1,5 @@
 # LiveKit Self-Hosted Deployment for livekit.rezult.co
-# Optimized for Coolify deployment (uses Coolify's built-in proxy)
+# Uses host network for direct UDP access (required for WebRTC)
 
 version: '3.8'
 
@@ -8,11 +8,7 @@ services:
     image: livekit/livekit-server:latest
     container_name: livekit-server
     restart: unless-stopped
-    ports:
-      - "7880:7880"           # HTTP/WebSocket signaling
-      - "7881:7881"           # TCP fallback
-      - "7881:7881/udp"       # WebRTC UDP
-      - "50000-50100:50000-50100/udp"  # RTC port range (reduced for Coolify)
+    network_mode: host
     environment:
       LIVEKIT_CONFIG: |
         port: 7880
@@ -31,5 +27,6 @@ services:
       timeout: 10s
       retries: 3
 
-# Note: Coolify handles SSL/proxy - no need for Caddy service
-# Domain livekit.rezult.co should be configured in Coolify to proxy to port 7880
+# Note: Using host network mode exposes ports directly on the host
+# Ports: 7880 (HTTP), 7881 (TCP), 50000-50100 (UDP)
+# Coolify proxy handles SSL for livekit.rezult.co -> localhost:7880
