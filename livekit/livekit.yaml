@@ -4,9 +4,9 @@
 port: 7880
 
 rtc:
-  # WebRTC UDP port for media
+  # WebRTC UDP port for media (reduced range for Coolify)
   port_range_start: 50000
-  port_range_end: 50200
+  port_range_end: 50100
   # Use external IP for WebRTC candidates (required for NAT traversal)
   use_external_ip: true
   # Enable TCP fallback for restrictive networks

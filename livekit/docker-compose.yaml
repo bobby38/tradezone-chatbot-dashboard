@@ -1,5 +1,5 @@
 # LiveKit Self-Hosted Deployment for livekit.rezult.co
-# Deploy on your VPS alongside Coolify
+# Optimized for Coolify deployment (uses Coolify's built-in proxy)
 
 version: '3.8'
 
@@ -8,12 +8,15 @@ services:
     image: livekit/livekit-server:latest
     container_name: livekit-server
     restart: unless-stopped
-    network_mode: host  # Required for WebRTC UDP to work properly
+    ports:
+      - "7880:7880"           # HTTP/WebSocket signaling
+      - "7881:7881"           # TCP fallback
+      - "7881:7881/udp"       # WebRTC UDP
+      - "50000-50100:50000-50100/udp"  # RTC port range (reduced for Coolify)
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
     command: --config /etc/livekit.yaml
     environment:
-      # These override the config file keys (more secure for production)
       - LIVEKIT_KEYS=${LIVEKIT_API_KEY}:${LIVEKIT_API_SECRET}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
@@ -21,25 +24,5 @@ services:
       timeout: 10s
       retries: 3
 
-  # Caddy reverse proxy with automatic SSL
-  caddy:
-    image: caddy:2-alpine
-    container_name: livekit-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"      # HTTP (redirect to HTTPS)
-      - "443:443"    # HTTPS
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - livekit
-
-volumes:
-  caddy_data:
-  caddy_config:
-
-# Alternative: If you already have a reverse proxy (Traefik/Nginx via Coolify)
-# Comment out the caddy service above and configure your existing proxy
-# to forward wss://livekit.rezult.co to localhost:7880
+# Note: Coolify handles SSL/proxy - no need for Caddy service
+# Domain livekit.rezult.co should be configured in Coolify to proxy to port 7880
