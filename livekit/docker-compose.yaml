@@ -13,11 +13,14 @@ services:
       - "7881:7881"           # TCP fallback
       - "7881:7881/udp"       # WebRTC UDP
       - "50000-50100:50000-50100/udp"  # RTC port range (reduced for Coolify)
-    volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
-    command: --config /etc/livekit.yaml
     environment:
       - LIVEKIT_KEYS=${LIVEKIT_API_KEY}:${LIVEKIT_API_SECRET}
+    command: >
+      --port 7880
+      --rtc.port-range-start 50000
+      --rtc.port-range-end 50100
+      --rtc.tcp-port 7881
+      --rtc.use-external-ip
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
       interval: 30s
@@ -26,3 +29,4 @@ services:
 
 # Note: Coolify handles SSL/proxy - no need for Caddy service
 # Domain livekit.rezult.co should be configured in Coolify to proxy to port 7880
+# Config is passed via command line args instead of volume mount
