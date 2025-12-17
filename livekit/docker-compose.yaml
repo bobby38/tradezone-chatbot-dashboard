@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  livekit:
+    image: 'livekit/livekit-server:latest'
+    container_name: livekit-server
+    restart: unless-stopped
+    ports:
+      - '7880:7880'
+      - '7881:7881'
+      - '7881:7881/udp'
+      - '50000-50100:50000-50100/udp'
+    environment:
+      LIVEKIT_CONFIG: "port: 7880\nrtc:\n  port_range_start: 50000\n  port_range_end: 50100\n  tcp_port: 7881\n  use_external_ip: true\nkeys:\n  API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=\nlogging:\n  level: info\n"
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '-q'
+        - '--spider'
+        - 'http://localhost:7880'
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - coolify.managed=true
+      - coolify.applicationId=43
+      - coolify.type=application
+      - traefik.enable=true
+      - traefik.http.routers.livekit.rule=Host(`livekit.rezult.co`)
+      - traefik.http.routers.livekit.entrypoints=https
+      - traefik.http.routers.livekit.tls=true
+      - traefik.http.routers.livekit.tls.certresolver=letsencrypt
+      - traefik.http.services.livekit.loadbalancer.server.port=7880
