@@ -1,5 +1,68 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 17, 2025 (LiveKit Self-Hosted Migration)
+
+### LiveKit Self-Hosted Server Setup
+**Goal**: Migrate from LiveKit Cloud to self-hosted server at `livekit.rezult.co` for cost control.
+
+**Branch**: `feature/livekit-self-hosted` (commit `749030a6`)
+
+**Files Created**:
+- `livekit/livekit.yaml` - Server config with RTC ports
+- `livekit/docker-compose.yaml` - Docker deployment with Caddy
+- `livekit/Caddyfile` - Auto-SSL reverse proxy
+- `livekit/README.md` - Full deployment guide
+
+### Migration Status
+| Step | Status | Notes |
+|------|--------|-------|
+| Config files created | ✅ Done | In `livekit/` directory |
+| Branch pushed to GitHub | ✅ Done | `feature/livekit-self-hosted` |
+| DNS A record | ⏳ Pending | `livekit.rezult.co` → VPS IP |
+| Generate API credentials | ⏳ Pending | See commands below |
+| Deploy to VPS | ⏳ Pending | Via Coolify or docker-compose |
+| Test connectivity | ⏳ Pending | `curl https://livekit.rezult.co` |
+| Update agent env vars | ⏳ Pending | Both dashboard + voice agent |
+| Verify voice calls work | ⏳ Pending | Full trade-in flow test |
+| Switch production | ⏳ Pending | Only after all tests pass |
+
+### Generate Credentials
+```bash
+# API Key
+echo "API$(openssl rand -hex 12)"
+
+# API Secret
+openssl rand -base64 32
+```
+
+### Environment Variables (After Self-Hosted Ready)
+```bash
+# Replace Cloud credentials with self-hosted
+LIVEKIT_URL=wss://livekit.rezult.co
+LIVEKIT_API_KEY=<your-generated-key>
+LIVEKIT_API_SECRET=<your-generated-secret>
+```
+
+### 🔄 ROLLBACK CHECKPOINT — LiveKit Cloud Credentials
+**Keep these until self-hosted is verified working!**
+
+```bash
+# CLOUD FALLBACK (current production)
+LIVEKIT_URL=wss://tradezone-9kwy60jr.livekit.cloud
+LIVEKIT_API_KEY=APIexoxxNQJkjoW
+LIVEKIT_API_SECRET=6ZtxzOricfKDesvfnf2BfV3hoLMGJ7s8tnfz9ezHnQ4U
+```
+
+**To rollback**: Simply restore the Cloud credentials above in:
+1. Dashboard `.env.local`
+2. Voice agent `agents/voice/.env.local`
+3. Coolify environment variables
+4. Redeploy voice agent
+
+**Do NOT delete LiveKit Cloud project until self-hosted runs stable for 7+ days.**
+
+---
+
 ## Change Log — Dec 15, 2025 (Voice Agent - Critical Bug Fixes)
 
 ### Contact Info Saving as Boolean Bug (Dec 15, 2025)
