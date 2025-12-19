@@ -1,5 +1,17 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 19, 2025 (LiveKit Widget - Disconnect Fix)
+
+### Client disconnect after agent speaks (Dec 19, 2025)
+**Problem**: LiveKit room disconnects with `CLIENT_REQUEST_LEAVE` shortly after the agent speaks, creating the appearance of a reconnection loop and preventing stable mic capture.
+
+**Root Cause**: The widget was calling `toggleVoice()` again (via the mic button click handler). Since `isRecording` was `true`, `toggleVoice()` called `stopVoice()` → `stopLiveKitVoiceMode()` → `room.disconnect()`. Debug stack trace confirmed the call path originated from the voice button click handler.
+
+**Fix Applied** (`public/widget/chat-widget-enhanced.js`):
+- Track `voiceState.agentSpeaking` based on agent transcripts.
+- Disable voice toggle while the agent is speaking (ignore clicks).
+- Add UI feedback: reduced opacity + `not-allowed` cursor + tooltip while disabled.
+
 ## Change Log — Dec 15, 2025 (Voice Agent - Critical Bug Fixes)
 
 ### Contact Info Saving as Boolean Bug (Dec 15, 2025)
