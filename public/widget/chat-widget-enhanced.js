@@ -2326,6 +2326,18 @@
               console.warn("[Voice] Failed to attach remote track", err);
             }
           })
+          .on(
+            RoomEvent.LocalAudioSilenceDetected || "LocalAudioSilenceDetected",
+            () => {
+              try {
+                if (!this.isRecording) return;
+                this.updateVoiceStatus &&
+                  this.updateVoiceStatus(
+                    "Mic silent. Check browser mic permission / input device.",
+                  );
+              } catch (_) {}
+            },
+          )
           .on(RoomEvent.TranscriptionReceived, (segments, participant, publication) => {
             try {
               const segs = Array.isArray(segments) ? segments : [];
