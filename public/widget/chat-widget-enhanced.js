@@ -2412,6 +2412,7 @@
     },
 
     stopLiveKitVoiceMode: function () {
+      console.log("[Voice] stopLiveKitVoiceMode called - Stack trace:", new Error().stack);
       try {
         const room = this.voiceState?.room;
         if (room) {
