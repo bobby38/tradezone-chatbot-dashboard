@@ -69,6 +69,7 @@
       sessionId: null,
       isRecording: false,
       agentSpeaking: false,
+      stopArmedUntil: 0,
       room: null,
       ws: null,
       audioContext: null,
@@ -77,7 +78,6 @@
       playbackContext: null,
       playbackNode: null,
       audioQueue: [],
-      isResponding: false,
     },
     voicePendingUserTranscript: null,
     voicePendingAssistantTranscript: "",
@@ -2009,214 +2009,6 @@
       this.updateWidgetHeight();
     },
 
-    sendMessage: async function () {
-      const input = document.getElementById("tz-input");
-      const message = input.value.trim();
-      const sendButton = document.getElementById("tz-send");
-
-      if (!message && !this.currentImage) return;
-
-      // Show user message with image if present
-      this.addMessage(message || "(Image)", "user", this.currentImage);
-      input.value = "";
-
-      const imageToSend = this.currentImage;
-      this.removeImage(); // Clear after sending
-
-      try {
-        this.showTypingIndicator(
-          "Amara is searching TradeZone for the best answers…",
-        );
-
-        input.disabled = true;
-        input.classList.add("is-disabled");
-        if (!input.dataset.prevPlaceholder) {
-          input.dataset.prevPlaceholder = input.placeholder;
-        }
-        input.placeholder = "Searching…";
-
-        if (sendButton) {
-          sendButton.disabled = true;
-          sendButton.classList.add("is-sending");
-        }
-
-        // Build history from messages array
-        const history = this.messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        }));
-
-        const response = await fetch(
-          `${this.config.apiUrl}/api/chatkit/agent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-API-Key": this.config.apiKey || "",
-            },
-            body: JSON.stringify({
-              sessionId: this.sessionId,
-              message: message || "What is in this image?",
-              image: imageToSend, // Send base64 image
-              history: history,
-            }),
-          },
-        );
-
-        const data = await response.json();
-        if (data.response) {
-          this.addMessage(data.response, "assistant");
-        } else {
-          this.hideTypingIndicator();
-        }
-      } catch (error) {
-        console.error("[Chat] Error:", error);
-        this.hideTypingIndicator();
-        this.addMessage(
-          "Sorry, I encountered an error. Please try again.",
-          "assistant",
-        );
-      } finally {
-        // Ensure typing indicator is cleared if no assistant message was added
-        this.hideTypingIndicator();
-        input.disabled = false;
-        input.classList.remove("is-disabled");
-        if (input.dataset.prevPlaceholder) {
-          input.placeholder = input.dataset.prevPlaceholder;
-          delete input.dataset.prevPlaceholder;
-        }
-        if (sendButton) {
-          sendButton.disabled = false;
-          sendButton.classList.remove("is-sending");
-        }
-      }
-    },
-
-    sendVoiceNote: async function () {
-      const noteInput = document.getElementById("tz-voice-note");
-      if (!noteInput) return;
-      const note = noteInput.value.trim();
-      const textInput = document.getElementById("tz-input");
-      if (!textInput) return;
-      const hadImage = !!this.currentImage;
-
-      if (!note && !this.currentImage) {
-        this.updateVoiceStatus("Add a note or attach a photo first.");
-        setTimeout(() => this.updateVoiceStatus("Ready to start"), 2000);
-        return;
-      }
-
-      const previousValue = textInput.value;
-      const defaultPlaceholder =
-        noteInput.dataset.defaultPlaceholder || noteInput.placeholder;
-      noteInput.dataset.defaultPlaceholder = defaultPlaceholder;
-      textInput.value = note;
-
-      try {
-        await this.sendMessage();
-        noteInput.value = "";
-
-        // Clear the image after sending
-        if (hadImage) {
-          this.removeImage();
-        }
-
-        if (this.mode === "voice") {
-          if (note) {
-            this.addTranscript(`📝 Note sent: ${note}`, "system");
-          } else {
-            this.addTranscript("📝 Note sent.", "system");
-          }
-          if (hadImage) {
-            this.addTranscript(
-              "📷 Photo received. We'll review it soon.",
-              "system",
-            );
-          }
-          const statusMessage = hadImage
-            ? note
-              ? "Note + photo sent to Amara."
-              : "Photo sent to Amara."
-            : "Note sent to Amara.";
-          this.updateVoiceStatus(statusMessage);
-          noteInput.placeholder = hadImage ? "Photo sent!" : "Note sent!";
-          setTimeout(() => {
-            this.updateVoiceStatus("Ready to start");
-            noteInput.placeholder = noteInput.dataset.defaultPlaceholder;
-          }, 2200);
-        }
-      } finally {
-        textInput.value = previousValue;
-      }
-    },
-
-    addMessage: function (text, role, imageBase64 = null) {
-      if (role === "assistant") {
-        this.hideTypingIndicator();
-      }
-      // Store message in history
-      this.messages.push({
-        role: role,
-        content: text,
-      });
-
-      // Save to localStorage for persistence
-      this.saveHistoryToStorage();
-
-      const container = document.getElementById("tz-messages");
-      const div = document.createElement("div");
-      div.className = `tz-chat-message ${role}`;
-
-      // Use markdown for assistant messages, escape HTML for user messages
-      const formattedText =
-        role === "assistant" ? this.parseMarkdown(text) : this.escapeHtml(text);
-
-      // Add image if present
-      const imageHtml = imageBase64
-        ? `<img src="${imageBase64}" style="max-width: 200px; border-radius: 8px; margin-top: 8px; display: block;" />`
-        : "";
-
-      div.innerHTML = `
-        <div class="tz-chat-message-avatar">${role === "user" ? "U" : this.config.botName[0]}</div>
-        <div class="tz-chat-message-bubble">${formattedText}${imageHtml}</div>
-      `;
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
-    },
-
-    showTypingIndicator: function (label) {
-      if (this.typingIndicatorEl) return;
-
-      const container = document.getElementById("tz-messages");
-      if (!container) return;
-
-      const div = document.createElement("div");
-      div.className = "tz-chat-message assistant typing";
-      const statusLabel = label?.trim()
-        ? this.escapeHtml(label.trim())
-        : `${this.escapeHtml(this.config.botName)} is typing…`;
-      div.innerHTML = `
-        <div class="tz-chat-message-avatar">${this.config.botName[0]}</div>
-        <div class="tz-chat-message-bubble">
-          <span class="tz-typing-indicator-content">
-            <span class="tz-typing-label">${statusLabel}</span>
-            <span class="tz-typing-dots"><span></span><span></span><span></span></span>
-          </span>
-        </div>
-      `;
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
-      this.typingIndicatorEl = div;
-    },
-
-    hideTypingIndicator: function () {
-      if (!this.typingIndicatorEl) return;
-      if (this.typingIndicatorEl.parentNode) {
-        this.typingIndicatorEl.parentNode.removeChild(this.typingIndicatorEl);
-      }
-      this.typingIndicatorEl = null;
-    },
-
     loadLiveKitClient: function () {
       if (this._livekitLoading) return this._livekitLoading;
       if (window.livekit || window.LiveKitClient || window.LivekitClient) {
@@ -2321,6 +2113,31 @@
                 el.dataset.livekitAudio = participant?.identity || "agent";
                 document.body.appendChild(el);
                 attachedAudio.set(track.sid, el);
+
+                const identity = participant?.identity || "";
+                const participantKind = participant?.kind;
+                const isAgentAudio =
+                  String(identity).toLowerCase().startsWith("agent") ||
+                  String(identity).toLowerCase().includes("amara") ||
+                  String(participantKind).toLowerCase().includes("agent");
+                if (isAgentAudio) {
+                  const markSpeaking = (speaking) => {
+                    try {
+                      if (!this.voiceState) return;
+                      this.voiceState.agentSpeaking = speaking;
+                      this.updateVoiceButton && this.updateVoiceButton();
+                    } catch (_) {}
+                  };
+                  el.addEventListener("playing", () => markSpeaking(true));
+                  el.addEventListener("ended", () => markSpeaking(false));
+                  el.addEventListener("pause", () => {
+                    setTimeout(() => {
+                      try {
+                        if (el.paused) markSpeaking(false);
+                      } catch (_) {}
+                    }, 600);
+                  });
+                }
               }
             } catch (err) {
               console.warn("[Voice] Failed to attach remote track", err);
@@ -2344,7 +2161,6 @@
 
                 // Track agent speaking state
                 if (isAgent && !seg?.final) {
-                  this.voiceState.agentSpeaking = true;
                   this.updateVoiceButton && this.updateVoiceButton();
                 }
 
@@ -2374,7 +2190,6 @@
                   
                   // Agent finished speaking
                   if (isAgent) {
-                    this.voiceState.agentSpeaking = false;
                     this.updateVoiceButton && this.updateVoiceButton();
                   }
                 }
@@ -2382,13 +2197,6 @@
             } catch (err) {
               console.warn("[Voice] TranscriptionReceived handler failed", err);
             }
-          })
-          .on(RoomEvent.TrackUnsubscribed, (track) => {
-            try {
-              const el = attachedAudio.get(track.sid);
-              if (el && el.parentNode) el.parentNode.removeChild(el);
-              attachedAudio.delete(track.sid);
-            } catch (_) {}
           })
           .on(RoomEvent.Disconnected, () => {
             attachedAudio.forEach((el) => {
@@ -2400,8 +2208,9 @@
             transcriptionBuffer.clear();
             emittedTranscriptionIds.clear();
             this.isRecording = false;
-            this.voiceState.isRecording = false;
-            this.voiceState.room = null;
+            if (this.voiceState) this.voiceState.isRecording = false;
+            if (this.voiceState) this.voiceState.agentSpeaking = false;
+            if (this.voiceState) this.voiceState.stopArmedUntil = 0;
             this.updateVoiceButton && this.updateVoiceButton();
             this.updateVoiceStatus && this.updateVoiceStatus("Disconnected");
           });
@@ -2412,6 +2221,8 @@
         this.voiceState.room = room;
         this.isRecording = true;
         this.voiceState.isRecording = true;
+        this.voiceState.agentSpeaking = false;
+        this.voiceState.stopArmedUntil = 0;
         this.updateVoiceButton && this.updateVoiceButton();
         this.updateVoiceStatus && this.updateVoiceStatus("Listening...");
       } catch (err) {
@@ -2440,6 +2251,8 @@
         this.voiceState.room = null;
         this.isRecording = false;
         if (this.voiceState) this.voiceState.isRecording = false;
+        if (this.voiceState) this.voiceState.agentSpeaking = false;
+        if (this.voiceState) this.voiceState.stopArmedUntil = 0;
         this.updateVoiceButton && this.updateVoiceButton();
         this.updateVoiceStatus && this.updateVoiceStatus("Tap the mic to start");
       }
@@ -2484,21 +2297,39 @@
 
       this.isRecording = false;
       if (this.voiceState) this.voiceState.isRecording = false;
+      if (this.voiceState) this.voiceState.stopArmedUntil = 0;
       this.updateVoiceButton && this.updateVoiceButton();
     },
 
     toggleVoice: async function () {
-      // Prevent toggling while agent is speaking
-      if (this.voiceState.agentSpeaking) {
-        console.log("[Voice] Button disabled while agent is speaking");
-        return;
-      }
-      
       if (!this.isRecording) {
         await this.startVoice();
-      } else {
-        this.stopVoice();
+        return;
       }
+
+      if (this.voiceState?.agentSpeaking) {
+        this.updateVoiceStatus && this.updateVoiceStatus("Agent speaking...");
+        return;
+      }
+
+      const now = Date.now();
+      const armedUntil = this.voiceState?.stopArmedUntil || 0;
+      if (armedUntil && now < armedUntil) {
+        this.stopVoice();
+        return;
+      }
+
+      this.voiceState.stopArmedUntil = now + 1200;
+      this.updateVoiceStatus && this.updateVoiceStatus("Tap again to stop");
+      setTimeout(() => {
+        try {
+          if (!this.isRecording) return;
+          if ((this.voiceState?.stopArmedUntil || 0) <= Date.now()) {
+            this.voiceState.stopArmedUntil = 0;
+            this.updateVoiceStatus && this.updateVoiceStatus("Listening...");
+          }
+        } catch (_) {}
+      }, 1300);
     },
 
     // OLD OpenAI Realtime code - no longer needed with LiveKit
