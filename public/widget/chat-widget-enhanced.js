@@ -68,6 +68,7 @@
     voiceState: {
       sessionId: null,
       isRecording: false,
+      agentSpeaking: false,
       room: null,
       ws: null,
       audioContext: null,
@@ -2341,6 +2342,12 @@
                 const text = (seg?.text || "").trim();
                 if (!text) return;
 
+                // Track agent speaking state
+                if (isAgent && !seg?.final) {
+                  this.voiceState.agentSpeaking = true;
+                  this.updateVoiceButton && this.updateVoiceButton();
+                }
+
                 // LiveKit often emits incremental transcripts where `seg.text` already contains
                 // the full utterance-so-far. Concatenating creates repeated prefixes.
                 const previous = transcriptionBuffer.get(segId) || "";
@@ -2364,6 +2371,12 @@
                   const finalText = transcriptionBuffer.get(segId) || nextText;
                   transcriptionBuffer.delete(segId);
                   this.addTranscript(finalText, role);
+                  
+                  // Agent finished speaking
+                  if (isAgent) {
+                    this.voiceState.agentSpeaking = false;
+                    this.updateVoiceButton && this.updateVoiceButton();
+                  }
                 }
               });
             } catch (err) {
@@ -2475,6 +2488,12 @@
     },
 
     toggleVoice: async function () {
+      // Prevent toggling while agent is speaking
+      if (this.voiceState.agentSpeaking) {
+        console.log("[Voice] Button disabled while agent is speaking");
+        return;
+      }
+      
       if (!this.isRecording) {
         await this.startVoice();
       } else {
@@ -3426,6 +3445,18 @@
 
     updateVoiceButton: function () {
       const btn = document.getElementById("tz-voice-btn");
+      
+      // Disable button while agent is speaking
+      if (this.voiceState.agentSpeaking) {
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+        btn.title = "Agent is speaking...";
+      } else {
+        btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
+        btn.title = this.isRecording ? "Stop voice" : "Start voice";
+      }
+      
       if (this.isRecording) {
         btn.classList.remove("start");
         btn.classList.add("stop");
