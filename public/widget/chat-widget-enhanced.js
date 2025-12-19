@@ -2257,6 +2257,12 @@
           throw new Error("Missing sessionId");
         }
 
+        // Guard: prevent starting if already connected
+        if (this.voiceState.room && this.voiceState.room.state === 'connected') {
+          console.log("[Voice] Already connected, skipping reconnection");
+          return;
+        }
+
         await this.loadLiveKitClient();
 
         const livekit = window.livekit || window.LiveKitClient || window.LivekitClient;
@@ -2285,10 +2291,14 @@
           throw new Error(tokenData?.error || "Failed to get LiveKit token");
         }
 
+        // Only disconnect if we have an old room that's not already disconnected
         if (this.voiceState.room) {
           try {
-            this.voiceState.room.disconnect();
+            if (this.voiceState.room.state !== 'disconnected') {
+              this.voiceState.room.disconnect();
+            }
           } catch (_) {}
+          this.voiceState.room = null;
         }
 
         const room = new Room({
@@ -2439,9 +2449,7 @@
       }
 
       await startImpl.call(this);
-      this.isRecording = true;
-      if (this.voiceState) this.voiceState.isRecording = true;
-      this.updateVoiceButton && this.updateVoiceButton();
+      // Note: isRecording is set by startLiveKitVoiceMode, don't duplicate here
     },
 
     stopVoice: function () {
