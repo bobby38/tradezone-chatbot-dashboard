@@ -63,6 +63,8 @@ LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 # Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
 VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
 
+ENABLE_NOISE_CANCELLATION = os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true"
+
 logger.info(f"[Voice Agent] API_BASE_URL = {API_BASE_URL}")
 logger.info(
     f"[Voice Agent] 🔥 AUTO-SAVE SYSTEM ACTIVE - Data extraction and save happens automatically"
@@ -386,6 +388,15 @@ async def searchProducts(context: RunContext, query: str) -> str:
                 answer = result.get("result", "")
                 products_data = result.get("products", [])
 
+                spoken_summary: Optional[str] = None
+                if products_data and not is_trade_pricing:
+                    count = len(products_data)
+                    spoken_summary = (
+                        "Found 1 match. Showing it on screen."
+                        if count == 1
+                        else f"Found {count} matches. Showing them on screen."
+                    )
+
                 # Send structured product data to widget for visual display
                 # 🔒 SKIP product cards during trade pricing (only show price text)
                 if products_data and not is_trade_pricing:
@@ -415,6 +426,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                     )
 
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
+                if spoken_summary:
+                    return spoken_summary
                 return answer if answer else "No products found"
             else:
                 logger.error(f"[searchProducts] ❌ API failed: {result}")
@@ -1829,7 +1842,7 @@ def prewarm(proc: JobProcess):
 server.setup_fnc = prewarm
 
 
-@server.rtc_session()
+@server.rtc_session(agent_name=os.getenv("LIVEKIT_AGENT_NAME", "amara"))
 async def entrypoint(ctx: JobContext):
     """Main entry point for LiveKit voice sessions"""
 
@@ -2470,10 +2483,12 @@ async def entrypoint(ctx: JobContext):
             # Clear buffer for next turn
             conversation_buffer = {"user_message": "", "bot_response": ""}
 
-    await session.start(
-        agent=TradeZoneAgent(),
-        room=ctx.room,
-        room_options=room_io.RoomOptions(
+    start_kwargs = {
+        "agent": TradeZoneAgent(),
+        "room": ctx.room,
+    }
+    if ENABLE_NOISE_CANCELLATION:
+        start_kwargs["room_options"] = room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
                 noise_cancellation=lambda params: (
                     noise_cancellation.BVCTelephony()
@@ -2482,8 +2497,9 @@ async def entrypoint(ctx: JobContext):
                     else noise_cancellation.BVC()
                 ),
             ),
-        ),
-    )
+        )
+
+    await session.start(**start_kwargs)
 
 
 if __name__ == "__main__":
