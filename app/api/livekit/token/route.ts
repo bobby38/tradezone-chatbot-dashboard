@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, AgentDispatchClient } from "livekit-server-sdk";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,41 +50,14 @@ export async function POST(req: NextRequest) {
 
     // Dispatch agent to the room
     try {
-      const apiUrl = process.env.LIVEKIT_URL?.replace(
-        "wss://",
-        "https://",
-      ).replace("ws://", "http://");
-      const dispatchToken = new AccessToken(apiKey, apiSecret, {
-        identity: "agent-dispatcher",
-      });
-      dispatchToken.addGrant({
-        roomAdmin: true,
-        room: roomName,
-      });
-
-      const dispatchResponse = await fetch(
-        `${apiUrl}/twirp/livekit.AgentDispatchService/CreateDispatch`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${await dispatchToken.toJwt()}`,
-          },
-          body: JSON.stringify({
-            room: roomName,
-            agent_name: "amara",
-          }),
-        },
+      const agentName = process.env.LIVEKIT_AGENT_NAME || "amara";
+      const dispatchClient = new AgentDispatchClient(
+        process.env.LIVEKIT_URL,
+        apiKey,
+        apiSecret,
       );
-
-      if (!dispatchResponse.ok) {
-        console.error(
-          "[LiveKit] Agent dispatch failed:",
-          await dispatchResponse.text(),
-        );
-      } else {
-        console.log("[LiveKit] Agent dispatched to room:", roomName);
-      }
+      await dispatchClient.createDispatch(roomName, agentName);
+      console.log("[LiveKit] Agent dispatched to room:", roomName, agentName);
     } catch (error: any) {
       console.error("[LiveKit] Agent dispatch error:", error.message);
       // Don't fail the token request if dispatch fails

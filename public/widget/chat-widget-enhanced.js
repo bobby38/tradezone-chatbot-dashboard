@@ -2326,6 +2326,26 @@
               console.warn("[Voice] Failed to attach remote track", err);
             }
           })
+          .on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+            try {
+              if (topic !== "tool-results") return;
+              let raw = "";
+              if (typeof payload === "string") {
+                raw = payload;
+              } else if (payload instanceof Uint8Array) {
+                raw = new TextDecoder().decode(payload);
+              } else if (payload?.buffer) {
+                raw = new TextDecoder().decode(new Uint8Array(payload.buffer));
+              }
+              if (!raw) return;
+              const data = JSON.parse(raw);
+              if (data?.type === "product_results" && Array.isArray(data?.products)) {
+                this.displayProductCards && this.displayProductCards(data.products);
+              }
+            } catch (err) {
+              console.warn("[Voice] Failed to handle DataReceived", err);
+            }
+          })
           .on(
             RoomEvent.LocalAudioSilenceDetected || "LocalAudioSilenceDetected",
             () => {
@@ -3409,8 +3429,14 @@
           ? `<img src="${this.escapeHtml(product.image)}" alt="${this.escapeHtml(product.name)}" style="width: 110px; height: 110px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />`
           : "";
 
-        const price = product.price_sgd
-          ? `$${product.price_sgd}`
+        const priceNum =
+          typeof product.price_sgd === "number"
+            ? product.price_sgd
+            : product.price_sgd
+              ? Number(product.price_sgd)
+              : NaN;
+        const price = Number.isFinite(priceNum)
+          ? `S$${Math.round(priceNum)}`
           : "Contact us";
         const link = product.permalink || "#";
 
