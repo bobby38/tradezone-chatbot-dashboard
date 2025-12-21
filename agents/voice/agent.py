@@ -38,8 +38,17 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import noise_cancellation, openai, silero
+from livekit.plugins import openai, silero
 from livekit.plugins.openai import realtime
+
+noise_cancellation = None
+if os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true":
+    try:
+        from livekit.plugins import noise_cancellation as _noise_cancellation
+
+        noise_cancellation = _noise_cancellation
+    except Exception:
+        noise_cancellation = None
 
 logger = logging.getLogger("agent-amara")
 
@@ -2496,7 +2505,7 @@ async def entrypoint(ctx: JobContext):
         "agent": TradeZoneAgent(),
         "room": ctx.room,
     }
-    if ENABLE_NOISE_CANCELLATION:
+    if ENABLE_NOISE_CANCELLATION and noise_cancellation is not None:
         start_kwargs["room_options"] = room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
                 noise_cancellation=lambda params: (
