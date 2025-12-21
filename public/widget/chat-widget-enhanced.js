@@ -2258,6 +2258,14 @@
           throw new Error("Missing sessionId");
         }
 
+        // Prevent double-start race conditions
+        if (this.voiceState && this.voiceState._startingLiveKit) {
+          console.log("[Voice] Start already in progress, skipping");
+          return;
+        }
+        if (!this.voiceState) this.voiceState = {};
+        this.voiceState._startingLiveKit = true;
+
         // Guard: prevent starting if already connected
         if (this.voiceState.room && this.voiceState.room.state === 'connected') {
           console.log("[Voice] Already connected, skipping reconnection");
@@ -2438,8 +2446,36 @@
             this.updateVoiceStatus && this.updateVoiceStatus("Disconnected");
           });
 
+        // Wait for connection before enabling mic to avoid
+        // "cannot publish track when not connected" errors.
+        const waitForConnected = () =>
+          new Promise((resolve, reject) => {
+            try {
+              if (room.state === "connected") return resolve();
+              const timeout = setTimeout(
+                () => reject(new Error("LiveKit connect timeout")),
+                12000,
+              );
+              room.once(RoomEvent.Connected, () => {
+                clearTimeout(timeout);
+                resolve();
+              });
+            } catch (e) {
+              reject(e);
+            }
+          });
+
         await room.connect(tokenData.url, tokenData.token);
-        await room.localParticipant.setMicrophoneEnabled(true);
+        await waitForConnected();
+
+        // Enable mic with a small retry in case the SDK is still finalizing.
+        try {
+          await room.localParticipant.setMicrophoneEnabled(true);
+        } catch (e) {
+          console.warn("[Voice] Mic enable failed, retrying", e);
+          await new Promise((r) => setTimeout(r, 500));
+          await room.localParticipant.setMicrophoneEnabled(true);
+        }
 
         this.voiceState.room = room;
         this.isRecording = true;
@@ -2453,6 +2489,8 @@
         this.isRecording = false;
         if (this.voiceState) this.voiceState.isRecording = false;
         this.updateVoiceButton && this.updateVoiceButton();
+      } finally {
+        if (this.voiceState) this.voiceState._startingLiveKit = false;
       }
     },
 
