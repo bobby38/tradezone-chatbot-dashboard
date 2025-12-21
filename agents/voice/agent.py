@@ -69,6 +69,15 @@ logger.info(f"[Voice Agent] API_BASE_URL = {API_BASE_URL}")
 logger.info(
     f"[Voice Agent] 🔥 AUTO-SAVE SYSTEM ACTIVE - Data extraction and save happens automatically"
 )
+logger.info(
+    f"[Voice Agent] VOICE_STACK={VOICE_STACK} VOICE_NOISE_CANCELLATION={ENABLE_NOISE_CANCELLATION}"
+)
+
+if VOICE_STACK != "realtime":
+    logger.info(
+        "[Voice Agent] ASSEMBLYAI_API_KEY configured = %s",
+        bool(os.getenv("ASSEMBLYAI_API_KEY")),
+    )
 
 if not API_KEY:
     logger.warning(
