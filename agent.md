@@ -1,5 +1,49 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 21, 2025 (LiveKit Self-Hosted + Mic Input Fixes)
+
+### LiveKit self-hosted deployment (Dec 21, 2025)
+**Goal**: Run LiveKit + voice agent fully self-hosted (no LiveKit Cloud-only features) with stable mic capture after greeting.
+
+**LiveKit Server**:
+- Domain: `livekit.rezult.co` (DNS-only; not proxied)
+- WebRTC ports:
+  - `7880/tcp` (HTTP/WSS signaling behind Traefik)
+  - `7881/tcp` + `7881/udp` (ICE/TCP fallback + UDP)
+  - `50000-50100/udp` (media)
+
+**Production Branches**:
+- Voice agent: `feature/livekit-voice-agent`
+- Widget: `feature/livekit-widget-voice-start-lock`
+
+**Required env (voice agent container)**:
+- `LIVEKIT_URL=wss://livekit.rezult.co`
+- `LIVEKIT_AGENT_NAME=amara`
+- `VOICE_STACK=classic` (or `realtime` if using OpenAI Realtime)
+- `ASSEMBLYAI_API_KEY=...` (required for `VOICE_STACK=classic`)
+- `VOICE_NOISE_CANCELLATION=false` (self-host default)
+
+### Cloud-only audio filter error (Dec 21, 2025)
+**Symptom** (agent logs): `audio filter cannot be enabled: LiveKit Cloud is required`
+
+**Root cause**: LiveKit Agents noise cancellation filter is a LiveKit Cloud-only feature.
+
+**Fix Applied** (`agents/voice/agent.py`, `feature/livekit-voice-agent`):
+- Noise cancellation plugin is only imported/initialized when `VOICE_NOISE_CANCELLATION=true`.
+- When disabled, the agent passes `room_options` with `noise_cancellation=None` to prevent defaults.
+
+### Widget mic publish race (Dec 21, 2025)
+**Symptom** (browser console): `cannot publish track when not connected`
+
+**Fix Applied** (`public/widget/chat-widget-enhanced.js`, `feature/livekit-widget-voice-start-lock`):
+- Added a start lock to prevent double-start.
+- Wait for `RoomEvent.Connected` before enabling the mic.
+- Retry mic enable once if the SDK is still finalizing.
+
+**Troubleshooting**:
+- If mic works once then stops, check for `dtls timeout` / `PEER_CONNECTION_DISCONNECTED` in LiveKit logs.
+- Confirm VPS firewall allows `7881/udp` and `50000-50100/udp`.
+
 ## Change Log — Dec 19, 2025 (LiveKit Widget - Disconnect Fix)
 
 ### Client disconnect after agent speaks (Dec 19, 2025)
@@ -103,10 +147,14 @@
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
 
-**Status**: Production-ready Python agent running on LiveKit Cloud  
+**Status**: Production-ready Python agent (previously LiveKit Cloud; now migrating to self-hosted LiveKit)  
 **Branch**: `feature/livekit-voice-agent` (commit `2f7671c` includes Bearer auth + logging/pacing fixes)  
 **Region**: Singapore  
 **Performance**: 3x faster latency (450ms vs 1500ms), 50% cost reduction
+
+**Self-hosted note (Dec 21, 2025)**:
+- LiveKit URL: `wss://livekit.rezult.co`
+- Keep `VOICE_NOISE_CANCELLATION=false` on self-hosted; enabling LiveKit noise cancellation triggers a Cloud-only filter error.
 
 ### Deployment must-haves (Dec 12, 2025)
 - Environment (runtime) in the voice container **must** include:  

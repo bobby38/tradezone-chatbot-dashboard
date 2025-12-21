@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       urlPrefix: livekitUrl?.substring(0, 20),
     });
 
-    if (!apiKey || !apiSecret) {
+    if (!apiKey || !apiSecret || !livekitUrl) {
       console.error("[LiveKit Token] Missing credentials!");
       return NextResponse.json(
         { error: "LiveKit credentials not configured" },
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     try {
       const agentName = process.env.LIVEKIT_AGENT_NAME || "amara";
       const dispatchClient = new AgentDispatchClient(
-        process.env.LIVEKIT_URL,
+        livekitUrl,
         apiKey,
         apiSecret,
       );
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         token,
-        url: process.env.LIVEKIT_URL,
+        url: livekitUrl,
       },
       { headers: corsHeaders },
     );
