@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       room: roomName,
       roomJoin: true,
       canPublish: true,
+      canPublishData: true,
       canSubscribe: true,
     });
 

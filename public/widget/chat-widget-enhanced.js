@@ -2520,17 +2520,52 @@
     },
 
     toggleVoice: async function () {
-      // Prevent toggling while agent is speaking
-      if (this.voiceState.agentSpeaking) {
-        console.log("[Voice] Button disabled while agent is speaking");
+      const room = this.voiceState?.room;
+
+      // If we have an active room connection, treat the mic button as mute/unmute.
+      // Do NOT disconnect the room on normal stops (disconnect ends the agent session).
+      const hasConnectedRoom = room && room.state === "connected";
+
+      if (!this.isRecording) {
+        if (hasConnectedRoom) {
+          try {
+            await room.localParticipant.setMicrophoneEnabled(true);
+          } catch (err) {
+            console.warn("[Voice] Failed to enable microphone", err);
+          }
+          this.isRecording = true;
+          if (this.voiceState) this.voiceState.isRecording = true;
+          if (this.voiceState) this.voiceState.stopArmedUntil = 0;
+          this.updateVoiceButton && this.updateVoiceButton();
+          this.updateVoiceStatus && this.updateVoiceStatus("Listening...");
+          return;
+        }
+
+        await this.startVoice();
         return;
       }
-      
-      if (!this.isRecording) {
-        await this.startVoice();
-      } else {
-        this.stopVoice();
+
+      if (this.voiceState?.agentSpeaking) {
+        this.updateVoiceStatus && this.updateVoiceStatus("Agent speaking...");
+        return;
       }
+
+      if (hasConnectedRoom) {
+        try {
+          await room.localParticipant.setMicrophoneEnabled(false);
+        } catch (err) {
+          console.warn("[Voice] Failed to disable microphone", err);
+        }
+        this.isRecording = false;
+        if (this.voiceState) this.voiceState.isRecording = false;
+        if (this.voiceState) this.voiceState.stopArmedUntil = 0;
+        this.updateVoiceButton && this.updateVoiceButton();
+        this.updateVoiceStatus && this.updateVoiceStatus("Mic off. Tap to talk");
+        return;
+      }
+
+      // Fallback: if we're recording but room isn't connected, fully stop.
+      this.stopVoice();
     },
 
     // OLD OpenAI Realtime code - no longer needed with LiveKit
