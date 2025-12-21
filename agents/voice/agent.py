@@ -2507,6 +2507,12 @@ async def entrypoint(ctx: JobContext):
                 ),
             ),
         )
+    else:
+        start_kwargs["room_options"] = room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=None,
+            ),
+        )
 
     await session.start(**start_kwargs)
 
