@@ -660,10 +660,8 @@ const TRADE_IN_KEYWORD_PATTERNS = [
   /\btop[- ]?up\b/i,
   /\btrade[- ]?up\b/i,
   /\bupgrade\b/i,
-  /\bquote\b/i,
-  /\boffer\b/i,
-  /\bvaluation\b/i,
-  /\bpayout\b/i,
+  /\b(get|need|want)\s+(a\s+)?(trade[- ]?in\s+)?(quote|offer|valuation|payout)\b/i, // "get a quote" with optional "trade-in"
+  /\bhow\s+much\s+(for|can\s+i\s+get|will\s+you\s+pay)\b/i, // "how much for" or "how much can I get"
   /\bsell (my|the|this)\b/i,
   /\binstant cash\b/i,
 ];
