@@ -3367,6 +3367,39 @@ export async function POST(request: NextRequest) {
 
   // Budget check already done at top of function (line 3198), no need to duplicate
   if (CONVERSATION_EXIT_PATTERNS.test(message.toLowerCase())) {
+    // Cancel any active trade-in lead before exiting
+    try {
+      const { data: activeLead } = await supabase
+        .from("trade_in_leads")
+        .select("id, status")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (
+        activeLead &&
+        !["submitted", "completed", "closed", "archived", "cancelled"].includes(
+          activeLead.status || "",
+        )
+      ) {
+        await supabase
+          .from("trade_in_leads")
+          .update({ status: "cancelled" })
+          .eq("id", activeLead.id);
+
+        console.log(
+          `[ChatKit] Cancelled trade-in lead ${activeLead.id} due to exit pattern`,
+        );
+      }
+    } catch (cancelError) {
+      console.error(
+        "[ChatKit] Failed to cancel trade-in lead on exit:",
+        cancelError,
+      );
+      // Don't block the exit response if cancellation fails
+    }
+
     const exitResponse =
       "No problem—I'll stop here. Just message me again if you need help.";
     return NextResponse.json(
@@ -3674,6 +3707,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           "completed",
           "closed",
           "archived",
+          "cancelled",
         ];
         const isCompleted = completedStatuses.includes(
           existingLead.status || "",
