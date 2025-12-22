@@ -1,0 +1,54 @@
+version: '3.8'
+networks:
+  coolify:
+    external: true
+services:
+  livekit:
+    image: 'livekit/livekit-server:latest'
+    container_name: livekit-server
+    restart: unless-stopped
+    networks:
+      - coolify
+    ports:
+      - '7881:7881/tcp'
+      - '7881:7881/udp'
+      - '50000-50100:50000-50100/udp'
+    environment:
+      LIVEKIT_CONFIG: "port: 7880\nrtc:\n  port_range_start: 50000\n  port_range_end: 50100\n  tcp_port: 7881\n  use_external_ip: true\n  enable_loopback_candidate: true\nkeys:\n  API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=\nlogging:\n  level: info\n"
+    labels:
+      - traefik.enable=true
+
+      # HTTP → HTTPS redirect
+      - traefik.http.routers.livekit-http.rule=Host(`livekit.rezult.co`)
+      - traefik.http.routers.livekit-http.entrypoints=http
+      - traefik.http.routers.livekit-http.middlewares=redirect-to-https
+
+      # HTTPS router with WebSocket middleware
+      - traefik.http.routers.livekit-https.rule=Host(`livekit.rezult.co`)
+      - traefik.http.routers.livekit-https.entrypoints=https
+      - traefik.http.routers.livekit-https.tls=true
+      - traefik.http.routers.livekit-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.livekit-https.middlewares=livekit-ws-headers
+
+      # Service configuration
+      - traefik.http.services.livekit.loadbalancer.server.port=7880
+
+      # ✅ CRITICAL FIX: WebSocket upgrade headers
+      - traefik.http.middlewares.livekit-ws-headers.headers.customrequestheaders.Upgrade=websocket
+      - traefik.http.middlewares.livekit-ws-headers.headers.customrequestheaders.Connection=Upgrade
+      - traefik.http.middlewares.livekit-ws-headers.headers.customresponseheaders.Upgrade=websocket
+      - traefik.http.middlewares.livekit-ws-headers.headers.customresponseheaders.Connection=Upgrade
+
+      # Redirect middleware
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - '-q'
+        - '--spider'
+        - 'http://localhost:7880'
+      interval: 30s
+      timeout: 10s
+      retries: 3
