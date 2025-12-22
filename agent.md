@@ -1,5 +1,67 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 22, 2025 (Session Isolation + Trade-In Intent Fixes)
+
+### Text/Voice session isolation (Dec 22, 2025)
+**Problem**: Text and voice chat shared the same session ID, causing history contamination. Voice agent would see text chat history and incorrectly auto-extract trade-in data from product queries.
+
+**Example**:
+- Text: "Do you have Call of Duty?" → Returns 8 products
+- Voice: "You have any Call of Duty?" → "Sure. For which platform?"
+- Voice: "Pour PS5" → Voice agent incorrectly extracted brand=Sony, model=PlayStation 5 as trade-in device (should be product query)
+
+**Root Cause**: Both modes used `client_{timestamp}` as session ID. When user switched modes, the new mode would load the other mode's history.
+
+**Fix Applied** (`public/widget/chat-widget-enhanced.js`, commit `54b743fb`):
+- Text sessions: `text-client_{clientId}_{timestamp}`
+- Voice sessions: `voice-client_{clientId}_{timestamp}`
+- Separate localStorage keys: `tz_text_session_id` vs `tz_voice_session_id`
+- Session ID automatically switches when user changes mode
+- Each mode maintains independent 24-hour session with isolated history
+
+**Result**: Voice agent ONLY sees voice messages, text agent ONLY sees text messages. Complete isolation restored, matching pre-LiveKit behavior.
+
+### Trade-in intent detection refinement (Dec 22, 2025)
+**Problem**: "how much for PS5?" triggered trade-in intent instead of product search, causing users who want to BUY to get stuck in trade-in flow.
+
+**Fix Applied** (`app/api/chatkit/agent/route.ts`, commit `2c51fef7`):
+- Changed trade-in pattern from broad `/\bhow\s+much\s+(for|can\s+i\s+get|will\s+you\s+pay)\b/i`
+- To contextual patterns:
+  - `/\bhow\s+much\s+(can\s+i\s+get|will\s+you\s+(pay|give)|would\s+you\s+pay)\b/i` (selling context only)
+  - `/\bhow\s+much\s+(for|to\s+sell)\s+(my|the|this)\b/i` (requires possessive)
+
+**Now correctly routes**:
+- "how much for PS5?" → Product search (buying)
+- "how much for MY PS5?" → Trade-in (selling)
+- "how much can I get for PS5?" → Trade-in (selling)
+- "how much will you pay?" → Trade-in (selling)
+
+### Database schema fix (Dec 22, 2025)
+**Problem**: Database enum `trade_in_status` missing "cancelled" and "submitted" values, causing errors:
+```
+[tradein/start] Unexpected error: invalid input value for enum trade_in_status: "cancelled"
+```
+
+**Fix Applied** (`supabase/migrations/20251222_add_cancelled_status.sql`, commit `884ba1c7`):
+- Added "cancelled" status for when users exit trade-in flow ("never mind", "forget it", etc.)
+- Added "submitted" status for completed submissions
+- Migration uses `ADD VALUE IF NOT EXISTS` for idempotency
+
+**Action Required**: Run migration on Supabase production database
+
+### Exit pattern lead cancellation (Dec 22, 2025)
+**Problem**: When user said "never mind" during trade-in, the lead remained active and would auto-resume on next trade-in intent.
+
+**Fix Applied** (`app/api/chatkit/agent/route.ts`, commit `8c3d32f2`):
+- Exit patterns ("never mind", "forget it", "cancel that", etc.) now mark active trade-in lead as "cancelled"
+- Cancelled leads excluded from `ensureTradeInLead()` reuse (`lib/trade-in/service.ts`, commit `db05b093`)
+
+**Flow**:
+1. User: "get a quote for PS5" → Trade-in starts, lead created
+2. Agent: "What condition?"
+3. User: "never mind" → Lead marked cancelled, exits gracefully
+4. User: "hi" (later) → Normal greeting, doesn't resume cancelled lead
+
 ## Change Log — Dec 21, 2025 (LiveKit Self-Hosted + Mic Input Fixes)
 
 ### LiveKit self-hosted deployment (Dec 21, 2025)
