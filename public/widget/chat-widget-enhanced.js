@@ -114,19 +114,22 @@
       try {
         if (this.tradeInLeadId) return this.tradeInLeadId;
         if (!this.sessionId) return null;
-        const response = await fetch(`${this.config.apiUrl}/api/tradein/start`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": this.config.apiKey || "",
+        const response = await fetch(
+          `${this.config.apiUrl}/api/tradein/start`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": this.config.apiKey || "",
+            },
+            body: JSON.stringify({
+              clientId: this.clientId,
+              sessionId: this.sessionId,
+              channel: "chat",
+              initialMessage: "Trade-in session initiated via widget",
+            }),
           },
-          body: JSON.stringify({
-            clientId: this.clientId,
-            sessionId: this.sessionId,
-            channel: "chat",
-            initialMessage: "Trade-in session initiated via widget",
-          }),
-        });
+        );
         if (!response.ok) {
           return null;
         }
@@ -226,6 +229,9 @@
 
       this.clientId = this.getOrCreateClientId();
       this.sessionId = this.getOrCreateSessionId();
+
+      // Initialize sending flag to prevent duplicate sends
+      this.isSending = false;
 
       // Ensure viewport meta tag for mobile
       this.ensureViewport();
@@ -1853,11 +1859,24 @@
         .addEventListener("click", () => this.closeChat());
       window.addEventListener("popstate", () => this.closeChat());
       document.getElementById("tz-input").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") this.sendMessage();
+        if (e.key === "Enter") {
+          e.preventDefault(); // Prevent any default behavior
+          // Don't allow sending in voice mode
+          if (this.mode === "voice") {
+            console.log("[Chat] Enter key blocked in voice mode");
+            return;
+          }
+          // Debounce: only send if not already sending
+          if (!this.isSending) {
+            this.sendMessage();
+          }
+        }
       });
-      document
-        .getElementById("tz-send")
-        .addEventListener("click", () => this.sendMessage());
+      document.getElementById("tz-send").addEventListener("click", () => {
+        if (!this.isSending && this.mode === "text") {
+          this.sendMessage();
+        }
+      });
 
       // File attachment
       document.getElementById("tz-attach").addEventListener("click", () => {
@@ -2010,11 +2029,20 @@
     },
 
     sendMessage: async function () {
+      // Guard: prevent duplicate sends
+      if (this.isSending) {
+        console.log("[Chat] sendMessage blocked - already sending");
+        return;
+      }
+
       const input = document.getElementById("tz-input");
       const message = input.value.trim();
       const sendButton = document.getElementById("tz-send");
 
       if (!message && !this.currentImage) return;
+
+      // Set sending flag
+      this.isSending = true;
 
       // Show user message with image if present
       this.addMessage(message || "(Image)", "user", this.currentImage);
@@ -2089,6 +2117,8 @@
           sendButton.disabled = false;
           sendButton.classList.remove("is-sending");
         }
+        // Clear sending flag
+        this.isSending = false;
       }
     },
 
@@ -2245,7 +2275,8 @@
         script.async = true;
         script.dataset.livekitClient = "true";
         script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Failed to load LiveKit client"));
+        script.onerror = () =>
+          reject(new Error("Failed to load LiveKit client"));
         document.head.appendChild(script);
       });
 
@@ -2267,14 +2298,18 @@
         this.voiceState._startingLiveKit = true;
 
         // Guard: prevent starting if already connected
-        if (this.voiceState.room && this.voiceState.room.state === 'connected') {
+        if (
+          this.voiceState.room &&
+          this.voiceState.room.state === "connected"
+        ) {
           console.log("[Voice] Already connected, skipping reconnection");
           return;
         }
 
         await this.loadLiveKitClient();
 
-        const livekit = window.livekit || window.LiveKitClient || window.LivekitClient;
+        const livekit =
+          window.livekit || window.LiveKitClient || window.LivekitClient;
         const Room = livekit?.Room;
         const RoomEvent = livekit?.RoomEvent;
 
@@ -2289,11 +2324,14 @@
 
         this.updateVoiceStatus && this.updateVoiceStatus("Connecting...");
 
-        const tokenRes = await fetch(`${this.config.apiUrl}/api/livekit/token`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomName, participantName }),
-        });
+        const tokenRes = await fetch(
+          `${this.config.apiUrl}/api/livekit/token`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomName, participantName }),
+          },
+        );
 
         const tokenData = await tokenRes.json().catch(() => ({}));
         if (!tokenRes.ok || !tokenData?.token || !tokenData?.url) {
@@ -2303,7 +2341,7 @@
         // Only disconnect if we have an old room that's not already disconnected
         if (this.voiceState.room) {
           try {
-            if (this.voiceState.room.state !== 'disconnected') {
+            if (this.voiceState.room.state !== "disconnected") {
               this.voiceState.room.disconnect();
             }
           } catch (_) {}
@@ -2347,8 +2385,12 @@
               }
               if (!raw) return;
               const data = JSON.parse(raw);
-              if (data?.type === "product_results" && Array.isArray(data?.products)) {
-                this.displayProductCards && this.displayProductCards(data.products);
+              if (
+                data?.type === "product_results" &&
+                Array.isArray(data?.products)
+              ) {
+                this.displayProductCards &&
+                  this.displayProductCards(data.products);
               }
             } catch (err) {
               console.warn("[Voice] Failed to handle DataReceived", err);
@@ -2366,63 +2408,78 @@
               } catch (_) {}
             },
           )
-          .on(RoomEvent.TranscriptionReceived, (segments, participant, publication) => {
-            try {
-              const segs = Array.isArray(segments) ? segments : [];
-              const identity = participant?.identity || "";
-              const participantKind = participant?.kind;
-              const isAgent =
-                String(identity).toLowerCase().startsWith("agent") ||
-                String(identity).toLowerCase().includes("amara") ||
-                String(participantKind).toLowerCase().includes("agent");
-              const role = isAgent ? "assistant" : "user";
+          .on(
+            RoomEvent.TranscriptionReceived,
+            (segments, participant, publication) => {
+              try {
+                const segs = Array.isArray(segments) ? segments : [];
+                const identity = participant?.identity || "";
+                const participantKind = participant?.kind;
+                const isAgent =
+                  String(identity).toLowerCase().startsWith("agent") ||
+                  String(identity).toLowerCase().includes("amara") ||
+                  String(participantKind).toLowerCase().includes("agent");
+                const role = isAgent ? "assistant" : "user";
 
-              segs.forEach((seg) => {
-                const segId = seg?.id || `${identity}-${seg?.startTime || ""}`;
-                const text = (seg?.text || "").trim();
-                if (!text) return;
+                segs.forEach((seg) => {
+                  const segId =
+                    seg?.id || `${identity}-${seg?.startTime || ""}`;
+                  const text = (seg?.text || "").trim();
+                  if (!text) return;
 
-                // Track agent speaking state
-                if (isAgent && !seg?.final) {
-                  this.voiceState.agentSpeaking = true;
-                  this.updateVoiceButton && this.updateVoiceButton();
-                }
-
-                // LiveKit often emits incremental transcripts where `seg.text` already contains
-                // the full utterance-so-far. Concatenating creates repeated prefixes.
-                const previous = transcriptionBuffer.get(segId) || "";
-                let nextText = text;
-                if (previous) {
-                  if (text.length >= previous.length && text.includes(previous)) {
-                    nextText = text;
-                  } else if (previous.length > text.length && previous.includes(text)) {
-                    nextText = previous;
-                  } else {
-                    // If we can't establish containment, prefer the longer string.
-                    nextText = text.length >= previous.length ? text : previous;
-                  }
-                }
-
-                transcriptionBuffer.set(segId, nextText);
-
-                if (seg?.final) {
-                  if (emittedTranscriptionIds.has(segId)) return;
-                  emittedTranscriptionIds.add(segId);
-                  const finalText = transcriptionBuffer.get(segId) || nextText;
-                  transcriptionBuffer.delete(segId);
-                  this.addTranscript(finalText, role);
-                  
-                  // Agent finished speaking
-                  if (isAgent) {
-                    this.voiceState.agentSpeaking = false;
+                  // Track agent speaking state
+                  if (isAgent && !seg?.final) {
+                    this.voiceState.agentSpeaking = true;
                     this.updateVoiceButton && this.updateVoiceButton();
                   }
-                }
-              });
-            } catch (err) {
-              console.warn("[Voice] TranscriptionReceived handler failed", err);
-            }
-          })
+
+                  // LiveKit often emits incremental transcripts where `seg.text` already contains
+                  // the full utterance-so-far. Concatenating creates repeated prefixes.
+                  const previous = transcriptionBuffer.get(segId) || "";
+                  let nextText = text;
+                  if (previous) {
+                    if (
+                      text.length >= previous.length &&
+                      text.includes(previous)
+                    ) {
+                      nextText = text;
+                    } else if (
+                      previous.length > text.length &&
+                      previous.includes(text)
+                    ) {
+                      nextText = previous;
+                    } else {
+                      // If we can't establish containment, prefer the longer string.
+                      nextText =
+                        text.length >= previous.length ? text : previous;
+                    }
+                  }
+
+                  transcriptionBuffer.set(segId, nextText);
+
+                  if (seg?.final) {
+                    if (emittedTranscriptionIds.has(segId)) return;
+                    emittedTranscriptionIds.add(segId);
+                    const finalText =
+                      transcriptionBuffer.get(segId) || nextText;
+                    transcriptionBuffer.delete(segId);
+                    this.addTranscript(finalText, role);
+
+                    // Agent finished speaking
+                    if (isAgent) {
+                      this.voiceState.agentSpeaking = false;
+                      this.updateVoiceButton && this.updateVoiceButton();
+                    }
+                  }
+                });
+              } catch (err) {
+                console.warn(
+                  "[Voice] TranscriptionReceived handler failed",
+                  err,
+                );
+              }
+            },
+          )
           .on(RoomEvent.TrackUnsubscribed, (track) => {
             try {
               const el = attachedAudio.get(track.sid);
@@ -2495,7 +2552,10 @@
     },
 
     stopLiveKitVoiceMode: function () {
-      console.log("[Voice] stopLiveKitVoiceMode called - Stack trace:", new Error().stack);
+      console.log(
+        "[Voice] stopLiveKitVoiceMode called - Stack trace:",
+        new Error().stack,
+      );
       try {
         const room = this.voiceState?.room;
         if (room) {
@@ -2511,7 +2571,8 @@
         this.isRecording = false;
         if (this.voiceState) this.voiceState.isRecording = false;
         this.updateVoiceButton && this.updateVoiceButton();
-        this.updateVoiceStatus && this.updateVoiceStatus("Tap the mic to start");
+        this.updateVoiceStatus &&
+          this.updateVoiceStatus("Tap the mic to start");
       }
     },
 
@@ -2598,7 +2659,8 @@
         if (this.voiceState) this.voiceState.isRecording = false;
         if (this.voiceState) this.voiceState.stopArmedUntil = 0;
         this.updateVoiceButton && this.updateVoiceButton();
-        this.updateVoiceStatus && this.updateVoiceStatus("Mic off. Tap to talk");
+        this.updateVoiceStatus &&
+          this.updateVoiceStatus("Mic off. Tap to talk");
         return;
       }
 
@@ -3556,7 +3618,7 @@
 
     updateVoiceButton: function () {
       const btn = document.getElementById("tz-voice-btn");
-      
+
       // Disable button while agent is speaking
       if (this.voiceState.agentSpeaking) {
         btn.style.opacity = "0.5";
@@ -3567,7 +3629,7 @@
         btn.style.cursor = "pointer";
         btn.title = this.isRecording ? "Stop voice" : "Start voice";
       }
-      
+
       if (this.isRecording) {
         btn.classList.remove("start");
         btn.classList.add("stop");
@@ -3650,10 +3712,13 @@
         }
         formData.append("widgetVersion", this.widgetVersion); // Add widget version
 
-        const response = await fetch(`${this.config.apiUrl}/api/upload/appwrite`, {
-          method: "POST",
-          body: formData,
-        });
+        const response = await fetch(
+          `${this.config.apiUrl}/api/upload/appwrite`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -3666,7 +3731,11 @@
 
         if (data.url) {
           console.log("[Appwrite] Upload successful:", data.url);
-          if ("mediaLinked" in data || "leadId" in data || "linkError" in data) {
+          if (
+            "mediaLinked" in data ||
+            "leadId" in data ||
+            "linkError" in data
+          ) {
             console.log("[Appwrite] Trade-in media link result:", {
               leadId: data.leadId || null,
               mediaLinked: Boolean(data.mediaLinked),
@@ -3674,7 +3743,10 @@
               sessionId: this.sessionId,
             });
             if (data.mediaLinked === false && data.linkError) {
-              console.warn("[Appwrite] Media upload succeeded but linking failed:", data.linkError);
+              console.warn(
+                "[Appwrite] Media upload succeeded but linking failed:",
+                data.linkError,
+              );
             }
           }
           return data.url;
