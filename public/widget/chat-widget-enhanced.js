@@ -465,9 +465,12 @@
     },
 
     // Get or create session ID (tied to client ID)
-    getOrCreateSessionId: function () {
-      const STORAGE_KEY = "tz_session_id";
-      const EXPIRY_KEY = "tz_session_expiry";
+    getOrCreateSessionId: function (mode = "text") {
+      // Separate storage keys for text and voice to prevent history contamination
+      const STORAGE_KEY =
+        mode === "voice" ? "tz_voice_session_id" : "tz_text_session_id";
+      const EXPIRY_KEY =
+        mode === "voice" ? "tz_voice_session_expiry" : "tz_text_session_expiry";
       const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
       try {
@@ -476,25 +479,29 @@
 
         // Check if session expired
         if (sessionId && expiry && Date.now() < parseInt(expiry)) {
-          console.log("[TradeZone] Resuming session:", sessionId);
-          this.loadHistoryFromStorage();
+          console.log(`[TradeZone] Resuming ${mode} session:`, sessionId);
+          if (mode === "text") {
+            this.loadHistoryFromStorage();
+          }
           return sessionId;
         }
 
-        // Create new session
-        sessionId = this.clientId + "_" + Date.now();
+        // Create new session with mode prefix for clear identification
+        const prefix = mode === "voice" ? "voice" : "text";
+        sessionId = `${prefix}-${this.clientId}_${Date.now()}`;
         localStorage.setItem(STORAGE_KEY, sessionId);
         localStorage.setItem(
           EXPIRY_KEY,
           (Date.now() + SESSION_DURATION).toString(),
         );
-        console.log("[TradeZone] New session created:", sessionId);
+        console.log(`[TradeZone] New ${mode} session created:`, sessionId);
         return sessionId;
       } catch (e) {
         console.warn(
           "[TradeZone] localStorage unavailable, using temp session",
         );
-        return "session_temp_" + Date.now();
+        const prefix = mode === "voice" ? "voice" : "text";
+        return `${prefix}-session_temp_${Date.now()}`;
       }
     },
 
@@ -1986,6 +1993,13 @@
 
     switchMode: function (mode) {
       this.mode = mode;
+
+      // Get session ID for the new mode (text and voice have separate sessions)
+      this.sessionId = this.getOrCreateSessionId(mode);
+      console.log(
+        `[TradeZone] Switched to ${mode} mode, session:`,
+        this.sessionId,
+      );
 
       document.querySelectorAll(".tz-mode-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.mode === mode);
