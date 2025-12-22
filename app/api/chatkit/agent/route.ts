@@ -661,7 +661,8 @@ const TRADE_IN_KEYWORD_PATTERNS = [
   /\btrade[- ]?up\b/i,
   /\bupgrade\b/i,
   /\b(get|need|want)\s+(a\s+)?(trade[- ]?in\s+)?(quote|offer|valuation|payout)\b/i, // "get a quote" with optional "trade-in"
-  /\bhow\s+much\s+(for|can\s+i\s+get|will\s+you\s+pay)\b/i, // "how much for" or "how much can I get"
+  /\bhow\s+much\s+(can\s+i\s+get|will\s+you\s+(pay|give)|would\s+you\s+pay)\b/i, // Only selling context: "can I get", "will you pay"
+  /\bhow\s+much\s+(for|to\s+sell)\s+(my|the|this)\b/i, // "how much for MY PS5" = trade-in, but not "how much for PS5" = buying
   /\bsell (my|the|this)\b/i,
   /\binstant cash\b/i,
 ];
