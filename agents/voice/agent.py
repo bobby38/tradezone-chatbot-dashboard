@@ -1817,10 +1817,12 @@ async def entrypoint(ctx: JobContext):
                 _awaiting_recap_confirmation[room_name] = False
             logger.info(f"[Voice] User said: {event.transcript}")
 
-            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
-            checklist_for_photo = _get_checklist(room_name)
+            # 🔴 PROCEED CONFIRMATION: Detect when user confirms they want to proceed with trade-in
+            checklist_for_proceed = _get_checklist(room_name)
             bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
-            is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
+            is_proceed_prompt = (
+                "want to proceed" in bot_prompt or "proceed?" in bot_prompt
+            )
             user_said_yes = lower_user in (
                 "yes",
                 "yeah",
@@ -1829,10 +1831,40 @@ async def entrypoint(ctx: JobContext):
                 "okay",
                 "sure",
                 "yes.",
+                "let's do it",
+                "lets do it",
             )
             user_said_no = lower_user in ("no", "nope", "nah", "no.", "skip", "later")
 
-            if is_photo_prompt and checklist_for_photo.get_current_step() == "photos":
+            # 🚨 CRITICAL FIX: Only activate trade-in flow AFTER user confirms "Want to proceed?"
+            if is_proceed_prompt and not checklist_for_proceed.collected_data.get(
+                "initial_quote_given"
+            ):
+                if user_said_yes:
+                    # User confirmed! NOW activate the trade-in flow
+                    checklist_for_proceed.collected_data["initial_quote_given"] = True
+                    checklist_for_proceed.collected_data["quote_timestamp"] = (
+                        datetime.utcnow().isoformat()
+                    )
+                    logger.warning(
+                        f"[ProceedConfirm] ✅ User confirmed trade-in! Setting initial_quote_given=True. This activates auto-extraction."
+                    )
+                    # Persist to database
+                    asyncio.create_task(
+                        _persist_quote_flag(
+                            room_name,
+                            checklist_for_proceed.collected_data.get("quote_timestamp"),
+                        )
+                    )
+                elif user_said_no:
+                    logger.info(
+                        f"[ProceedConfirm] ❌ User declined trade-in. Flow will not activate."
+                    )
+
+            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
+            is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
+
+            if is_photo_prompt and checklist_for_proceed.get_current_step() == "photos":
                 if user_said_yes:
                     _waiting_for_photo[room_name] = True
                     logger.warning(
@@ -2083,25 +2115,17 @@ async def entrypoint(ctx: JobContext):
                             )
 
                     lower_content = content.lower()
+                    # 🚨 REMOVED: Don't set initial_quote_given when agent ASKS "Want to proceed?"
+                    # Only set it when user CONFIRMS (see on_user_input_transcribed handler above)
                     if (
                         ("trades for" in lower_content)
                         and ("top-up" in lower_content or "top up" in lower_content)
                         and has_prices
                     ):
-                        checklist.collected_data["initial_quote_given"] = True
-                        checklist.collected_data["quote_timestamp"] = (
-                            datetime.utcnow().isoformat()
-                        )
+                        # Just log that quote was spoken - user must confirm before flow activates
                         logger.info(
-                            "[QuoteState] ✅ Marked initial_quote_given=True after quote spoken. progress=%s",
+                            "[QuoteState] 📢 Quote spoken to user. Waiting for confirmation before activating flow. progress=%s",
                             progress,
-                        )
-
-                        asyncio.create_task(
-                            _persist_quote_flag(
-                                room_name,
-                                checklist.collected_data.get("quote_timestamp"),
-                            )
                         )
 
                     said_proceed = "want to proceed" in content.lower()
@@ -2135,7 +2159,7 @@ async def entrypoint(ctx: JobContext):
                                     allow_interruptions=True,
                                 )
                             )
-                            checklist.collected_data["initial_quote_given"] = True
+                            # 🚨 REMOVED: Don't set flag here - wait for user confirmation
                         else:
                             trade_ctx = _tradeup_context.get(room_name) or {}
                             if trade_ctx.get("pending_clarification"):

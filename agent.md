@@ -1,5 +1,49 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES + UX IMPROVEMENTS)
+
+### Voice Agent - Trade-In UX Flow Fix (Dec 24, 2025 - Evening) ✅
+**Problem**: Voice agent asked for device condition BEFORE user confirmed they want to proceed with trade-in.
+
+**Example from Production Logs**:
+```
+Agent: "Your Switch OLED trades for $100. Nintendo Switch 2 is $500. Top-up: $400. Want to proceed?"
+[User hasn't answered yet]
+Agent: "What's the condition of your console?" ❌ WRONG - Asked condition too early!
+```
+
+**Root Cause** (`agents/voice/agent.py:2091`):
+- `initial_quote_given` flag was set to `True` IMMEDIATELY when agent spoke the pricing
+- This activated auto-extraction BEFORE user confirmed
+- System thought trade-in flow had started, so it began collecting details
+
+**Fix Applied** (commit pending):
+```python
+# Before: Set flag when agent ASKS "Want to proceed?"
+if ("trades for" in lower_content) and ("top-up" in lower_content):
+    checklist.collected_data["initial_quote_given"] = True  # ❌ TOO EARLY!
+
+# After: Set flag when user CONFIRMS "yes"
+if is_proceed_prompt and user_said_yes:
+    # User confirmed! NOW activate the trade-in flow
+    checklist.collected_data["initial_quote_given"] = True  # ✅ CORRECT TIMING!
+```
+
+**Result**: Voice agent now waits for user confirmation before starting data collection.
+
+**Correct Flow**:
+```
+Agent: "Want to proceed?"
+[initial_quote_given = False - auto-extraction OFF]
+User: "Yes"
+[NOW set initial_quote_given = True - auto-extraction ON]
+Agent: "Storage size?"
+```
+
+**Impact**: This fix does NOT break the Dec 24 morning fix for auto-extraction. The guard is still in place (`is_trade_in_active = checklist_state.collected_data.get("initial_quote_given", False)`), but now it activates at the correct time.
+
+---
+
 ## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES)
 
 ### Voice Agent - Auto-Extraction Bug Fix (Dec 24, 2025) ✅
