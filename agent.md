@@ -1,5 +1,119 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES)
+
+### Voice Agent - Auto-Extraction Bug Fix (Dec 24, 2025) ✅
+**Problem**: Voice agent was auto-extracting device brand/model from product queries, contaminating trade-in leads with search intent.
+
+**Example from Production Logs**:
+```
+User: "You have any Call of Duty?"
+Agent: "Sure. Call of Duty for which platform?"
+User: "Pour PS5" (For PS5)
+❌ WRONG: Voice agent extracted brand=Sony, model=PlayStation 5
+✅ CORRECT: This is a product search, NOT a trade-in!
+```
+
+**Root Cause** (`agents/voice/auto_save.py:169`):
+- `extract_data_from_message()` ran on EVERY user message
+- Device pattern matching happened regardless of trade-in flow state
+- No check for `initial_quote_given` before extracting brand/model
+
+**Fix Applied** (commit `d2f92871`):
+```python
+# Before: Extracted from ANY message containing "ps5"
+if "brand" not in checklist_state.collected_data:
+    if "ps5" in lower:
+        extracted["brand"] = "Sony"
+        extracted["model"] = "PlayStation 5"
+
+# After: Only extract during active trade-in flow
+is_trade_in_active = checklist_state.collected_data.get("initial_quote_given", False)
+
+if is_trade_in_active and "brand" not in checklist_state.collected_data:
+    # Extract device patterns...
+```
+
+**Result**: Voice agent ONLY extracts trade-in data when user has explicitly started a trade-in/upgrade flow.
+
+---
+
+### Text Chat - Product Search Accuracy Fix (Dec 24, 2025) ✅
+**Problem**: Searches for specific games returned irrelevant products (consoles, accessories, unrelated games).
+
+**Example from Production**:
+```
+User: "any silent hill game for ps5"
+❌ WRONG Results:
+  1. PS5 Silent Hill F ✅ (correct)
+  2. PS5 Slim Disc Drive ❌ (console)
+  3. PS5 UNCHARTED ❌ (different game)
+  4. PS5 Dualsense Controllers ❌ (accessory)
+  5. PlayStation 5 Pro console ❌ (console)
+  6. PS5 Ninja Gaiden 4 ❌ (different game)
+```
+
+**Root Cause** (`lib/tools/vectorSearch.ts:22-48`):
+- `QUERY_STOP_WORDS` removed critical search terms:
+  - "game" / "games" → Removed game context
+  - "ps5" / "ps4" / "xbox" → Removed platform identifiers
+  - "console" → Removed console-specific searches
+- Query "silent hill game for ps5" became "silent hill"
+- Vector search matched ANY PS5 product
+
+**Fix Applied** (commit `d2f92871`):
+```typescript
+// Before: Removed critical keywords
+const QUERY_STOP_WORDS = new Set([
+  "gaming", "game", "games",  // ❌ REMOVED game context
+  "console", "consoles",      // ❌ REMOVED console specificity
+  "ps5", "ps4", "xbox",       // ❌ REMOVED platforms
+  "series", "edition", "bundle" // ❌ REMOVED variations
+]);
+
+// After: Preserve important search terms
+const QUERY_STOP_WORDS = new Set([
+  "any", "the", "this", "that",
+  "buy", "sell", "price", "prices"
+  // ✅ KEPT: game, games, console, ps5, xbox, edition
+]);
+```
+
+**Result**: Searches now preserve game titles, platform identifiers, and product variations for accurate results.
+
+---
+
+### Database Migration - 'cancelled' Status (Dec 24, 2025) ✅
+**Problem**: Production database missing 'cancelled' and 'submitted' enum values, causing 500 errors.
+
+**Error from Logs**:
+```
+[tradein/start] Unexpected error Error: Trade-in lead lookup failed: 
+invalid input value for enum trade_in_status: "cancelled"
+```
+
+**Root Cause**: Migration file existed (`20251222_add_cancelled_status.sql`) but was NEVER run on production.
+
+**Fix Applied** (Dec 24, 2025):
+```sql
+ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'cancelled';
+ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
+```
+
+**Status**: ✅ **MIGRATION RUN SUCCESSFULLY** (Dec 24, 2025, confirmed: "Success. No rows returned")
+
+---
+
+### Testing Checklist (Dec 24, 2025)
+- [ ] **Voice**: "any Call of Duty for PS5?" should NOT create trade-in lead
+- [ ] **Voice**: "I want to trade my PS5" SHOULD create trade-in lead
+- [ ] **Text**: "silent hill game for ps5" should return ONLY Silent Hill games
+- [ ] **Text**: "any mario games" should return ONLY Mario games
+- [ ] **Database**: Cancelled trade-in leads should save without errors
+- [ ] **Both**: Product searches should not contaminate trade-in flow
+
+---
+
 ## Change Log — Dec 22, 2025 (Session Isolation + Trade-In Intent Fixes)
 
 ### Text/Voice session isolation (Dec 22, 2025)
