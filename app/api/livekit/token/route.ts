@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, AgentDispatchClient } from "livekit-server-sdk";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       urlPrefix: livekitUrl?.substring(0, 20),
     });
 
-    if (!apiKey || !apiSecret) {
+    if (!apiKey || !apiSecret || !livekitUrl) {
       console.error("[LiveKit Token] Missing credentials!");
       return NextResponse.json(
         { error: "LiveKit credentials not configured" },
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       room: roomName,
       roomJoin: true,
       canPublish: true,
+      canPublishData: true,
       canSubscribe: true,
     });
 
@@ -50,41 +51,14 @@ export async function POST(req: NextRequest) {
 
     // Dispatch agent to the room
     try {
-      const apiUrl = process.env.LIVEKIT_URL?.replace(
-        "wss://",
-        "https://",
-      ).replace("ws://", "http://");
-      const dispatchToken = new AccessToken(apiKey, apiSecret, {
-        identity: "agent-dispatcher",
-      });
-      dispatchToken.addGrant({
-        roomAdmin: true,
-        room: roomName,
-      });
-
-      const dispatchResponse = await fetch(
-        `${apiUrl}/twirp/livekit.AgentDispatchService/CreateDispatch`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${await dispatchToken.toJwt()}`,
-          },
-          body: JSON.stringify({
-            room: roomName,
-            agent_name: "amara",
-          }),
-        },
+      const agentName = process.env.LIVEKIT_AGENT_NAME || "amara";
+      const dispatchClient = new AgentDispatchClient(
+        livekitUrl,
+        apiKey,
+        apiSecret,
       );
-
-      if (!dispatchResponse.ok) {
-        console.error(
-          "[LiveKit] Agent dispatch failed:",
-          await dispatchResponse.text(),
-        );
-      } else {
-        console.log("[LiveKit] Agent dispatched to room:", roomName);
-      }
+      await dispatchClient.createDispatch(roomName, agentName);
+      console.log("[LiveKit] Agent dispatched to room:", roomName, agentName);
     } catch (error: any) {
       console.error("[LiveKit] Agent dispatch error:", error.message);
       // Don't fail the token request if dispatch fails
@@ -93,7 +67,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         token,
-        url: process.env.LIVEKIT_URL,
+        url: livekitUrl,
       },
       { headers: corsHeaders },
     );

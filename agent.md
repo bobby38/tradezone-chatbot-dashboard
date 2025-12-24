@@ -1,5 +1,225 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES)
+
+### Voice Agent - Auto-Extraction Bug Fix (Dec 24, 2025) ✅
+**Problem**: Voice agent was auto-extracting device brand/model from product queries, contaminating trade-in leads with search intent.
+
+**Example from Production Logs**:
+```
+User: "You have any Call of Duty?"
+Agent: "Sure. Call of Duty for which platform?"
+User: "Pour PS5" (For PS5)
+❌ WRONG: Voice agent extracted brand=Sony, model=PlayStation 5
+✅ CORRECT: This is a product search, NOT a trade-in!
+```
+
+**Root Cause** (`agents/voice/auto_save.py:169`):
+- `extract_data_from_message()` ran on EVERY user message
+- Device pattern matching happened regardless of trade-in flow state
+- No check for `initial_quote_given` before extracting brand/model
+
+**Fix Applied** (commit `d2f92871`):
+```python
+# Before: Extracted from ANY message containing "ps5"
+if "brand" not in checklist_state.collected_data:
+    if "ps5" in lower:
+        extracted["brand"] = "Sony"
+        extracted["model"] = "PlayStation 5"
+
+# After: Only extract during active trade-in flow
+is_trade_in_active = checklist_state.collected_data.get("initial_quote_given", False)
+
+if is_trade_in_active and "brand" not in checklist_state.collected_data:
+    # Extract device patterns...
+```
+
+**Result**: Voice agent ONLY extracts trade-in data when user has explicitly started a trade-in/upgrade flow.
+
+---
+
+### Text Chat - Product Search Accuracy Fix (Dec 24, 2025) ✅
+**Problem**: Searches for specific games returned irrelevant products (consoles, accessories, unrelated games).
+
+**Example from Production**:
+```
+User: "any silent hill game for ps5"
+❌ WRONG Results:
+  1. PS5 Silent Hill F ✅ (correct)
+  2. PS5 Slim Disc Drive ❌ (console)
+  3. PS5 UNCHARTED ❌ (different game)
+  4. PS5 Dualsense Controllers ❌ (accessory)
+  5. PlayStation 5 Pro console ❌ (console)
+  6. PS5 Ninja Gaiden 4 ❌ (different game)
+```
+
+**Root Cause** (`lib/tools/vectorSearch.ts:22-48`):
+- `QUERY_STOP_WORDS` removed critical search terms:
+  - "game" / "games" → Removed game context
+  - "ps5" / "ps4" / "xbox" → Removed platform identifiers
+  - "console" → Removed console-specific searches
+- Query "silent hill game for ps5" became "silent hill"
+- Vector search matched ANY PS5 product
+
+**Fix Applied** (commit `d2f92871`):
+```typescript
+// Before: Removed critical keywords
+const QUERY_STOP_WORDS = new Set([
+  "gaming", "game", "games",  // ❌ REMOVED game context
+  "console", "consoles",      // ❌ REMOVED console specificity
+  "ps5", "ps4", "xbox",       // ❌ REMOVED platforms
+  "series", "edition", "bundle" // ❌ REMOVED variations
+]);
+
+// After: Preserve important search terms
+const QUERY_STOP_WORDS = new Set([
+  "any", "the", "this", "that",
+  "buy", "sell", "price", "prices"
+  // ✅ KEPT: game, games, console, ps5, xbox, edition
+]);
+```
+
+**Result**: Searches now preserve game titles, platform identifiers, and product variations for accurate results.
+
+---
+
+### Database Migration - 'cancelled' Status (Dec 24, 2025) ✅
+**Problem**: Production database missing 'cancelled' and 'submitted' enum values, causing 500 errors.
+
+**Error from Logs**:
+```
+[tradein/start] Unexpected error Error: Trade-in lead lookup failed: 
+invalid input value for enum trade_in_status: "cancelled"
+```
+
+**Root Cause**: Migration file existed (`20251222_add_cancelled_status.sql`) but was NEVER run on production.
+
+**Fix Applied** (Dec 24, 2025):
+```sql
+ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'cancelled';
+ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
+```
+
+**Status**: ✅ **MIGRATION RUN SUCCESSFULLY** (Dec 24, 2025, confirmed: "Success. No rows returned")
+
+---
+
+### Testing Checklist (Dec 24, 2025)
+- [ ] **Voice**: "any Call of Duty for PS5?" should NOT create trade-in lead
+- [ ] **Voice**: "I want to trade my PS5" SHOULD create trade-in lead
+- [ ] **Text**: "silent hill game for ps5" should return ONLY Silent Hill games
+- [ ] **Text**: "any mario games" should return ONLY Mario games
+- [ ] **Database**: Cancelled trade-in leads should save without errors
+- [ ] **Both**: Product searches should not contaminate trade-in flow
+
+---
+
+## Change Log — Dec 22, 2025 (Session Isolation + Trade-In Intent Fixes)
+
+### Text/Voice session isolation (Dec 22, 2025)
+**Problem**: Text and voice chat shared the same session ID, causing history contamination. Voice agent would see text chat history and incorrectly auto-extract trade-in data from product queries.
+
+**Example**:
+- Text: "Do you have Call of Duty?" → Returns 8 products
+- Voice: "You have any Call of Duty?" → "Sure. For which platform?"
+- Voice: "Pour PS5" → Voice agent incorrectly extracted brand=Sony, model=PlayStation 5 as trade-in device (should be product query)
+
+**Root Cause**: Both modes used `client_{timestamp}` as session ID. When user switched modes, the new mode would load the other mode's history.
+
+**Fix Applied** (`public/widget/chat-widget-enhanced.js`, commit `54b743fb`):
+- Text sessions: `text-client_{clientId}_{timestamp}`
+- Voice sessions: `voice-client_{clientId}_{timestamp}`
+- Separate localStorage keys: `tz_text_session_id` vs `tz_voice_session_id`
+- Session ID automatically switches when user changes mode
+- Each mode maintains independent 24-hour session with isolated history
+
+**Result**: Voice agent ONLY sees voice messages, text agent ONLY sees text messages. Complete isolation restored, matching pre-LiveKit behavior.
+
+### Trade-in intent detection refinement (Dec 22, 2025)
+**Problem**: "how much for PS5?" triggered trade-in intent instead of product search, causing users who want to BUY to get stuck in trade-in flow.
+
+**Fix Applied** (`app/api/chatkit/agent/route.ts`, commit `2c51fef7`):
+- Changed trade-in pattern from broad `/\bhow\s+much\s+(for|can\s+i\s+get|will\s+you\s+pay)\b/i`
+- To contextual patterns:
+  - `/\bhow\s+much\s+(can\s+i\s+get|will\s+you\s+(pay|give)|would\s+you\s+pay)\b/i` (selling context only)
+  - `/\bhow\s+much\s+(for|to\s+sell)\s+(my|the|this)\b/i` (requires possessive)
+
+**Now correctly routes**:
+- "how much for PS5?" → Product search (buying)
+- "how much for MY PS5?" → Trade-in (selling)
+- "how much can I get for PS5?" → Trade-in (selling)
+- "how much will you pay?" → Trade-in (selling)
+
+### Database schema fix (Dec 22, 2025)
+**Problem**: Database enum `trade_in_status` missing "cancelled" and "submitted" values, causing errors:
+```
+[tradein/start] Unexpected error: invalid input value for enum trade_in_status: "cancelled"
+```
+
+**Fix Applied** (`supabase/migrations/20251222_add_cancelled_status.sql`, commit `884ba1c7`):
+- Added "cancelled" status for when users exit trade-in flow ("never mind", "forget it", etc.)
+- Added "submitted" status for completed submissions
+- Migration uses `ADD VALUE IF NOT EXISTS` for idempotency
+
+**Action Required**: Run migration on Supabase production database
+
+### Exit pattern lead cancellation (Dec 22, 2025)
+**Problem**: When user said "never mind" during trade-in, the lead remained active and would auto-resume on next trade-in intent.
+
+**Fix Applied** (`app/api/chatkit/agent/route.ts`, commit `8c3d32f2`):
+- Exit patterns ("never mind", "forget it", "cancel that", etc.) now mark active trade-in lead as "cancelled"
+- Cancelled leads excluded from `ensureTradeInLead()` reuse (`lib/trade-in/service.ts`, commit `db05b093`)
+
+**Flow**:
+1. User: "get a quote for PS5" → Trade-in starts, lead created
+2. Agent: "What condition?"
+3. User: "never mind" → Lead marked cancelled, exits gracefully
+4. User: "hi" (later) → Normal greeting, doesn't resume cancelled lead
+
+## Change Log — Dec 21, 2025 (LiveKit Self-Hosted + Mic Input Fixes)
+
+### LiveKit self-hosted deployment (Dec 21, 2025)
+**Goal**: Run LiveKit + voice agent fully self-hosted (no LiveKit Cloud-only features) with stable mic capture after greeting.
+
+**LiveKit Server**:
+- Domain: `livekit.rezult.co` (DNS-only; not proxied)
+- WebRTC ports:
+  - `7880/tcp` (HTTP/WSS signaling behind Traefik)
+  - `7881/tcp` + `7881/udp` (ICE/TCP fallback + UDP)
+  - `50000-50100/udp` (media)
+
+**Production Branches**:
+- Voice agent: `feature/livekit-voice-agent`
+- Widget: `feature/livekit-widget-voice-start-lock`
+
+**Required env (voice agent container)**:
+- `LIVEKIT_URL=wss://livekit.rezult.co`
+- `LIVEKIT_AGENT_NAME=amara`
+- `VOICE_STACK=classic` (or `realtime` if using OpenAI Realtime)
+- `ASSEMBLYAI_API_KEY=...` (required for `VOICE_STACK=classic`)
+- `VOICE_NOISE_CANCELLATION=false` (self-host default)
+
+### Cloud-only audio filter error (Dec 21, 2025)
+**Symptom** (agent logs): `audio filter cannot be enabled: LiveKit Cloud is required`
+
+**Root cause**: LiveKit Agents noise cancellation filter is a LiveKit Cloud-only feature.
+
+**Fix Applied** (`agents/voice/agent.py`, `feature/livekit-voice-agent`):
+- Noise cancellation plugin is only imported/initialized when `VOICE_NOISE_CANCELLATION=true`.
+- When disabled, the agent passes `room_options` with `noise_cancellation=None` to prevent defaults.
+
+### Widget mic publish race (Dec 21, 2025)
+**Symptom** (browser console): `cannot publish track when not connected`
+
+**Fix Applied** (`public/widget/chat-widget-enhanced.js`, `feature/livekit-widget-voice-start-lock`):
+- Added a start lock to prevent double-start.
+- Wait for `RoomEvent.Connected` before enabling the mic.
+- Retry mic enable once if the SDK is still finalizing.
+
+**Troubleshooting**:
+- If mic works once then stops, check for `dtls timeout` / `PEER_CONNECTION_DISCONNECTED` in LiveKit logs.
+- Confirm VPS firewall allows `7881/udp` and `50000-50100/udp`.
+
 ## Change Log — Dec 19, 2025 (LiveKit Widget - Disconnect Fix)
 
 ### Client disconnect after agent speaks (Dec 19, 2025)
@@ -8,9 +228,9 @@
 **Root Cause**: The widget was calling `toggleVoice()` again (via the mic button click handler). Since `isRecording` was `true`, `toggleVoice()` called `stopVoice()` → `stopLiveKitVoiceMode()` → `room.disconnect()`. Debug stack trace confirmed the call path originated from the voice button click handler.
 
 **Fix Applied** (`public/widget/chat-widget-enhanced.js`):
-- Track `voiceState.agentSpeaking` based on agent transcripts.
-- Disable voice toggle while the agent is speaking (ignore clicks).
-- Add UI feedback: reduced opacity + `not-allowed` cursor + tooltip while disabled.
+- Track `voiceState.agentSpeaking` from remote agent audio element playback events.
+- Make stopping voice intentional: require a quick second tap (“tap again to stop”).
+- Surface LiveKit local mic silence detection with a clear status message (mic permission / device selection).
 
 ## Change Log — Dec 15, 2025 (Voice Agent - Critical Bug Fixes)
 
@@ -43,7 +263,6 @@
 - **Staff handoff when pricing not found**: Agent asks if user wants to connect with staff instead of hallucinating.
 
 ---
-
 ## Change Log — Dec 13, 2025 (Voice Agent - CRITICAL FIXES)
 
 ## Change Log — Dec 14, 2025 (Voice Trade-In - LeadId-First Unification)
@@ -104,10 +323,14 @@
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
 
-**Status**: Production-ready Python agent running on LiveKit Cloud  
+**Status**: Production-ready Python agent (previously LiveKit Cloud; now migrating to self-hosted LiveKit)  
 **Branch**: `feature/livekit-voice-agent` (commit `2f7671c` includes Bearer auth + logging/pacing fixes)  
 **Region**: Singapore  
 **Performance**: 3x faster latency (450ms vs 1500ms), 50% cost reduction
+
+**Self-hosted note (Dec 21, 2025)**:
+- LiveKit URL: `wss://livekit.rezult.co`
+- Keep `VOICE_NOISE_CANCELLATION=false` on self-hosted; enabling LiveKit noise cancellation triggers a Cloud-only filter error.
 
 ### Deployment must-haves (Dec 12, 2025)
 - Environment (runtime) in the voice container **must** include:  

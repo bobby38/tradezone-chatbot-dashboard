@@ -42,7 +42,9 @@ function normalizeLeadHash(value: string) {
   // - client_..._<timestamp>
   // - chat-client_..._<timestamp>
   // into a stable hash based on the client id portion.
-  const match = normalized.match(/^(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i);
+  const match = normalized.match(
+    /^(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
+  );
   if (match && match[2]) {
     return match[2];
   }
@@ -162,8 +164,8 @@ const TEXT_FIELDS = new Set([
   "model",
   "storage",
   "pricing_version",
-   "source_device_name",
-   "target_device_name",
+  "source_device_name",
+  "target_device_name",
   "contact_name",
   "contact_phone",
   "contact_email",
@@ -248,7 +250,9 @@ export interface TradeInSubmitInput {
 export async function ensureTradeInLead(
   params: EnsureTradeInLeadParams,
 ): Promise<EnsureTradeInLeadResult> {
-  const rawSession = (params.leadHash || params.sessionId || "").trim().toLowerCase();
+  const rawSession = (params.leadHash || params.sessionId || "")
+    .trim()
+    .toLowerCase();
   const leadHash = normalizeLeadHash(rawSession);
 
   if (!leadHash) {
@@ -270,7 +274,7 @@ export async function ensureTradeInLead(
     .from("trade_in_leads")
     .select("id, status, created_at")
     .in("lead_hash", Array.from(leadHashCandidates))
-    .not("status", "in", "(completed,closed,archived)")
+    .not("status", "in", "(completed,closed,archived,cancelled)")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -377,7 +381,9 @@ function normalizePatch(patch: TradeInUpdateInput) {
   }
 
   if (typeof patch.preferred_fulfilment === "string") {
-    patch.preferred_fulfilment = patch.preferred_fulfilment.trim().toLowerCase();
+    patch.preferred_fulfilment = patch.preferred_fulfilment
+      .trim()
+      .toLowerCase();
   }
 
   const updatePayload: Record<string, any> = {};
@@ -673,7 +679,9 @@ export async function cacheTradeUpQuote(
         ? new Date(quoteTimestamp)
         : new Date();
   if (Number.isNaN(timestamp.valueOf())) {
-    throw new TradeInValidationError("Invalid quote_timestamp", ["quote_timestamp"]);
+    throw new TradeInValidationError("Invalid quote_timestamp", [
+      "quote_timestamp",
+    ]);
   }
 
   const payload = {
