@@ -42,17 +42,10 @@ const QUERY_STOP_WORDS = new Set([
   "sell",
   "price",
   "prices",
-  "gaming",
-  "game",
-  "games",
-  "console",
-  "consoles",
-  "ps5",
-  "ps4",
-  "xbox",
-  "series",
-  "edition",
-  "bundle",
+  // 🚨 REMOVED: "gaming", "game", "games" - CRITICAL for game searches
+  // 🚨 REMOVED: "console", "consoles" - needed for console-specific searches
+  // 🚨 REMOVED: "ps5", "ps4", "xbox", "series" - CRITICAL platform identifiers
+  // 🚨 REMOVED: "edition", "bundle" - Important product variations
 ]);
 
 const GENERIC_QUERY_TOKENS = new Set([

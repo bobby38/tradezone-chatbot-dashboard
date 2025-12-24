@@ -9,7 +9,7 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 
@@ -41,6 +41,7 @@ def _is_valid_contact_name(name: str) -> bool:
         return False
     letters = re.sub(r"[^A-Za-z]", "", trimmed)
     return len(letters) >= 2
+
 
 # Price grid caching (fetched from API, cached for 5 minutes)
 PRICE_GRID = None
@@ -167,8 +168,16 @@ def extract_data_from_message(
     lower = message.lower()
     extracted = {}
 
-    # Device brand/model detection - for when user mentions devices
-    if "brand" not in checklist_state.collected_data or "model" not in checklist_state.collected_data:
+    # Device brand/model detection - ONLY during active trade-in flow
+    # 🚨 CRITICAL: Don't extract from product queries like "any PS5 games?"
+    is_trade_in_active = checklist_state.collected_data.get(
+        "initial_quote_given", False
+    )
+
+    if is_trade_in_active and (
+        "brand" not in checklist_state.collected_data
+        or "model" not in checklist_state.collected_data
+    ):
         # Common device patterns - ORDER MATTERS! More specific first.
         device_patterns = {
             "asus rog ally": {"brand": "ASUS", "model": "ROG Ally"},
@@ -188,15 +197,19 @@ def extract_data_from_message(
             "switch gen 1": {"brand": "Nintendo", "model": "Nintendo Switch Gen 1"},
             "nintendo switch": {"brand": "Nintendo", "model": "Nintendo Switch"},
         }
-        
+
         for pattern, device_info in device_patterns.items():
             if pattern in lower:
                 if "brand" not in checklist_state.collected_data:
                     extracted["brand"] = device_info["brand"]
-                    logger.warning(f"[auto-extract] 🏷️ Found brand: {device_info['brand']}")
+                    logger.warning(
+                        f"[auto-extract] 🏷️ Found brand: {device_info['brand']}"
+                    )
                 if "model" not in checklist_state.collected_data:
                     extracted["model"] = device_info["model"]
-                    logger.warning(f"[auto-extract] 🎮 Found model: {device_info['model']}")
+                    logger.warning(
+                        f"[auto-extract] 🎮 Found model: {device_info['model']}"
+                    )
                 break
 
     # Storage detection (512GB, 1TB, etc.)
@@ -231,10 +244,12 @@ def extract_data_from_message(
     email_match = re.search(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", lower)
     if email_match and "email" not in checklist_state.collected_data:
         extracted_email = email_match.group(0)
-        extracted_email = extracted_email.replace(" ", "").replace("- ", "").replace("_", "_")
+        extracted_email = (
+            extracted_email.replace(" ", "").replace("- ", "").replace("_", "_")
+        )
         extracted["contact_email"] = extracted_email
         logger.warning(f"[auto-extract] 📧 Found email: {extracted['contact_email']}")
-    
+
     # Also handle spelled out emails like "bobby underscore denny at hotmail dot com"
     elif "email" not in checklist_state.collected_data and (
         ("at" in lower and "hotmail" in lower) or ("at" in lower and "gmail" in lower)
@@ -250,11 +265,13 @@ def extract_data_from_message(
                 email_parts.append("@")
             elif word in ["dot", "."]:
                 email_parts.append(".")
-        
+
         if len(email_parts) >= 3:
             spoken_email = "".join(email_parts)
             extracted["contact_email"] = spoken_email
-            logger.warning(f"[auto-extract] 📧 Found spoken email: {extracted['contact_email']}")
+            logger.warning(
+                f"[auto-extract] 📧 Found spoken email: {extracted['contact_email']}"
+            )
 
     # Phone detection (8+ digits) - improved to handle "848 9068" format
     digits_only = re.sub(r"[^\d]", "", message)
@@ -275,14 +292,20 @@ def extract_data_from_message(
         and checklist_state.get_current_step() == "accessories"
     ):
         mentions_box = "box" in lower or "accessor" in lower
-        plain_yes = lower.strip() in ("yes", "yeah", "yep", "ok", "okay", "sure", "yes.")
-        plain_no = lower.strip() in ("no", "nope", "nah", "no.")
-        
-        bot_lower = (last_bot_prompt or "").lower()
-        bot_was_accessories_prompt = (
-            "box" in bot_lower or "accessor" in bot_lower
+        plain_yes = lower.strip() in (
+            "yes",
+            "yeah",
+            "yep",
+            "ok",
+            "okay",
+            "sure",
+            "yes.",
         )
-        
+        plain_no = lower.strip() in ("no", "nope", "nah", "no.")
+
+        bot_lower = (last_bot_prompt or "").lower()
+        bot_was_accessories_prompt = "box" in bot_lower or "accessor" in bot_lower
+
         # Mark accessories if user mentions box/accessories OR answers yes/no to accessories question
         if mentions_box:
             has_box = "yes" in lower or "have" in lower or "got" in lower
@@ -291,7 +314,9 @@ def extract_data_from_message(
         elif bot_was_accessories_prompt and (plain_yes or plain_no):
             has_box = plain_yes
             extracted["accessories"] = has_box
-            logger.warning(f"[auto-extract] 📦 Box/accessories (yes/no answer): {has_box}")
+            logger.warning(
+                f"[auto-extract] 📦 Box/accessories (yes/no answer): {has_box}"
+            )
 
     # Photos acknowledgment - be more lenient to avoid getting stuck
     if "photos" not in checklist_state.collected_data:
@@ -303,8 +328,11 @@ def extract_data_from_message(
 
         bot_lower = (last_bot_prompt or "").lower()
         bot_was_photo_prompt = (
-            "photo" in bot_lower or "photos" in bot_lower or "upload" in bot_lower
-            or "send" in bot_lower or "picture" in bot_lower
+            "photo" in bot_lower
+            or "photos" in bot_lower
+            or "upload" in bot_lower
+            or "send" in bot_lower
+            or "picture" in bot_lower
         )
 
         # Mark photos collected if:
@@ -313,14 +341,28 @@ def extract_data_from_message(
         # 3. User says "no photos" or similar
         if current_step == "photos":
             if mentions_photo or (bot_was_photo_prompt and (plain_yes or plain_no)):
-                wants_photos = not any(word in lower for word in ["no", "don't", "not", "none", "nope", "nah", "skip", "later"])
+                wants_photos = not any(
+                    word in lower
+                    for word in [
+                        "no",
+                        "don't",
+                        "not",
+                        "none",
+                        "nope",
+                        "nah",
+                        "skip",
+                        "later",
+                    ]
+                )
                 extracted["photos_acknowledged"] = wants_photos
                 logger.warning(f"[auto-extract] 📸 Photos acknowledged: {wants_photos}")
-        
+
         # Also detect if user mentions uploading/sending photo at any point
         if mentions_upload and mentions_photo:
             extracted["photos_acknowledged"] = True
-            logger.warning("[auto-extract] 📸 User mentioned uploading photo - marking photos done")
+            logger.warning(
+                "[auto-extract] 📸 User mentioned uploading photo - marking photos done"
+            )
 
     # Payout method detection (ONLY at payout step)
     if (
@@ -431,7 +473,9 @@ def extract_data_from_message(
                     "where",
                     "how",
                 }:
-                    logger.info(f"[auto-extract] ⏭️ Skipping likely question, not a name: {message}")
+                    logger.info(
+                        f"[auto-extract] ⏭️ Skipping likely question, not a name: {message}"
+                    )
                     return extracted
                 name = re.sub(r"[.!?]+$", "", message.strip())
                 name = name.replace(",", " ")
@@ -502,7 +546,9 @@ async def force_save_to_db(
     if "model" in checklist_state.collected_data:
         data["model"] = checklist_state.collected_data["model"]
     if "target_device_name" in checklist_state.collected_data:
-        data["target_device_name"] = checklist_state.collected_data["target_device_name"]
+        data["target_device_name"] = checklist_state.collected_data[
+            "target_device_name"
+        ]
     for price_field in ["source_price_quoted", "target_price_quoted", "top_up_amount"]:
         if price_field in checklist_state.collected_data:
             data[price_field] = checklist_state.collected_data[price_field]
@@ -767,7 +813,9 @@ async def auto_save_after_message(
     logger.warning(f"[auto-save] 🤖 Processing: {user_message[:80]}")
 
     # Extract any data from the message
-    extracted = extract_data_from_message(user_message, checklist_state, last_bot_prompt)
+    extracted = extract_data_from_message(
+        user_message, checklist_state, last_bot_prompt
+    )
 
     if not extracted:
         logger.info("[auto-save] No new data extracted")
@@ -808,27 +856,21 @@ async def auto_save_after_message(
                 checklist_state.mark_field_collected("name", value)
                 applied_fields.append("name")
             else:
-                logger.info(
-                    "[auto-save] ⏭️ Skipping name until device details complete"
-                )
+                logger.info("[auto-save] ⏭️ Skipping name until device details complete")
                 _set_pending("name", value)
         elif field == "contact_phone":
             if checklist_state.can_collect_contact("phone"):
                 checklist_state.mark_field_collected("phone", value)
                 applied_fields.append("phone")
             else:
-                logger.info(
-                    "[auto-save] ⏭️ Skipping phone until name captured"
-                )
+                logger.info("[auto-save] ⏭️ Skipping phone until name captured")
                 _set_pending("phone", value)
         elif field == "contact_email":
             if checklist_state.can_collect_contact("email"):
                 checklist_state.mark_field_collected("email", value)
                 applied_fields.append("email")
             else:
-                logger.info(
-                    "[auto-save] ⏭️ Skipping email until phone captured"
-                )
+                logger.info("[auto-save] ⏭️ Skipping email until phone captured")
                 _set_pending("email", value)
         elif field == "accessories":
             checklist_state.mark_field_collected("accessories", value)
@@ -943,25 +985,25 @@ def build_smart_acknowledgment(extracted: Dict[str, Any], checklist_state: Any) 
     This prevents the agent from asking for already-provided information.
     """
     acknowledgments = []
-    
+
     # Name acknowledgment
     if "contact_name" in extracted:
         name = extracted["contact_name"]
         if name.lower() not in ["yes", "correct", "ok", "okay", "yep", "yeah", "sure"]:
             acknowledgments.append(f"Got your name: {name}")
-    
-    # Email acknowledgment  
+
+    # Email acknowledgment
     if "contact_email" in extracted:
         email = extracted["contact_email"]
         if "@" in email:  # Valid email format
             acknowledgments.append(f"Got your email: {email}")
-    
+
     # Phone acknowledgment
     if "contact_phone" in extracted:
         phone = extracted["contact_phone"]
         if len(phone) >= 8:  # Valid phone length
             acknowledgments.append(f"Got your phone: {phone}")
-    
+
     # Device acknowledgment
     if "brand" in extracted or "model" in extracted:
         brand = extracted.get("brand", "")
@@ -970,20 +1012,20 @@ def build_smart_acknowledgment(extracted: Dict[str, Any], checklist_state: Any) 
             acknowledgments.append(f"Got your device: {brand} {model}")
         elif model:
             acknowledgments.append(f"Got your device: {model}")
-    
+
     # Storage acknowledgment
     if "storage" in extracted:
         storage = extracted["storage"]
         acknowledgments.append(f"Got storage: {storage}")
-    
+
     # Condition acknowledgment
     if "condition" in extracted:
         condition = extracted["condition"]
         acknowledgments.append(f"Got condition: {condition}")
-    
+
     # Payout acknowledgment
     if "payout" in extracted:
         payout = extracted["payout"]
         acknowledgments.append(f"Got payout preference: {payout}")
-    
+
     return acknowledgments
