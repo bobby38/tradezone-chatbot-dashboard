@@ -3446,7 +3446,7 @@ export async function POST(request: NextRequest) {
 
   let finalResponse = "";
   let toolSummaries: ToolUsageSummary[] = [];
-  let textModel = "gemini-2.5-flash"; // Default text model
+  let textModel = "gemini-3-flash-preview"; // Gemini 3 Flash (Dec 2025) - frontier intelligence at Flash speed
   let lastHybridResult: string | null = null;
   let lastHybridSource: HybridSearchSource | null = null;
   let lastHybridQuery: string | null = null;

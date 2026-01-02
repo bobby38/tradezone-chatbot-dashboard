@@ -30,13 +30,14 @@ That's it! The chatbot will now use Gemini 2.5 Flash for text chat.
 ## Available Models
 
 ### Gemini Models (Google) - Recommended
-- `gemini-2.5-flash` - **BEST** - Latest, fastest, most cost-effective ⭐ (TESTED ✅)
-- `gemini-2.0-flash-exp` - Previous generation (TESTED ✅, still good)
-- `gemini-1.5-flash` - Older, not recommended
-- `gemini-1.5-pro` - Older, more capable but slower
+- `gemini-3-flash-preview` - **BEST** - Latest (Dec 2025), PhD-level reasoning, Flash speed ⭐ (PRODUCTION)
+- `gemini-2.5-flash` - Previous generation, still excellent
+- `gemini-2.0-flash-exp` - Older generation
+- `gemini-1.5-flash` - Deprecated, not recommended
+- `gemini-1.5-pro` - Deprecated, not recommended
 
 ### Model Comparison
-**Gemini 2.5 Flash** (Recommended for TradeZone):
+**Gemini 3 Flash Preview** (Recommended for TradeZone - Jan 2025):
 - ⚡ Fastest response times
 - 💰 Lowest cost
 - 🎯 Best for chat, product search, trade-in workflows

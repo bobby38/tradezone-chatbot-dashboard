@@ -132,10 +132,10 @@ export async function createGeminiChatCompletion(
   );
   const tools = convertToolsToGemini(params.tools);
 
-  // Map model names (default to latest Gemini 2.5 Flash)
+  // Map model names (default to latest Gemini 3 Flash)
   const modelName = params.model.includes("gemini")
     ? params.model
-    : "gemini-2.5-flash";
+    : "gemini-3-flash-preview";
 
   const model = genAI.getGenerativeModel({
     model: modelName,
