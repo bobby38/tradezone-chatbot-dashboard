@@ -245,6 +245,7 @@ export interface TradeInSubmitInput {
   summary?: string | null;
   status?: string;
   notify?: boolean;
+  allowMissingPayout?: boolean;
 }
 
 export async function ensureTradeInLead(
@@ -819,7 +820,12 @@ export async function submitTradeInLead(
     missingFields.push("contact_email");
   }
   // Trade-ups do not require payout preference (top-up is paid separately).
-  if (!isTradeUpLead && !lead.preferred_payout?.trim()) {
+  // Auto-submit resends also allow payout to be missing.
+  if (
+    !input.allowMissingPayout &&
+    !isTradeUpLead &&
+    !lead.preferred_payout?.trim()
+  ) {
     missingFields.push("preferred_payout");
   }
 
