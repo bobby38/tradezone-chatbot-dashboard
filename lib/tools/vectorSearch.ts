@@ -487,13 +487,13 @@ function getCategoryLink(
     const isPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(lower);
     if (/\bps5\b|playstation\s*5/i.test(lower)) {
       return isPreOwned
-        ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games-playstation-5/"
-        : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games-playstation-5/";
+        ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games/"
+        : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games/";
     }
     if (/\bps4\b|playstation\s*4/i.test(lower)) {
       return isPreOwned
-        ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games-playstation-4/"
-        : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games-playstation-4/";
+        ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games/"
+        : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games/";
     }
     if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
       return "https://tradezone.sg/product-category/xbox-item/";
