@@ -3925,6 +3925,7 @@ https://trade.rezult.co/widget/chat-widget-enhanced.js
 ## Future Enhancements
 
 ### Next Phase Focus
+- **Gemini Flash 3.0 Skill (Mid-term)**: Evaluate a long-context Gemini Flash 3.0 skill to handle trade-in flows and product Q&A with tighter context retention, then gate with regression checks so deterministic trade math stays intact.
 - **Voice Transcript Logging**: Finalize the `RealtimeVoice` turn batching, post each completed user/assistant pair to a new `/api/chatkit/voice-log` route, and align Supabase session/turn counters so voice conversations appear in `chat_logs` beside text threads.
 - **Prompt Management Controls**: Deliver a settings surface that stores Amara’s text + voice system prompts in Supabase with versioning, preview, and safe rollout toggles—letting ops adjust tone and playbooks without a redeploy.
 - **WhatsApp & Telegram Connectors**: Stand up outbound integrations for trade-in leads (and future automations) covering authentication, rate limiting, delivery receipts, and staff notification preferences for both platforms.

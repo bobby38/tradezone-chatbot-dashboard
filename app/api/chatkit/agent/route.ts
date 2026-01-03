@@ -689,7 +689,7 @@ const TRADE_IN_ACTION_HINTS =
   /\b(trade|tra[iy]n|train|sell|worth|value|quote|offer|top[- ]?up)\b/i;
 
 const CONVERSATION_EXIT_PATTERNS =
-  /\b(never\s?-?\s?mind|forget\s+it|no\s+need|cancel\s+that|stop\s+please|bye|goodbye|its\s+ok|it's\s+ok|leave\s+it|nvm)\b/i;
+  /^\s*(?:ok(?:ay)?\s+)?(never\s?-?\s?mind|forget\s+it|no\s+need|cancel\s+that|stop\s+please|bye|goodbye|its\s+ok|it's\s+ok|leave\s+it|nvm)(?:[.!?,\s]*(?:thanks|thank\s+you|ya|yeah|ok|okay|pls|please))?\s*[.!?,\s]*$/i;
 
 const PLACEHOLDER_NAME_TOKENS = new Set([
   "here",
@@ -2385,7 +2385,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       console.log("[ChatKit] Trade-up detected, auto-setting hasPayout=true");
     }
 
-    // Check if photos step acknowledged (encouraged but no longer blocking email)
+    // Check if photos step acknowledged (encouraged but should not block email)
     let photoStepAcknowledged = isPhotoStepAcknowledged(detail, params.history);
 
     // Attempt to backfill missing contact from recent user messages
@@ -2419,13 +2419,32 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       }
     }
 
+    if (!photoStepAcknowledged) {
+      try {
+        const existingNotes =
+          typeof detail.notes === "string" ? detail.notes : "";
+        if (!/photos:\s*not provided/i.test(existingNotes)) {
+          const note =
+            "Photos: Not provided — final quote upon inspection (auto-marked before submit)";
+          const nextNotes = existingNotes ? `${note}\n${existingNotes}` : note;
+          await updateTradeInLead(params.leadId, { notes: nextNotes });
+          detail = await getTradeInLeadDetail(params.leadId);
+        }
+        photoStepAcknowledged = true;
+      } catch (photoAutoMarkError) {
+        console.warn(
+          "[ChatKit] Failed to auto-mark photos before submit",
+          photoAutoMarkError,
+        );
+      }
+    }
+
     if (
       alreadyNotified ||
       !hasDevice ||
       !hasContactPhone ||
       !hasEmail ||
-      !hasPayout ||
-      !photoStepAcknowledged
+      !hasPayout
     ) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
