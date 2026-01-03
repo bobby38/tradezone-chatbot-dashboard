@@ -1364,7 +1364,7 @@ function formatDeviceLabel(label: string | undefined | null): string {
 function cleanTradeInLabel(message: string): string {
   const cleaned = normalizeProductName(message)
     .replace(
-      /\b(trade[- ]?in|trade in value|trade in my|how much can i|how much|value|worth|quote|offer)\b/gi,
+      /\b(trade[- ]?in|trade in value|trade in my|how much can i|how much|value|worth|quote|offer|what'?s|whats|what is|what's the|what is the|whats the|for)\b/gi,
       " ",
     )
     .replace(/\s+/g, " ")
@@ -4650,7 +4650,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     messages.push({
       role: "system",
       content:
-        "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) contact name; 5) phone; 6) email; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
+        "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) email; 5) phone; 6) name; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
     });
 
     console.log("[ChatKit] Tool choice:", {
