@@ -2479,6 +2479,7 @@ async function runHybridSearch(
                 ? "S$" + product.price_sgd.toFixed(2)
                 : "Price TBA";
             const url = product.permalink || "https://tradezone.sg";
+            // Include image for first product only to keep format consistent
             const imageStr =
               idx === 0 && product.image
                 ? `\n   ![${product.name}](${product.image})`
@@ -2486,7 +2487,7 @@ async function runHybridSearch(
             return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
           })
           .join("\n\n");
-        const wooMessage = `I spotted these on TradeZone.sg:\n\n${lines}\n\nI can double-check any of these for you—just ask.`;
+        const wooMessage = `Here are some options:\n\n${lines}\n\nNeed details on any of these?`;
         return {
           result: wooMessage,
           source: "woo_snapshot",

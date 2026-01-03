@@ -473,6 +473,75 @@ function formatPriceWithBudget(
   return formatted;
 }
 
+/**
+ * Standardized category link mapping for "view all" links
+ */
+function getCategoryLink(
+  category: string | null,
+  query: string,
+): string | null {
+  if (!category) return null;
+
+  const getGamesCategoryLink = (q: string): string => {
+    const lower = q.toLowerCase();
+    const isPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(lower);
+    if (/\bps5\b|playstation\s*5/i.test(lower)) {
+      return isPreOwned
+        ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games-playstation-5/"
+        : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games-playstation-5/";
+    }
+    if (/\bps4\b|playstation\s*4/i.test(lower)) {
+      return isPreOwned
+        ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games-playstation-4/"
+        : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games-playstation-4/";
+    }
+    if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
+      return "https://tradezone.sg/product-category/xbox-item/";
+    }
+    if (/\bswitch\b|nintendo/i.test(lower)) {
+      return "https://tradezone.sg/product-category/nintendo-switch/";
+    }
+    return "https://tradezone.sg/product-category/console-games/";
+  };
+
+  const categoryLinks: Record<string, string> = {
+    vr: "https://tradezone.sg/product-category/gadgets/virtual-reality-headset/",
+    games: getGamesCategoryLink(query),
+    laptop: "https://tradezone.sg/product-category/laptop/",
+    phone: "https://tradezone.sg/product-category/phones/",
+    tablet: "https://tradezone.sg/product-category/tablet/",
+    console: "https://tradezone.sg/product-category/console-games/",
+    gpu: "https://tradezone.sg/product-category/graphic-card/",
+    motherboard: "https://tradezone.sg/product-category/motherboard/",
+    handheld: "https://tradezone.sg/product-category/gaming-handheld/",
+    storage:
+      "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
+  };
+
+  return categoryLinks[category] || null;
+}
+
+/**
+ * Standardized "more results" text with category links
+ */
+function buildMoreResultsText(
+  displayLimit: number,
+  totalCount: number,
+  category: string | null,
+  query: string,
+): string {
+  const hasMore = totalCount > displayLimit;
+  if (!hasMore) return "";
+
+  const categoryLink = getCategoryLink(category, query);
+
+  if (categoryLink && category) {
+    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** [View all ${category}s on website](${categoryLink}) or ask for a specific title.`;
+  }
+
+  return `\n\nShowing ${displayLimit} of ${totalCount} results. Ask for a specific title to see more.`;
+}
+
 function filterWooResultsByTokens<T extends { name?: string }>(
   items: T[],
   tokens: string[],
@@ -1530,52 +1599,12 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
-          // Platform-specific game category links with new/pre-owned
-          const getGamesCategoryLink = (query: string): string => {
-            const lower = query.toLowerCase();
-            const isPreOwned =
-              /\b(pre[-\s]?owned|used|second[-\s]?hand)\b/i.test(lower);
-
-            if (/\bps5\b|playstation\s*5/i.test(lower)) {
-              return isPreOwned
-                ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games-playstation-5/"
-                : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games-playstation-5/";
-            }
-            if (/\bps4\b|playstation\s*4/i.test(lower)) {
-              return isPreOwned
-                ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games-playstation-4/"
-                : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games-playstation-4/";
-            }
-            if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
-              return "https://tradezone.sg/product-category/xbox-item/";
-            }
-            if (/\bswitch\b|nintendo/i.test(lower)) {
-              return "https://tradezone.sg/product-category/nintendo-switch/";
-            }
-            return "https://tradezone.sg/product-category/console-games/";
-          };
-
-          // Category link mapping
-          const categoryLinks: Record<string, string> = {
-            vr: "https://tradezone.sg/product-category/gadgets/virtual-reality-headset/",
-            games: getGamesCategoryLink(query),
-            laptop: "https://tradezone.sg/product-category/laptop/",
-            phone: "https://tradezone.sg/product-category/phones/",
-            tablet: "https://tradezone.sg/product-category/tablet/",
-            console: "https://tradezone.sg/product-category/console-games/",
-            gpu: "https://tradezone.sg/product-category/graphic-card/",
-            motherboard: "https://tradezone.sg/product-category/motherboard/",
-            handheld: "https://tradezone.sg/product-category/gaming-handheld/",
-            storage:
-              "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
-          };
-
-          const categoryLink = detectedCategory
-            ? categoryLinks[detectedCategory]
-            : null;
-          const moreText = hasMore
-            ? `\n\n**Showing ${displayLimit} of ${wooProducts.length} results.** ${categoryLink ? `[View all ${detectedCategory}s on website](${categoryLink}) or ask for a specific title.` : "Ask for a specific title to see more."}`
-            : "";
+          const moreText = buildMoreResultsText(
+            displayLimit,
+            wooProducts.length,
+            detectedCategory,
+            query,
+          );
 
           const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
           const budgetSummaryLine = buildBudgetSummaryLine(
@@ -1711,7 +1740,6 @@ export async function handleVectorSearch(
 
           const displayLimit = 8;
           const productsToShow = wooProducts.slice(0, displayLimit);
-          const hasMore = wooProducts.length > displayLimit;
 
           const listText = productsToShow
             .map((product, idx) => {
@@ -1726,9 +1754,12 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
-          const moreText = hasMore
-            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
-            : "";
+          const moreText = buildMoreResultsText(
+            displayLimit,
+            wooProducts.length,
+            detectedCategory,
+            query,
+          );
 
           // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
           const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
@@ -1750,7 +1781,6 @@ export async function handleVectorSearch(
           budgetContext || createBudgetContext(query, wooProducts);
         const displayLimit = Math.min(wooProducts.length, 8);
         const productsToShow = wooProducts.slice(0, displayLimit);
-        const hasMore = wooProducts.length > displayLimit;
 
         const listText = productsToShow
           .map((product, idx) => {
@@ -1768,9 +1798,12 @@ export async function handleVectorSearch(
           })
           .join("\n\n");
 
-        const moreText = hasMore
-          ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
-          : "";
+        const moreText = buildMoreResultsText(
+          displayLimit,
+          wooProducts.length,
+          detectedCategory,
+          query,
+        );
 
         const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
         const budgetSummaryLine = buildBudgetSummaryLine(
