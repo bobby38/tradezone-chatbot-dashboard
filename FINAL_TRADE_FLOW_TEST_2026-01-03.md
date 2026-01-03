@@ -42,7 +42,7 @@ Comprehensive manual test run covering the end-to-end deterministic trade-in flo
   5. **Response #5:** Email collection (+ confirmation echo).
   6. **Response #6:** Phone number (+ confirmation echo).
   7. **Response #7:** Name.
-  8. **Response #8:** Final summary showing trade + top-up and reminder about store visit; no payout question anywhere.
+  8. **Response #8:** Final recap: “Here’s what I got… Is this correct? Reply yes to submit.” No payout question anywhere.
 - **Validation:** Check dashboard lead to ensure `top_up_amount`, `source/target` fields populated, `preferred_payout` auto-set to `top_up`.
 - **Fail triggers:** Asking condition before price, re-searching for prices mid-flow, payout question asked, summary missing target device, or email missing trade-up details.
 
@@ -52,7 +52,7 @@ Comprehensive manual test run covering the end-to-end deterministic trade-in flo
   1. First reply shows trade-in range only (e.g., `Switch OLED trades for ~S$420-480`).
   2. Agent explicitly asks “Proceed?” or similar before collecting condition.
   3. Condition → Accessories → Photos → Email → Phone → Name → **Payout preference** (Cash/PayNow/Bank) since this is cash-only.
-  4. Final recap includes payout preference and reminder about inspection.
+  4. Final recap includes payout preference and reminder about inspection: “Here’s what I got… Is this correct? Reply yes to submit.”
 - **Validation:** `preferred_payout` equals the chosen option; payout asked only after photos/contact per checklist.
 - **Fail:** Payout asked earlier than allowed or skipped entirely, or agent invents target device.
 
@@ -73,6 +73,12 @@ Comprehensive manual test run covering the end-to-end deterministic trade-in flo
   - Dashboard lead displays the same math shown to user; email notification generated with trade-up block.
 - **Pass:** Database/email values match conversation transcript; JSON payload saved (inspect Supabase `lead_notes` or logs).
 - **Fail:** Missing slot persists, summary omits field, or email not sent.
+
+### Test 6 – Auto-Submit After Idle (No Explicit Yes)
+- **Scenario:** Complete a trade-in (all required fields) but do NOT reply “yes” to the final recap.
+- **Expectation:** Lead is auto-submitted after a short delay (default 2 minutes) and staff email is sent.
+- **Validation:** `trade_in_actions` shows `email_sent` without explicit user “yes”; dashboard status updates to `in_review`.
+- **Fail:** Lead remains stuck with no email after the delay.
 
 ---
 

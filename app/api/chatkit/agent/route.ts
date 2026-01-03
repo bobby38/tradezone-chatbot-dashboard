@@ -2468,6 +2468,25 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       return null;
     }
 
+    const lastUserText =
+      params.history
+        ?.slice()
+        .reverse()
+        .find((m) => m.role === "user")?.content || "";
+    const explicitYes =
+      /\b(yes|ya|yep|yeah|confirm|submit|proceed|go ahead|save)\b/i.test(
+        lastUserText,
+      );
+    const explicitNo = /\b(no|dont|don't|not now|later|cancel|stop)\b/i.test(
+      lastUserText,
+    );
+    if (!explicitYes || explicitNo) {
+      console.log(
+        "[ChatKit] Auto-submit waiting for explicit yes; cron will handle idle submissions.",
+      );
+      return null;
+    }
+
     if (!hasContactName) {
       console.warn(
         "[ChatKit] Auto-submit proceeding without confirmed contact name",
@@ -4299,6 +4318,32 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
       }
 
+      const lastUserText =
+        truncatedHistory
+          .slice()
+          .reverse()
+          .find((m) => m.role === "user")?.content || "";
+      const proceedConfirmed =
+        /\b(yes|ya|yep|yeah|confirm|submit|proceed|go ahead|save)\b/i.test(
+          lastUserText,
+        );
+      const proceedDeclined =
+        /\b(no|dont|don't|not now|later|cancel|stop)\b/i.test(lastUserText);
+      const needsProceedGate =
+        tradeInPriceShared &&
+        !tradeUpPairIntent &&
+        !proceedConfirmed &&
+        !proceedDeclined &&
+        !tradeInLeadDetail?.condition;
+
+      if (needsProceedGate) {
+        messages.push({
+          role: "system",
+          content:
+            'Ask one short confirm before collecting details: "Proceed with this trade-in?"',
+        });
+      }
+
       const allowMissingPrompt =
         tradeInPriceShared ||
         tradeUpPairIntent ||
@@ -4307,9 +4352,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             tradeInLeadDetail?.range_min ||
             tradeInLeadDetail?.range_max ||
             tradeInLeadDetail?.source_price_quoted));
-      const missingPrompt = allowMissingPrompt
-        ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpPairIntent)
-        : null;
+      const missingPrompt =
+        allowMissingPrompt && !needsProceedGate
+          ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpPairIntent)
+          : null;
       if (missingPrompt) {
         messages.push({ role: "system", content: missingPrompt });
       } else {
