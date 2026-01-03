@@ -170,8 +170,10 @@ function formatTradeUpSummary(
     summary.topUp != null
       ? summary.topUp
       : Math.max(0, summary.retailPrice - summary.tradeValue);
-  const base = `${summary.source || "Trade-in"} ~${formatCurrency(summary.tradeValue)} → ${summary.target || "Target"} ${formatCurrency(summary.retailPrice)} → Top-up ~${formatCurrency(topUpValue)}`;
-  return options?.includeLeadIn ? `Trade-up summary: ${base}.` : base;
+  const sourceLabel = summary.source || "Trade-in";
+  const targetLabel = summary.target || "Target";
+  const base = `${sourceLabel} trade-in ~${formatCurrency(summary.tradeValue)}. ${targetLabel} ${formatCurrency(summary.retailPrice)}. Top-up ~${formatCurrency(topUpValue)}.`;
+  return options?.includeLeadIn ? `Trade-up: ${base}` : base;
 }
 
 function deriveTradeUpPricingSummary(params: {
@@ -4302,8 +4304,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
           messages.push({
             role: "system",
-            content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, use this format:
-"Trade-up submitted! Trading ${sourceName} (~S$${sourcePrice}) for ${targetName} (S$${targetPrice}). Top-up: S$${topUp}. We'll contact you to arrange. Visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?"`,
+            content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, reply in one short paragraph (light markdown ok, no quotes): Trade-up submitted. **${sourceName}** (~S$${sourcePrice}) → **${targetName}** (S$${targetPrice}). Top-up: **S$${topUp}**. We’ll contact you to arrange, or you can visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?`,
           });
         }
       }
@@ -4395,7 +4396,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       if (isGenericPs5Query(normalizedQuery)) {
         const range = await lookupTradeInRangeFromGrid("ps5");
         if (range.min != null && range.max != null) {
-          forcedTradeInReply = `PS5 trade-in range is ~S$${range.min}-${range.max} (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
+          forcedTradeInReply = `Yes, you can trade in. **PS5** trade-in range: **~S$${range.min}–S$${range.max}** (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
           tradeInPriceShared = true;
         }
       } else if (
@@ -4404,7 +4405,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       ) {
         const range = await lookupTradeInRangeFromGrid("rog ally x");
         if (range.min != null && range.max != null) {
-          forcedTradeInReply = `ROG Ally X trade-in range is ~S$${range.min}-${range.max} (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
+          forcedTradeInReply = `Yes, you can trade in. **ROG Ally X** trade-in range: **~S$${range.min}–S$${range.max}** (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
           tradeInPriceShared = true;
         }
       }
@@ -4413,13 +4414,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         tradeInPriceShared = true;
         if (!forcedTradeInReply) {
           const deviceLabel = cleanTradeInLabel(message);
-          forcedTradeInReply = `${deviceLabel} trade-in is ~S$${forcedTradeInPrice} (subject to inspection). What's the condition? (mint, good, fair, faulty)`;
+          forcedTradeInReply = `Yes, you can trade in. **${deviceLabel}** trade-in: **~S$${forcedTradeInPrice}** (subject to inspection). Proceed?`;
         }
         messages.push({
           role: "system",
           content: `Deterministic trade-in pricing: "${normalizeProductName(
             tradeQuery,
-          )}" ~S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply with the price in one line, then ask "Proceed with this trade-in?" and continue the checklist: condition, accessories, photos (reuse if on file), name, phone, email, payout. No catalog links.`,
+          )}" ~S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply in one concise line using light markdown (bold key numbers), then ask Proceed? Continue the checklist after the user confirms: condition, accessories, photos (reuse if on file), name, phone, email, payout. No catalog links.`,
         });
       }
     }
