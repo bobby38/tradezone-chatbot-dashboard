@@ -321,6 +321,14 @@ function selectCondition(
   return model.flagshipCondition || model.conditions[0] || null;
 }
 
+function getFranchiseFocus(query: string): string[] | null {
+  if (/\bea\s*sports\s*fc\b/i.test(query)) return ["ea sports fc"];
+  if (/\bfifa\b/i.test(query)) return ["fifa", "ea sports fc"];
+  if (/\bnba\b/i.test(query)) return ["nba"];
+  if (/\bpokemon\b/i.test(query)) return ["pokemon"];
+  return null;
+}
+
 export async function searchWooProducts(
   query: string,
   limit = 5,
@@ -330,6 +338,26 @@ export async function searchWooProducts(
   const normalized = query.toLowerCase();
   const tokens = normalized.split(/\s+/).filter(Boolean);
   if (!tokens.length) return [];
+  const franchiseFocus = getFranchiseFocus(normalized);
+  const isGameQuery = /\b(game|games)\b/i.test(query);
+  const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
+
+  if (isGameQuery && /\bps4\b|\bplaystation\s*4\b/i.test(query)) {
+    const slugList = wantsPreOwned
+      ? ["pre-owned-games-playstation-4"]
+      : ["brand-new-games-playstation-4"];
+    const deterministicResults = await getWooProductsByCategory(
+      slugList,
+      Math.max(limit, 120),
+      "asc",
+    );
+    if (deterministicResults.length) {
+      console.log(
+        `[searchWooProducts] Direct PS4 games hit (${deterministicResults.length} products)`,
+      );
+      return deterministicResults;
+    }
+  }
 
   // Detect product family in query (same logic as catalog search)
   const familyKeywords = [
@@ -470,6 +498,13 @@ export async function searchWooProducts(
         .join(" ");
       let score = 0;
 
+      if (
+        franchiseFocus &&
+        !franchiseFocus.some((token) => name.includes(token))
+      ) {
+        return { product, score: 0 };
+      }
+
       // FILTER: When user asks for "game", ONLY show actual games (use WooCommerce categories)
       if (/\b(game|games)\b/i.test(query)) {
         // Check if product is in a game category
@@ -491,7 +526,6 @@ export async function searchWooProducts(
         }
 
         // Default to brand new games unless user specifically asks for pre-owned
-        const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
         const isPreOwned = /pre-owned-games/i.test(productCategories);
         const isBrandNew = /brand-new-games/i.test(productCategories);
 

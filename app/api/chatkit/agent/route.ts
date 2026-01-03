@@ -1198,18 +1198,23 @@ function isPlaceholderName(value: string | null | undefined): boolean {
   return false;
 }
 
+const TRADE_IN_NEGATION_PATTERNS = [
+  /\b(not|no|don't|dont|do\s+not)\s+(want|looking|interested|trying)\s+(to\s+)?(trade|sell)/i,
+  /\b(not|no)\s+trad(e|ing)/i, // "not trading", "no trade"
+  /\b(just|only)\s+(want|looking|asking)\s+(for|about|to\s+(buy|know|see))/i, // "just want to buy", "only asking about"
+];
+
+function hasTradeInNegation(query: string): boolean {
+  const normalized = query.trim();
+  if (!normalized) return false;
+  return TRADE_IN_NEGATION_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 function detectTradeInIntent(query: string): boolean {
   const normalized = query.trim();
   if (!normalized) return false;
 
-  // Detect negation phrases that explicitly reject trade-in intent
-  const negationPatterns = [
-    /\b(not|no|don't|dont|do\s+not)\s+(want|looking|interested|trying)\s+(to\s+)?(trade|sell)/i,
-    /\b(not|no)\s+trad(e|ing)/i, // "not trading", "no trade"
-    /\b(just|only)\s+(want|looking|asking)\s+(for|about|to\s+(buy|know|see))/i, // "just want to buy", "only asking about"
-  ];
-
-  if (negationPatterns.some((pattern) => pattern.test(normalized))) {
+  if (hasTradeInNegation(normalized)) {
     return false; // Explicit negation overrides trade-in detection
   }
 
@@ -1304,6 +1309,97 @@ function pickHintPrice(
 function normalizeProductName(name: string | undefined | null): string {
   if (!name) return "device";
   return name.trim().replace(/\s+/g, " ");
+}
+
+function cleanTradeInLabel(message: string): string {
+  const cleaned = normalizeProductName(message)
+    .replace(
+      /\b(trade[- ]?in|trade in value|trade in my|how much can i|how much|value|worth|quote|offer)\b/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || "device";
+}
+
+function isGenericPs5Query(normalizedQuery: string): boolean {
+  return (
+    /\bps5\b|\bplaystation\s*5\b/.test(normalizedQuery) &&
+    !/\b(slim|pro|digital|disc|fat|825|1tb|2tb)\b/.test(normalizedQuery)
+  );
+}
+
+function isRogAllyXQuery(normalizedQuery: string): boolean {
+  return /\brog\s*ally\s*x\b/.test(normalizedQuery);
+}
+
+function isRogAllyXVariantSpecified(normalizedQuery: string): boolean {
+  return /\b(1tb|2tb|xbox)\b/.test(normalizedQuery);
+}
+
+async function lookupTradeInRangeFromGrid(query: string): Promise<{
+  min: number | null;
+  max: number | null;
+  options: Array<{ label: string; value: number }>;
+  version: string | null;
+}> {
+  const normalizedQuery = normalizeText(query);
+  const tokens = normalizedQuery
+    .split(" ")
+    .filter((token) => token.length >= 3);
+  if (!tokens.length) {
+    return { min: null, max: null, options: [], version: null };
+  }
+
+  const entries = await loadTradeGridEntries();
+  const matches: Array<{ entry: TradeGridEntry; score: number }> = [];
+  for (const entry of entries) {
+    const candidate = resolveTradeValue(entry);
+    if (candidate == null) continue;
+    const score = computeGridMatchScore({
+      entry,
+      tokens,
+      normalizedQuery,
+    });
+    if (!score) continue;
+    matches.push({ entry, score });
+  }
+
+  if (!matches.length) {
+    return { min: null, max: null, options: [], version: null };
+  }
+
+  const options = matches
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(({ entry }) => {
+      const label = [entry.product_family, entry.product_model, entry.variant]
+        .filter(Boolean)
+        .join(" ");
+      return { label, value: resolveTradeValue(entry) ?? 0 };
+    })
+    .filter((option) => option.value > 0);
+
+  let min: number | null = null;
+  let max: number | null = null;
+  let version: string | null = null;
+  for (const { entry } of matches) {
+    const entryMin =
+      entry.trade_in_value_min ?? entry.trade_in_value_max ?? null;
+    const entryMax =
+      entry.trade_in_value_max ?? entry.trade_in_value_min ?? null;
+    if (entryMin != null) {
+      min = min == null ? entryMin : Math.min(min, entryMin);
+    }
+    if (entryMax != null) {
+      max = max == null ? entryMax : Math.max(max, entryMax);
+    }
+    if (!version && entry.price_grid_version) {
+      version = entry.price_grid_version;
+    }
+  }
+
+  return { min, max, options, version };
 }
 
 async function fetchApproxPrice(
@@ -2077,6 +2173,18 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     .trim();
 
   if (!patch.contact_name && scrubbed.length >= 2) {
+    const scrubbedLower = scrubbed.toLowerCase();
+    const hasExplicitNameCue =
+      /\b(my name is|name is|i am|i'm|this is|call me|name:)\b/i.test(
+        scrubbedLower,
+      );
+    const hasTradeOrProductCue =
+      /\b(trade|trade[- ]?in|sell|buy|games?|ps5|ps4|playstation|xbox|switch|pokemon|nba|fifa|rog|ally)\b/i.test(
+        scrubbedLower,
+      );
+    if (!hasExplicitNameCue && hasTradeOrProductCue) {
+      return patch;
+    }
     const candidateTokens = scrubbed
       .split(/\s+/)
       .map((token) => token.trim())
@@ -3556,6 +3664,7 @@ export async function POST(request: NextRequest) {
   let tradeDeviceQuery: string | null = null;
   let tradeInPriceShared = false;
   let tradeUpPricingSummary: TradeUpPricingSummary | null = null;
+  let forcedTradeInReply: string | null = null;
 
   try {
     // Load settings and system prompt
@@ -3683,6 +3792,7 @@ export async function POST(request: NextRequest) {
 
     messages.push(userMessage);
 
+    const tradeInNegated = hasTradeInNegation(message);
     tradeInIntent = detectTradeInIntent(message);
     tradeUpPairIntent = detectTradeUpPair(message);
     tradeUpParts = parseTradeUpParts(message);
@@ -3764,6 +3874,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         .maybeSingle();
 
       if (existingLead) {
+        const productInfoIntent = detectProductInfoIntent(message);
+        const ignoreExistingTradeIn =
+          tradeInNegated || (!tradeInIntent && productInfoIntent);
         // Only resume trade-in if it's not completed/submitted AND user shows trade-in intent
         const completedStatuses = [
           "submitted",
@@ -3776,7 +3889,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           existingLead.status || "",
         );
 
-        if (!isCompleted && tradeInIntent) {
+        if (ignoreExistingTradeIn && !isCompleted) {
+          await supabase
+            .from("trade_in_leads")
+            .update({ status: "cancelled" })
+            .eq("id", existingLead.id);
+          console.log(
+            `[ChatKit] Cancelled trade-in lead ${existingLead.id} due to product/negation intent`,
+          );
+        } else if (!isCompleted && tradeInIntent) {
           // For voice, start fresh if existing lead is stale or already populated
           let reuse = true;
           if (mode === "voice") {
@@ -4182,7 +4303,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
 
     // 🔴 CRITICAL: Check if quote already given - prevent re-searching during qualification
-    const quoteAlreadyGiven = tradeInLeadDetail?.initial_quote_given === true;
+    const looksLikePricingRefresh =
+      /\b(trade[- ]?in|trade in|how much|value|worth|quote)\b/i.test(message) ||
+      (tradeInLeadId && TRADE_IN_DEVICE_HINTS.test(message.toLowerCase()));
+    const quoteAlreadyGiven =
+      tradeInLeadDetail?.initial_quote_given === true &&
+      !looksLikePricingRefresh;
 
     if (quoteAlreadyGiven) {
       console.log(
@@ -4216,8 +4342,27 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         tradeDeviceQuery || `trade-in ${normalizeProductName(message)}`;
       const tradeResult = await fetchApproxPrice(tradeQuery, "trade_in");
       forcedTradeInPrice = tradeResult.amount ?? null;
+      const normalizedQuery = normalizeText(message);
+      if (isGenericPs5Query(normalizedQuery)) {
+        const range = await lookupTradeInRangeFromGrid("ps5");
+        if (range.min != null && range.max != null) {
+          forcedTradeInReply = `PS5 trade-in range is ~S$${range.min}-${range.max} (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
+        }
+      } else if (
+        isRogAllyXQuery(normalizedQuery) &&
+        !isRogAllyXVariantSpecified(normalizedQuery)
+      ) {
+        const range = await lookupTradeInRangeFromGrid("rog ally x");
+        if (range.min != null && range.max != null) {
+          forcedTradeInReply = `ROG Ally X trade-in range is ~S$${range.min}-${range.max} (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
+        }
+      }
       if (forcedTradeInPrice != null) {
         lastTradeInPrice = forcedTradeInPrice;
+        if (!forcedTradeInReply) {
+          const deviceLabel = cleanTradeInLabel(message);
+          forcedTradeInReply = `${deviceLabel} trade-in is ~S$${forcedTradeInPrice} (subject to inspection). What's the condition? (mint, good, fair, faulty)`;
+        }
         messages.push({
           role: "system",
           content: `Deterministic trade-in pricing: "${normalizeProductName(
@@ -5862,6 +6007,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     // Only apply Xbox hints if NOT in trade-up mode (deterministic override takes precedence)
     if (!tradeUpPairIntent) {
       finalResponse = forceXboxPricePreface(finalResponse, message);
+    }
+
+    if (!tradeUpPairIntent && forcedTradeInReply) {
+      finalResponse = forcedTradeInReply;
     }
 
     // If the user asked about installment, add rough monthly estimates (3/6/12)
