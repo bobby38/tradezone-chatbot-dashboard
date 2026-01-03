@@ -31,6 +31,7 @@ Is this correct? Reply yes to submit.
 ### Dashboard Ops (Jan 3, 2026) ✅
 - Trade-in dashboard now shows **Email Sent / Failed / Not Sent** status.
 - Added **Resend Trade-In Email** action on lead detail view.
+- Added **Email retry queue** endpoint (`/api/tradein/email-retry`) for failed sends.
 - Scheduler panel loads tasks from `data/scheduled_tasks.json` (or `SCHEDULED_TASKS_JSON` env) and includes **Trade-in auto submit**.
 
 ## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES + UX IMPROVEMENTS)

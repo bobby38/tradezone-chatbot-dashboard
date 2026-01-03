@@ -6,15 +6,6 @@ import {
   updateTradeInLead,
 } from "@/lib/trade-in/service";
 
-const DEFAULT_DELAY_MINUTES = 2;
-
-function getDelayMinutes(): number {
-  const raw = process.env.TRADEIN_AUTO_SUBMIT_DELAY_MINUTES;
-  const parsed = raw ? Number(raw) : NaN;
-  if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  return DEFAULT_DELAY_MINUTES;
-}
-
 function isAccessoriesCaptured(accessories: any): boolean {
   if (Array.isArray(accessories)) return accessories.length > 0;
   return Boolean(accessories);
@@ -80,15 +71,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const delayMinutes = getDelayMinutes();
-  const cutoff = new Date(Date.now() - delayMinutes * 60 * 1000).toISOString();
   const supabase = getSupabaseAdminClient();
-
   const { data: leads, error } = await supabase
     .from("trade_in_leads")
     .select("*, trade_in_actions (*), trade_in_media (*)")
     .in("status", ["new", "in_review", "awaiting_customer", "quoted"])
-    .lt("updated_at", cutoff)
     .order("updated_at", { ascending: true })
     .limit(100);
 
@@ -105,10 +92,13 @@ export async function POST(request: Request) {
     const actions = Array.isArray(lead.trade_in_actions)
       ? lead.trade_in_actions
       : [];
-    const alreadyNotified = actions.some(
+    const alreadySent = actions.some(
       (action: any) => action.action_type === "email_sent",
     );
-    if (alreadyNotified) continue;
+    const hadFailure = actions.some(
+      (action: any) => action.action_type === "email_failed",
+    );
+    if (alreadySent || !hadFailure) continue;
 
     const hasDevice = Boolean(lead.brand && lead.model);
     const hasCondition = Boolean(lead.condition);
@@ -162,9 +152,9 @@ export async function POST(request: Request) {
         summary,
         notify: true,
         status: newStatus,
-        emailContext: "initial",
+        emailContext: "retry",
       });
-      results.push({ leadId: lead.id, status: "submitted" });
+      results.push({ leadId: lead.id, status: "resent" });
     } catch (submitError) {
       results.push({
         leadId: lead.id,
@@ -179,9 +169,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     checked: leads?.length || 0,
-    submitted: results.filter((item) => item.status === "submitted").length,
+    resent: results.filter((item) => item.status === "resent").length,
     failed: results.filter((item) => item.status === "failed").length,
-    delayMinutes,
     results,
   });
 }

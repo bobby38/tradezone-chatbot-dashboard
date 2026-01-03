@@ -2669,6 +2669,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       summary: summaryWithPricing,
       notify: true,
       status: newStatus,
+      emailContext: "initial",
     });
 
     await logToolRun({
@@ -5444,6 +5445,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 summary: submitArgs.summary,
                 notify: submitArgs.notify,
                 status: submitArgs.status,
+                emailContext: "initial",
               });
 
               toolResult = emailSent

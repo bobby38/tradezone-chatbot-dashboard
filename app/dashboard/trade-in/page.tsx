@@ -85,6 +85,7 @@ interface TradeInLeadSummary {
   email_status?: "sent" | "failed" | "not_sent";
   email_last_sent_at?: string | null;
   email_last_failed_at?: string | null;
+  email_last_resent_at?: string | null;
 }
 
 interface TradeInMediaEntry {
@@ -1079,6 +1080,15 @@ export default function TradeInDashboardPage() {
                         Last sent{" "}
                         {formatDistanceToNow(
                           new Date(selectedLead.email_last_sent_at),
+                          { addSuffix: true },
+                        )}
+                      </div>
+                    )}
+                    {selectedLead.email_last_resent_at && (
+                      <div className="text-xs text-muted-foreground">
+                        Last resend{" "}
+                        {formatDistanceToNow(
+                          new Date(selectedLead.email_last_resent_at),
                           { addSuffix: true },
                         )}
                       </div>

@@ -77,6 +77,15 @@ export async function GET(request: NextRequest) {
         );
         return NextResponse.json({ settings: {} });
       }
+      if (error.code === "42P01") {
+        console.warn(
+          "[Settings] organizations table missing; returning empty settings.",
+        );
+        return NextResponse.json({
+          settings: {},
+          source: "fallback_missing_table",
+        });
+      }
 
       console.error("[Settings] Load error:", error);
       console.error("[Settings] Error details:", {

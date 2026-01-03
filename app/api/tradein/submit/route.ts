@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
         summary,
         notify,
         status,
+        emailContext: "initial",
       });
 
       console.log("[tradein/submit]", {

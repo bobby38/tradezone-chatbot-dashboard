@@ -45,7 +45,7 @@ const RAW_TASKS = [
         startedAt: "2025-12-07T02:00:03Z",
         endedAt: "2025-12-07T02:00:08Z",
         durationMs: 5000,
-        logUrl: "https://trade.rezult.co/logs/sync-price-grid/2025-12-07",
+        logUrl: null,
       },
       {
         id: "sync-price-grid-2025-11-30",
@@ -53,7 +53,7 @@ const RAW_TASKS = [
         startedAt: "2025-11-30T02:00:03Z",
         endedAt: "2025-11-30T02:00:06Z",
         durationMs: 3000,
-        logUrl: "https://trade.rezult.co/logs/sync-price-grid/2025-11-30",
+        logUrl: null,
       },
     ],
   },
@@ -73,7 +73,7 @@ const RAW_TASKS = [
         startedAt: "2025-12-07T02:05:02Z",
         endedAt: "2025-12-07T02:05:10Z",
         durationMs: 8000,
-        logUrl: "https://trade.rezult.co/logs/refresh-catalog/2025-12-07",
+        logUrl: null,
       },
       {
         id: "refresh-catalog-2025-11-30",
@@ -81,7 +81,7 @@ const RAW_TASKS = [
         startedAt: "2025-11-30T02:05:03Z",
         endedAt: "2025-11-30T02:05:09Z",
         durationMs: 6000,
-        logUrl: "https://trade.rezult.co/logs/refresh-catalog/2025-11-30",
+        logUrl: null,
       },
       {
         id: "refresh-catalog-2025-11-23",
@@ -89,7 +89,7 @@ const RAW_TASKS = [
         startedAt: "2025-11-23T02:05:02Z",
         endedAt: "2025-11-23T02:05:15Z",
         durationMs: 13000,
-        logUrl: "https://trade.rezult.co/logs/refresh-catalog/2025-11-23",
+        logUrl: null,
         notes: "WooCommerce API rate limited (HTTP 429)",
       },
     ],
@@ -110,7 +110,7 @@ const RAW_TASKS = [
         startedAt: "2025-12-07T02:30:03Z",
         endedAt: "2025-12-07T02:30:21Z",
         durationMs: 18000,
-        logUrl: "https://trade.rezult.co/logs/graphiti-sync/2025-12-07",
+        logUrl: null,
       },
       {
         id: "graphiti-sync-2025-11-30",
@@ -118,7 +118,7 @@ const RAW_TASKS = [
         startedAt: "2025-11-30T02:30:04Z",
         endedAt: "2025-11-30T02:30:18Z",
         durationMs: 14000,
-        logUrl: "https://trade.rezult.co/logs/graphiti-sync/2025-11-30",
+        logUrl: null,
       },
       {
         id: "graphiti-sync-2025-11-23",
@@ -126,7 +126,7 @@ const RAW_TASKS = [
         startedAt: "2025-11-23T02:30:05Z",
         endedAt: "2025-11-23T02:30:25Z",
         durationMs: 20000,
-        logUrl: "https://trade.rezult.co/logs/graphiti-sync/2025-11-23",
+        logUrl: null,
         notes: "Graphiti API 502 — auto-retry scheduled",
       },
     ],
@@ -147,10 +147,20 @@ const RAW_TASKS = [
         startedAt: "2026-01-03T16:20:03Z",
         endedAt: "2026-01-03T16:20:05Z",
         durationMs: 2000,
-        logUrl: "https://trade.rezult.co/logs/tradein-auto-submit/2026-01-03",
+        logUrl: null,
         notes: "curl: (3) URL rejected: Malformed input to a URL function",
       },
     ],
+  },
+  {
+    id: "tradein-email-retry",
+    title: "Trade-in email retry",
+    description: "Retries failed trade-in email notifications.",
+    frequency: "Every 5 minutes",
+    cron: "*/5 * * * *",
+    owner: "Coolify Cron",
+    environment: "production",
+    recentRuns: [],
   },
 ] satisfies Array<Omit<ScheduledTask, "lastRun">>;
 
@@ -161,7 +171,9 @@ function normalizeTasks(tasks: Array<Omit<ScheduledTask, "lastRun">>) {
   }));
 }
 
-function loadExternalTasks(): Array<Omit<ScheduledTask, "lastRun">> | null {
+async function loadExternalTasks(): Promise<Array<
+  Omit<ScheduledTask, "lastRun">
+> | null> {
   const rawJson = process.env.SCHEDULED_TASKS_JSON;
   if (rawJson) {
     try {
@@ -170,6 +182,27 @@ function loadExternalTasks(): Array<Omit<ScheduledTask, "lastRun">> | null {
     } catch (error) {
       console.warn(
         "[ScheduledTasks] Failed to parse SCHEDULED_TASKS_JSON",
+        error,
+      );
+    }
+  }
+
+  const remoteUrl = process.env.SCHEDULED_TASKS_URL;
+  if (remoteUrl) {
+    try {
+      const response = await fetch(remoteUrl, { cache: "no-store" });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) return data;
+      } else {
+        console.warn(
+          "[ScheduledTasks] SCHEDULED_TASKS_URL returned non-200",
+          response.status,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "[ScheduledTasks] Failed to fetch SCHEDULED_TASKS_URL",
         error,
       );
     }
@@ -190,7 +223,7 @@ function loadExternalTasks(): Array<Omit<ScheduledTask, "lastRun">> | null {
 }
 
 export async function GET() {
-  const external = loadExternalTasks();
+  const external = await loadExternalTasks();
   const tasks = normalizeTasks(external ?? RAW_TASKS);
   return NextResponse.json(
     { tasks },

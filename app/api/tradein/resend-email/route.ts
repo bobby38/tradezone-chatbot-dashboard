@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
       notify: true, // Force email send
       status: existingLead.status || "new", // Preserve current status
       allowMissingPayout: true,
+      emailContext: "resend",
     });
 
     if (emailSent) {

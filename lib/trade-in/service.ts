@@ -246,6 +246,7 @@ export interface TradeInSubmitInput {
   status?: string;
   notify?: boolean;
   allowMissingPayout?: boolean;
+  emailContext?: "initial" | "resend" | "retry";
 }
 
 export async function ensureTradeInLead(
@@ -924,6 +925,7 @@ export async function submitTradeInLead(
     console.log("[TradeIn] Sending email notification...");
     console.log("[TradeIn] Form data:", JSON.stringify(formData, null, 2));
 
+    let emailErrorMessage: string | null = null;
     try {
       emailSent = await EmailService.sendFormNotification({
         type: "trade-in",
@@ -936,13 +938,8 @@ export async function submitTradeInLead(
     } catch (emailError) {
       console.error("[TradeIn] Email send failed:", emailError);
       emailSent = false;
-
-      // Surface email failure back to caller so LiveKit/Realtime can tell the user
-      const errorMessage =
+      emailErrorMessage =
         emailError instanceof Error ? emailError.message : String(emailError);
-      throw new Error(
-        `Trade-in saved but email notification failed: ${errorMessage}`,
-      );
     }
 
     await supabaseAdmin.from("trade_in_actions").insert({
@@ -952,6 +949,8 @@ export async function submitTradeInLead(
         type: "trade-in",
         status: emailSent ? "sent" : "failed",
         summary: input.summary || null,
+        context: input.emailContext || "initial",
+        error: emailSent ? null : emailErrorMessage,
         timestamp: new Date().toISOString(),
       },
     });
@@ -1017,6 +1016,11 @@ function deriveEmailStatus(actions?: Array<any>) {
   const lastSent = emailActions.find(
     (action) => action.action_type === "email_sent",
   );
+  const lastResent = emailActions.find(
+    (action) =>
+      action.action_type === "email_sent" &&
+      ["resend", "retry"].includes(action.payload?.context),
+  );
   const lastFailed = emailActions.find(
     (action) => action.action_type === "email_failed",
   );
@@ -1028,6 +1032,7 @@ function deriveEmailStatus(actions?: Array<any>) {
   return {
     email_status: status,
     email_last_sent_at: lastSent?.created_at ?? null,
+    email_last_resent_at: lastResent?.created_at ?? null,
     email_last_failed_at: lastFailed?.created_at ?? null,
   };
 }
@@ -1045,7 +1050,7 @@ export async function listTradeInLeads(
       `id, created_at, updated_at, status, channel, brand, model, storage, condition,
        range_min, range_max, preferred_payout, preferred_fulfilment,
        contact_name, contact_phone, contact_email,
-       trade_in_actions (action_type, created_at)`,
+       trade_in_actions (action_type, created_at, payload)`,
     )
     .order("created_at", { ascending: false });
 
