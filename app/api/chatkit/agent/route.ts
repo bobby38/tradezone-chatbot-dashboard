@@ -2951,29 +2951,34 @@ function buildTradeInUserSummary(detail: any): string | null {
 
   // 🔴 TRADE-UP: Include both devices and top-up in summary
   const isTradeUp = detail.source_device_name && detail.target_device_name;
+  const photosProvided = Array.isArray(detail.trade_in_media)
+    ? detail.trade_in_media.length > 0
+      ? "Provided"
+      : "Not provided — final quote upon inspection"
+    : "Not provided — final quote upon inspection";
 
   const lines = [
     isTradeUp ? "Here’s what I got (trade-up):" : "Here’s what I got:",
     // For trade-ups, show source → target with prices
     isTradeUp && detail.source_device_name && detail.source_price_quoted
-      ? `Trading: ${detail.source_device_name} (trade-in ~S$${detail.source_price_quoted})`
+      ? `• Trading: ${formatDeviceLabel(detail.source_device_name)} (trade-in ~S$${detail.source_price_quoted})`
       : deviceParts.length
-        ? `Device: ${deviceParts.join(" ")}`
+        ? `• Device: ${deviceParts.join(" ")}`
         : null,
     isTradeUp && detail.target_device_name && detail.target_price_quoted
-      ? `For: ${detail.target_device_name} (retail S$${detail.target_price_quoted})`
+      ? `• For: ${formatDeviceLabel(detail.target_device_name)} (retail S$${detail.target_price_quoted})`
       : null,
     isTradeUp && detail.top_up_amount
-      ? `Top-up needed: S$${detail.top_up_amount}`
+      ? `• Top-up: S$${detail.top_up_amount}`
       : null,
-    detail.condition ? `Condition: ${detail.condition}` : null,
-    accessories ? `Accessories: ${accessories}` : null,
+    detail.condition ? `• Condition: ${detail.condition}` : null,
+    accessories ? `• Accessories: ${accessories}` : null,
     // Only show payout for non-trade-ups (cash trade-ins)
     !isTradeUp && detail.preferred_payout
-      ? `Payout preference: ${detail.preferred_payout}`
+      ? `• Payout: ${detail.preferred_payout}`
       : null,
     detail.contact_name || detail.contact_phone || detail.contact_email
-      ? `Contact: ${[
+      ? `• Contact: ${[
           detail.contact_name,
           detail.contact_phone,
           detail.contact_email,
@@ -2981,6 +2986,7 @@ function buildTradeInUserSummary(detail: any): string | null {
           .filter(Boolean)
           .join(" · ")}`
       : null,
+    `• Photos: ${photosProvided}`,
   ].filter(Boolean);
 
   if (lines.length <= 1) return null;
@@ -3063,14 +3069,7 @@ function buildMissingTradeInFieldPrompt(
     hasStorage = true;
   }
 
-  const readyForPhotos =
-    hasDevice &&
-    hasCondition &&
-    accessoriesCaptured &&
-    hasContactName &&
-    hasContactPhone &&
-    hasContactEmail &&
-    hasPayout;
+  const readyForPhotos = hasDevice && hasCondition && accessoriesCaptured;
 
   const steps: Array<{ missing: boolean; message: string }> = [
     {
@@ -3092,6 +3091,11 @@ function buildMissingTradeInFieldPrompt(
       message: 'Ask: "Accessories or box included?" and save accessories.',
     },
     {
+      missing: readyForPhotos && !photoAcknowledged,
+      message:
+        'Ask once: "Got photos? Helps us quote faster." If they say no, reply "Photos noted as not provided — final quote upon inspection" and continue.',
+    },
+    {
       missing: !hasContactEmail,
       message:
         "Ask for the full email address (not just the provider), repeat the entire address back, wait for a clear yes, then save contact_email.",
@@ -3109,11 +3113,6 @@ function buildMissingTradeInFieldPrompt(
       missing: !hasPayout,
       message:
         'Ask: "Cash, PayNow, or bank transfer?" and save preferred payout unless the user already said they want installments. If they asked for installments, set preferred_payout=installment and skip this question.',
-    },
-    {
-      missing: readyForPhotos && !photoAcknowledged,
-      message:
-        'All details captured—now ask once: "Got photos? Helps us quote faster." If they say no, respond "Photos noted as not provided — final quote upon inspection" and keep moving.',
     },
   ];
 
@@ -4278,7 +4277,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const deviceCaptured = Boolean(
           tradeInLeadDetail.brand && tradeInLeadDetail.model,
         );
-        const payoutSet = Boolean(tradeInLeadDetail.preferred_payout);
+        const payoutSet = tradeUpPairIntent
+          ? true
+          : Boolean(tradeInLeadDetail.preferred_payout);
         const readyForPayoutPrompt =
           deviceCaptured &&
           hasCondition &&
@@ -4289,15 +4290,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const needsPayoutPrompt =
           readyForPayoutPrompt && !payoutSet && tradeInPriceShared;
         tradeInNeedsPayoutPrompt = needsPayoutPrompt;
-        // Photo prompt should trigger as soon as device+condition+accessories+contact are locked,
-        // independent of payout choice (works for upgrades/installments too).
+        // Photo prompt should trigger right after condition + accessories (before contact).
         const readyForPhotoNudge =
-          deviceCaptured &&
-          hasCondition &&
-          accessoriesCaptured &&
-          hasContactName &&
-          hasContactPhone &&
-          hasContactEmail;
+          deviceCaptured && hasCondition && accessoriesCaptured;
         tradeInReadyForPhotoPrompt = readyForPhotoNudge && !photoAcknowledged;
 
         if (tradeInReadyForPhotoPrompt) {
@@ -6075,7 +6070,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           derivedSummary?.topUp ?? Math.max(0, retailPrice - tradeValue);
         const sourceLabel = formatDeviceLabel(sourceName);
         const targetLabel = formatDeviceLabel(targetName);
-        finalResponse = `Your ${sourceLabel} trades for ~S$${tradeValue}. The ${targetLabel} is S$${retailPrice}. Top-up: ~S$${topUp}.`;
+        finalResponse = [
+          `Your **${sourceLabel}** trades for **~S$${tradeValue}**.`,
+          `The **${targetLabel}** is **S$${retailPrice}**. Top-up: **~S$${topUp}**.`,
+          "Proceed?",
+        ].join(" ");
         console.log("[TradeUp] Set finalResponse:", finalResponse);
 
         // Store topUp for installment calculation later
