@@ -8,6 +8,7 @@ Purpose: Validate the trade-in flow without contaminating leads. Run **one trade
 1. Use a **fresh sessionId** for this test.
 2. Do **not** start a second trade in the same session.
 3. Finish with either **explicit submit** or **idle auto-submit** (wait 2–3 minutes).
+4. **Session persistence is expected** (localStorage). For a fresh run, use Incognito/Private or clear site storage.
 
 ---
 

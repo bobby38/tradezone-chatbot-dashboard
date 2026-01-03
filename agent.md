@@ -26,6 +26,7 @@ Is this correct? Reply yes to submit.
 ```
 
 **Trade-Up Rule:** Skip payout questions for trade-ups (top-up only).
+**Session Note:** Trade-in sessions are persistent by design to avoid losing data on reload.
 
 ## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES + UX IMPROVEMENTS)
 

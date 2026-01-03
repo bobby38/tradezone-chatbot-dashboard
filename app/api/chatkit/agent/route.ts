@@ -1347,6 +1347,46 @@ function normalizeProceedPrompt(text: string): string {
   return updated;
 }
 
+function ensureQuestionOnNewLine(text: string): string {
+  if (!text) return text;
+  const lines = text.split("\n");
+  const processed: string[] = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (/^(-|\*|•|\d+\.)\s/.test(line) || /^#{1,3}\s/.test(line)) {
+      processed.push(rawLine);
+      continue;
+    }
+
+    let updated = line;
+    updated = updated.replace(
+      /\s+(Is this correct\?|Reply yes to submit\.)/gi,
+      "\n$1",
+    );
+    updated = updated.replace(
+      /([^.?!])\s+(Proceed\?|Anything else\?)$/i,
+      "$1\n$2",
+    );
+
+    const sentenceSplit = updated.match(/^(.*[.!])\s+([^.!?].*\?)$/);
+    if (sentenceSplit) {
+      processed.push(sentenceSplit[1], sentenceSplit[2]);
+      continue;
+    }
+
+    if (/\?\s+[A-Z]/.test(updated)) {
+      processed.push(...updated.replace(/\?\s+(?=[A-Z])/g, "?\n").split("\n"));
+      continue;
+    }
+
+    processed.push(updated);
+  }
+
+  return processed.join("\n");
+}
+
 function formatDeviceLabel(label: string | undefined | null): string {
   if (!label) return "device";
   const tokens = label.trim().split(/\s+/);
@@ -6473,6 +6513,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         deduped.push(line);
       }
       finalResponse = deduped.join("\n").trim();
+    }
+
+    if (finalResponse) {
+      finalResponse = ensureQuestionOnNewLine(finalResponse);
     }
 
     // ALWAYS include product link when we have product information
