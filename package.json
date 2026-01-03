@@ -15,6 +15,7 @@
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
     "grid:sync": "tsx scripts/fetch-price-grid.ts",
+    "grid:sync-csv": "tsx scripts/sync-csv-to-supabase-grid.ts",
     "test:trade-grid": "tsx tests/trade-grid-smoke.ts",
     "diagnose:livekit": "tsx scripts/check-livekit-env.ts"
   },
