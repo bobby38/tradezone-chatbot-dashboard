@@ -1187,6 +1187,17 @@ function detectTradeInIntent(query: string): boolean {
   const normalized = query.trim();
   if (!normalized) return false;
 
+  // Detect negation phrases that explicitly reject trade-in intent
+  const negationPatterns = [
+    /\b(not|no|don't|dont|do\s+not)\s+(want|looking|interested|trying)\s+(to\s+)?(trade|sell)/i,
+    /\b(not|no)\s+trad(e|ing)/i, // "not trading", "no trade"
+    /\b(just|only)\s+(want|looking|asking)\s+(for|about|to\s+(buy|know|see))/i, // "just want to buy", "only asking about"
+  ];
+
+  if (negationPatterns.some((pattern) => pattern.test(normalized))) {
+    return false; // Explicit negation overrides trade-in detection
+  }
+
   if (TRADE_IN_KEYWORD_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return true;
   }
