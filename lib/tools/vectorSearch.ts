@@ -554,14 +554,15 @@ function buildMoreResultsText(
   const hasMore = totalCount > displayLimit;
   if (!hasMore) return "";
 
+  const remaining = totalCount - displayLimit;
   const categoryLink = getCategoryLink(category, query);
 
   if (categoryLink && category) {
     const categoryPlural = pluralizeCategory(category);
-    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** [View all ${categoryPlural} on website](${categoryLink}) or ask for a specific title.`;
+    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** Type "show more" to see the remaining ${remaining}, or [View all ${categoryPlural} on website](${categoryLink}).`;
   }
 
-  return `\n\nShowing ${displayLimit} of ${totalCount} results. Ask for a specific title to see more.`;
+  return `\n\nShowing ${displayLimit} of ${totalCount} results. Type "show more" to see the remaining ${remaining}.`;
 }
 
 function filterWooResultsByTokens<T extends { name?: string }>(
