@@ -61,6 +61,7 @@ export interface WooProductSearchResult {
   price_sgd: number | null;
   stock_status?: string;
   image?: string;
+  categories?: Array<{ name: string; slug: string }>;
 }
 
 export async function getWooProductsByCategory(
@@ -84,6 +85,10 @@ export async function getWooProductsByCategory(
       price_sgd: parseMoney(product.price),
       stock_status: product.stock_status,
       image: product.images?.[0]?.src,
+      categories: product.categories?.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+      })),
     }))
     .filter((entry) => entry.price_sgd != null)
     .sort((a, b) => {
@@ -705,6 +710,10 @@ export async function searchWooProducts(
     price_sgd: parseMoney(product.price),
     stock_status: product.stock_status,
     image: product.images?.[0]?.src, // Include first image
+    categories: product.categories?.map((c) => ({
+      name: c.name,
+      slug: c.slug,
+    })),
   }));
 
   if (
@@ -729,6 +738,10 @@ export async function searchWooProducts(
         price_sgd: parseMoney(product.price),
         stock_status: product.stock_status,
         image: product.images?.[0]?.src,
+        categories: product.categories?.map((c) => ({
+          name: c.name,
+          slug: c.slug,
+        })),
       }));
     }
   }

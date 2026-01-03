@@ -31,6 +31,12 @@ async function main() {
       intent: "retail",
       expected: 900,
     },
+    // Trade-up scenarios (source device trade-in + target retail)
+    {
+      query: "trade-in PS4 Pro 1TB",
+      intent: "trade_in",
+      expected: 100,
+    },
     // PS5 trade-in tests (critical fix validation)
     {
       query: "trade-in PS5",
