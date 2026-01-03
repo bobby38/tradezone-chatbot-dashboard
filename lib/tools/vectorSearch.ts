@@ -1117,7 +1117,10 @@ export async function handleVectorSearch(
       // Phone-specific cleanup: remove tablet cross-bleed
       if (detectedCategory === "phone" && wooProducts.length > 0) {
         let phoneFiltered = wooProducts.filter((p) => {
-          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const cats = ((p as any).categories || [])
+            .map((c: any) => c.name || "")
+            .join(" ")
+            .toLowerCase();
           const name = (p.name || "").toLowerCase();
           const isPhoneCat =
             /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(
@@ -1135,7 +1138,10 @@ export async function handleVectorSearch(
           phoneFiltered = dedupeWooProducts(
             await searchWooProducts("handphone phone mobile", wooLimit),
           ).filter((p) => {
-            const cats = ((p as any).categories || []).join(" ").toLowerCase();
+            const cats = ((p as any).categories || [])
+              .map((c: any) => c.name || "")
+              .join(" ")
+              .toLowerCase();
             const name = (p.name || "").toLowerCase();
             const isPhoneCat =
               /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(
@@ -1168,7 +1174,10 @@ export async function handleVectorSearch(
       // Tablet-specific cleanup: remove phone/handphone cross-bleed
       if (detectedCategory === "tablet" && wooProducts.length > 0) {
         let tabletFiltered = wooProducts.filter((p) => {
-          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const cats = ((p as any).categories || [])
+            .map((c: any) => c.name || "")
+            .join(" ")
+            .toLowerCase();
           const name = (p.name || "").toLowerCase();
           const isTabletCat =
             /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
@@ -1182,7 +1191,10 @@ export async function handleVectorSearch(
           tabletFiltered = dedupeWooProducts(
             await searchWooProducts("tablet", wooLimit),
           ).filter((p) => {
-            const cats = ((p as any).categories || []).join(" ").toLowerCase();
+            const cats = ((p as any).categories || [])
+              .map((c: any) => c.name || "")
+              .join(" ")
+              .toLowerCase();
             const name = (p.name || "").toLowerCase();
             const isTabletCat =
               /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
@@ -1237,7 +1249,11 @@ export async function handleVectorSearch(
       if (platformIntent && wooProducts.length > 0) {
         const platformFiltered = wooProducts.filter((p) => {
           const name = (p.name || "").toLowerCase();
-          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          // FIX: Extract category names properly (was joining objects → "[object Object]")
+          const cats = ((p as any).categories || [])
+            .map((c: any) => c.name || "")
+            .join(" ")
+            .toLowerCase();
           switch (platformIntent) {
             case "ps5":
               // Allow PS5 games, including cross-platform titles (PS5/PS4, PS5/Xbox, etc.)
