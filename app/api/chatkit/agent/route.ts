@@ -6206,12 +6206,23 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       const cleaned = urlMatches
         .map((raw) => raw.replace(/[).,]+$/, ""))
         .filter((u) => /tradezone\.sg\/product\//i.test(u));
+      const imageMatches = urlMatches
+        .map((raw) => raw.replace(/[).,]+$/, ""))
+        .filter((u) => /\.(png|jpe?g|webp)(\?.*)?$/i.test(u))
+        .filter((u) => /tradezone\.sg\/wp-content\//i.test(u));
       if (cleaned.length > 0) {
         const linkLines = cleaned
           .slice(0, 5)
           .map((u, idx) => `${idx + 1}. [View Product](${u})`)
           .join("\n");
-        finalResponse = `${finalResponse}\n\n${linkLines}`.trim();
+        const imageLines =
+          imageMatches.length > 0
+            ? `\n\nImages:\n${imageMatches
+                .slice(0, 3)
+                .map((u, idx) => `${idx + 1}. ![Product image](${u})`)
+                .join("\n")}`
+            : "";
+        finalResponse = `${finalResponse}\n\n${linkLines}${imageLines}`.trim();
       }
     }
 
