@@ -13,6 +13,11 @@ export default defineConfig({
   workers: 1,
   // Retry failed tests once (in case of transient rate limit issues)
   retries: 1,
+  // Increase timeout for AI API calls
+  timeout: 90000, // 90 seconds per test
+  expect: {
+    timeout: 60000, // 60 seconds for assertions
+  },
   projects: [
     {
       name: "chromium",

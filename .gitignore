@@ -82,6 +82,10 @@ google-credentials*.json
 *.swp
 *.swo
 
+# Test artifacts
+test-results/
+playwright-report/
+
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
 

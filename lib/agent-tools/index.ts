@@ -25,6 +25,7 @@ export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   tablet: ["tablet"],
   chair: ["chair"],
   cpu_cooler: ["cpu-cooler"],
+  storage: ["storage"],
 };
 
 export const DIRECT_CATEGORY_KEYS = [
@@ -392,6 +393,12 @@ export async function searchWooProducts(
       keywords: ["cpu cooler", "cooler", "aio", "liquid cooler", "heatsink"],
       category: "cpu_cooler",
     },
+    {
+      pattern:
+        /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state)\b/i,
+      keywords: ["ssd", "nvme", "m.2", "hard drive", "storage"],
+      category: "storage",
+    },
   ];
 
   let familyFilter: string[] | null = null;
@@ -594,6 +601,27 @@ export async function searchWooProducts(
           return { product, score: 0 };
         }
 
+        score += 100;
+      } else if (categoryFilter === "storage") {
+        const productCategories = (product.categories || [])
+          .map((c) => c.name.toLowerCase())
+          .join(" ");
+        const hasStorageKeyword =
+          /\b(ssd|nvme|m\.?2|solid\s*state|hard\s*drive|hdd)\b/i.test(name);
+        if (!hasStorageKeyword) {
+          return { product, score: 0 };
+        }
+        const isAccessory =
+          /case|bag|cover|housing|controller|mouse|pad|fan|game|console|playstation|xbox|switch|portal|drive\b(?!\s*ssd|\s*nvme|\s*hard)/i.test(
+            name,
+          );
+        const isLaptopPc = /laptop|notebook|pc\b|desktop|gaming pc/i.test(name);
+        const isLaptopCategory = /\b(laptop|notebook|desktop|pc)\b/i.test(
+          productCategories,
+        );
+        if (isAccessory || isLaptopPc || isLaptopCategory) {
+          return { product, score: 0 };
+        }
         score += 100;
       } else if (categoryFilter === "laptop") {
         // Laptops are identified via Woo categories since product names may omit "laptop"

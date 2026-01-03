@@ -1548,6 +1548,17 @@ const PRODUCT_KEYWORDS = [
   "metal gear",
 ];
 
+// Keywords that should trigger product search even without "do you have"/"buy" phrasing.
+const DIRECT_PRODUCT_KEYWORDS = [
+  "ssd",
+  "nvme",
+  "m.2",
+  "m2",
+  "hard drive",
+  "hdd",
+  "storage",
+];
+
 const PRODUCT_NEED_PATTERNS: RegExp[] = [
   /\bprice\b/i,
   /\bprices\b/i,
@@ -1593,7 +1604,18 @@ function detectProductInfoIntent(query: string): boolean {
   );
   if (!mentionsProduct) return false;
 
-  return PRODUCT_NEED_PATTERNS.some((pattern) => pattern.test(normalized));
+  const needsProduct = PRODUCT_NEED_PATTERNS.some((pattern) =>
+    pattern.test(normalized),
+  );
+  if (needsProduct) return true;
+
+  const hasDirectKeyword = DIRECT_PRODUCT_KEYWORDS.some((keyword) =>
+    normalized.includes(keyword),
+  );
+  if (hasDirectKeyword) return true;
+
+  const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+  return wordCount > 0 && wordCount <= 4;
 }
 
 type TradeUpPricingSummary = {
@@ -4244,12 +4266,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       });
     }
 
-    // Graceful fallback when no price found
-    messages.push({
-      role: "system",
-      content:
-        "If you cannot find a trade-in price after checks, DO NOT list products. Say briefly: 'Sorry, I couldn't find a trade-in price for that model right now. I can ask staff to confirm—want me to pass this to the team?' If yes, collect name, phone, and email, then call sendemail(info_request) with the context.",
-    });
+    // Graceful fallback when no price found (trade-in only)
+    if (tradeInIntent) {
+      messages.push({
+        role: "system",
+        content:
+          "If you cannot find a trade-in price after checks, DO NOT list products. Say briefly: 'Sorry, I couldn't find a trade-in price for that model right now. I can ask staff to confirm—want me to pass this to the team?' If yes, collect name, phone, and email, then call sendemail(info_request) with the context.",
+      });
+    }
 
     messages.push({
       role: "system",
@@ -4412,6 +4436,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             let searchQuery = cleanedQuery || rawQuery;
             if (!cleanedQuery && modifier && lastHybridQuery) {
               searchQuery = lastHybridQuery;
+            }
+
+            // For product queries, always use the user's message to keep searches deterministic
+            if (!isTradeInIntent && isProductInfoQuery) {
+              const userQuery = message.trim();
+              if (userQuery) {
+                searchQuery = userQuery;
+              }
             }
 
             const { result, source, matches } = await runHybridSearch(
@@ -5430,7 +5462,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             ) {
               const encoded = encodeURIComponent(lastHybridQuery || "product");
               finalResponse = [
-                `Couldn't pull a live price from the catalog. Check the latest price/availability on the site: https://tradezone.sg/?s=${encoded}`,
+                `Sorry, I couldn't find that in the catalog. Check the latest price/availability on the site: https://tradezone.sg/?s=${encoded}`,
                 "If you prefer, share the product link and I'll fetch details from that page.",
               ].join(" ");
             } else {

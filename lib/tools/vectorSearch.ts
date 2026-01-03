@@ -979,6 +979,32 @@ export async function handleVectorSearch(
         await searchWooProducts(cleanedQuery, wooLimit),
       );
 
+      // If we have specific tokens (e.g., "unicorn"), require them in product names
+      if (filteringTokens.length && wooProducts.length) {
+        const strictFiltered = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          return filteringTokens.some((token) => name.includes(token));
+        });
+        if (strictFiltered.length) {
+          wooProducts = strictFiltered;
+        } else {
+          wooProducts = [];
+        }
+      }
+
+      if (
+        !isTradeIntentContext &&
+        filteringTokens.length &&
+        !wooProducts.length
+      ) {
+        return {
+          text: `Sorry, I couldn't find any products matching "${query}".`,
+          store: "product_catalog",
+          matches: [],
+          wooProducts: [],
+        };
+      }
+
       // Phone-specific cleanup: remove tablet cross-bleed
       if (detectedCategory === "phone" && wooProducts.length > 0) {
         let phoneFiltered = wooProducts.filter((p) => {
@@ -1106,17 +1132,26 @@ export async function handleVectorSearch(
           switch (platformIntent) {
             case "ps5":
               return (
-                /ps5|playstation\s*5/.test(name) || /playstation\s*5/.test(cats)
+                (/ps5|playstation\s*5/.test(name) ||
+                  /playstation\s*5/.test(cats)) &&
+                !/nintendo|switch|xbox/.test(name)
               );
             case "ps4":
               return (
-                /ps4|playstation\s*4/.test(name) || /playstation\s*4/.test(cats)
+                (/ps4|playstation\s*4/.test(name) ||
+                  /playstation\s*4/.test(cats)) &&
+                !/nintendo|switch|xbox/.test(name)
               );
             case "switch":
-              return /switch|nintendo/.test(name) || /switch/.test(cats);
+              return (
+                (/switch|nintendo/.test(name) || /switch/.test(cats)) &&
+                !/ps5|ps4|playstation|xbox/.test(name)
+              );
             case "xbox":
               return (
-                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats)
+                (/xbox|series\s*[xs]|xbox\s*one/.test(name) ||
+                  /xbox/.test(cats)) &&
+                !/ps5|ps4|playstation|switch|nintendo/.test(name)
               );
             case "pc":
               return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
@@ -1140,6 +1175,9 @@ export async function handleVectorSearch(
           const isStorageCat = cats.some((c: string) =>
             /\b(storage|hdd|ssd|nvme|hard\s*drive|solid\s*state)\b/i.test(c),
           );
+          const isLaptopCat = cats.some((c: string) =>
+            /\b(laptop|notebook|desktop|pc)\b/i.test(c),
+          );
           const isSSDName = /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
           // Exclude accessories, cases, games, and consoles that contain "storage" in name
           const isAccessory =
@@ -1156,7 +1194,8 @@ export async function handleVectorSearch(
             (isStorageCat || isSSDName) &&
             hasStorageKeyword &&
             !isAccessory &&
-            !isLaptopPc
+            !isLaptopPc &&
+            !isLaptopCat
           );
         });
         if (storageFiltered.length === 0) {
@@ -1172,6 +1211,12 @@ export async function handleVectorSearch(
           wooProducts = storageFiltered;
           console.log(
             `[VectorSearch] Storage intent: filtered to ${storageFiltered.length} storage items`,
+          );
+        } else {
+          // Avoid returning unrelated products for storage queries
+          wooProducts = [];
+          console.log(
+            "[VectorSearch] Storage intent: no storage items found after filtering",
           );
         }
       }
@@ -1635,7 +1680,7 @@ export async function handleVectorSearch(
           const intro =
             wooProducts.length > 0
               ? `Here's what we have (${wooProducts.length} products):\n\n`
-              : `I don't have any ${categoryLabel}s matching "${query}".`;
+              : `Sorry, I couldn't find any ${categoryLabel || "products"} matching "${query}".`;
 
           const deterministicResponse =
             wooProducts.length > 0
@@ -1672,10 +1717,11 @@ export async function handleVectorSearch(
             .map((product, idx) => {
               const price = formatSGDPrice(product.price_sgd);
               const url = product.permalink || `https://tradezone.sg`;
-              // Include image on ALL products for better UX
-              const imageStr = product.image
-                ? `\n   ![${product.name}](${product.image})`
-                : "";
+              // Include image for first product only to keep format consistent
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
               return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
@@ -1713,10 +1759,11 @@ export async function handleVectorSearch(
               fallbackBudgetContext,
             );
             const url = product.permalink || `https://tradezone.sg`;
-            // Include image on ALL products for better UX
-            const imageStr = product.image
-              ? `\n   ![${product.name}](${product.image})`
-              : "";
+            // Include image for first product only to keep format consistent
+            const imageStr =
+              idx === 0 && product.image
+                ? `\n   ![${product.name}](${product.image})`
+                : "";
             return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
           })
           .join("\n\n");

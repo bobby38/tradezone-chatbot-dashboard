@@ -19,9 +19,12 @@ class RateLimiter {
 
   constructor() {
     // Cleanup expired entries every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanup();
+      },
+      5 * 60 * 1000,
+    );
   }
 
   /**
@@ -31,7 +34,11 @@ class RateLimiter {
    * @param windowMs - Time window in milliseconds
    * @returns { allowed: boolean, remaining: number, resetTime: number }
    */
-  check(identifier: string, maxRequests: number, windowMs: number): {
+  check(
+    identifier: string,
+    maxRequests: number,
+    windowMs: number,
+  ): {
     allowed: boolean;
     remaining: number;
     resetTime: number;
@@ -48,7 +55,10 @@ class RateLimiter {
       if (this.limits.size >= this.MAX_ENTRIES) {
         const oldestKey = this.limits.keys().next().value;
         this.limits.delete(oldestKey);
-        console.warn("[RateLimit] Max entries reached, evicted oldest:", oldestKey);
+        console.warn(
+          "[RateLimit] Max entries reached, evicted oldest:",
+          oldestKey,
+        );
       }
 
       this.limits.set(identifier, {
@@ -102,7 +112,7 @@ class RateLimiter {
     return {
       totalEntries: this.limits.size,
       activeEntries: Array.from(this.limits.values()).filter(
-        (e) => Date.now() <= e.resetTime
+        (e) => Date.now() <= e.resetTime,
       ).length,
     };
   }
@@ -158,12 +168,17 @@ export const RATE_LIMITS = {
  */
 export function getClientIdentifier(request: Request): string {
   // Try various headers for IP (Vercel, Cloudflare, etc.)
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  const cfConnectingIp = request.headers.get('cf-connecting-ip');
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
   // @ts-ignore - ip exists on NextRequest
-  const ip = cfConnectingIp || realIp || forwarded?.split(',')[0] || request.ip || '127.0.0.1';
+  const ip =
+    cfConnectingIp ||
+    realIp ||
+    forwarded?.split(",")[0] ||
+    request.ip ||
+    "127.0.0.1";
 
   return ip.trim();
 }
@@ -174,24 +189,48 @@ export function getClientIdentifier(request: Request): string {
 export function applyRateLimit(
   identifier: string,
   config: { maxRequests: number; windowMs: number },
-  endpoint: string
+  endpoint: string,
 ): { allowed: boolean; response?: Response; headers: HeadersInit } {
-  const result = rateLimiter.check(identifier, config.maxRequests, config.windowMs);
+  if (
+    process.env.NODE_ENV === "development" &&
+    (identifier === "127.0.0.1" ||
+      identifier === "::1" ||
+      identifier === "::ffff:127.0.0.1")
+  ) {
+    return {
+      allowed: true,
+      headers: {
+        "X-RateLimit-Limit": config.maxRequests.toString(),
+        "X-RateLimit-Remaining": config.maxRequests.toString(),
+        "X-RateLimit-Reset": new Date(
+          Date.now() + config.windowMs,
+        ).toISOString(),
+      },
+    };
+  }
+
+  const result = rateLimiter.check(
+    identifier,
+    config.maxRequests,
+    config.windowMs,
+  );
 
   const headers: HeadersInit = {
-    'X-RateLimit-Limit': config.maxRequests.toString(),
-    'X-RateLimit-Remaining': result.remaining.toString(),
-    'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
+    "X-RateLimit-Limit": config.maxRequests.toString(),
+    "X-RateLimit-Remaining": result.remaining.toString(),
+    "X-RateLimit-Reset": new Date(result.resetTime).toISOString(),
   };
 
   if (!result.allowed) {
-    console.warn(`[RateLimit] Blocked ${identifier} on ${endpoint} - ${result.retryAfter}s retry`);
+    console.warn(
+      `[RateLimit] Blocked ${identifier} on ${endpoint} - ${result.retryAfter}s retry`,
+    );
 
     return {
       allowed: false,
       response: Response.json(
         {
-          error: 'Too many requests',
+          error: "Too many requests",
           message: `Rate limit exceeded. Please try again in ${result.retryAfter} seconds.`,
           retryAfter: result.retryAfter,
         },
@@ -199,9 +238,9 @@ export function applyRateLimit(
           status: 429,
           headers: {
             ...headers,
-            'Retry-After': result.retryAfter?.toString() || '60',
+            "Retry-After": result.retryAfter?.toString() || "60",
           },
-        }
+        },
       ),
       headers,
     };
