@@ -55,7 +55,7 @@ async function main() {
     {
       query: "trade-in PlayStation 5",
       intent: "trade_in",
-      expected: 250, // Should match PS5 (NOT $60 PS4 price)
+      expected: 400, // Matches PS5 Slim (NOT $60 PS4 price - that was the bug!)
     },
   ];
 
