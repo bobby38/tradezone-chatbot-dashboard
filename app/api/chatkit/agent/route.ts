@@ -309,6 +309,21 @@ function computeGridMatchScore(params: {
   const haystack = entrySearchText(entry);
   if (!haystack) return 0;
 
+  // CRITICAL: Version number mismatch filtering (PS5 vs PS4, Xbox Series X vs Xbox One)
+  // If query explicitly mentions a version number, the entry MUST contain that exact version
+  const queryHasPS5 = /\bps5\b|\bplaystation\s*5\b/.test(normalizedQuery);
+  const queryHasPS4 = /\bps4\b|\bplaystation\s*4\b/.test(normalizedQuery);
+  const entryHasPS5 = /\bps5\b/.test(haystack);
+  const entryHasPS4 = /\bps4\b/.test(haystack);
+
+  // Reject mismatched PlayStation versions
+  if (queryHasPS5 && entryHasPS4) return 0; // Query wants PS5, entry is PS4
+  if (queryHasPS4 && entryHasPS5) return 0; // Query wants PS4, entry is PS5
+
+  // CRITICAL: When query says "PlayStation 5" or "PS5", entry must have "PS5" in model name
+  // This prevents matching PS Portal, PS VR2, etc.
+  if (queryHasPS5 && !entryHasPS5) return 0;
+
   let score = tokens.filter((token) => haystack.includes(token)).length;
   if (!score) return 0;
 
