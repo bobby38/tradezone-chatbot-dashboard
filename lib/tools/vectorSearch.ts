@@ -552,10 +552,19 @@ function buildMoreResultsText(
   query: string,
 ): string {
   const hasMore = totalCount > displayLimit;
-  if (!hasMore) return "";
-
-  const remaining = totalCount - displayLimit;
   const categoryLink = getCategoryLink(category, query);
+
+  // If showing all results, just show count + category link (no "show more" needed)
+  if (!hasMore) {
+    if (categoryLink && category) {
+      const categoryPlural = pluralizeCategory(category);
+      return `\n\n**Showing all ${totalCount} results.** [View all ${categoryPlural} on website](${categoryLink})`;
+    }
+    return ""; // No pagination text if no category link and showing all
+  }
+
+  // Has more results - show pagination with "show more" option
+  const remaining = totalCount - displayLimit;
 
   if (categoryLink && category) {
     const categoryPlural = pluralizeCategory(category);
