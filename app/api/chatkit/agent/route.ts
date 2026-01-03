@@ -3793,6 +3793,7 @@ export async function POST(request: NextRequest) {
     messages.push(userMessage);
 
     const tradeInNegated = hasTradeInNegation(message);
+    const productInfoIntentRaw = detectProductInfoIntent(message);
     tradeInIntent = detectTradeInIntent(message);
     tradeUpPairIntent = detectTradeUpPair(message);
     tradeUpParts = parseTradeUpParts(message);
@@ -3874,7 +3875,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         .maybeSingle();
 
       if (existingLead) {
-        const productInfoIntent = detectProductInfoIntent(message);
+        const productInfoIntent = productInfoIntentRaw;
         const ignoreExistingTradeIn =
           tradeInNegated || (!tradeInIntent && productInfoIntent);
         // Only resume trade-in if it's not completed/submitted AND user shows trade-in intent
@@ -3897,6 +3898,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           console.log(
             `[ChatKit] Cancelled trade-in lead ${existingLead.id} due to product/negation intent`,
           );
+          tradeInLeadId = null;
+          tradeInLeadStatus = null;
+          tradeInLeadDetail = null;
         } else if (!isCompleted && tradeInIntent) {
           // For voice, start fresh if existing lead is stale or already populated
           let reuse = true;
@@ -4242,10 +4246,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         }
       }
 
-      const missingPrompt = buildMissingTradeInFieldPrompt(
-        tradeInLeadDetail,
-        tradeUpPairIntent,
-      );
+      const allowMissingPrompt =
+        tradeInPriceShared ||
+        tradeUpPairIntent ||
+        (tradeInLeadDetail?.initial_quote_given === true &&
+          (tradeInLeadDetail?.price_hint ||
+            tradeInLeadDetail?.range_min ||
+            tradeInLeadDetail?.range_max ||
+            tradeInLeadDetail?.source_price_quoted));
+      const missingPrompt = allowMissingPrompt
+        ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpPairIntent)
+        : null;
       if (missingPrompt) {
         messages.push({ role: "system", content: missingPrompt });
       } else {
@@ -4291,7 +4302,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         message,
       );
 
-    isProductInfoQuery = !deliveryIntent && detectProductInfoIntent(message);
+    isProductInfoQuery = !deliveryIntent && productInfoIntentRaw;
     const productLinkMatch = message.match(/tradezone\.sg\/product\/([\w-]+)/i);
     productSlug = productLinkMatch?.[1] || productSlug;
 
@@ -4306,9 +4317,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     const looksLikePricingRefresh =
       /\b(trade[- ]?in|trade in|how much|value|worth|quote)\b/i.test(message) ||
       (tradeInLeadId && TRADE_IN_DEVICE_HINTS.test(message.toLowerCase()));
+    const leadHasPrice = Boolean(
+      tradeInLeadDetail?.price_hint ||
+        tradeInLeadDetail?.range_min ||
+        tradeInLeadDetail?.range_max ||
+        tradeInLeadDetail?.source_price_quoted,
+    );
     const quoteAlreadyGiven =
       tradeInLeadDetail?.initial_quote_given === true &&
-      !looksLikePricingRefresh;
+      leadHasPrice &&
+      !looksLikePricingRefresh &&
+      !productInfoIntentRaw &&
+      !tradeInNegated;
 
     if (quoteAlreadyGiven) {
       console.log(
@@ -4347,6 +4367,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const range = await lookupTradeInRangeFromGrid("ps5");
         if (range.min != null && range.max != null) {
           forcedTradeInReply = `PS5 trade-in range is ~S$${range.min}-${range.max} (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
+          tradeInPriceShared = true;
         }
       } else if (
         isRogAllyXQuery(normalizedQuery) &&
@@ -4355,10 +4376,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const range = await lookupTradeInRangeFromGrid("rog ally x");
         if (range.min != null && range.max != null) {
           forcedTradeInReply = `ROG Ally X trade-in range is ~S$${range.min}-${range.max} (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
+          tradeInPriceShared = true;
         }
       }
       if (forcedTradeInPrice != null) {
         lastTradeInPrice = forcedTradeInPrice;
+        tradeInPriceShared = true;
         if (!forcedTradeInReply) {
           const deviceLabel = cleanTradeInLabel(message);
           forcedTradeInReply = `${deviceLabel} trade-in is ~S$${forcedTradeInPrice} (subject to inspection). What's the condition? (mint, good, fair, faulty)`;
@@ -4370,6 +4393,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           )}" ~S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply with the price in one line, then ask "Proceed with this trade-in?" and continue the checklist: condition, accessories, photos (reuse if on file), name, phone, email, payout. No catalog links.`,
         });
       }
+    }
+
+    const hasMixedIntent =
+      !deliveryIntent && detectTradeInIntent(message) && productInfoIntentRaw;
+
+    if (hasMixedIntent) {
+      messages.push({
+        role: "system",
+        content:
+          "User has mixed intent (trade-in + buying). Ask one short clarifying question: 'Are you trading in a PS5 or looking to buy one?' Do NOT list products until clarified.",
+      });
     }
 
     const shouldForceCatalog =
@@ -4385,7 +4419,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       : ("auto" as const);
 
     // Trade-up and single-device trade-in are fully server-side priced; block product search tools
-    if (tradeUpPairIntent || tradeInIntent) {
+    if (tradeUpPairIntent || tradeInIntent || hasMixedIntent) {
       toolChoice = "none" as const;
     }
 
