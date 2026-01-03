@@ -1232,27 +1232,23 @@ export async function handleVectorSearch(
           const cats = ((p as any).categories || []).join(" ").toLowerCase();
           switch (platformIntent) {
             case "ps5":
+              // Allow PS5 games, including cross-platform titles (PS5/PS4, PS5/Xbox, etc.)
               return (
-                (/ps5|playstation\s*5/.test(name) ||
-                  /playstation\s*5/.test(cats)) &&
-                !/nintendo|switch|xbox/.test(name)
+                /ps5|playstation\s*5/.test(name) || /playstation\s*5/.test(cats)
               );
             case "ps4":
+              // Allow PS4 games, including cross-platform titles (PS4/PS5, PS4/Switch, etc.)
+              // Only exclude if it's ONLY for other platforms (has Xbox/Switch but NO PS4 mention)
               return (
-                (/ps4|playstation\s*4/.test(name) ||
-                  /playstation\s*4/.test(cats)) &&
-                !/nintendo|switch|xbox/.test(name)
+                /ps4|playstation\s*4/.test(name) || /playstation\s*4/.test(cats)
               );
             case "switch":
-              return (
-                (/switch|nintendo/.test(name) || /switch/.test(cats)) &&
-                !/ps5|ps4|playstation|xbox/.test(name)
-              );
+              // Allow Switch games, including cross-platform titles
+              return /switch|nintendo/.test(name) || /switch/.test(cats);
             case "xbox":
+              // Allow Xbox games, including cross-platform titles
               return (
-                (/xbox|series\s*[xs]|xbox\s*one/.test(name) ||
-                  /xbox/.test(cats)) &&
-                !/ps5|ps4|playstation|switch|nintendo/.test(name)
+                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats)
               );
             case "pc":
               return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
