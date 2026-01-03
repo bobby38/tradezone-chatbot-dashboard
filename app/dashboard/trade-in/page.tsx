@@ -1,4 +1,4 @@
-"use client";
+all "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
@@ -82,6 +82,9 @@ interface TradeInLeadSummary {
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
+  email_status?: "sent" | "failed" | "not_sent";
+  email_last_sent_at?: string | null;
+  email_last_failed_at?: string | null;
 }
 
 interface TradeInMediaEntry {
@@ -173,6 +176,21 @@ const STATUS_LABELS: Record<string, string> = {
   archived: "Archived",
 };
 
+const EMAIL_STATUS_LABELS: Record<string, string> = {
+  sent: "Sent",
+  failed: "Failed",
+  not_sent: "Not Sent",
+};
+
+const EMAIL_STATUS_VARIANTS: Record<
+  string,
+  "secondary" | "destructive" | "outline"
+> = {
+  sent: "secondary",
+  failed: "destructive",
+  not_sent: "outline",
+};
+
 function formatPriceRange(min?: number | null, max?: number | null) {
   if (min == null && max == null) return "—";
   if (min != null && max != null) {
@@ -198,6 +216,7 @@ export default function TradeInDashboardPage() {
   const [replySubject, setReplySubject] = useState("");
   const [replyMessage, setReplyMessage] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [mediaSignedUrls, setMediaSignedUrls] = useState<
     Record<string, string>
@@ -500,6 +519,37 @@ export default function TradeInDashboardPage() {
     }
   };
 
+  const resendTradeInEmail = async () => {
+    if (!selectedLeadId) return;
+    setResendingEmail(true);
+    try {
+      const response = await fetch("/api/tradein/resend-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: selectedLeadId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to resend email");
+      }
+      if (data?.success) {
+        toast.success("Trade-in email sent");
+      } else {
+        toast.error(data?.message || "Email failed to send");
+      }
+      await fetchLeads();
+      if (selectedLeadId) {
+        await openLeadDetail(selectedLeadId);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to resend email",
+      );
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const exportToCSV = () => {
     setExporting(true);
     try {
@@ -770,6 +820,7 @@ export default function TradeInDashboardPage() {
                       <TableHead>Condition</TableHead>
                       <TableHead>Price Range</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Updated</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -777,7 +828,7 @@ export default function TradeInDashboardPage() {
                   <TableBody>
                     {loading && (
                       <TableRow>
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <div className="flex items-center justify-center py-8 text-muted-foreground">
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Loading trade-in leads…
@@ -787,7 +838,7 @@ export default function TradeInDashboardPage() {
                     )}
                     {!loading && leads.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8}>
+                        <TableCell colSpan={9}>
                           <div className="py-8 text-center text-muted-foreground">
                             No trade-in leads yet.
                           </div>
@@ -848,6 +899,19 @@ export default function TradeInDashboardPage() {
                         <TableCell>
                           <Badge>
                             {STATUS_LABELS[lead.status] || lead.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              EMAIL_STATUS_VARIANTS[
+                                lead.email_status || "not_sent"
+                              ]
+                            }
+                          >
+                            {EMAIL_STATUS_LABELS[
+                              lead.email_status || "not_sent"
+                            ] || "Not Sent"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
@@ -921,6 +985,24 @@ export default function TradeInDashboardPage() {
                     Reply via Email
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resendTradeInEmail}
+                  disabled={
+                    resendingEmail ||
+                    (selectedLead.email_status || "not_sent") === "sent"
+                  }
+                >
+                  {resendingEmail ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  {selectedLead.email_status === "sent"
+                    ? "Email Sent"
+                    : "Resend Trade-In Email"}
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -983,6 +1065,33 @@ export default function TradeInDashboardPage() {
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <span>{selectedLead.contact_phone || "—"}</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        Trade-in Email:{" "}
+                        {EMAIL_STATUS_LABELS[
+                          selectedLead.email_status || "not_sent"
+                        ] || "Not Sent"}
+                      </span>
+                    </div>
+                    {selectedLead.email_last_sent_at && (
+                      <div className="text-xs text-muted-foreground">
+                        Last sent{" "}
+                        {formatDistanceToNow(
+                          new Date(selectedLead.email_last_sent_at),
+                          { addSuffix: true },
+                        )}
+                      </div>
+                    )}
+                    {selectedLead.email_last_failed_at && (
+                      <div className="text-xs text-muted-foreground">
+                        Last failed{" "}
+                        {formatDistanceToNow(
+                          new Date(selectedLead.email_last_failed_at),
+                          { addSuffix: true },
+                        )}
+                      </div>
+                    )}
                     {selectedLead.preferred_fulfilment && (
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />

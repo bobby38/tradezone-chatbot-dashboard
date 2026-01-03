@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 
 export type ScheduledTaskStatus = "success" | "failed";
 
@@ -127,13 +129,66 @@ const RAW_TASKS = [
       },
     ],
   },
+  {
+    id: "tradein-auto-submit",
+    title: "Trade-in auto submit",
+    description:
+      "Submits completed trade-in leads and triggers staff email notifications.",
+    frequency: "Every minute",
+    cron: "*/1 * * * *",
+    owner: "Coolify Cron",
+    environment: "production",
+    recentRuns: [
+      {
+        id: "tradein-auto-submit-2026-01-03-1620",
+        status: "failed",
+        startedAt: "2026-01-03T16:20:03Z",
+        endedAt: "2026-01-03T16:20:05Z",
+        durationMs: 2000,
+        logUrl: "https://trade.rezult.co/logs/tradein-auto-submit/2026-01-03",
+        notes: "curl: (3) URL rejected: Malformed input to a URL function",
+      },
+    ],
+  },
 ] satisfies Array<Omit<ScheduledTask, "lastRun">>;
 
-const MOCK_TASKS: ScheduledTask[] = RAW_TASKS.map((task) => ({
-  ...task,
-  lastRun: task.recentRuns[0],
-}));
+function normalizeTasks(tasks: Array<Omit<ScheduledTask, "lastRun">>) {
+  return tasks.map((task) => ({
+    ...task,
+    lastRun: task.recentRuns[0],
+  }));
+}
+
+function loadExternalTasks(): Array<Omit<ScheduledTask, "lastRun">> | null {
+  const rawJson = process.env.SCHEDULED_TASKS_JSON;
+  if (rawJson) {
+    try {
+      const parsed = JSON.parse(rawJson);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (error) {
+      console.warn(
+        "[ScheduledTasks] Failed to parse SCHEDULED_TASKS_JSON",
+        error,
+      );
+    }
+  }
+
+  try {
+    const filePath = path.join(process.cwd(), "data", "scheduled_tasks.json");
+    if (fs.existsSync(filePath)) {
+      const fileContents = fs.readFileSync(filePath, "utf8");
+      const parsed = JSON.parse(fileContents);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (error) {
+    console.warn("[ScheduledTasks] Failed to read scheduled_tasks.json", error);
+  }
+
+  return null;
+}
 
 export async function GET() {
-  return NextResponse.json({ tasks: MOCK_TASKS });
+  const external = loadExternalTasks();
+  const tasks = normalizeTasks(external ?? RAW_TASKS);
+  return NextResponse.json({ tasks });
 }

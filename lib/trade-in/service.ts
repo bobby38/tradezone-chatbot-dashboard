@@ -994,6 +994,38 @@ export function getSupabaseAdminClient() {
   return supabaseAdmin;
 }
 
+type EmailStatus = "sent" | "failed" | "not_sent";
+
+function deriveEmailStatus(actions?: Array<any>) {
+  const normalized = Array.isArray(actions) ? actions : [];
+  const emailActions = normalized
+    .filter((action) =>
+      ["email_sent", "email_failed"].includes(action.action_type),
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).valueOf() - new Date(a.created_at).valueOf(),
+    );
+
+  const latest = emailActions[0];
+  const lastSent = emailActions.find(
+    (action) => action.action_type === "email_sent",
+  );
+  const lastFailed = emailActions.find(
+    (action) => action.action_type === "email_failed",
+  );
+
+  let status: EmailStatus = "not_sent";
+  if (latest?.action_type === "email_sent") status = "sent";
+  if (latest?.action_type === "email_failed") status = "failed";
+
+  return {
+    email_status: status,
+    email_last_sent_at: lastSent?.created_at ?? null,
+    email_last_failed_at: lastFailed?.created_at ?? null,
+  };
+}
+
 export async function listTradeInLeads(
   options: {
     status?: string;
@@ -1006,7 +1038,8 @@ export async function listTradeInLeads(
     .select(
       `id, created_at, updated_at, status, channel, brand, model, storage, condition,
        range_min, range_max, preferred_payout, preferred_fulfilment,
-       contact_name, contact_phone, contact_email`,
+       contact_name, contact_phone, contact_email,
+       trade_in_actions (action_type, created_at)`,
     )
     .order("created_at", { ascending: false });
 
@@ -1032,7 +1065,10 @@ export async function listTradeInLeads(
     throw new Error(`Failed to load trade-in leads: ${error.message}`);
   }
 
-  return data;
+  return (data || []).map((lead: any) => ({
+    ...lead,
+    ...deriveEmailStatus(lead.trade_in_actions),
+  }));
 }
 
 export async function getTradeInLeadDetail(leadId: string) {
@@ -1068,6 +1104,7 @@ export async function getTradeInLeadDetail(leadId: string) {
     ...data,
     trade_in_media: media,
     trade_in_actions: actions,
+    ...deriveEmailStatus(actions),
   };
 }
 

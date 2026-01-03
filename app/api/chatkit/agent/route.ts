@@ -4411,8 +4411,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           hasContactName &&
           hasContactPhone &&
           hasContactEmail;
-        const needsPayoutPrompt =
-          readyForPayoutPrompt && !payoutSet && tradeInPriceShared;
+        const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
         tradeInNeedsPayoutPrompt = needsPayoutPrompt;
         // Photo prompt should trigger right after condition + accessories (before contact).
         const readyForPhotoNudge =

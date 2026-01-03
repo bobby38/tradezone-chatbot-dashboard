@@ -28,6 +28,11 @@ Is this correct? Reply yes to submit.
 **Trade-Up Rule:** Skip payout questions for trade-ups (top-up only).
 **Session Note:** Trade-in sessions are persistent by design to avoid losing data on reload.
 
+### Dashboard Ops (Jan 3, 2026) ✅
+- Trade-in dashboard now shows **Email Sent / Failed / Not Sent** status.
+- Added **Resend Trade-In Email** action on lead detail view.
+- Scheduler panel loads tasks from `data/scheduled_tasks.json` (or `SCHEDULED_TASKS_JSON` env) and includes **Trade-in auto submit**.
+
 ## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES + UX IMPROVEMENTS)
 
 ### Voice Agent - Trade-In UX Flow Fix (Dec 24, 2025 - Evening) ✅
