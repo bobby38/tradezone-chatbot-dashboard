@@ -170,8 +170,8 @@ function formatTradeUpSummary(
     summary.topUp != null
       ? summary.topUp
       : Math.max(0, summary.retailPrice - summary.tradeValue);
-  const sourceLabel = summary.source || "Trade-in";
-  const targetLabel = summary.target || "Target";
+  const sourceLabel = formatDeviceLabel(summary.source || "Trade-in");
+  const targetLabel = formatDeviceLabel(summary.target || "Target");
   const base = `${sourceLabel} trade-in ~${formatCurrency(summary.tradeValue)}. ${targetLabel} ${formatCurrency(summary.retailPrice)}. Top-up ~${formatCurrency(topUpValue)}.`;
   return options?.includeLeadIn ? `Trade-up: ${base}` : base;
 }
@@ -1326,6 +1326,39 @@ function normalizeProductName(name: string | undefined | null): string {
       )
       .trim() || "device"
   );
+}
+
+function formatDeviceLabel(label: string | undefined | null): string {
+  if (!label) return "device";
+  const tokens = label.trim().split(/\s+/);
+  const map: Record<string, string> = {
+    ps: "PS",
+    ps4: "PS4",
+    ps5: "PS5",
+    pro: "Pro",
+    slim: "Slim",
+    digital: "Digital",
+    disc: "Disc",
+    oled: "OLED",
+    xbox: "Xbox",
+    series: "Series",
+    switch: "Switch",
+    nintendo: "Nintendo",
+  };
+  return tokens
+    .map((token) => {
+      const lower = token.toLowerCase();
+      if (map[lower]) return map[lower];
+      if (/^\d+(gb|tb)$/i.test(lower)) {
+        const match = lower.match(/^(\d+)(gb|tb)$/i);
+        if (match) return `${match[1]}${match[2].toUpperCase()}`;
+      }
+      if (lower.length === 1 && /[a-z]/i.test(lower)) {
+        return lower.toUpperCase();
+      }
+      return token.charAt(0).toUpperCase() + token.slice(1);
+    })
+    .join(" ");
 }
 
 function cleanTradeInLabel(message: string): string {
@@ -4364,9 +4397,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           tradeInLeadDetail?.source_device_name &&
           tradeInLeadDetail?.target_device_name;
         if (isTradeUp) {
-          const sourceName = tradeInLeadDetail.source_device_name;
+          const sourceName = formatDeviceLabel(
+            tradeInLeadDetail.source_device_name,
+          );
           const sourcePrice = tradeInLeadDetail.source_price_quoted;
-          const targetName = tradeInLeadDetail.target_device_name;
+          const targetName = formatDeviceLabel(
+            tradeInLeadDetail.target_device_name,
+          );
           const targetPrice = tradeInLeadDetail.target_price_quoted;
           const topUp = tradeInLeadDetail.top_up_amount;
 
@@ -4481,7 +4518,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         lastTradeInPrice = forcedTradeInPrice;
         tradeInPriceShared = true;
         if (!forcedTradeInReply) {
-          const deviceLabel = cleanTradeInLabel(message);
+          const deviceLabel = formatDeviceLabel(cleanTradeInLabel(message));
           forcedTradeInReply = `Yes, you can trade in. **${deviceLabel}** trade-in: **~S$${forcedTradeInPrice}** (subject to inspection). Proceed?`;
         }
         messages.push({
@@ -6036,7 +6073,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       if (tradeValue != null && retailPrice != null) {
         const topUp =
           derivedSummary?.topUp ?? Math.max(0, retailPrice - tradeValue);
-        finalResponse = `Your ${sourceName} trades for ~S$${tradeValue}. The ${targetName} is S$${retailPrice}. Top-up: ~S$${topUp}.`;
+        const sourceLabel = formatDeviceLabel(sourceName);
+        const targetLabel = formatDeviceLabel(targetName);
+        finalResponse = `Your ${sourceLabel} trades for ~S$${tradeValue}. The ${targetLabel} is S$${retailPrice}. Top-up: ~S$${topUp}.`;
         console.log("[TradeUp] Set finalResponse:", finalResponse);
 
         // Store topUp for installment calculation later
