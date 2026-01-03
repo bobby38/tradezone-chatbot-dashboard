@@ -1228,6 +1228,13 @@ function detectTradeInIntent(query: string): boolean {
   );
 }
 
+function normalizeIntentQuery(query: string): string {
+  return query
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 // Detects explicit two-device trade/upgrade phrasing ("trade X for Y", "upgrade X to Y")
 function detectTradeUpPair(query: string): boolean {
   const normalized = query.toLowerCase();
@@ -1729,7 +1736,7 @@ const PRODUCT_NEED_PATTERNS: RegExp[] = [
 ];
 
 function detectProductInfoIntent(query: string): boolean {
-  const normalized = query.trim().toLowerCase();
+  const normalized = normalizeIntentQuery(query).trim();
   if (!normalized) return false;
   if (detectTradeInIntent(normalized)) return false;
 
