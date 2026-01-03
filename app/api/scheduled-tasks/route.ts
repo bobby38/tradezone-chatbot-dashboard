@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export type ScheduledTaskStatus = "success" | "failed";
 
 export interface ScheduledTaskRun {
@@ -190,5 +192,13 @@ function loadExternalTasks(): Array<Omit<ScheduledTask, "lastRun">> | null {
 export async function GET() {
   const external = loadExternalTasks();
   const tasks = normalizeTasks(external ?? RAW_TASKS);
-  return NextResponse.json({ tasks });
+  return NextResponse.json(
+    { tasks },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+      },
+    },
+  );
 }
