@@ -1761,7 +1761,9 @@ export async function handleVectorSearch(
             `[VectorSearch] ✅ Simple list query with ${wooProducts.length} WooCommerce results - returning WITHOUT vector enrichment (fast path)`,
           );
 
-          const displayLimit = 8;
+          // Show more products if total is small (≤15), otherwise limit to 8
+          const displayLimit =
+            wooProducts.length <= 15 ? wooProducts.length : 8;
           const productsToShow = wooProducts.slice(0, displayLimit);
 
           const listText = productsToShow
@@ -1802,7 +1804,8 @@ export async function handleVectorSearch(
         );
         const fallbackBudgetContext =
           budgetContext || createBudgetContext(query, wooProducts);
-        const displayLimit = Math.min(wooProducts.length, 8);
+        // Show all products if total is small (≤15), otherwise limit to 8
+        const displayLimit = wooProducts.length <= 15 ? wooProducts.length : 8;
         const productsToShow = wooProducts.slice(0, displayLimit);
 
         const listText = productsToShow
@@ -2342,9 +2345,10 @@ export async function handleVectorSearch(
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
       );
+      // Show all products if total is small (≤15) or user wants full list, otherwise limit to 8
       const displayLimit = Math.min(
         wooProducts.length,
-        wantsFullList ? wooProducts.length : 8,
+        wantsFullList || wooProducts.length <= 15 ? wooProducts.length : 8,
       );
       const wooSection = wooProducts
         .slice(0, displayLimit)
