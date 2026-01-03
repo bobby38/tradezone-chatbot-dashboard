@@ -460,16 +460,43 @@ export async function searchWooProducts(
   const scored = products
     .map((product) => {
       const name = (product.name || "").toLowerCase();
+      const productCategories = (product.categories || [])
+        .map((c) => c.slug.toLowerCase())
+        .join(" ");
       let score = 0;
 
-      // FILTER: When user asks for "game", exclude trading cards/posters/non-games
+      // FILTER: When user asks for "game", ONLY show actual games (use WooCommerce categories)
       if (/\b(game|games)\b/i.test(query)) {
+        // Check if product is in a game category
+        const isInGameCategory = /brand-new-games|pre-owned-games/i.test(
+          productCategories,
+        );
+
+        if (!isInGameCategory) {
+          return { product, score: 0 }; // Exclude non-game products (controllers, warranties, etc.)
+        }
+
+        // Also exclude collectibles even if somehow in game category
         const isNonGame =
           /\b(trading\s*card|poster|figure|plush|toy|keychain|sticker|art\s*book)\b/i.test(
             name,
           );
         if (isNonGame) {
-          return { product, score: 0 }; // Exclude non-game items
+          return { product, score: 0 };
+        }
+
+        // Default to brand new games unless user specifically asks for pre-owned
+        const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
+        const isPreOwned = /pre-owned-games/i.test(productCategories);
+        const isBrandNew = /brand-new-games/i.test(productCategories);
+
+        if (!wantsPreOwned && isPreOwned) {
+          return { product, score: 0 }; // Skip pre-owned unless specifically requested
+        }
+
+        // Boost brand new games when user doesn't specify condition
+        if (!wantsPreOwned && isBrandNew) {
+          score += 50;
         }
       }
 

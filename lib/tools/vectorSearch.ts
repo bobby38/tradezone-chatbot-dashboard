@@ -554,13 +554,21 @@ function buildMoreResultsText(
   const hasMore = totalCount > displayLimit;
   const categoryLink = getCategoryLink(category, query);
 
+  // Check if this is a game query showing brand new games (not pre-owned)
+  const isGameQuery = category === "games" && /\b(game|games)\b/i.test(query);
+  const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
+  const preOwnedHint =
+    isGameQuery && !wantsPreOwned
+      ? "\n\n💡 *These are brand new games. Want to see pre-owned options? Just ask!*"
+      : "";
+
   // If showing all results, just show count + category link (no "show more" needed)
   if (!hasMore) {
     if (categoryLink && category) {
       const categoryPlural = pluralizeCategory(category);
-      return `\n\n**Showing all ${totalCount} results.** [View all ${categoryPlural} on website](${categoryLink})`;
+      return `\n\n**Showing all ${totalCount} results.** [View all ${categoryPlural} on website](${categoryLink})${preOwnedHint}`;
     }
-    return ""; // No pagination text if no category link and showing all
+    return preOwnedHint || ""; // Show pre-owned hint even without category link
   }
 
   // Has more results - show pagination with "show more" option
@@ -568,10 +576,10 @@ function buildMoreResultsText(
 
   if (categoryLink && category) {
     const categoryPlural = pluralizeCategory(category);
-    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** Type "show more" to see the remaining ${remaining}, or [View all ${categoryPlural} on website](${categoryLink}).`;
+    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** Type "show more" to see the remaining ${remaining}, or [View all ${categoryPlural} on website](${categoryLink}).${preOwnedHint}`;
   }
 
-  return `\n\nShowing ${displayLimit} of ${totalCount} results. Type "show more" to see the remaining ${remaining}.`;
+  return `\n\nShowing ${displayLimit} of ${totalCount} results. Type "show more" to see the remaining ${remaining}.${preOwnedHint}`;
 }
 
 function filterWooResultsByTokens<T extends { name?: string }>(
