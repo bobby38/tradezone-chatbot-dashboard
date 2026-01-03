@@ -172,7 +172,7 @@ function formatTradeUpSummary(
       : Math.max(0, summary.retailPrice - summary.tradeValue);
   const sourceLabel = formatDeviceLabel(summary.source || "Trade-in");
   const targetLabel = formatDeviceLabel(summary.target || "Target");
-  const base = `${sourceLabel} trade-in ~${formatCurrency(summary.tradeValue)}. ${targetLabel} ${formatCurrency(summary.retailPrice)}. Top-up ~${formatCurrency(topUpValue)}.`;
+  const base = `${sourceLabel} trade-in ${formatCurrency(summary.tradeValue)}. ${targetLabel} ${formatCurrency(summary.retailPrice)}. Top-up ${formatCurrency(topUpValue)}.`;
   return options?.includeLeadIn ? `Trade-up: ${base}` : base;
 }
 
@@ -1328,6 +1328,25 @@ function normalizeProductName(name: string | undefined | null): string {
   );
 }
 
+function normalizeProceedPrompt(text: string): string {
+  if (!text) return text;
+  let updated = text;
+  updated = updated.replace(
+    /\b(are you|would you|do you)\s+(keen|ready)\s+to\s+proceed\??/gi,
+    "Proceed?",
+  );
+  updated = updated.replace(/\bwant to proceed\??/gi, "Proceed?");
+  const proceedMatches = updated.match(/proceed\?/gi);
+  if (proceedMatches && proceedMatches.length > 1) {
+    const firstIndex = updated.toLowerCase().indexOf("proceed?");
+    updated =
+      updated.slice(0, firstIndex + "proceed?".length) +
+      updated.slice(firstIndex + "proceed?".length).replace(/proceed\?/gi, "");
+    updated = updated.replace(/\s{2,}/g, " ").trim();
+  }
+  return updated;
+}
+
 function formatDeviceLabel(label: string | undefined | null): string {
   if (!label) return "device";
   const tokens = label.trim().split(/\s+/);
@@ -1983,12 +2002,12 @@ function injectXboxPriceHints(response: string, userMessage: string) {
 
   if (query.includes("xbox series s") && !/s\$?\s*150/i.test(updated)) {
     updated =
-      "Xbox Series S trade-in is ~S$150 (subject to inspection).\n" + updated;
+      "Trade-in: Xbox Series S (S$150, subject to inspection).\n" + updated;
   }
 
   if (query.includes("xbox series x") && !/s\$?\s*350/i.test(updated)) {
     updated =
-      "Xbox Series X trade-in is ~S$350 (subject to inspection).\n" + updated;
+      "Trade-in: Xbox Series X (S$350, subject to inspection).\n" + updated;
   }
 
   return updated;
@@ -2001,9 +2020,9 @@ function forceXboxPricePreface(response: string, userMessage: string) {
 
   const preface: string[] = [];
   if (needsSeriesS)
-    preface.push("Xbox Series S trade-in is ~S$150 (subject to inspection).");
+    preface.push("Trade-in: Xbox Series S (S$150, subject to inspection).");
   if (needsSeriesX)
-    preface.push("Xbox Series X trade-in is ~S$350 (subject to inspection).");
+    preface.push("Trade-in: Xbox Series X (S$350, subject to inspection).");
 
   if (!preface.length) return response;
 
@@ -2407,8 +2426,9 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     // For trade-up (customer pays us), treat payout as satisfied even if not set yet
     let hasPayout = Boolean(detail.preferred_payout);
     const isTradeUp = Boolean(
-      params.tradeUpPricingSummary?.source &&
-        params.tradeUpPricingSummary?.target,
+      (params.tradeUpPricingSummary?.source &&
+        params.tradeUpPricingSummary?.target) ||
+        (detail.source_device_name && detail.target_device_name),
     );
 
     console.log("[ChatKit] Trade-up detection:", {
@@ -2867,6 +2887,8 @@ async function buildTradeInSummary(
         .select(
           `brand, model, storage, condition, accessories, preferred_payout,
            contact_name, contact_phone, contact_email, notes,
+           source_device_name, target_device_name, source_price_quoted,
+           target_price_quoted, top_up_amount,
            trade_in_media ( id )`,
         )
         .eq("id", leadId)
@@ -2887,6 +2909,11 @@ async function buildTradeInSummary(
     const accessories = Array.isArray(lead.accessories)
       ? lead.accessories.join(", ")
       : lead.accessories || "None";
+    const isTradeUp = Boolean(
+      lead.source_device_name &&
+        lead.target_device_name &&
+        lead.top_up_amount != null,
+    );
 
     // Check if user indicated they're providing photos (from recent conversation)
     let photoIntentDetected = false;
@@ -2917,12 +2944,24 @@ async function buildTradeInSummary(
         ? "Upload in progress"
         : "Not provided — final quote upon inspection";
 
+    const tradeInPriceLine = !isTradeUp
+      ? lead.price_hint != null
+        ? `Trade-in: S$${lead.price_hint} (subject to inspection)`
+        : lead.range_min && lead.range_max
+          ? `Trade-in: S$${lead.range_min}-${lead.range_max} (subject to inspection)`
+          : null
+      : null;
+
     return [
       "Trade-In Context Summary:",
+      isTradeUp
+        ? `Trade-up: ${formatDeviceLabel(lead.source_device_name)} S$${lead.source_price_quoted ?? "?"} → ${formatDeviceLabel(lead.target_device_name)} S$${lead.target_price_quoted ?? "?"} (Top-up S$${lead.top_up_amount ?? "?"})`
+        : null,
+      tradeInPriceLine,
       device ? `Device: ${device}` : null,
       lead.condition ? `Condition: ${lead.condition}` : null,
       accessories ? `Accessories: ${accessories}` : null,
-      lead.preferred_payout
+      !isTradeUp && lead.preferred_payout
         ? `Payout Preference: ${lead.preferred_payout}`
         : null,
       lead.contact_name || lead.contact_email || lead.contact_phone
@@ -2951,6 +2990,13 @@ function buildTradeInUserSummary(detail: any): string | null {
 
   // 🔴 TRADE-UP: Include both devices and top-up in summary
   const isTradeUp = detail.source_device_name && detail.target_device_name;
+  const tradeInPriceLine = !isTradeUp
+    ? detail.price_hint != null
+      ? `• Trade-in: S$${detail.price_hint} (subject to inspection)`
+      : detail.range_min && detail.range_max
+        ? `• Trade-in: S$${detail.range_min}-S$${detail.range_max} (subject to inspection)`
+        : null
+    : null;
   const photosProvided = Array.isArray(detail.trade_in_media)
     ? detail.trade_in_media.length > 0
       ? "Provided"
@@ -2958,10 +3004,10 @@ function buildTradeInUserSummary(detail: any): string | null {
     : "Not provided — final quote upon inspection";
 
   const lines = [
-    isTradeUp ? "Here’s what I got (trade-up):" : "Here’s what I got:",
+    isTradeUp ? "Here's what I got (trade-up):" : "Here's what I got:",
     // For trade-ups, show source → target with prices
     isTradeUp && detail.source_device_name && detail.source_price_quoted
-      ? `• Trading: ${formatDeviceLabel(detail.source_device_name)} (trade-in ~S$${detail.source_price_quoted})`
+      ? `• Trading: ${formatDeviceLabel(detail.source_device_name)} (trade-in S$${detail.source_price_quoted})`
       : deviceParts.length
         ? `• Device: ${deviceParts.join(" ")}`
         : null,
@@ -2971,6 +3017,7 @@ function buildTradeInUserSummary(detail: any): string | null {
     isTradeUp && detail.top_up_amount
       ? `• Top-up: S$${detail.top_up_amount}`
       : null,
+    tradeInPriceLine,
     detail.condition ? `• Condition: ${detail.condition}` : null,
     accessories ? `• Accessories: ${accessories}` : null,
     // Only show payout for non-trade-ups (cash trade-ins)
@@ -3121,7 +3168,7 @@ function buildMissingTradeInFieldPrompt(
 
   return [
     `🔴 Trade-in task: ${nextStep.message}`,
-    "Keep reply ≤12 words, wait for the answer, then acknowledge briefly. If user asks to save/submit now, say you'll submit after the remaining details.",
+    "Keep reply short (1-2 lines), consistent format. Ask one question, then wait. If user asks to save/submit now, say you'll submit after the remaining details.",
     "Do NOT say submitted/saved until the final confirmation step.",
   ].join("\n");
 }
@@ -3213,37 +3260,40 @@ function determineNextTradeInQuestion(detail: any): string | null {
   const hasContactEmail = Boolean(detail.contact_email);
   const hasContactPhone = Boolean(detail.contact_phone);
   const hasContactName = Boolean(detail.contact_name);
+  const isTradeUp = Boolean(
+    detail.source_device_name && detail.target_device_name,
+  );
   const hasPayout = Boolean(detail.preferred_payout);
   const photoAcknowledged = isPhotoStepAcknowledged(detail);
 
   if (!hasDevice) {
-    return "What device are we trading? Brand and model?";
+    return "Which device are you trading in? Brand and model?";
   }
   if (!hasStorage) {
-    return "What storage size are we working with?";
+    return "What storage size is it?";
   }
   if (!hasCondition) {
-    return "What condition is it in? (mint, good, fair, faulty)";
+    return "Condition? (mint, good, fair, faulty)";
   }
   if (!accessoriesCaptured) {
-    return "Any box or accessories included?";
+    return "Box or accessories included?";
   }
   // 🔴 PHOTO PROMPT: Ask BEFORE contact info
   if (!photoAcknowledged) {
-    return "Got photos to speed inspection? Optional—note 'Photos: Not provided' if they can't send any.";
+    return "Photos to speed inspection? (yes/no)";
   }
   if (!hasContactEmail) {
-    return "What's the best email for your quote?";
+    return "Email for the quote?";
   }
   if (!hasContactPhone) {
-    return "And the best phone number to reach you?";
+    return "Phone number?";
   }
   if (!hasContactName) {
-    return "Whose name should I note down?";
+    return "Name to note?";
   }
   // 🔴 CRITICAL: Skip payout question for trade-ups - customer pays top-up, doesn't receive money
   if (!hasPayout && !isTradeUp) {
-    return "Which payout suits you best: cash, PayNow, or bank transfer? Skip this if they already picked installment—just set preferred_payout=installment.";
+    return "Payout method: cash, PayNow, or bank transfer?";
   }
 
   return null;
@@ -3728,6 +3778,7 @@ export async function POST(request: NextRequest) {
   let tradeInLeadStatus: string | null = null;
   let tradeInIntent = false;
   let tradeUpPairIntent = false;
+  let tradeUpContext = false;
   let tradeUpParts: { source?: string; target?: string } | null = null;
   let forcedTradeUpMath: {
     source?: string;
@@ -3751,7 +3802,13 @@ export async function POST(request: NextRequest) {
   let latestTopUp: TopUpResult | null = null;
   let tradeInNeedsPayoutPrompt = false;
   let tradeInReadyForPhotoPrompt = false;
+  let tradeInReadyForRecap = false;
+  let tradeInRecap: string | null = null;
   let tradeInPhotoAcknowledged = false;
+  let proceedConfirmed = false;
+  let proceedDeclined = false;
+  let finalConfirm = false;
+  let lastAssistantAskedConfirm = false;
   let tradeDeviceQuery: string | null = null;
   let tradeInPriceShared = false;
   let tradeUpPricingSummary: TradeUpPricingSummary | null = null;
@@ -3887,6 +3944,7 @@ export async function POST(request: NextRequest) {
     const productInfoIntentRaw = detectProductInfoIntent(message);
     tradeInIntent = detectTradeInIntent(message);
     tradeUpPairIntent = detectTradeUpPair(message);
+    tradeUpContext = tradeUpPairIntent;
     tradeUpParts = parseTradeUpParts(message);
     if (tradeUpPairIntent) {
       tradeInIntent = true; // force trade-in tool path for trade-up phrasing
@@ -4191,6 +4249,32 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
 
       // Merge freshly auto-extracted clues so step reminders don't re-ask for data just provided this turn
+      if (tradeInLeadDetail) {
+        tradeUpContext =
+          tradeUpContext ||
+          tradeUpPairIntent ||
+          Boolean(
+            tradeInLeadDetail?.source_device_name &&
+              tradeInLeadDetail?.target_device_name,
+          );
+        const hasCondition = Boolean(tradeInLeadDetail?.condition);
+        const accessoriesCaptured = Array.isArray(
+          tradeInLeadDetail?.accessories,
+        )
+          ? tradeInLeadDetail.accessories.length > 0
+          : Boolean(tradeInLeadDetail?.accessories);
+        const deviceCaptured = Boolean(
+          tradeInLeadDetail.brand && tradeInLeadDetail.model,
+        );
+        const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+        tradeInPhotoAcknowledged = photoAcknowledged;
+        tradeInReadyForPhotoPrompt =
+          deviceCaptured &&
+          hasCondition &&
+          accessoriesCaptured &&
+          !photoAcknowledged;
+      }
+
       if (tradeInLeadDetail && autoExtractedClues) {
         tradeInLeadDetail = { ...tradeInLeadDetail, ...autoExtractedClues };
       }
@@ -4209,7 +4293,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           messages.push({
             role: "system",
             content:
-              "Trade-in flow: ask ONE question at a time. Required fields before submit: name, phone (8+ digits), email, device brand/model/storage, condition, accessories, payout preference. After contact is captured, prompt ONCE for photos; if declined, note 'Photos: Not provided — final quote on inspection.' Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout, contact, photos line, and ask for confirmation. Do NOT submit until contact (name/phone/email) is filled. Avoid repeating already captured fields; acknowledge user when they ask to go slowly.",
+              "Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone, name, payout preference (skip payout for trade-ups). Ask for photos ONCE after accessories and BEFORE contact; if declined, note 'Photos: Not provided — final quote on inspection.' Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout (if cash), contact, photos line, and ask for confirmation. Do NOT submit until contact (email/phone/name) is filled. Avoid repeating already captured fields; acknowledge user when they ask to go slowly.",
           });
         }
 
@@ -4277,7 +4361,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const deviceCaptured = Boolean(
           tradeInLeadDetail.brand && tradeInLeadDetail.model,
         );
-        const payoutSet = tradeUpPairIntent
+        const payoutSet = tradeUpContext
           ? true
           : Boolean(tradeInLeadDetail.preferred_payout);
         const readyForPayoutPrompt =
@@ -4299,7 +4383,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           messages.push({
             role: "system",
             content:
-              "You've locked device, condition, accessories, contact, and payout. Ask ONCE, clearly yes/no: 'Got photos to speed inspection? Say yes to upload now, or no if you can't.' If they say yes, invite the upload briefly. If they say no, save 'Photos: Not provided — final quote upon inspection' and continue. Do not block submission; do not repeat this ask.",
+              "You've locked device, condition, and accessories. Ask ONCE, clearly yes/no: 'Got photos to speed inspection? Say yes to upload now, or no if you can't.' If they say yes, invite the upload briefly. If they say no, save 'Photos: Not provided — final quote upon inspection' and continue. Do not block submission; do not repeat this ask.",
           });
         }
 
@@ -4314,20 +4398,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           payoutSet;
         if (readyForRecap) {
           const summary = buildTradeInUserSummary(tradeInLeadDetail);
+          tradeInReadyForRecap = true;
+          tradeInRecap = summary;
           if (summary) {
             messages.push({
               role: "system",
               content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
-            });
-          }
-        }
-
-        if (deviceCaptured && hasContactEmail && hasContactPhone) {
-          const userSummary = buildTradeInUserSummary(tradeInLeadDetail);
-          if (userSummary) {
-            messages.push({
-              role: "system",
-              content: `${userSummary}\nOnly recap once unless the customer changes something.`,
             });
           }
         }
@@ -4341,25 +4417,72 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         ) {
           messages.push({
             role: "system",
-            content: `Price lock: ${tradeInLeadDetail.source_device_name} ~S$${tradeInLeadDetail.source_price_quoted}, ${tradeInLeadDetail.target_device_name} S$${tradeInLeadDetail.target_price_quoted}, top-up ~S$${tradeInLeadDetail.top_up_amount}. Do NOT change these numbers or re-quote while collecting details.`,
+            content: `Price lock: ${formatDeviceLabel(tradeInLeadDetail.source_device_name)} S$${tradeInLeadDetail.source_price_quoted}, ${formatDeviceLabel(tradeInLeadDetail.target_device_name)} S$${tradeInLeadDetail.target_price_quoted}, top-up S$${tradeInLeadDetail.top_up_amount}. Do NOT change these numbers or re-quote while collecting details.`,
           });
         }
       }
 
-      const lastUserText =
+      if (tradeInLeadDetail && !tradeInReadyForRecap) {
+        const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
+        const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
+        const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
+        const hasCondition = Boolean(tradeInLeadDetail?.condition);
+        const accessoriesCaptured = Array.isArray(
+          tradeInLeadDetail?.accessories,
+        )
+          ? tradeInLeadDetail.accessories.length > 0
+          : Boolean(tradeInLeadDetail?.accessories);
+        const deviceCaptured = Boolean(
+          tradeInLeadDetail.brand && tradeInLeadDetail.model,
+        );
+        const payoutSet = tradeUpContext
+          ? true
+          : Boolean(tradeInLeadDetail.preferred_payout);
+        const readyForRecap =
+          deviceCaptured &&
+          hasCondition &&
+          accessoriesCaptured &&
+          hasContactName &&
+          hasContactPhone &&
+          hasContactEmail &&
+          payoutSet;
+        if (readyForRecap) {
+          const summary = buildTradeInUserSummary(tradeInLeadDetail);
+          tradeInReadyForRecap = true;
+          tradeInRecap = summary;
+          if (summary) {
+            messages.push({
+              role: "system",
+              content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
+            });
+          }
+        }
+      }
+
+      const currentYes =
+        /\b(yes|ya|yep|yeah|confirm|submit|proceed|go ahead|save)\b/i.test(
+          message,
+        );
+      const currentNo = /\b(no|dont|don't|not now|later|cancel|stop)\b/i.test(
+        message,
+      );
+      proceedConfirmed = currentYes;
+      proceedDeclined = currentNo;
+
+      const lastAssistantText =
         truncatedHistory
           .slice()
           .reverse()
-          .find((m) => m.role === "user")?.content || "";
-      const proceedConfirmed =
-        /\b(yes|ya|yep|yeah|confirm|submit|proceed|go ahead|save)\b/i.test(
-          lastUserText,
+          .find((m) => m.role === "assistant")?.content || "";
+      lastAssistantAskedConfirm =
+        /is this correct|reply yes to submit|ready to submit|submit everything|confirm/i.test(
+          lastAssistantText,
         );
-      const proceedDeclined =
-        /\b(no|dont|don't|not now|later|cancel|stop)\b/i.test(lastUserText);
+      finalConfirm =
+        tradeInReadyForRecap && currentYes && lastAssistantAskedConfirm;
       const needsProceedGate =
         tradeInPriceShared &&
-        !tradeUpPairIntent &&
+        !tradeUpContext &&
         !proceedConfirmed &&
         !proceedDeclined &&
         !tradeInLeadDetail?.condition;
@@ -4374,7 +4497,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       const allowMissingPrompt =
         tradeInPriceShared ||
-        tradeUpPairIntent ||
+        tradeUpContext ||
         (tradeInLeadDetail?.initial_quote_given === true &&
           (tradeInLeadDetail?.price_hint ||
             tradeInLeadDetail?.range_min ||
@@ -4382,7 +4505,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             tradeInLeadDetail?.source_price_quoted));
       const missingPrompt =
         allowMissingPrompt && !needsProceedGate
-          ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpPairIntent)
+          ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpContext)
           : null;
       if (missingPrompt) {
         messages.push({ role: "system", content: missingPrompt });
@@ -4404,7 +4527,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
           messages.push({
             role: "system",
-            content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, reply in one short paragraph (light markdown ok, no quotes): Trade-up submitted. **${sourceName}** (~S$${sourcePrice}) → **${targetName}** (S$${targetPrice}). Top-up: **S$${topUp}**. We’ll contact you to arrange, or you can visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?`,
+            content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, reply in one short paragraph (light markdown ok, no quotes): Trade-up submitted. **${sourceName}** (S$${sourcePrice}) → **${targetName}** (S$${targetPrice}). Top-up: **S$${topUp}**. We’ll contact you to arrange, or you can visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?`,
           });
         }
       }
@@ -4496,7 +4619,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       if (isGenericPs5Query(normalizedQuery)) {
         const range = await lookupTradeInRangeFromGrid("ps5");
         if (range.min != null && range.max != null) {
-          forcedTradeInReply = `Yes, you can trade in. **PS5** trade-in range: **~S$${range.min}–S$${range.max}** (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
+          forcedTradeInReply = `Yes, you can trade in. **PS5** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
           tradeInPriceShared = true;
         }
       } else if (
@@ -4505,7 +4628,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       ) {
         const range = await lookupTradeInRangeFromGrid("rog ally x");
         if (range.min != null && range.max != null) {
-          forcedTradeInReply = `Yes, you can trade in. **ROG Ally X** trade-in range: **~S$${range.min}–S$${range.max}** (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
+          forcedTradeInReply = `Yes, you can trade in. **ROG Ally X** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
           tradeInPriceShared = true;
         }
       }
@@ -4514,13 +4637,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         tradeInPriceShared = true;
         if (!forcedTradeInReply) {
           const deviceLabel = formatDeviceLabel(cleanTradeInLabel(message));
-          forcedTradeInReply = `Yes, you can trade in. **${deviceLabel}** trade-in: **~S$${forcedTradeInPrice}** (subject to inspection). Proceed?`;
+          forcedTradeInReply = `Yes, trade-in: **${deviceLabel}** (S$${forcedTradeInPrice}, subject to inspection).\nProceed?`;
         }
         messages.push({
           role: "system",
           content: `Deterministic trade-in pricing: "${normalizeProductName(
             tradeQuery,
-          )}" ~S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply in one concise line using light markdown (bold key numbers), then ask Proceed? Continue the checklist after the user confirms: condition, accessories, photos (reuse if on file), name, phone, email, payout. No catalog links.`,
+          )}" S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply in two short lines (price line + Proceed?), light markdown for key numbers. Continue the checklist after the user confirms: condition, accessories, photos (reuse if on file), email, phone, name, payout. No catalog links.`,
         });
       }
     }
@@ -4597,14 +4720,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       messages.push({
         role: "system",
-        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} ~S$X. {Target device} S$Y. Top-up ≈ S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values. Do NOT call searchProducts or list WooCommerce items during trade-up.`,
+        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} S$X. {Target device} S$Y. Top-up S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values. Do NOT call searchProducts or list WooCommerce items during trade-up.`,
       });
 
       // Payout/top-up clarity: always disambiguate who pays whom
       messages.push({
         role: "system",
         content:
-          "When showing the top-up, add a parenthetical to clarify direction: 'Top-up ≈ S$Z (you pay us)'. If the math implies cash-out, use 'Cash-out ≈ S$Z (we pay you)'. Keep the wording short.",
+          "When showing the top-up, add a parenthetical to clarify direction: 'Top-up S$Z (you pay us)'. If the math implies cash-out, use 'Cash-out S$Z (we pay you)'. Keep the wording short.",
       });
 
       // Photo reuse clarity
@@ -4633,13 +4756,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     messages.push({
       role: "system",
       content:
-        "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New ~S$500; Preowned ~S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
+        "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New S$500; Preowned S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
     });
 
     messages.push({
       role: "system",
       content:
-        "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in ~S$100'; 'Switch 2 trade-in ~S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
+        "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in S$100'; 'Switch 2 trade-in S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
     });
 
     messages.push({
@@ -5069,6 +5192,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           } else if (functionName === "tradein_submit_lead") {
             const toolStart = Date.now();
             try {
+              let readyForRecap = false;
               if (!tradeInLeadId) {
                 const ensured = await ensureTradeInLead({
                   sessionId,
@@ -5157,6 +5281,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               // Block premature submit when required details are missing
               try {
                 const latest = await getTradeInLeadDetail(tradeInLeadId);
+                const isTradeUp =
+                  tradeUpContext ||
+                  Boolean(
+                    latest?.source_device_name && latest?.target_device_name,
+                  );
                 const missing: string[] = [];
                 if (!latest.brand) missing.push("device brand");
                 if (!latest.model) missing.push("device model");
@@ -5172,7 +5301,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 if (!latest.contact_name) missing.push("contact name");
                 if (!latest.contact_phone) missing.push("contact phone");
                 if (!latest.contact_email) missing.push("contact email");
-                if (!tradeUpPairIntent && !latest.preferred_payout) {
+                if (!isTradeUp && !latest.preferred_payout) {
                   missing.push("payout method");
                 }
 
@@ -5205,6 +5334,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   });
                   continue; // Continue to next tool call instead of break
                 }
+                readyForRecap = true;
               } catch (guardError) {
                 console.warn("[ChatKit] Submit guard check failed", guardError);
               }
@@ -5221,16 +5351,30 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   .slice()
                   .reverse()
                   .find((m) => m.role === "user")?.content || "";
+              const latestUserText = message || lastUserText;
               const positive = /\b(yes|ya|can|submit|go ahead|proceed)\b/i.test(
-                lastUserText,
+                latestUserText,
               );
               const negative =
                 /\b(no|cannot|can't|dont|don't|cancel|stop)\b/i.test(
-                  lastUserText,
+                  latestUserText,
                 );
-              if (negative || !positive) {
+              const lastAssistantText =
+                truncatedHistory
+                  .slice()
+                  .reverse()
+                  .find((m) => m.role === "assistant")?.content || "";
+              const askedForConfirm =
+                /is this correct|reply yes to submit|ready to submit|submit everything|confirm/i.test(
+                  lastAssistantText,
+                );
+              if (
+                negative ||
+                !positive ||
+                (readyForRecap && !askedForConfirm)
+              ) {
                 toolResult =
-                  'I’ll wait for a clear yes before submitting. Say "yes" or "submit" to proceed.';
+                  'I’ll wait for a clear yes after the summary. Reply "yes" to submit.';
                 toolSummaries.push({
                   name: functionName,
                   args: { ...submitArgs, leadId: tradeInLeadId },
@@ -5637,10 +5781,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const retailPrice = precomputedTradeUp.retailPrice ?? 0;
         const topUp = Math.max(0, retailPrice - tradeValue);
 
-        finalResponse =
-          `${tradeUpParts.source} ~${formatCurrency(tradeValue)}. ` +
-          `${tradeUpParts.target} ${formatCurrency(retailPrice)}. ` +
-          `Top-up ~${formatCurrency(topUp)} (subject to inspection/stock).`;
+        const sourceLabel = formatDeviceLabel(tradeUpParts.source);
+        const targetLabel = formatDeviceLabel(tradeUpParts.target);
+        finalResponse = [
+          `Trade-in: **${sourceLabel}** (S$${tradeValue}, subject to inspection).`,
+          `Target: **${targetLabel}** (S$${retailPrice}). Top-up: **S$${topUp}**.`,
+          "Proceed?",
+        ].join("\n");
 
         console.log(
           "[ChatKit] 🔒 Deterministic trade-up response:",
@@ -5836,7 +5983,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       tradeUpPricingSummary,
       { includeLeadIn: true },
     );
-    if (tradeSummaryForResponse) {
+    if (
+      tradeSummaryForResponse &&
+      !/trade-in:|target:|top-up|trade-up:/i.test(finalResponse)
+    ) {
       finalResponse = `${tradeSummaryForResponse}\n\n${finalResponse}`;
     }
 
@@ -5847,8 +5997,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       );
     }
 
-    if (tradeInReadyForPhotoPrompt && !tradeInPhotoAcknowledged) {
-      finalResponse = `${finalResponse}\n\nGot photos to speed inspection? Say "Yes" to upload now, or "No photos" if you don't have them on hand.`;
+    if (
+      !tradeInReadyForRecap &&
+      tradeInReadyForPhotoPrompt &&
+      !tradeInPhotoAcknowledged
+    ) {
+      if (!/photo/i.test(finalResponse)) {
+        finalResponse = `${finalResponse}\n\nPhotos to speed inspection? (yes/no)`;
+      }
     }
 
     verificationData.reply_text = finalResponse;
@@ -6071,10 +6227,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const sourceLabel = formatDeviceLabel(sourceName);
         const targetLabel = formatDeviceLabel(targetName);
         finalResponse = [
-          `Your **${sourceLabel}** trades for **~S$${tradeValue}**.`,
-          `The **${targetLabel}** is **S$${retailPrice}**. Top-up: **~S$${topUp}**.`,
+          `Trade-in: **${sourceLabel}** (S$${tradeValue}, subject to inspection).`,
+          `Target: **${targetLabel}** (S$${retailPrice}). Top-up: **S$${topUp}**.`,
           "Proceed?",
-        ].join(" ");
+        ].join("\n");
         console.log("[TradeUp] Set finalResponse:", finalResponse);
 
         // Store topUp for installment calculation later
@@ -6129,7 +6285,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           }
         }
       } else if (tradeValue != null && retailPrice == null) {
-        finalResponse = `${sourceName} ~S$${tradeValue} (subject to inspection). I’ll fetch the target price and share the top-up next.`;
+        finalResponse = `Trade-in: **${formatDeviceLabel(sourceName)}** (S$${tradeValue}, subject to inspection). I’ll fetch the target price and share the top-up next.`;
         tradeUpPricingSummary = {
           source: sourceName,
           target: targetName,
@@ -6137,7 +6293,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           tradeVersion,
         };
       } else if (tradeValue == null && retailPrice != null) {
-        finalResponse = `${targetName} S$${retailPrice}. I need your trade-in device model to compute the top-up.`;
+        finalResponse = `Target: **${formatDeviceLabel(targetName)}** (S$${retailPrice}). I need your trade-in device model to compute the top-up.`;
         tradeUpPricingSummary = {
           source: sourceName,
           target: targetName,
@@ -6156,15 +6312,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
     // Quick Links removed - they're redundant and not clickable (Nov 26, 2025)
 
-    // In trade-up mode: Skip payout prompt initially, but allow photo prompt after user confirms
-    const tradeUpConfirmed =
-      tradeUpPairIntent && tradeInLeadDetail?.contact_name;
+    // In trade-up mode: Skip payout prompts. Use one consistent next-step prompt.
+    const tradeUpConfirmed = tradeUpContext && tradeInLeadDetail?.contact_name;
 
-    if (!tradeUpPairIntent || tradeUpConfirmed) {
+    if (tradeInReadyForRecap && tradeInRecap && !finalConfirm) {
+      finalResponse = tradeInRecap;
+    } else if (!tradeUpContext || tradeUpConfirmed) {
       if (
         tradeInNeedsPayoutPrompt &&
         !userMessageLooksLikeFreshTradeIntent &&
-        !tradeUpPairIntent
+        !tradeUpContext
       ) {
         finalResponse =
           "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.";
@@ -6175,12 +6332,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
 
     // Only apply Xbox hints if NOT in trade-up mode (deterministic override takes precedence)
-    if (!tradeUpPairIntent) {
-      finalResponse = forceXboxPricePreface(finalResponse, message);
+    if (!tradeInReadyForRecap) {
+      if (!tradeUpContext) {
+        finalResponse = forceXboxPricePreface(finalResponse, message);
+      }
+
+      if (!tradeUpContext && forcedTradeInReply) {
+        finalResponse = forcedTradeInReply;
+      }
     }
 
-    if (!tradeUpPairIntent && forcedTradeInReply) {
-      finalResponse = forcedTradeInReply;
+    if ((tradeUpContext || tradeInPriceShared) && finalResponse) {
+      finalResponse = normalizeProceedPrompt(finalResponse);
     }
 
     // If the user asked about installment, add rough monthly estimates (3/6/12)
@@ -6212,11 +6375,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           const monthly6 = Math.round(topUp / 6);
           const monthly12 = Math.round(topUp / 12);
           const estimateLine =
-            "Installment options: 3m ~S$" +
+            "Installment options: 3m S$" +
             monthly3 +
-            "/mo, 6m ~S$" +
+            "/mo, 6m S$" +
             monthly6 +
-            "/mo, 12m ~S$" +
+            "/mo, 12m S$" +
             monthly12 +
             "/mo (subject to approval).";
           finalResponse = `${finalResponse}\n\n${estimateLine}`.trim();
@@ -6237,11 +6400,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     // Add confirmation prompt after installment info (only for trade-up mode)
     if (tradeUpPairIntent && installmentRequested) {
       console.log("[TradeUp] Before adding confirmation:", finalResponse);
-      finalResponse = `${finalResponse}\n\nWant to proceed?`;
+      if (!/proceed\?/i.test(finalResponse)) {
+        finalResponse = `${finalResponse}\n\nProceed?`;
+      }
       console.log("[TradeUp] After adding confirmation:", finalResponse);
     } else if (tradeUpPairIntent) {
       console.log("[TradeUp] Before adding confirmation:", finalResponse);
-      finalResponse = `${finalResponse}\n\nAre you keen to proceed?`;
+      if (!/proceed\?/i.test(finalResponse)) {
+        finalResponse = `${finalResponse}\n\nProceed?`;
+      }
       console.log("[TradeUp] After adding confirmation:", finalResponse);
     }
 

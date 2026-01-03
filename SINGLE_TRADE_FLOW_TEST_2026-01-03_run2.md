@@ -18,14 +18,17 @@ Purpose: Validate the trade-in flow without contaminating leads. Run **one trade
 
 ### Expected order (no deviations)
 1. **Price-first reply** with top‑up.  
-   Example: “Your **PS4 Pro 1TB Disc** trades for ~S$100. The **PS5 Pro Digital** is S$900. Top‑up: ~S$800. Proceed?”
+   Example (2 lines):  
+   “Trade-in: **PS4 Pro 1TB Disc** (S$100, subject to inspection).  
+   Target: **PS5 Pro Digital** (S$900). Top-up: **S$800**.  
+   Proceed?”
 2. **Condition** (mint/good/fair/faulty)
 3. **Accessories/box**
 4. **Photos** (ask once; if no, note “Photos: Not provided — final quote upon inspection”)
 5. **Email**
 6. **Phone**
 7. **Name**
-8. **Final recap**: “Here’s what I got… Is this correct? Reply yes to submit.”
+8. **Final recap**: “Here's what I got… Is this correct? Reply yes to submit.”
 9. **Submit only after “yes”** (or auto‑submit after delay)
 
 ### Pass checks
@@ -43,6 +46,9 @@ Purpose: Validate the trade-in flow without contaminating leads. Run **one trade
 
 ### Expected order
 1. **Price-first reply** + “Proceed?”
+   Example (2 lines):  
+   “Trade-in: **Switch OLED 64GB** (S$100, subject to inspection).  
+   Proceed?”
 2. **Condition**
 3. **Accessories/box**
 4. **Photos**

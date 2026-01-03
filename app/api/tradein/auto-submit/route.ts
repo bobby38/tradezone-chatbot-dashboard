@@ -43,11 +43,10 @@ function buildSummary(lead: any): string | undefined {
   const lines: Array<string> = [];
   if (isTradeUp) {
     const tradeValue =
-      lead.source_price_quoted != null ? `~S$${lead.source_price_quoted}` : "";
+      lead.source_price_quoted != null ? `S$${lead.source_price_quoted}` : "";
     const retailPrice =
       lead.target_price_quoted != null ? `S$${lead.target_price_quoted}` : "";
-    const topUp =
-      lead.top_up_amount != null ? `~S$${lead.top_up_amount}` : "";
+    const topUp = lead.top_up_amount != null ? `S$${lead.top_up_amount}` : "";
     lines.push(
       `Trade-up: ${lead.source_device_name || "Trade-in"} ${tradeValue} → ${lead.target_device_name || "Target"} ${retailPrice} → Top-up ${topUp}`.trim(),
     );
@@ -116,7 +115,9 @@ export async function POST(request: Request) {
     const accessoriesCaptured = isAccessoriesCaptured(lead.accessories);
     const hasContactEmail = Boolean(lead.contact_email);
     const hasContactPhone = Boolean(lead.contact_phone);
-    const isTradeUp = Boolean(lead.source_device_name && lead.target_device_name);
+    const isTradeUp = Boolean(
+      lead.source_device_name && lead.target_device_name,
+    );
     const hasPayout = isTradeUp ? true : Boolean(lead.preferred_payout);
 
     if (
