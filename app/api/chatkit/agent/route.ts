@@ -6203,12 +6203,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       // Try to extract URLs from the last tool result if present
       const urlMatches =
         lastSearchProductsResult.match(/https?:\/\/\S+/g) || [];
-      if (urlMatches.length > 0) {
-        const linkLines = urlMatches
+      const cleaned = urlMatches
+        .map((raw) => raw.replace(/[).,]+$/, ""))
+        .filter((u) => /tradezone\.sg\/product\//i.test(u));
+      if (cleaned.length > 0) {
+        const linkLines = cleaned
           .slice(0, 5)
-          .map((u, idx) => `${idx + 1}. Link: ${u}`)
+          .map((u, idx) => `${idx + 1}. [View Product](${u})`)
           .join("\n");
-        finalResponse = `${finalResponse}\n\nLinks:\n${linkLines}`.trim();
+        finalResponse = `${finalResponse}\n\n${linkLines}`.trim();
       }
     }
 
