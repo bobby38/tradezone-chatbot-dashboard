@@ -2237,12 +2237,27 @@ export async function handleVectorSearch(
     const lowerQuery = query.toLowerCase();
     const sportFilters: string[] = [];
     const SPORT_TOKEN_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
-      { regex: /basketball|nba|2k/i, tokens: ["nba", "2k"] },
       {
-        regex: /football|soccer|fifa|fc ?24|ea sports fc/i,
+        regex: /basketball|nba|2k|curry|jordan|lebron|durant/i,
+        tokens: ["nba", "2k", "basketball"],
+      },
+      {
+        regex: /football|soccer|fifa|fc ?24|ea sports fc|messi|ronaldo/i,
         tokens: ["fifa", "fc", "football"],
       },
-      { regex: /wrestling|wwe|wwf/i, tokens: ["wwe", "wrestling", "2k"] },
+      {
+        regex: /wrestling|wwe|wwf|undertaker|cena/i,
+        tokens: ["wwe", "wrestling", "2k"],
+      },
+      {
+        regex: /skateboard|skate|tony hawk/i,
+        tokens: ["skate", "tony hawk", "skateboard"],
+      },
+      {
+        regex:
+          /\bcar\s+game|\bracing\s+game|\bgran turismo|forza|need\s+for\s+speed|nfs|burnout|mario\s+kart/i,
+        tokens: ["racing", "car", "turismo", "forza", "kart", "speed"],
+      },
     ];
 
     SPORT_TOKEN_MAP.forEach(({ regex, tokens }) => {
@@ -2306,7 +2321,22 @@ export async function handleVectorSearch(
     let finalText = "";
 
     if (sportFilters.length && wooProducts.length === 0) {
-      finalText = `No matching products found for "${query}" right now. Want me to note it for staff and check availability for you?`;
+      // Detect sport type for better messaging
+      const sportType = lowerQuery.match(/basketball|nba|curry|jordan/i)
+        ? "basketball"
+        : lowerQuery.match(/skateboard|skate|tony hawk/i)
+          ? "skateboarding"
+          : lowerQuery.match(/football|soccer|fifa|messi|ronaldo/i)
+            ? "football/soccer"
+            : lowerQuery.match(/wrestling|wwe|undertaker|cena/i)
+              ? "wrestling"
+              : lowerQuery.match(
+                    /\bcar\s+game|\bracing|gran turismo|forza|need\s+for\s+speed|mario\s+kart/i,
+                  )
+                ? "racing/car"
+                : "sports";
+
+      finalText = `We don't currently stock ${sportType} games, but we focus on other popular titles! Check out our console games section or let me know what else you're looking for.`;
     } else if (wooProducts.length > 0) {
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
