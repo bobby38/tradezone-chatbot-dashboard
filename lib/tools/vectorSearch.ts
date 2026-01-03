@@ -498,8 +498,10 @@ function getCategoryLink(
     if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
       return "https://tradezone.sg/product-category/xbox-item/";
     }
-    if (/\bswitch\b|nintendo/i.test(lower)) {
-      return "https://tradezone.sg/product-category/nintendo-switch/";
+    if (/\bswitch\b|nintendo|pokemon|pokémon/i.test(lower)) {
+      return isPreOwned
+        ? "https://tradezone.sg/product-category/nintendo/pre-owned-games-nintendo/"
+        : "https://tradezone.sg/product-category/nintendo/brand-new-games-nintendo/";
     }
     return "https://tradezone.sg/product-category/console-games/";
   };
@@ -508,17 +510,36 @@ function getCategoryLink(
     vr: "https://tradezone.sg/product-category/gadgets/virtual-reality-headset/",
     games: getGamesCategoryLink(query),
     laptop: "https://tradezone.sg/product-category/laptop/",
-    phone: "https://tradezone.sg/product-category/phones/",
-    tablet: "https://tradezone.sg/product-category/tablet/",
-    console: "https://tradezone.sg/product-category/console-games/",
+    phone: "https://tradezone.sg/product-category/handphone-tablet/handphone/",
+    tablet: "https://tradezone.sg/product-category/handphone-tablet/tablet/",
+    console: "https://tradezone.sg/product-category/gadgets/consoles/",
     gpu: "https://tradezone.sg/product-category/graphic-card/",
     motherboard: "https://tradezone.sg/product-category/motherboard/",
-    handheld: "https://tradezone.sg/product-category/gaming-handheld/",
+    handheld: "https://tradezone.sg/product-category/gadgets/",
     storage:
       "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
   };
 
   return categoryLinks[category] || null;
+}
+
+/**
+ * Properly pluralize category names
+ */
+function pluralizeCategory(category: string): string {
+  // Special cases that don't need 's' or have irregular plurals
+  const irregularPlurals: Record<string, string> = {
+    games: "games",
+    storage: "storage devices",
+    mouse: "mice",
+  };
+
+  if (irregularPlurals[category]) {
+    return irregularPlurals[category];
+  }
+
+  // Default: add 's'
+  return `${category}s`;
 }
 
 /**
@@ -536,7 +557,8 @@ function buildMoreResultsText(
   const categoryLink = getCategoryLink(category, query);
 
   if (categoryLink && category) {
-    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** [View all ${category}s on website](${categoryLink}) or ask for a specific title.`;
+    const categoryPlural = pluralizeCategory(category);
+    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** [View all ${categoryPlural} on website](${categoryLink}) or ask for a specific title.`;
   }
 
   return `\n\nShowing ${displayLimit} of ${totalCount} results. Ask for a specific title to see more.`;
