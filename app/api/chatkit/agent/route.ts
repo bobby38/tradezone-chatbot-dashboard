@@ -1743,18 +1743,22 @@ function enforceFamilyContentFilter(response: string, userMessage: string) {
 
   let banned: string[] = [];
 
-  // Gaming console filters
-  if (/xbox/.test(query)) {
-    banned = ["ps5", "ps4", "playstation", "switch", "nintendo"];
-  } else if (/switch|nintendo/.test(query)) {
-    banned = ["ps5", "ps4", "playstation", "xbox", "series x", "series s"];
-  } else if (/ps5|ps4|playstation/.test(query)) {
-    banned = ["xbox", "series x", "series s", "switch", "nintendo"];
-  }
+  // Gaming console filters - DISABLED for cross-platform games
+  // Cross-platform games (PS4/PS5/Switch/Xbox) should show in all platform searches
+  // This filter was removing valid multi-platform games
+  // Example: "EA Sports FC PS4/PS5/Switch" should appear in PS4, PS5, AND Switch searches
+
+  // if (/xbox/.test(query)) {
+  //   banned = ["ps5", "ps4", "playstation", "switch", "nintendo"];
+  // } else if (/switch|nintendo/.test(query)) {
+  //   banned = ["ps5", "ps4", "playstation", "xbox", "series x", "series s"];
+  // } else if (/ps5|ps4|playstation/.test(query)) {
+  //   banned = ["xbox", "series x", "series s", "switch", "nintendo"];
+  // }
 
   // Phone/Tablet filters
   // When user asks for iPhone, exclude Android phones AND all tablets
-  else if (/\biphone\b/.test(query)) {
+  if (/\biphone\b/.test(query)) {
     banned = ["ipad", "tab", "oppo", "pixel", "lenovo"]; // Tablets + Android brands
   }
   // When user asks for phone/android/handphone, exclude ALL tablets (iPad, Galaxy Tab, etc.)
