@@ -1317,7 +1317,15 @@ function pickHintPrice(
 
 function normalizeProductName(name: string | undefined | null): string {
   if (!name) return "device";
-  return name.trim().replace(/\s+/g, " ");
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  return (
+    trimmed
+      .replace(
+        /^(?:i\s+want\s+to\s+trade\s+in\s+my|trade\s+in\s+my|trade\s+in|my|in\s+my|in\s+the|the)\s+/i,
+        "",
+      )
+      .trim() || "device"
+  );
 }
 
 function cleanTradeInLabel(message: string): string {
@@ -2893,7 +2901,7 @@ function buildTradeInUserSummary(detail: any): string | null {
   const isTradeUp = detail.source_device_name && detail.target_device_name;
 
   const lines = [
-    isTradeUp ? "Trade-Up Summary:" : "Saved trade-in info so far:",
+    isTradeUp ? "Here’s what I got (trade-up):" : "Here’s what I got:",
     // For trade-ups, show source → target with prices
     isTradeUp && detail.source_device_name && detail.source_price_quoted
       ? `Trading: ${detail.source_device_name} (trade-in ~S$${detail.source_price_quoted})`
@@ -2926,8 +2934,8 @@ function buildTradeInUserSummary(detail: any): string | null {
   if (lines.length <= 1) return null;
   lines.push(
     isTradeUp
-      ? "Confirm these details before we proceed."
-      : "Ask the customer if anything needs updating before proceeding.",
+      ? "Is this correct? Reply yes to submit."
+      : "Is this correct? Reply yes to submit.",
   );
   return lines.join("\n");
 }
@@ -2990,7 +2998,7 @@ function buildMissingTradeInFieldPrompt(
   const hasContactName = Boolean(detail.contact_name);
   const hasContactPhone = Boolean(detail.contact_phone);
   const hasContactEmail = Boolean(detail.contact_email);
-  const hasPayout = Boolean(detail.preferred_payout);
+  const hasPayout = isTradeUp ? true : Boolean(detail.preferred_payout);
   const photoAcknowledged = isPhotoStepAcknowledged(detail);
 
   const storageLikelyFixed = (() => {
@@ -3032,8 +3040,9 @@ function buildMissingTradeInFieldPrompt(
       message: 'Ask: "Accessories or box included?" and save accessories.',
     },
     {
-      missing: !hasContactName,
-      message: 'Ask: "What name should I note down?" and save contact_name.',
+      missing: !hasContactEmail,
+      message:
+        "Ask for the full email address (not just the provider), repeat the entire address back, wait for a clear yes, then save contact_email.",
     },
     {
       missing: !hasContactPhone,
@@ -3041,9 +3050,8 @@ function buildMissingTradeInFieldPrompt(
         'Ask: "Best phone number?" Repeat the digits back once to confirm, then save contact_phone.',
     },
     {
-      missing: !hasContactEmail,
-      message:
-        "Ask for the full email address (not just the provider), repeat the entire address back, wait for a clear yes, then save contact_email.",
+      missing: !hasContactName,
+      message: 'Ask: "What name should I note down?" and save contact_name.',
     },
     {
       missing: !hasPayout,
@@ -3062,7 +3070,8 @@ function buildMissingTradeInFieldPrompt(
 
   return [
     `🔴 Trade-in task: ${nextStep.message}`,
-    "Keep reply ≤12 words, wait for the answer, then acknowledge briefly.",
+    "Keep reply ≤12 words, wait for the answer, then acknowledge briefly. If user asks to save/submit now, say you'll submit after the remaining details.",
+    "Do NOT say submitted/saved until the final confirmation step.",
   ].join("\n");
 }
 
@@ -4275,6 +4284,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             });
           }
         }
+
+        if (
+          tradeInLeadDetail?.source_device_name &&
+          tradeInLeadDetail?.target_device_name &&
+          tradeInLeadDetail?.source_price_quoted != null &&
+          tradeInLeadDetail?.target_price_quoted != null &&
+          tradeInLeadDetail?.top_up_amount != null
+        ) {
+          messages.push({
+            role: "system",
+            content: `Price lock: ${tradeInLeadDetail.source_device_name} ~S$${tradeInLeadDetail.source_price_quoted}, ${tradeInLeadDetail.target_device_name} S$${tradeInLeadDetail.target_price_quoted}, top-up ~S$${tradeInLeadDetail.top_up_amount}. Do NOT change these numbers or re-quote while collecting details.`,
+          });
+        }
       }
 
       const allowMissingPrompt =
@@ -4366,7 +4388,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       );
       messages.push({
         role: "system",
-        content: `CRITICAL: Initial price quote already given. DO NOT call searchProducts again. You are now in QUALIFICATION mode - only collect condition, accessories, contact info. Use tradein_update_lead to save details. Reference the already-quoted prices when confirming with customer.`,
+        content: `CRITICAL: Initial price quote already given. DO NOT call searchProducts again. You are now in QUALIFICATION mode - only collect condition, accessories, contact info. Use tradein_update_lead to save details. Do NOT re-quote or change prices; only use the already-quoted numbers when confirming at the end.`,
       });
     }
 
