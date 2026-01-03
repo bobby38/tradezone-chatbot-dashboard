@@ -662,7 +662,12 @@ export async function searchWooProducts(
         score += 100;
       }
       // Apply family filter if detected (gaming products)
-      else if (familyFilter && tokens.length > 1) {
+      // BUT: Skip family filter for game queries - category filtering already handled it
+      else if (
+        familyFilter &&
+        tokens.length > 1 &&
+        !/\b(game|games)\b/i.test(query)
+      ) {
         const matchesFamily = familyFilter.some((keyword) =>
           name.includes(keyword),
         );
