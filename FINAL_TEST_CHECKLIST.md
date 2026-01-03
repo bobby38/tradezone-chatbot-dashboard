@@ -236,6 +236,26 @@ If you see these, **DO NOT proceed to voice:**
 
 ---
 
+## 🔁 Re-test After Fix (Quick Log)
+
+Use this table after each deploy/fix to compare before vs after.  
+**Deploy/Fix commit:** ____________   **Date:** ____________   **Tester:** ____________
+
+| Test # | Status | Notes |
+|--------|--------|-------|
+| 1 | ⬜ | |
+| 2 | ⬜ | |
+| 3 | ⬜ | |
+| 4 | ⬜ | |
+| 5 | ⬜ | |
+| 6 | ⬜ | |
+| 7 | ⬜ | |
+| 8 | ⬜ | |
+| 9 | ⬜ | |
+| 10 | ⬜ | |
+| 11 | ⬜ | |
+| 12 | ⬜ | |
+
 ## 🤖 Agentic Browser Automation Flow
 
 Use this when running an automated browser agent (so you don't answer follow-ups manually). Each test includes the expected **bot response** and the expected **next prompt** the bot should ask. The agent can validate both and proceed to the next step automatically.
