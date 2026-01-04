@@ -12,6 +12,10 @@ if (fs.existsSync(envLocalPath)) {
 
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const ENABLE_ENRICHMENT = process.env.ENABLE_PRODUCT_ENRICHMENT === "true";
+const MAX_NEW_ENRICHMENTS = parseInt(
+  process.env.MAX_NEW_ENRICHMENTS || "20",
+  10,
+); // Limit new enrichments per run
 
 const API_BASE = (
   process.env.WOOCOMMERCE_API_BASE ?? "https://tradezone.sg/wp-json/wc/v3"
@@ -204,9 +208,12 @@ async function writeCatalog(products) {
   }
 
   if (ENABLE_ENRICHMENT && PERPLEXITY_API_KEY) {
-    console.log("[Catalog] Enriching products with Perplexity (games only)...");
+    console.log(
+      `[Catalog] Enriching products with Perplexity (games only, max ${MAX_NEW_ENRICHMENTS} new per run)...`,
+    );
     let reusedCount = 0;
     let newEnrichments = 0;
+    let skippedCount = 0;
 
     for (const product of products) {
       // Reuse existing enrichment if available
@@ -215,6 +222,10 @@ async function writeCatalog(products) {
       if (existingEnrichment) {
         trimmed.push(trimProduct(product, existingEnrichment));
         reusedCount++;
+      } else if (newEnrichments >= MAX_NEW_ENRICHMENTS) {
+        // Hit limit - save without enrichment for now
+        trimmed.push(trimProduct(product, null));
+        skippedCount++;
       } else {
         const enrichment = await enrichProductWithPerplexity(product);
         trimmed.push(trimProduct(product, enrichment));
@@ -232,8 +243,13 @@ async function writeCatalog(products) {
     }
 
     console.log(
-      `[Catalog] ✅ Reused: ${reusedCount}, New: ${newEnrichments}, Total enriched: ${reusedCount + newEnrichments}/${products.length}`,
+      `[Catalog] ✅ Reused: ${reusedCount}, New: ${newEnrichments}, Skipped: ${skippedCount}, Total enriched: ${reusedCount + newEnrichments}/${products.length}`,
     );
+    if (skippedCount > 0) {
+      console.log(
+        `[Catalog] ℹ️  ${skippedCount} products not enriched yet. Run again to continue enrichment.`,
+      );
+    }
   } else {
     console.log(
       "[Catalog] Enrichment disabled (set ENABLE_PRODUCT_ENRICHMENT=true to enable)",

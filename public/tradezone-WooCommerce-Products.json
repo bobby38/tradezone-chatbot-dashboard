@@ -2588,7 +2588,7 @@
     "date_modified": "2025-12-09T12:11:00",
     "short_description": "",
     "description": "",
-    "enrichment": null,
+    "enrichment": "adventure puzzle story",
     "categories": [
       {
         "id": 109,
@@ -2626,7 +2626,7 @@
     "date_modified": "2025-12-09T12:10:04",
     "short_description": "",
     "description": "",
-    "enrichment": null,
+    "enrichment": "dance multiplayer competitive co-op",
     "categories": [
       {
         "id": 137,
@@ -2983,7 +2983,7 @@
     "date_modified": "2025-12-04T05:51:01",
     "short_description": "",
     "description": "",
-    "enrichment": null,
+    "enrichment": "shooter adventure story survival",
     "categories": [
       {
         "id": 51,
@@ -3069,7 +3069,7 @@
     "date_modified": "2025-12-02T06:19:30",
     "short_description": "",
     "description": "",
-    "enrichment": null,
+    "enrichment": "sports soccer competitive multiplayer",
     "categories": [
       {
         "id": 109,
@@ -3307,7 +3307,7 @@
     "date_modified": "2025-11-30T08:46:37",
     "short_description": "",
     "description": "",
-    "enrichment": null,
+    "enrichment": "simulation puzzle multiplayer competitive",
     "categories": [
       {
         "id": 137,
