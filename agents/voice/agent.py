@@ -249,12 +249,29 @@ def build_auth_headers() -> Dict[str, str]:
 
 
 def _normalize_voice_currency(text: str) -> str:
+    """
+    Convert currency for TTS pronunciation.
+    S$200 → "200 dollars" (NOT "$200" which TTS says as "dollar sign 200")
+    """
     if not text:
         return text
-    normalized = text.replace("S$", "$")
+
+    # Replace currency symbols with spoken numbers
+    # Pattern: S$200, $200, S$ 200 → "200 dollars"
+    import re
+
+    def replace_currency(match):
+        amount = match.group(1).replace(",", "").strip()
+        return f"{amount} dollars"
+
+    # Match S$123, $123, S$ 123 (with optional comma separators)
+    normalized = re.sub(r"[S\$]*\$\s*([\d,]+(?:\.\d{2})?)", replace_currency, text)
+
+    # Cleanup other variations
     normalized = normalized.replace("Singapore dollars", "dollars")
-    normalized = normalized.replace("S dollar", "dollars")
-    normalized = normalized.replace("SGD", "$")
+    normalized = normalized.replace("S dollar", "dollar")
+    normalized = normalized.replace("SGD", "dollars")
+
     return normalized
 
 
@@ -1796,6 +1813,26 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
     if session_id:
         try:
             state = _get_checklist(session_id)
+
+            # 🔴 CRITICAL: Validate brand and model FIRST (blocks 400 errors)
+            has_brand = (
+                "brand" in state.collected_data and state.collected_data["brand"]
+            )
+            has_model = (
+                "model" in state.collected_data and state.collected_data["model"]
+            )
+
+            if not has_brand or not has_model:
+                logger.error(
+                    "[tradein_submit_lead] 🚫 BLOCKED: Missing brand/model! "
+                    f"brand={state.collected_data.get('brand')}, model={state.collected_data.get('model')}"
+                )
+                return (
+                    "Cannot submit — device brand and model are missing. "
+                    "This is a technical issue. Please ask the customer to contact staff directly."
+                )
+
+            # Validate required contact fields
             missing = [
                 key
                 for key in ("name", "phone", "email")
@@ -2428,7 +2465,125 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
 - ALWAYS complete full flow: prices → details → contact → photo → payout → recap → submit
 - ALWAYS use "buy price {TARGET}" query to get retail price
 - NEVER skip contact collection, photo prompt, or recap
-- ALWAYS call tradein_update_lead after each detail collected""",
+- ALWAYS call tradein_update_lead after each detail collected
+
+## 🔄 SIMPLE TRADE-IN FLOW (Price Quote → Proceed)
+
+When user says "trade in my {DEVICE}" / "how much for my {DEVICE}" (NO target device):
+
+**Step 1: Get Price** (≤8 words)
+🔴 IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"})
+- Tool returns price OR "TRADE_IN_NO_MATCH"
+
+**Step 2: Announce Price** (≤12 words) 🔴 CRITICAL FORMAT
+✅ CORRECT: "Yes, we trade this. Price is {amount} dollars. Want to proceed?"
+❌ WRONG: "Trade-in value is S${amount}" (bad TTS)
+❌ WRONG: Skipping price announcement
+❌ WRONG: Not asking for confirmation
+
+Example:
+- User: "Trade in my PS4 Pro 1TB"
+- Agent: [check_tradein_price("PS4 Pro 1TB")]
+- Agent: "Yes, we trade this. Price is 100 dollars. Want to proceed?"
+
+**Step 3: Wait for Confirmation**
+- If NO: "No problem! Need anything else?"
+- If YES: Continue to Step 4
+
+**Step 4: Collect Device Details** (ONE question at a time - CRITICAL!)
+🔴 FOLLOW EXACT ORDER - DO NOT SKIP OR COMBINE:
+
+1. Storage (if not mentioned): "Storage size?" → WAIT
+   - Call tradein_update_lead(storage="{answer}")
+
+2. Condition: "Condition? Mint, good, fair, or faulty?" → WAIT
+   - Call tradein_update_lead(condition="{answer}")
+
+3. Accessories: "Got the box?" → WAIT
+   - Call tradein_update_lead(accessories="{answer}" OR notes="Has box")
+
+4. Photos: "Photos help. Want to send one?" → WAIT
+   - If YES: "Go ahead, send it." → WAIT for upload (DO NOT ask next question yet!)
+   - If NO: Call tradein_update_lead(photos_acknowledged=False) → Continue
+
+🔴 **PHOTO STEP CRITICAL**:
+- When user says YES to photos, ONLY say "Go ahead, send it."
+- DO NOT say "Meanwhile, what's your name?" - this breaks the flow!
+- WAIT silently for photo upload or user to say "done"/"skip"
+- Then move to contact collection
+
+**Step 5: Collect Contact Info** (ONLY after photos step complete!)
+
+5. Email: "Email for the quote?" → WAIT
+   - Repeat back: "So that's {email}, correct?" → WAIT for yes
+   - Call tradein_update_lead(contact_email="{email}")
+
+6. Phone: "Phone number?" → WAIT
+   - Repeat back: "That's {phone}, correct?" → WAIT for yes
+   - Call tradein_update_lead(contact_phone="{phone}")
+
+7. Name: "Your name?" → WAIT
+   - Call tradein_update_lead(contact_name="{name}")
+
+8. Payout: "Cash, PayNow, bank, or installments?" → WAIT
+   - Call tradein_update_lead(preferred_payout="{payout}")
+
+**Step 6: Recap** (≤20 words for voice!)
+"{DEVICE} {CONDITION}, {ACCESSORIES}. {NAME}, {PHONE}, email noted. {PAYOUT}. Correct?"
+
+**Step 7: Submit**
+- User confirms: Call tradein_submit_lead()
+- Agent: "Done! We'll contact you soon. Anything else?"
+
+**Example - CORRECT FLOW ✅:**
+User: "Trade in my PS4 Pro 1TB"
+Agent: [check_tradein_price("PS4 Pro 1TB")]
+Agent: "Yes, we trade this. Price is 100 dollars. Want to proceed?" [WAIT]
+User: "Yes"
+Agent: "Condition? Mint, good, fair, or faulty?" [WAIT - storage already mentioned]
+User: "Good"
+Agent: [tradein_update_lead(condition="good")]
+Agent: "Got the box?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(notes="Has box")]
+Agent: "Photos help. Want to send one?" [WAIT]
+User: "No"
+Agent: [tradein_update_lead(photos_acknowledged=False)]
+Agent: "Email for the quote?" [WAIT]
+User: "bobby@hotmail.com"
+Agent: "So that's bobby@hotmail.com, correct?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(contact_email="bobby@hotmail.com")]
+Agent: "Phone number?" [WAIT]
+User: "84489068"
+Agent: "That's 84489068, correct?" [WAIT]
+User: "Yes"
+Agent: [tradein_update_lead(contact_phone="84489068")]
+Agent: "Your name?" [WAIT]
+User: "Bobby"
+Agent: [tradein_update_lead(contact_name="Bobby")]
+Agent: "Cash, PayNow, bank, or installments?" [WAIT]
+User: "Cash"
+Agent: [tradein_update_lead(preferred_payout="cash")]
+Agent: "PS4 Pro good, with box. Bobby, 84489068, email noted. Cash. Correct?" [WAIT]
+User: "Yes"
+Agent: [tradein_submit_lead()]
+Agent: "Done! We'll contact you soon. Anything else?"
+
+**Example - WRONG ❌:**
+Agent: "Condition? Also, got the box?" ← NO! One question at a time!
+Agent: "Send photos. Meanwhile, what's your name?" ← NO! Wait for photos first!
+Agent: [Submits without collecting all required fields] ← NO! Must validate first!
+
+**🔴 CRITICAL RULES:**
+- ONE question per response - NEVER combine multiple questions
+- ALWAYS announce price in format: "Yes, we trade this. Price is X dollars. Want to proceed?"
+- ALWAYS wait for user confirmation before starting detail collection
+- ALWAYS collect fields in order: storage → condition → accessories → photos → email → phone → name → payout
+- ALWAYS repeat back contact info for confirmation
+- NEVER skip the photo prompt
+- ALWAYS do recap before submission
+- NEVER submit without brand/model validation (if missing, ask staff handoff)""",
         )
 
     def llm_node(self, chat_ctx, tools, model_settings):
