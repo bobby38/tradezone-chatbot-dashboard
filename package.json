@@ -13,6 +13,8 @@
     "catalog:sync-synonyms": "tsx scripts/sync-search-synonyms-to-graphiti.ts",
     "catalog:sync-taxonomy": "tsx scripts/sync-taxonomy-to-graphiti.ts",
     "catalog:learn": "tsx scripts/run-learning-loop.ts",
+    "report:missing-skus": "tsx scripts/report-missing-skus.ts",
+    "skus:update": "tsx scripts/update-missing-skus.ts",
     "test": "playwright test",
     "test:critical": "./tests/run-critical-tests.sh",
     "test:ui": "playwright test --ui",

@@ -1237,6 +1237,29 @@ function normalizeIntentQuery(query: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function isWarrantySupportQuery(query: string): boolean {
+  if (!query) return false;
+  const normalized = normalizeIntentQuery(query).trim();
+  if (!normalized) return false;
+  if (!/\bwarr?anty/.test(normalized)) return false;
+  const supportHints = [
+    "check",
+    "verify",
+    "confirm",
+    "still",
+    "ok",
+    "okay",
+    "valid",
+    "status",
+    "coverage",
+    "covered",
+    "issue",
+    "problem",
+    "under warranty",
+  ];
+  return supportHints.some((hint) => normalized.includes(hint));
+}
+
 // Detects explicit two-device trade/upgrade phrasing ("trade X for Y", "upgrade X to Y")
 function detectTradeUpPair(query: string): boolean {
   const normalized = query.toLowerCase();
@@ -1860,6 +1883,7 @@ function detectProductInfoIntent(query: string): boolean {
   const normalized = normalizeIntentQuery(query).trim();
   if (!normalized) return false;
   if (detectTradeInIntent(normalized)) return false;
+  if (isWarrantySupportQuery(normalized)) return false;
 
   const mentionsProduct = PRODUCT_KEYWORDS.some((keyword) =>
     normalized.includes(keyword),
@@ -3993,6 +4017,15 @@ export async function POST(request: NextRequest) {
         role: "system",
         content:
           "User uploaded an image. Acknowledge receipt briefly (e.g., 'Photo received'). DO NOT describe or summarize the image. The photo is stored for staff review.",
+      });
+    }
+
+    const warrantySupportIntent = isWarrantySupportQuery(message);
+    if (warrantySupportIntent) {
+      messages.push({
+        role: "system",
+        content:
+          "User wants to verify an existing warranty. Do NOT promote warranty extensions. Skip product searches and run the staff-support escalation flow: ask once if they are in Singapore, then collect name, phone, email, and the warranty issue, and call sendemail(info_request) with those details.",
       });
     }
 

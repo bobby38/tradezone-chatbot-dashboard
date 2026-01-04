@@ -787,6 +787,26 @@ def _looks_like_name(value: str) -> bool:
     if not value:
         return False
     text = value.strip()
+    lower = text.lower()
+    common_non_names = {
+        "yes",
+        "yeah",
+        "yup",
+        "yep",
+        "ok",
+        "okay",
+        "no",
+        "hello",
+        "hi",
+        "hey",
+        "thanks",
+        "thank you",
+        "please",
+        "sure",
+        "alright",
+    }
+    if lower in common_non_names:
+        return False
     if "@" in text or any(ch.isdigit() for ch in text):
         return False
     if len(text) < 2 or len(text) > 60:
@@ -1015,9 +1035,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                     lower_answer = answer.lower()
                     if "couldn't find" in lower_answer or "no products" in lower_answer:
                         return (
-                            "Sorry, I couldn't find that in our catalog. "
-                            "Want staff support to check or notify you? "
-                            "What do you want to do next?"
+                            "Sorry, nothing in stock for that. "
+                            "Want staff support or try something else?"
                         )
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
                 return answer if answer else "No products found"
