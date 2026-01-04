@@ -379,26 +379,42 @@ async function fetchSupabaseScheduledTasks(): Promise<Array<
   }
 }
 
-async function loadExternalTasks(): Promise<Array<
-  Omit<ScheduledTask, "lastRun">
-> | null> {
-  // Try Supabase first (preferred)
-  const supabaseTasks = await fetchSupabaseScheduledTasks();
-  if (supabaseTasks) {
-    return supabaseTasks;
-  }
+async function loadExternalTasks(): Promise<
+  Array<Omit<ScheduledTask, "lastRun">>
+> {
+  const mergedTasks = new Map<string, Omit<ScheduledTask, "lastRun">>(
+    RAW_TASKS.map((task) => [task.id, task]),
+  );
 
-  // Fallback to Coolify
-  const coolifyTasks = await fetchCoolifyScheduledTasks();
-  if (coolifyTasks) {
-    return coolifyTasks;
-  }
+  const mergeTasks = (tasks: Array<Omit<ScheduledTask, "lastRun">> | null) => {
+    if (!tasks || tasks.length === 0) return;
+    tasks.forEach((task) => {
+      const existing = mergedTasks.get(task.id);
+      if (!existing) {
+        mergedTasks.set(task.id, task);
+        return;
+      }
+      mergedTasks.set(task.id, {
+        ...existing,
+        ...task,
+        recentRuns:
+          task.recentRuns && task.recentRuns.length > 0
+            ? task.recentRuns
+            : existing.recentRuns,
+      });
+    });
+  };
+
+  mergeTasks(await fetchSupabaseScheduledTasks());
+  mergeTasks(await fetchCoolifyScheduledTasks());
 
   const rawJson = process.env.SCHEDULED_TASKS_JSON;
   if (rawJson) {
     try {
       const parsed = JSON.parse(rawJson);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        mergeTasks(parsed);
+      }
     } catch (error) {
       console.warn(
         "[ScheduledTasks] Failed to parse SCHEDULED_TASKS_JSON",
@@ -413,7 +429,9 @@ async function loadExternalTasks(): Promise<Array<
       const response = await fetch(remoteUrl, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data)) return data;
+        if (Array.isArray(data)) {
+          mergeTasks(data);
+        }
       } else {
         console.warn(
           "[ScheduledTasks] SCHEDULED_TASKS_URL returned non-200",
@@ -432,27 +450,30 @@ async function loadExternalTasks(): Promise<Array<
     process.env.SCHEDULED_TASKS_ALLOW_FILE === "1" ||
     process.env.NODE_ENV !== "production";
 
-  if (!allowFile) {
-    return null;
-  }
-
-  try {
-    const filePath = path.join(process.cwd(), "data", "scheduled_tasks.json");
-    if (fs.existsSync(filePath)) {
-      const fileContents = fs.readFileSync(filePath, "utf8");
-      const parsed = JSON.parse(fileContents);
-      if (Array.isArray(parsed)) return parsed;
+  if (allowFile) {
+    try {
+      const filePath = path.join(process.cwd(), "data", "scheduled_tasks.json");
+      if (fs.existsSync(filePath)) {
+        const fileContents = fs.readFileSync(filePath, "utf8");
+        const parsed = JSON.parse(fileContents);
+        if (Array.isArray(parsed)) {
+          mergeTasks(parsed);
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "[ScheduledTasks] Failed to read scheduled_tasks.json",
+        error,
+      );
     }
-  } catch (error) {
-    console.warn("[ScheduledTasks] Failed to read scheduled_tasks.json", error);
   }
 
-  return null;
+  return Array.from(mergedTasks.values());
 }
 
 export async function GET() {
   const external = await loadExternalTasks();
-  const tasks = normalizeTasks(external ?? []);
+  const tasks = normalizeTasks(external);
   return NextResponse.json(
     { tasks },
     {

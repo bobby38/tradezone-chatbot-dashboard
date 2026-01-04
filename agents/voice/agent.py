@@ -2353,6 +2353,23 @@ async def entrypoint(ctx: JobContext):
     def on_conversation_item(event):
         """Capture agent's response and log to dashboard"""
         nonlocal conversation_buffer, participant_identity
+        if hasattr(event.item, "role") and event.item.role == "user":
+            content = ""
+            if hasattr(event.item, "content") and event.item.content:
+                content = event.item.content
+                if isinstance(content, list):
+                    content = " ".join(str(item) for item in content)
+                else:
+                    content = str(content)
+            elif hasattr(event.item, "text_content"):
+                content = event.item.text_content or ""
+            if content:
+                conversation_buffer["user_message"] = content
+                _last_user_utterance[room_name] = content
+                forced_reply = _maybe_force_reply(content)
+                if forced_reply:
+                    conversation_buffer["forced_reply_override"] = forced_reply
+            return
         # Check if this is an assistant message
         if hasattr(event.item, "role") and event.item.role == "assistant":
             if hasattr(event.item, "content") and event.item.content:
