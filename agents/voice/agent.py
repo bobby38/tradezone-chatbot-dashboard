@@ -2287,6 +2287,21 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
                     yield forced
 
                 return _forced()
+            last_assistant = _get_last_assistant_message_from_chat_ctx(chat_ctx)
+            if last_assistant:
+                last_lower = last_assistant.lower()
+                if "your name" in last_lower or "name?" in last_lower:
+
+                    async def _ask_phone():
+                        yield "Thanks! Contact number?"
+
+                    return _ask_phone()
+                if "contact number" in last_lower or "phone" in last_lower:
+
+                    async def _ask_email():
+                        yield "Got it. Email address?"
+
+                    return _ask_email()
             tradeup = _extract_tradeup_devices(last_user)
             if not tradeup:
                 tradein_device = _extract_tradein_device(last_user)
@@ -2296,7 +2311,6 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
                         yield _build_tradein_price_reply(tradein_device)
 
                     return _single()
-                last_assistant = _get_last_assistant_message_from_chat_ctx(chat_ctx)
                 if last_assistant:
                     last_lower = last_assistant.lower()
                     if last_lower.startswith("which ") and "?" in last_lower:
