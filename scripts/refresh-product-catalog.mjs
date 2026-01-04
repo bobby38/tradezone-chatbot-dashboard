@@ -185,29 +185,54 @@ function trimProduct(product, enrichment = null) {
 async function writeCatalog(products) {
   const trimmed = [];
 
+  // Load existing enrichments to avoid re-enriching
+  let existingEnrichments = new Map();
+  try {
+    if (fs.existsSync(OUTPUT_PATH)) {
+      const existing = JSON.parse(await fsp.readFile(OUTPUT_PATH, "utf8"));
+      existing.forEach((p) => {
+        if (p.enrichment) {
+          existingEnrichments.set(p.id, p.enrichment);
+        }
+      });
+      console.log(
+        `[Catalog] Loaded ${existingEnrichments.size} existing enrichments`,
+      );
+    }
+  } catch (err) {
+    console.warn("[Catalog] Could not load existing enrichments:", err.message);
+  }
+
   if (ENABLE_ENRICHMENT && PERPLEXITY_API_KEY) {
     console.log("[Catalog] Enriching products with Perplexity (games only)...");
-    let enrichedCount = 0;
+    let reusedCount = 0;
+    let newEnrichments = 0;
 
     for (const product of products) {
-      const enrichment = await enrichProductWithPerplexity(product);
-      trimmed.push(trimProduct(product, enrichment));
+      // Reuse existing enrichment if available
+      const existingEnrichment = existingEnrichments.get(product.id);
 
-      if (enrichment) {
-        enrichedCount++;
-        if (enrichedCount % 10 === 0) {
-          console.log(`[Catalog] Enriched ${enrichedCount} products...`);
+      if (existingEnrichment) {
+        trimmed.push(trimProduct(product, existingEnrichment));
+        reusedCount++;
+      } else {
+        const enrichment = await enrichProductWithPerplexity(product);
+        trimmed.push(trimProduct(product, enrichment));
+
+        if (enrichment) {
+          newEnrichments++;
+          if (newEnrichments % 10 === 0) {
+            console.log(`[Catalog] Enriched ${newEnrichments} new products...`);
+          }
+
+          // Rate limit: 10 requests per minute for free tier
+          await new Promise((resolve) => setTimeout(resolve, 6000));
         }
-      }
-
-      // Rate limit: 10 requests per minute for free tier
-      if (enrichment) {
-        await new Promise((resolve) => setTimeout(resolve, 6000));
       }
     }
 
     console.log(
-      `[Catalog] ✅ Enriched ${enrichedCount}/${products.length} products`,
+      `[Catalog] ✅ Reused: ${reusedCount}, New: ${newEnrichments}, Total enriched: ${reusedCount + newEnrichments}/${products.length}`,
     );
   } else {
     console.log(
