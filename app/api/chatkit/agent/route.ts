@@ -6169,7 +6169,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     try {
       // Enhanced Graphiti memory with user tracking and entity extraction
       await addGraphitiMemoryTurn(sessionId, message, finalResponse, {
-        userId: userId || undefined,
+        userId: sessionId,
         clientIp: clientIp || undefined,
       });
     } catch (memoryError) {
