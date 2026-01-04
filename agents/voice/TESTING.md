@@ -11,14 +11,26 @@ cd agents/voice
 pip install -r requirements-test.txt
 ```
 
+These tests call the OpenAI API via the LiveKit OpenAI plugin. Set your API key:
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
 ## Running Tests
 
 ```bash
 # Run all LiveKit framework tests
 pytest test_livekit_agent.py -v
 
+# Run voice quality tests (short replies, $ currency, filters)
+pytest test_livekit_voice_quality.py -v
+
 # Run specific test
 pytest test_livekit_agent.py::test_greeting -v
+
+# Run a single voice quality test
+pytest test_livekit_voice_quality.py::test_voice_currency_format_uses_dollar_sign -v
 
 # Run with verbose output
 LIVEKIT_EVALS_VERBOSE=1 pytest test_livekit_agent.py -s

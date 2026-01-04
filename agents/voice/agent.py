@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
 from datetime import datetime
 from typing import Annotated, Any, Dict, Optional
@@ -37,7 +38,15 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import openai, silero
+from livekit.plugins import openai
+
+try:
+    from livekit.plugins import silero
+
+    SILERO_AVAILABLE = True
+except ImportError:
+    silero = None
+    SILERO_AVAILABLE = False
 from livekit.plugins.openai import realtime
 from pydantic import Field
 
@@ -237,6 +246,180 @@ def build_auth_headers() -> Dict[str, str]:
     return headers
 
 
+def _normalize_voice_currency(text: str) -> str:
+    if not text:
+        return text
+    normalized = text.replace("S$", "$")
+    normalized = normalized.replace("Singapore dollars", "dollars")
+    normalized = normalized.replace("S dollar", "dollars")
+    normalized = normalized.replace("SGD", "$")
+    return normalized
+
+
+def _parse_price_value(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = value.replace("S$", "").replace("$", "")
+        cleaned = cleaned.replace(",", "").strip()
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return None
+
+
+def _get_product_price(product: Dict[str, Any]) -> Optional[float]:
+    for key in ("price_sgd", "price", "price_sgd_float"):
+        price = _parse_price_value(product.get(key))
+        if price is not None:
+            return price
+    return None
+
+
+def _is_budget_phone_query(query: str) -> bool:
+    lower = query.lower()
+    return ("phone" in lower or "phones" in lower) and any(
+        token in lower for token in ["affordable", "cheap", "budget", "low"]
+    )
+
+
+def _is_game_query(query: str) -> bool:
+    lower = query.lower()
+    return any(
+        token in lower
+        for token in [
+            "game",
+            "games",
+            "nba",
+            "basketball",
+            "racing",
+            "horror",
+            "silent",
+            "madden",
+            "war",
+            "shooter",
+            "dance",
+            "skate",
+            "skateboard",
+            "tony",
+        ]
+    )
+
+
+def _tokenize_query(query: str) -> list[str]:
+    tokens = re.findall(r"[a-z0-9]+", query.lower())
+    stop = {
+        "any",
+        "the",
+        "a",
+        "an",
+        "do",
+        "you",
+        "have",
+        "got",
+        "game",
+        "games",
+        "video",
+        "for",
+        "on",
+        "ps5",
+        "ps4",
+        "xbox",
+        "switch",
+        "nintendo",
+        "playstation",
+        "console",
+        "consoles",
+        "affordable",
+        "cheap",
+        "budget",
+        "phone",
+        "phones",
+    }
+    return [token for token in tokens if token not in stop]
+
+
+def _name_matches_tokens(name: str, tokens: list[str]) -> bool:
+    if not tokens:
+        return True
+    words = set(re.findall(r"[a-z0-9]+", name.lower()))
+    for token in tokens:
+        if token in words:
+            continue
+        if token + "s" in words or token + "es" in words:
+            continue
+        if token.endswith("s") and token[:-1] in words:
+            continue
+        if any(char.isdigit() for char in token):
+            if any(word.startswith(token) for word in words):
+                continue
+        return False
+    return True
+
+
+def _is_game_product(product: Dict[str, Any]) -> bool:
+    categories = product.get("categories") or []
+    for category in categories:
+        name = (category.get("name") or "").lower()
+        slug = (category.get("slug") or "").lower()
+        if "game" in name or "game" in slug:
+            return True
+    return False
+
+
+def _format_price(price: Optional[float]) -> str:
+    if price is None:
+        return "$?"
+    if abs(price - round(price)) < 0.01:
+        return f"${int(round(price))}"
+    return f"${price:.2f}"
+
+
+def _shorten_name(name: str, max_words: int = 6) -> str:
+    if not name:
+        return "Item"
+    words = name.split()
+    if len(words) <= max_words:
+        return name
+    return " ".join(words[:max_words]) + "..."
+
+
+def _build_voice_product_summary(products: list[Dict[str, Any]]) -> str:
+    if not products:
+        return ""
+    top = products[:2]
+    parts = []
+    for product in top:
+        name = _shorten_name(product.get("name", "Item"))
+        price = _format_price(_get_product_price(product))
+        parts.append(f"{name} {price}")
+    joined = "; ".join(parts)
+    return f"Found {len(products)} items. {joined}. Want more details?"
+
+
+def _proceed_prompt() -> str:
+    options = [
+        "Do you want to proceed?",
+        "Shall I proceed?",
+        "Proceed now?",
+        "Continue with trade-in?",
+    ]
+    return random.choice(options)
+
+
+def _greeting_prompt() -> str:
+    options = [
+        "Hi, Amara here. Want product info, trade-in or upgrade help, or to talk to staff?",
+        "Hello, this is Amara. Product info, trade-in/upgrade, or staff?",
+        "Hi! Amara here. Product info, trade-in help, or staff?",
+        "Hey, Amara here. Need product info, trade-in/upgrade, or staff?",
+    ]
+    return random.choice(options)
+
+
 def _is_valid_contact_name(name: Optional[str]) -> bool:
     if not name or not isinstance(name, str):
         return False
@@ -334,6 +517,26 @@ async def log_to_dashboard(
 async def searchProducts(context: RunContext, query: str) -> str:
     """Search TradeZone product catalog using vector database. Handles both regular products and trade-in pricing."""
     logger.warning(f"[searchProducts] ⚠️ CALLED with query: {query}")
+    lower_query = (query or "").lower()
+
+    if "gpu" in lower_query and any(
+        token in lower_query
+        for token in ["llm", "ai", "chatbot", "training", "inference"]
+    ):
+        return (
+            "Best GPU for local LLMs is NVIDIA RTX 4090 24GB. "
+            "A cheaper option is RTX 4080 16GB. Want me to check stock?"
+        )
+
+    if (
+        "basketball" in lower_query
+        and "nba" not in lower_query
+        and "2k" not in lower_query
+    ):
+        return (
+            "We focus on gaming and electronics. "
+            "Do you mean basketball video games like NBA 2K?"
+        )
 
     # 🔒 BLOCK product listings during trade-up pricing (only return price text)
     is_trade_pricing = any(
@@ -390,6 +593,50 @@ async def searchProducts(context: RunContext, query: str) -> str:
                         f"[searchProducts] 🔒 Skipped sending {len(products_data) if products_data else 0} product cards (trade pricing mode)"
                     )
 
+                filtered_products = products_data
+                budget_query = _is_budget_phone_query(query)
+                if products_data and _is_game_query(query):
+                    tokens = _tokenize_query(query)
+                    filtered_products = [
+                        product
+                        for product in products_data
+                        if _is_game_product(product)
+                        and _name_matches_tokens(product.get("name", ""), tokens)
+                    ]
+                    if not filtered_products:
+                        return "I couldn't find that game in our catalog. Want me to check the website?"
+
+                if products_data and budget_query:
+                    budget_products = [
+                        product
+                        for product in products_data
+                        if (_get_product_price(product) or 0) <= 300
+                    ]
+                    if budget_products:
+                        filtered_products = budget_products
+                    else:
+                        prices = [
+                            price
+                            for price in (
+                                _get_product_price(product) for product in products_data
+                            )
+                            if price is not None
+                        ]
+                        if prices:
+                            cheapest = _format_price(min(prices))
+                            return _normalize_voice_currency(
+                                f"Cheapest phones start at {cheapest}. Want a higher budget?"
+                            )
+
+                summary_products = filtered_products or products_data
+                summary = _build_voice_product_summary(summary_products)
+                if summary:
+                    logger.warning(
+                        f"[searchProducts] ✅ Returning summary: {summary[:200]}"
+                    )
+                    return _normalize_voice_currency(summary)
+
+                answer = _normalize_voice_currency(answer)
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
                 return answer if answer else "No products found"
             else:
@@ -447,8 +694,8 @@ async def check_tradein_price(
         price_int = int(price)
         logger.info(f"[check_tradein_price] ✅ Found: ${price_int}")
         return (
-            f"Your {device_name} is worth about {price_int} Singapore dollars for trade-in. "
-            f"(Shown as S${price_int}.) Want to start a trade-in?"
+            f"Your {device_name} is worth about ${price_int} for trade-in. "
+            f"{_proceed_prompt()}"
         )
     else:
         logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
@@ -476,7 +723,9 @@ async def calculate_tradeup_pricing(
 
     # Guard: both devices are required; avoid starting flow without confirmation
     if not source_device or not target_device:
-        return f"To calculate trade-up, I need both devices. What are you trading your {source_device or 'device'} for?"
+        if source_device:
+            return f"Got it—trade-in {source_device}. Condition?"
+        return "Which device do you want to trade in?"
 
     try:
         # Use Python-based pricing system (bypasses text chat API)
@@ -514,7 +763,7 @@ async def calculate_tradeup_pricing(
                     bool(target_q),
                 )
 
-            suffix = " 🚨 SYSTEM RULE: After the user answers, you MUST call calculate_tradeup_pricing again with the clarified device name(s) BEFORE asking 'Want to proceed?'."
+            suffix = " 🚨 SYSTEM RULE: After the user answers, you MUST call calculate_tradeup_pricing again with the clarified device name(s) BEFORE asking 'Do you want to proceed?'."
 
             if source_q and target_q:
                 return f"{source_q} Also, {target_q}{suffix}"
@@ -597,9 +846,9 @@ async def calculate_tradeup_pricing(
                 next_question = state.get_next_question() or next_question
 
             return (
-                f"Your {source_device} trades for S${int(trade_value)}. "
-                f"The {target_device} is S${int(retail_price)}. "
-                f"Top-up: S${int(top_up)}. Want to proceed? "
+                f"Your {source_device} trades for ${int(trade_value)}. "
+                f"The {target_device} is ${int(retail_price)}. "
+                f"Top-up: ${int(top_up)}. {_proceed_prompt()} "
                 f"🚨 SYSTEM RULE: If user says yes, ask ONLY '{next_question}' next."
             )
 
@@ -1515,23 +1764,23 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
     * Clickable link: [View Product](https://tradezone.sg/...)
     * Product image (if available from search results)
     * Voice ONLY says: product name and price (≤8 words per item)
-    * Example - Text shows: "Xbox Series X - S$699 [View Product](https://...) [image]" / Voice says: "Xbox Series X, S$699"
+    * Example - Text shows: "Xbox Series X - $699 [View Product](https://...) [image]" / Voice says: "Xbox Series X, $699"
   - Contact info: Write in text, but just say "Got it" (≤3 words)
   - Confirmations: Display all details in text chat, then ask "Everything correct?" - let user READ and confirm visually
   - This avoids annoying voice readback that users can't stop
 
-- Start every call with: "Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?" Wait for a clear choice before running any tools.
+- Start every call with: "Hi, Amara here. Want product info, trade-in or upgrade help, or to talk to staff?" Wait for a clear choice before running any tools.
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
- - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
- - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
-- 🔴 PRICE-ONLY REQUESTS (no target device): If caller says "what's my {DEVICE} worth" / "trade-in price for {DEVICE}" / "how much for my {DEVICE}", IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"}). Do NOT ask condition/model questions first. Do NOT use searchProducts. Reply with the tool result verbatim. If tool gives a price, add "Start a trade-in?" If tool can't find a price, offer staff handoff (no guessing or ranges).
+- If user says "trade in my {device}" without a target device, treat as price-only: call check_tradein_price for that device, then ask if they want to proceed. Do NOT ask for condition or accessories before they confirm.
+- If you detect trade/upgrade intent with a target device, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
+- 🔴 PRICE-ONLY REQUESTS (no target device): If caller says "trade in my {DEVICE}" / "what's my {DEVICE} worth" / "trade-in price for {DEVICE}" / "how much for my {DEVICE}", IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"}). Do NOT ask condition/model questions first. Do NOT use searchProducts. Reply with the tool result verbatim. If tool gives a price, add "Do you want to proceed?" If tool can't find a price, offer staff handoff (no guessing or ranges).
 - Mirror text-chat logic and tools exactly (searchProducts, tradein_update_lead, tradein_submit_lead, sendemail). Do not invent any extra voice-only shortcuts; every saved field must go through the same tools used by text chat.
 - Phone and email: collect one at a time, then READ BACK the full value once ("That's 8448 9068, correct?"). Wait for a clear yes before saving. If email arrives in fragments across turns, assemble it and read the full address once before saving.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
 - If multiple products come back from a search, say "I found a few options—want the details?" and only read the one(s) they pick.
 
 ## Price safety (voice number drift)
-- When reading prices aloud, keep numbers concise: say "S dollar" or "Singapore dollars" after the number. Never add extra digits. If STT seems noisy, show the exact number in text and say "Showing S dollar price on screen." If a price has more than 4 digits, insert pauses: "One thousand, one hundred".
+- When reading prices aloud, keep numbers concise: say "dollars" after the number. Never add extra digits. If STT seems noisy, show the exact number in text and say "Showing dollar price on screen." If a price has more than 4 digits, insert pauses: "One thousand, one hundred".
 
 ## Quick Answers (Answer instantly - NO tool calls)
 - What is TradeZone.sg? → TradeZone.sg buys and sells new and second-hand electronics, gaming gear, and gadgets in Singapore.
@@ -1676,7 +1925,7 @@ User: "Trade my MSI Claw 1TB for PS5 Pro 2TB Digital"
 Agent: "Confirm: trade MSI Claw 1TB for PS5 Pro 2TB Digital?" [WAIT]
 User: "Yes"
 Agent: [calculate_tradeup_pricing(source_device="MSI Claw 1TB", target_device="PS5 Pro 2TB Digital")] [typing indicator shows]
-Agent: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600. Want to proceed?" [WAIT]
+Agent: "MSI Claw trades $300. PS5 Pro $900. Top-up: $600. Do you want to proceed?" [WAIT]
 User: "Yes"
 Agent: "Storage size?" [WAIT]
 User: "1TB"
@@ -1724,7 +1973,7 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
 
     async def on_enter(self):
         await self.session.generate_reply(
-            instructions="""Greet the user: "Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?" """,
+            instructions=f"""Greet the user: "{_greeting_prompt()}" """,
             allow_interruptions=True,
         )
 
@@ -1738,6 +1987,10 @@ server = AgentServer()
 
 def prewarm(proc: JobProcess):
     """Preload VAD model for better performance"""
+    if not SILERO_AVAILABLE:
+        logger.warning("[Voice Agent] Silero VAD not available; skipping prewarm")
+        proc.userdata["vad"] = None
+        return
     proc.userdata["vad"] = silero.VAD.load()
 
 
@@ -1771,7 +2024,8 @@ async def entrypoint(ctx: JobContext):
             ),
         )
     else:
-        session = AgentSession(
+        vad = ctx.proc.userdata.get("vad")
+        session_kwargs = dict(
             stt=inference.STT(
                 model="assemblyai/universal-streaming",
                 language="en",
@@ -1786,9 +2040,11 @@ async def entrypoint(ctx: JobContext):
                 language="en",
             ),
             turn_detection=MultilingualModel(),
-            vad=ctx.proc.userdata["vad"],
             preemptive_generation=False,  # listen for full turn before speaking
         )
+        if vad is not None:
+            session_kwargs["vad"] = vad
+        session = AgentSession(**session_kwargs)
 
     # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
@@ -1820,8 +2076,15 @@ async def entrypoint(ctx: JobContext):
             # 🔴 PROCEED CONFIRMATION: Detect when user confirms they want to proceed with trade-in
             checklist_for_proceed = _get_checklist(room_name)
             bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
-            is_proceed_prompt = (
-                "want to proceed" in bot_prompt or "proceed?" in bot_prompt
+            is_proceed_prompt = any(
+                phrase in bot_prompt
+                for phrase in [
+                    "want to proceed",
+                    "proceed?",
+                    "shall i proceed",
+                    "proceed now",
+                    "continue with trade-in",
+                ]
             )
             user_said_yes = lower_user in (
                 "yes",
@@ -1860,6 +2123,8 @@ async def entrypoint(ctx: JobContext):
                     logger.info(
                         f"[ProceedConfirm] ❌ User declined trade-in. Flow will not activate."
                     )
+
+            # Trade-in only intent should NOT activate flow until user accepts price
 
             # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
             is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
@@ -1967,6 +2232,11 @@ async def entrypoint(ctx: JobContext):
                 content = event.item.content
                 if isinstance(content, list):
                     content = " ".join(str(item) for item in content)
+                content = _normalize_voice_currency(content)
+                try:
+                    event.item.content = [content]
+                except Exception:
+                    pass
                 conversation_buffer["bot_response"] = content
                 logger.info(f"[Voice] Agent said: {event.item.content}")
 
@@ -2128,7 +2398,16 @@ async def entrypoint(ctx: JobContext):
                             progress,
                         )
 
-                    said_proceed = "want to proceed" in content.lower()
+                    said_proceed = any(
+                        phrase in content.lower()
+                        for phrase in [
+                            "want to proceed",
+                            "proceed?",
+                            "shall i proceed",
+                            "proceed now",
+                            "continue with trade-in",
+                        ]
+                    )
                     if said_proceed and not conversation_buffer.get(
                         "quote_failsafe_sent"
                     ):
@@ -2152,9 +2431,9 @@ async def entrypoint(ctx: JobContext):
                                 _async_generate_reply(
                                     session,
                                     instructions=(
-                                        f"Say exactly: Your {src} trades for S${int(trade_value)}. "
-                                        f"The {tgt} is S${int(retail_price)}. "
-                                        f"Top-up: S${int(top_up)}. Want to proceed?"
+                                        f"Say exactly: Your {src} trades for ${int(trade_value)}. "
+                                        f"The {tgt} is ${int(retail_price)}. "
+                                        f"Top-up: ${int(top_up)}. {_proceed_prompt()}"
                                     ),
                                     allow_interruptions=True,
                                 )

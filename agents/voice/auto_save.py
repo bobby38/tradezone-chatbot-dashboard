@@ -174,6 +174,10 @@ def extract_data_from_message(
         "initial_quote_given", False
     )
 
+    # Do not collect checklist details until user accepts the quote
+    if not is_trade_in_active:
+        return extracted
+
     if is_trade_in_active and (
         "brand" not in checklist_state.collected_data
         or "model" not in checklist_state.collected_data

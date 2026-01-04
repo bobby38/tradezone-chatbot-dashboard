@@ -1,5 +1,11 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Planned Phase — Weekly Trend Pulse & Content (Backlog)
+- Add a weekly “market pulse” that summarizes electronics/games trends, ties to current catalog, and outputs short advisory + draft content.
+- Scope: internal report first (not public). Later: blog outline + 2–3 social post drafts.
+- Inputs: catalog changes, search demand, stock status, price shifts, and trusted release/news sources.
+- Guardrails: cite sources, never promote out‑of‑stock items, keep SG context.
+
 ## Change Log — Jan 3, 2026 (Trade-In Flow Structure & Formatting)
 
 ### Trade-In Reply Formatting (Jan 3, 2026) ✅
