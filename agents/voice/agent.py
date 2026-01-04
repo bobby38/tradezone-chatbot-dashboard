@@ -419,10 +419,10 @@ def _proceed_prompt() -> str:
 
 def _greeting_prompt() -> str:
     options = [
-        "Hi, I'm Amara—electronics, gaming, trade-ins, or staff support?",
-        "Hello, Amara here. Gaming, electronics, trade-ins, or staff support?",
-        "Hi! Amara here. Need electronics, gaming, trade-ins, or staff support?",
-        "Hey, Amara here—gaming gear, electronics, trade-ins, or staff support?",
+        "Hi, Amara here. Electronics, gaming, trade-ins, or support?",
+        "Hello—Amara here. Need electronics, gaming, trade-ins, or support?",
+        "Hi! Amara here. Product info, trade-ins, or support?",
+        "Hey, Amara here. Gaming gear, electronics, trade-ins, or support?",
     ]
     return random.choice(options)
 
@@ -494,10 +494,92 @@ def _build_tradein_price_reply(device: str) -> str:
     )
 
 
+def _build_tradeup_price_reply(
+    source_device: str, target_device: str, session_id: Optional[str] = None
+) -> str:
+    result = detect_and_fix_trade_up_prices(source_device, target_device)
+    if not result:
+        return (
+            f"Sorry, I couldn't find pricing for {source_device} or {target_device}. "
+            "Want staff support to check?"
+        )
+
+    if result.get("needs_clarification"):
+        source_q = result.get("source_question")
+        target_q = result.get("target_question")
+        if session_id:
+            _tradeup_context[session_id] = {
+                "source_device": source_device,
+                "target_device": target_device,
+                "pending_clarification": True,
+                "needs_source": bool(source_q),
+                "needs_target": bool(target_q),
+                "pending_confirmation": False,
+            }
+        if source_q and target_q:
+            return f"{source_q} Also, {target_q}"
+        if source_q:
+            return str(source_q)
+        if target_q:
+            return str(target_q)
+
+    trade_value = result.get("trade_value")
+    retail_price = result.get("retail_price")
+    top_up = result.get("top_up")
+    if trade_value and retail_price and top_up:
+        if session_id:
+            _tradeup_context[session_id] = {
+                "source_device": source_device,
+                "target_device": target_device,
+                "trade_value": trade_value,
+                "retail_price": retail_price,
+                "top_up": top_up,
+                "pending_clarification": False,
+                "pending_confirmation": False,
+            }
+            state = _get_checklist(session_id)
+            state.mark_trade_up()
+            state.collected_data["source_device_name"] = source_device
+            state.collected_data["target_device_name"] = target_device
+            state.collected_data["source_price_quoted"] = trade_value
+            state.collected_data["target_price_quoted"] = retail_price
+            state.collected_data["top_up_amount"] = top_up
+            inferred_brand = _infer_brand_from_device_name(source_device)
+            if inferred_brand:
+                state.collected_data["brand"] = inferred_brand
+            state.collected_data["model"] = source_device
+            lower_source = (source_device or "").lower()
+            lower_target = (target_device or "").lower()
+            if "switch" in lower_source or "switch" in lower_target:
+                state.mark_no_storage()
+
+        return (
+            f"Your {source_device} trades for ${int(trade_value)}. "
+            f"The {target_device} is ${int(retail_price)}. "
+            f"Top-up: ${int(top_up)}. {_proceed_prompt()}"
+        )
+
+    return (
+        f"Sorry, I couldn't find pricing for {source_device} or {target_device}. "
+        "Want staff support to check?"
+    )
+
+
 def _maybe_force_reply(message: str) -> Optional[str]:
     if not message:
         return None
     lower = message.lower()
+
+    if (
+        "basketball" in lower
+        and "nba" not in lower
+        and "2k" not in lower
+        and "video game" not in lower
+    ):
+        return (
+            "We focus on gaming and electronics. "
+            "Do you mean basketball video games like NBA 2K?"
+        )
 
     if any(token in lower for token in ["crypto", "bitcoin", "ethereum", "usdt"]):
         return (
@@ -535,6 +617,28 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         return _build_tradein_price_reply(device)
 
     return None
+
+
+def _get_last_user_message_from_session(session: Any) -> str:
+    ctx = getattr(session, "chat_ctx", None) or getattr(session, "_chat_ctx", None)
+    if not ctx:
+        return ""
+    messages = getattr(ctx, "messages", None) or []
+    for msg in reversed(messages):
+        role = getattr(msg, "role", None)
+        if role is None and isinstance(msg, dict):
+            role = msg.get("role")
+        if role != "user":
+            continue
+        content = getattr(msg, "content", None)
+        if content is None:
+            content = getattr(msg, "text_content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content") or msg.get("text")
+        if isinstance(content, list):
+            content = " ".join(str(item) for item in content)
+        return str(content) if content else ""
+    return ""
 
 
 def _is_valid_contact_name(name: Optional[str]) -> bool:
@@ -2369,6 +2473,18 @@ async def entrypoint(ctx: JobContext):
                 forced_reply = _maybe_force_reply(content)
                 if forced_reply:
                     conversation_buffer["forced_reply_override"] = forced_reply
+                tradeup = _extract_tradeup_devices(content)
+                if tradeup:
+                    source_device, target_device = tradeup
+                    conversation_buffer["pending_tradeup"] = {
+                        "source": source_device,
+                        "target": target_device,
+                    }
+                    _tradeup_context[room_name] = {
+                        "source_device": source_device,
+                        "target_device": target_device,
+                        "pending_confirmation": True,
+                    }
             return
         # Check if this is an assistant message
         if hasattr(event.item, "role") and event.item.role == "assistant":
@@ -2377,19 +2493,52 @@ async def entrypoint(ctx: JobContext):
                 content = event.item.content
                 if isinstance(content, list):
                     content = " ".join(str(item) for item in content)
+                last_user = conversation_buffer.get(
+                    "user_message"
+                ) or _last_user_utterance.get(room_name)
+                if not last_user:
+                    last_user = _get_last_user_message_from_session(session)
+                if last_user:
+                    conversation_buffer["user_message"] = last_user
+                    _last_user_utterance[room_name] = last_user
+                    last_user_lower = last_user.lower()
+                    if not conversation_buffer.get("forced_reply_override"):
+                        forced_reply = _maybe_force_reply(last_user)
+                        if forced_reply:
+                            conversation_buffer["forced_reply_override"] = forced_reply
+                    pending_tradeup = conversation_buffer.get("pending_tradeup") or {}
+                    tradeup_ctx = _tradeup_context.get(room_name) or {}
+                    if (
+                        pending_tradeup
+                        and tradeup_ctx.get("pending_confirmation")
+                        and last_user_lower
+                        in {"yes", "yep", "yeah", "sure", "ok", "okay"}
+                    ):
+                        forced_tradeup = _build_tradeup_price_reply(
+                            pending_tradeup.get("source", ""),
+                            pending_tradeup.get("target", ""),
+                            room_name,
+                        )
+                        if forced_tradeup:
+                            conversation_buffer["forced_reply_override"] = (
+                                forced_tradeup
+                            )
+                            tradeup_ctx["pending_confirmation"] = False
+                            _tradeup_context[room_name] = tradeup_ctx
                 forced_reply = conversation_buffer.get("forced_reply_override")
                 if forced_reply:
                     content = forced_reply
                     conversation_buffer["forced_reply_override"] = None
                 content = _normalize_voice_currency(content)
-                last_user = (_last_user_utterance.get(room_name) or "").lower()
-                if "basketball" in last_user and "nba" not in last_user:
+                last_user_lower = (last_user or "").lower()
+                if "basketball" in last_user_lower and "nba" not in last_user_lower:
                     content = (
                         "We focus on gaming and electronics. "
                         "Do you mean basketball video games like NBA 2K?"
                     )
-                if "gpu" in last_user and any(
-                    token in last_user for token in ["llm", "ai", "chatbot", "training"]
+                if "gpu" in last_user_lower and any(
+                    token in last_user_lower
+                    for token in ["llm", "ai", "chatbot", "training"]
                 ):
                     if not any(
                         token in content.lower()
@@ -2399,6 +2548,14 @@ async def entrypoint(ctx: JobContext):
                             "For local LLMs, NVIDIA RTX 4090 24GB is best. "
                             "RTX 4080 is a cheaper option. Want me to check stock?"
                         )
+                if (
+                    ("couldn't find" in content.lower())
+                    or ("could not find" in content.lower())
+                ) and "what do you want to do next" not in content.lower():
+                    content = content.rstrip()
+                    if not content.endswith("?"):
+                        content = content.rstrip(".") + "."
+                    content = f"{content} What do you want to do next?"
                 try:
                     event.item.content = [content]
                     if hasattr(event.item, "text_content"):

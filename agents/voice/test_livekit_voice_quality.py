@@ -297,4 +297,10 @@ async def test_voice_tradeup_ps4_to_ps5():
         content = _message_text(msg).lower()
         assert "ps4" in content
         assert "ps5" in content or "playstation" in content
-        assert "$" in content or "top-up" in content or "top up" in content
+        if "$" in content or "top-up" in content or "top up" in content:
+            return
+        result2 = await session.run(user_input="yes")
+        _skip_tool_events(result2)
+        msg2 = result2.expect.next_event().is_message(role="assistant")
+        content2 = _message_text(msg2).lower()
+        assert "$" in content2 or "top-up" in content2 or "top up" in content2
