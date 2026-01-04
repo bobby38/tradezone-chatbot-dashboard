@@ -177,6 +177,38 @@ type SupportFlowState = {
 const SUPPORT_FLOW_TTL_MS = 30 * 60 * 1000;
 const supportFlowState = new Map<string, SupportFlowState>();
 
+type SupportOfferState = {
+  reason: string;
+  createdAt: number;
+  lastUpdatedAt: number;
+};
+
+const SUPPORT_OFFER_TTL_MS = 15 * 60 * 1000;
+const supportOfferState = new Map<string, SupportOfferState>();
+
+function setSupportOfferState(sessionId: string, reason: string) {
+  const now = Date.now();
+  supportOfferState.set(sessionId, {
+    reason,
+    createdAt: now,
+    lastUpdatedAt: now,
+  });
+}
+
+function getSupportOfferState(sessionId: string): SupportOfferState | null {
+  const existing = supportOfferState.get(sessionId);
+  if (!existing) return null;
+  if (Date.now() - existing.lastUpdatedAt > SUPPORT_OFFER_TTL_MS) {
+    supportOfferState.delete(sessionId);
+    return null;
+  }
+  return existing;
+}
+
+function clearSupportOfferState(sessionId: string) {
+  supportOfferState.delete(sessionId);
+}
+
 function normalizeText(input: string | null | undefined): string {
   return (input || "")
     .toLowerCase()
@@ -4070,6 +4102,24 @@ export async function POST(request: NextRequest) {
     null;
 
   try {
+    // Check if user is responding to a support offer
+    const existingSupportOffer = getSupportOfferState(sessionId);
+    if (existingSupportOffer && isAffirmativeReply(message)) {
+      // User said yes to support offer → start support flow immediately
+      clearSupportOfferState(sessionId);
+      const supportState: SupportFlowState = {
+        step: "location",
+        startedAt: Date.now(),
+        lastUpdatedAt: Date.now(),
+        kind: "general",
+        purpose: `Auto-escalation: ${existingSupportOffer.reason}`,
+      };
+      setSupportFlowState(sessionId, supportState);
+      finalResponse = "Are you in Singapore?";
+      supportFlowHandled = true;
+      assistantMessage = { content: finalResponse };
+    }
+
     const existingSupportState = getSupportFlowState(sessionId);
     const tradeIntentForSupport = detectTradeInIntent(message);
     const supportStartIntent =
@@ -4156,13 +4206,37 @@ export async function POST(request: NextRequest) {
       };
 
       if (looksLikeSupportSpam(trimmed)) {
+        // Option 1: Spam detected → refuse + send to staff + end flow
+        const emailPayload = {
+          emailType: "info_request" as const,
+          name: supportState.name || "Anonymous",
+          email: supportState.email || "no-reply@unknown.com",
+          phone: supportState.phone || "Not provided",
+          message: `[SPAM DETECTED - STAFF REVIEW NEEDED]\n\nOriginal message: ${trimmed}\n\nSupport context:\n${buildSupportEmailMessage(supportState)}`,
+        };
+
+        try {
+          await handleEmailSend(emailPayload);
+          console.log("[ChatKit] Spam support request sent to staff", {
+            sessionId,
+            message: trimmed.substring(0, 100),
+          });
+        } catch (sendError) {
+          console.error(
+            "[ChatKit] Failed to send spam support email",
+            sendError,
+          );
+        }
+
+        // Clear state and exit flow
+        clearSupportFlowState(sessionId);
+
         finalResponse =
-          "I can help with TradeZone support only. Please describe the issue (product + problem), no links.";
+          "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?";
         supportFlowHandled = true;
         assistantMessage = {
           content: finalResponse,
         };
-        setSupportFlowState(sessionId, supportState);
       } else {
         const extractedEmail = extractEmail(trimmed);
         if (extractedEmail) supportState.email = extractedEmail;
@@ -6315,6 +6389,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 success: true,
               });
               break; // Exit loop to return suggestion
+            } else {
+              // No product found + no suggestion → auto-offer support
+              setSupportOfferState(sessionId, "no_product_found");
+              finalResponse = `I couldn't find \"${rawQuery}\" in our catalog. Would you like me to connect you with our team? They can check stock or help with special orders.`;
+              await logToolRun({
+                request_id: requestId,
+                session_id: sessionId,
+                tool_name: `${functionName}:auto_offer_support`,
+                args: { query: rawQuery, reason: "no_product_found" },
+                success: true,
+              });
+              break;
             }
           }
 
