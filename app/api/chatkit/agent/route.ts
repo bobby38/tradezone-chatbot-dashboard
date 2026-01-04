@@ -149,6 +149,7 @@ let tradeGridEntriesCache: TradeGridEntry[] | null = null;
 type SupportFlowStep =
   | "location"
   | "issue"
+  | "purchase"
   | "device"
   | "name"
   | "phone"
@@ -1329,6 +1330,12 @@ function extractPurchaseTiming(input: string): string | null {
   return match ? match[0] : null;
 }
 
+function hasIssueKeywords(input: string): boolean {
+  return /\b(problem|issue|fault|broken|not\s+working|defect|damage|crack|dead|error|warranty)\b/i.test(
+    input,
+  );
+}
+
 function looksLikeSupportSpam(input: string): boolean {
   const lower = input.toLowerCase();
   const linkCount = (input.match(/https?:\/\/|www\./gi) || []).length;
@@ -1340,6 +1347,16 @@ function looksLikeSupportSpam(input: string): boolean {
     /\bmarketing\b/i,
     /\bcrypto\b/i,
     /\btelegram\b/i,
+    /\binstagram\b/i,
+    /\btiktok\b/i,
+    /\byoutube\b/i,
+    /\bfollowers\b/i,
+    /\bviews\b/i,
+    /\bsubscribers\b/i,
+    /\bpromote\b/i,
+    /\bpromotion\b/i,
+    /\badvertising\b/i,
+    /\bsocial\s+media\b/i,
   ];
   return spamPatterns.some((pattern) => pattern.test(lower));
 }
@@ -4054,6 +4071,7 @@ export async function POST(request: NextRequest) {
         /^(support|staff|help|customer support|customer service|contact)$/i.test(
           initialIssue,
         );
+      const issueIsSpecific = hasIssueKeywords(initialIssue);
       supportState = {
         step: "location",
         startedAt: Date.now(),
@@ -4062,7 +4080,8 @@ export async function POST(request: NextRequest) {
           initialIssue.length > 6 &&
           !isAffirmativeReply(initialIssue) &&
           !isNegativeReply(initialIssue) &&
-          !genericSupportOnly
+          !genericSupportOnly &&
+          issueIsSpecific
             ? initialIssue
             : undefined,
         purchaseTiming: initialIssueTiming || undefined,
@@ -4071,6 +4090,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (supportState) {
+      if (!supportState.locationConfirmed) {
+        supportState.step = "location";
+      }
       const trimmed = message.trim();
       const promptForStep = (
         step: SupportFlowStep,
@@ -4080,10 +4102,9 @@ export async function POST(request: NextRequest) {
           case "location":
             return "Are you in Singapore?";
           case "issue":
-            if (state.issue && !state.purchaseTiming) {
-              return "Roughly when did you buy it?";
-            }
-            return "What's the issue? Roughly when did you buy it?";
+            return "What's the issue?";
+          case "purchase":
+            return "Roughly when did you buy it?";
           case "device":
             return "What is it for (console, game, camera, PC, phone)? Brand if you know.";
           case "name":
@@ -4143,8 +4164,16 @@ export async function POST(request: NextRequest) {
               /\b(singapore|sg)\b/i.test(trimmed)
             ) {
               supportState.locationConfirmed = true;
-              supportState.step = "issue";
-              finalResponse = promptForStep("issue", supportState);
+              if (!supportState.issue) {
+                supportState.step = "issue";
+                finalResponse = promptForStep("issue", supportState);
+              } else if (!supportState.purchaseTiming) {
+                supportState.step = "purchase";
+                finalResponse = promptForStep("purchase", supportState);
+              } else {
+                supportState.step = "device";
+                finalResponse = promptForStep("device", supportState);
+              }
               setSupportFlowState(sessionId, supportState);
             } else {
               finalResponse = promptForStep("location", supportState);
@@ -4158,11 +4187,35 @@ export async function POST(request: NextRequest) {
               setSupportFlowState(sessionId, supportState);
               break;
             }
-            if (!supportState.issue) {
-              supportState.issue = trimmed;
-            }
             const timing = extractPurchaseTiming(trimmed);
+            const issueSpecific = hasIssueKeywords(trimmed);
+            if (issueSpecific) {
+              supportState.issue = supportState.issue || trimmed;
+            }
             if (timing) supportState.purchaseTiming = timing;
+            if (!supportState.issue) {
+              finalResponse = "What's the issue?";
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            if (!supportState.purchaseTiming) {
+              supportState.step = "purchase";
+              finalResponse = promptForStep("purchase", supportState);
+            } else {
+              supportState.step = "device";
+              finalResponse = promptForStep("device", supportState);
+            }
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "purchase": {
+            if (trimmed.length < 2) {
+              finalResponse = promptForStep("purchase", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.purchaseTiming =
+              supportState.purchaseTiming || trimmed;
             supportState.step = "device";
             finalResponse = promptForStep("device", supportState);
             setSupportFlowState(sessionId, supportState);
