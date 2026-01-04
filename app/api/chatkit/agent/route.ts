@@ -2825,9 +2825,12 @@ async function runHybridSearch(
       query,
     );
 
+  // Sports filter applied - always use this result, never fall back
+  const isSportsFilterApplied = /\[SPORTS_FILTER_APPLIED\]/i.test(vectorResult);
+
   const vectorUseful =
     vectorResult &&
-    vectorResult.trim().length >= 160 &&
+    (isSportsFilterApplied || vectorResult.trim().length >= 160) &&
     !/No product information|not found|unavailable|no results|don't have|do not have|not available|no items|no specific|were no|not listed/i.test(
       vectorResult,
     ) &&

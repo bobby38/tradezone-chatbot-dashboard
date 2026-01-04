@@ -2356,26 +2356,26 @@ export async function handleVectorSearch(
     // Step 4: Combine WooCommerce (source of truth) + Vector/Graphiti enrichment
     let finalText = "";
 
-    // CRITICAL FIX: Block ALL sports game queries with helpful message
-    // Even if products exist (like "Project CARS 3" for "car games"),
-    // we want to redirect users to our core catalog
-    if (sportFilters.length > 0) {
-      // Detect sport type for better messaging
-      const sportType = lowerQuery.match(/basketball|nba|curry|jordan/i)
+    // Smart sports filter: Trust WooCommerce/Graphiti catalog as source of truth
+    // If products found → show them (they're video games we sell like NBA 2K, FIFA, Madden)
+    // If NO products found AND sports keyword → show helpful redirect message
+    if (sportFilters.length > 0 && wooProducts.length === 0) {
+      // No products found for sports query - offer helpful redirect
+      const sportType = lowerQuery.match(/basketball|curry|jordan/i)
         ? "basketball"
         : lowerQuery.match(/skateboard|skate|tony hawk/i)
           ? "skateboarding"
-          : lowerQuery.match(/football|soccer|fifa|messi|ronaldo/i)
+          : lowerQuery.match(/football|soccer|messi|ronaldo/i)
             ? "football/soccer"
-            : lowerQuery.match(/wrestling|wwe|undertaker|cena/i)
+            : lowerQuery.match(/wrestling|cena/i)
               ? "wrestling"
               : lowerQuery.match(
-                    /\bcar\s+game|\bracing|gran turismo|forza|need\s+for\s+speed|mario\s+kart/i,
+                    /\bcar\s+game|\bracing|gran turismo|forza|need\s+for\s+speed/i,
                   )
                 ? "racing/car"
                 : "sports";
 
-      finalText = `We don't currently stock ${sportType} games, but we focus on other popular titles! Check out our console games section or let me know what else you're looking for.`;
+      finalText = `[SPORTS_FILTER_APPLIED] We don't currently stock ${sportType} games, but we focus on other popular titles! Check out our console games section or let me know what else you're looking for.`;
 
       return {
         text: finalText,
@@ -2383,7 +2383,10 @@ export async function handleVectorSearch(
         matches: [],
         wooProducts: undefined,
       };
-    } else if (wooProducts.length > 0) {
+    }
+
+    // Products found OR not a sports query - show results normally
+    if (wooProducts.length > 0) {
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
       );
