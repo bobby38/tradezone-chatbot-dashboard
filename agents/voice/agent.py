@@ -606,10 +606,16 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         return "Sorry, Singapore only."
 
     if "opening hours" in lower or "open hours" in lower or "what time" in lower:
-        return "Open daily, 12 pm to 8 pm."
+        return "Open daily, 12 to 8:30 pm at Hougang Green—team is on-site then."
     if "opening" in lower or "closing" in lower or "close" in lower:
         if "hour" in lower or "time" in lower:
-            return "Open daily, 12 pm to 8 pm."
+            return "Open daily, 12 to 8:30 pm at Hougang Green—team is on-site then."
+
+    if "refund" in lower or "return policy" in lower or "returns" in lower:
+        return (
+            "Refunds: 14-day window on unopened items, 7-day functional warranty on pre-owned. "
+            "Full policy is on tradezone dot sg slash returns hyphen policy."
+        )
 
     if "shipping" in lower or "delivery" in lower or "ship" in lower:
         if "same day" in lower or "sameday" in lower or "weekend" in lower:

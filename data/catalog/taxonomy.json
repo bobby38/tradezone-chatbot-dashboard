@@ -1,0 +1,91 @@
+{
+  "store_metadata": {
+    "source": "TradeZone.sg",
+    "purpose": "GraphRAG Taxonomy & Semantic Mapping",
+    "version": "1.1",
+    "last_updated": "2026-01-04"
+  },
+  "taxonomy_nodes": [
+    {
+      "node_id": "tax_001",
+      "platform": "Nintendo",
+      "description": "Nintendo ecosystem in Singapore. Focus on portability and family-friendly exclusives.",
+      "sub_categories": [
+        { "name": "Consoles", "aliases": ["Switch OLED", "Switch Lite", "V2"] },
+        { "name": "Brand New Games", "aliases": ["Sealed", "Latest Releases"] },
+        { "name": "Pre-Owned Games", "aliases": ["Used", "Second Hand", "Trade-in"] },
+        { "name": "Accessories", "aliases": ["Joy-Con", "Pro Controller", "Amiibo"] }
+      ]
+    },
+    {
+      "node_id": "tax_002",
+      "platform": "PlayStation",
+      "description": "High-fidelity gaming and multimedia hardware.",
+      "sub_categories": {
+        "PS5": ["Console", "Brand New Games", "Pre-Owned Games", "Accessories", "PSVR2"],
+        "PS4": ["Console", "Brand New Games", "Pre-Owned Games", "Accessories"]
+      }
+    },
+    {
+      "node_id": "tax_003",
+      "platform": "PC Related",
+      "description": "Custom builds and high-performance components.",
+      "sub_categories": {
+        "Ready To Ship": {
+          "Gaming PC": ["Gaming Mini ITX PC", "Mid-Tower", "Refurbished"],
+          "Technical_Attributes": ["Form Factor", "GPU Tier", "CPU Model", "RAM/Storage", "Liquid Cooling"]
+        },
+        "PC Parts": ["GPU", "CPU", "Motherboard", "Case", "Cooler", "PSU"],
+        "Peripherals": ["Headset", "Mechanical Keyboard", "Gaming Mouse", "Monitors"]
+      }
+    },
+    {
+      "node_id": "tax_004",
+      "platform": "Content Creator Gear",
+      "description": "Hardware for vlogging and streaming.",
+      "sub_categories": ["DJI Osmo Pocket", "Action Cameras", "Microphones", "Capture Cards"]
+    }
+  ],
+  "semantic_teams": [
+    {
+      "team_id": "team_quest",
+      "core_label": "RPG",
+      "synonyms": ["role-playing", "story-driven", "fantasy adventure", "JRPG", "dungeon crawler", "open world"],
+      "nods": ["Final Fantasy", "Persona", "Tales of", "Dragon Quest", "Elden Ring"],
+      "associated_platforms": ["tax_001", "tax_002", "tax_003"],
+      "search_intent": "Deep immersion, character progression, long playtime"
+    },
+    {
+      "team_id": "team_combat",
+      "core_label": "Shooter & Tactical",
+      "synonyms": ["FPS", "third-person shooter", "tactical ops", "squad-based", "battle royale", "hero shooter"],
+      "nods": ["Call of Duty", "Helldivers 2", "Dead Island 2", "Battlefield"],
+      "associated_platforms": ["tax_002", "tax_003"],
+      "search_intent": "Competitive, reflexes, multiplayer coordination"
+    },
+    {
+      "team_id": "team_velocity",
+      "core_label": "Racing & Sports",
+      "synonyms": ["sim-racing", "arcade racer", "athletics", "competitive sports", "football sim"],
+      "nods": ["Gran Turismo", "Mario Kart", "FC24", "NBA 2K", "F1 24"],
+      "associated_platforms": ["tax_001", "tax_002", "tax_003"],
+      "search_intent": "Speed, realism, localized competition"
+    },
+    {
+      "team_id": "team_arcade",
+      "core_label": "Platformer & Classic",
+      "synonyms": ["side-scroller", "retro", "nostalgia", "8-bit", "16-bit", "vintage gaming", "party games"],
+      "nods": ["Super Mario Wonder", "Sonic", "Kirby", "Crash Bandicoot", "NeoGeo"],
+      "associated_platforms": ["tax_001", "tax_002"],
+      "search_intent": "Pick-up-and-play, family friendly, precision jumping"
+    },
+    {
+      "team_id": "team_horror",
+      "core_label": "Survival & Horror",
+      "synonyms": ["scary", "psychological horror", "survivalist", "zombie", "thriller"],
+      "nods": ["Resident Evil", "Silent Hill", "The Last of Us", "Dead Space"],
+      "associated_platforms": ["tax_002", "tax_003"],
+      "search_intent": "Atmosphere, resource management, tension"
+    }
+  ]
+}

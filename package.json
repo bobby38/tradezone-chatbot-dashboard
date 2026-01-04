@@ -11,6 +11,7 @@
     "catalog:build": "tsx scripts/build-products-master.ts",
     "catalog:sync-graphiti": "tsx scripts/sync-graphiti-graph.ts",
     "catalog:sync-synonyms": "tsx scripts/sync-search-synonyms-to-graphiti.ts",
+    "catalog:sync-taxonomy": "tsx scripts/sync-taxonomy-to-graphiti.ts",
     "catalog:learn": "tsx scripts/run-learning-loop.ts",
     "test": "playwright test",
     "test:critical": "./tests/run-critical-tests.sh",

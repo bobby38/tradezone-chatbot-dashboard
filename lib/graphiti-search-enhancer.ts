@@ -4,6 +4,7 @@
  */
 
 import { queryGraphitiContext } from "@/lib/graphiti";
+import { getSemanticSynonymMap } from "@/lib/graphiti-taxonomy";
 
 export interface SearchEnhancement {
   originalQuery: string;
@@ -13,8 +14,10 @@ export interface SearchEnhancement {
   source: "graphiti" | "hardcoded" | "none";
 }
 
+const TAXONOMY_SYNONYMS = getSemanticSynonymMap();
+
 // Hardcoded fallback synonyms (immediate fix while Graphiti processes)
-const HARDCODED_SYNONYMS: Record<string, string> = {
+const STATIC_SYNONYMS: Record<string, string> = {
   basketball: "NBA 2K",
   football: "FIFA EA Sports FC",
   soccer: "FIFA EA Sports FC",
@@ -29,12 +32,31 @@ const HARDCODED_SYNONYMS: Record<string, string> = {
   "war game": "Call of Duty Battlefield",
   "adventure game": "Zelda Uncharted Horizon",
   rpg: "Final Fantasy Elden Ring Pokemon",
+  "role playing game": "Final Fantasy Dragon Quest Persona",
+  "role-playing game": "Final Fantasy Dragon Quest Persona",
+  "jrpg": "Persona Final Fantasy Dragon Quest",
+  "mmorpg": "Final Fantasy XIV Elder Scrolls Online",
+  "mmo": "Final Fantasy XIV Elder Scrolls Online",
+  "metroidvania": "Hollow Knight Metroid Dread Ori",
+  "roguelike": "Hades Dead Cells Slay the Spire",
+  "looter shooter": "Destiny 2 Borderlands Warframe",
+  "fps": "Call of Duty Battlefield Halo",
+  "first person shooter": "Call of Duty Battlefield Halo",
+  "first-person shooter": "Call of Duty Battlefield Halo",
+  "tps": "Gears of War The Division",
+  "third person shooter": "The Division Gears of War",
+  "third-person shooter": "The Division Gears of War",
   "cheap tablet": "Samsung Galaxy Tab A",
   "affordable phone": "Samsung Galaxy A series",
   "budget console": "PS4 Xbox Series S",
   "best handheld": "Steam Deck ROG Ally",
   "vr headset": "PlayStation VR2 Meta Quest",
   "wireless controller": "DualSense Xbox controller",
+};
+
+const HARDCODED_SYNONYMS: Record<string, string> = {
+  ...TAXONOMY_SYNONYMS,
+  ...STATIC_SYNONYMS,
 };
 
 /**

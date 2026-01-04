@@ -20,6 +20,8 @@ Answer the following straight from memory. Only use tools when the question fall
 | Shipping policy? | Flat S$5, 1-3 business days within Singapore via EasyParcel. (<https://tradezone.sg/shipping-info>) |
 | Categories offered? | Consoles, console games, PC parts, gaming accessories, mobile phones, and device trade-ins. |
 | Payment & returns? | PayNow, cards, PayPal. Returns allowed on unopened items within 14 days. (<https://tradezone.sg/returns-refunds>) |
+| Opening hours? | Daily 12:00 pm – 8:30 pm at Hougang Green. Staff are on-site during those hours for walk-ins or pickup. |
+| Refund policy link? | Full policy: <https://tradezone.sg/returns-policy>. 14-day refund on unopened items, 7-day functional warranty on pre-owned items. |
 | Store pickup? | Yes, collect at Hougang Green during opening hours. |
 | Customer support? | Email contactus@tradezone.sg, call +65 6123 4567, or use the live chat. (<https://tradezone.sg/contact>) |
 | Nintendo Switch 2 region? | Yes, we carry Singapore region Switch 2 models (official local sets with local warranty). |
