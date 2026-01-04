@@ -814,6 +814,51 @@ def _looks_like_name(value: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z][A-Za-z\\s'\\-\\.]{1,59}", text))
 
 
+def _looks_like_affirmative(value: str) -> bool:
+    if not value:
+        return False
+    lower = value.strip().lower()
+    return lower in {"yes", "yeah", "yep", "yup", "ok", "okay", "sure", "correct"}
+
+
+def _looks_like_email(value: str) -> bool:
+    if not value:
+        return False
+    return bool(re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", value))
+
+
+def _looks_like_phone(value: str) -> bool:
+    if not value:
+        return False
+    digits = re.sub(r"\\D", "", value)
+    return len(digits) >= 7
+
+
+def _chat_ctx_has_support_context(chat_ctx: Any) -> bool:
+    if not chat_ctx:
+        return False
+    items = getattr(chat_ctx, "items", None)
+    if items is None:
+        items = getattr(chat_ctx, "messages", None)
+    if not items:
+        return False
+    for msg in reversed(items):
+        role = getattr(msg, "role", None)
+        if role is None and isinstance(msg, dict):
+            role = msg.get("role")
+        content = getattr(msg, "text_content", None)
+        if content is None:
+            content = getattr(msg, "content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content") or msg.get("text")
+        if isinstance(content, list):
+            content = " ".join(str(item) for item in content)
+        text = str(content or "").lower()
+        if "warranty" in text or "staff support" in text or "support" in text:
+            return True
+    return False
+
+
 def _is_valid_contact_name(name: Optional[str]) -> bool:
     if not name or not isinstance(name, str):
         return False
@@ -2400,6 +2445,40 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
             last_assistant = _get_last_assistant_message_from_chat_ctx(chat_ctx)
             if last_assistant:
                 last_lower = last_assistant.lower()
+                if _chat_ctx_has_support_context(chat_ctx):
+                    if "in singapore" in last_lower and _looks_like_affirmative(
+                        last_user
+                    ):
+
+                        async def _ask_support_name():
+                            yield "Your name?"
+
+                        return _ask_support_name()
+                    if (
+                        "your name" in last_lower or "name?" in last_lower
+                    ) and _looks_like_name(last_user):
+
+                        async def _ask_support_phone():
+                            yield "Phone number?"
+
+                        return _ask_support_phone()
+                    if (
+                        "contact number" in last_lower
+                        or "phone" in last_lower
+                        or ("contact" in last_lower and "number" in last_lower)
+                    ) and _looks_like_phone(last_user):
+
+                        async def _ask_support_email():
+                            yield "Email address?"
+
+                        return _ask_support_email()
+                    if "email" in last_lower and _looks_like_email(last_user):
+
+                        async def _confirm_support_email():
+                            yield f"So that's {last_user.strip()}, correct?"
+
+                        return _confirm_support_email()
+
                 if (
                     "name" in last_lower
                     and "email" not in last_lower

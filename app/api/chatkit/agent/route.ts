@@ -146,6 +146,31 @@ type PriceLookupResult = {
 
 let tradeGridEntriesCache: TradeGridEntry[] | null = null;
 
+type SupportFlowStep =
+  | "location"
+  | "issue"
+  | "device"
+  | "name"
+  | "phone"
+  | "email"
+  | "confirm_email";
+
+type SupportFlowState = {
+  step: SupportFlowStep;
+  startedAt: number;
+  lastUpdatedAt: number;
+  locationConfirmed?: boolean;
+  issue?: string;
+  purchaseTiming?: string;
+  deviceDetails?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+};
+
+const SUPPORT_FLOW_TTL_MS = 30 * 60 * 1000;
+const supportFlowState = new Map<string, SupportFlowState>();
+
 function normalizeText(input: string | null | undefined): string {
   return (input || "")
     .toLowerCase()
@@ -1235,6 +1260,116 @@ function normalizeIntentQuery(query: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getSupportFlowState(sessionId: string): SupportFlowState | null {
+  const existing = supportFlowState.get(sessionId);
+  if (!existing) return null;
+  if (Date.now() - existing.lastUpdatedAt > SUPPORT_FLOW_TTL_MS) {
+    supportFlowState.delete(sessionId);
+    return null;
+  }
+  return existing;
+}
+
+function setSupportFlowState(sessionId: string, state: SupportFlowState) {
+  state.lastUpdatedAt = Date.now();
+  supportFlowState.set(sessionId, state);
+}
+
+function clearSupportFlowState(sessionId: string) {
+  supportFlowState.delete(sessionId);
+}
+
+function isAffirmativeReply(input: string): boolean {
+  const normalized = normalizeIntentQuery(input);
+  return /\b(yes|yep|yeah|yup|sure|ok|okay|correct|right|confirm)\b/i.test(
+    normalized,
+  );
+}
+
+function isNegativeReply(input: string): boolean {
+  const normalized = normalizeIntentQuery(input);
+  return /\b(no|nope|nah|not|negative|outside)\b/i.test(normalized);
+}
+
+function extractEmail(input: string): string | null {
+  const match = input.match(/([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function extractPhone(input: string): string | null {
+  const cleaned = input.replace(/[^\d+]/g, "");
+  const digits = cleaned.replace(/^\+/, "");
+  if (digits.length < 7) return null;
+  if (digits.length > 15) return null;
+  if (cleaned.startsWith("+")) return cleaned;
+  return digits;
+}
+
+function extractNameCandidate(input: string): string | null {
+  const cleaned = input
+    .replace(/([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi, "")
+    .replace(/[0-9()+-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  const match = cleaned.match(
+    /(my name is|i am|i'm)\s+([a-z][a-z\s'.-]{1,60})/i,
+  );
+  const candidate = (match?.[2] || cleaned).trim();
+  if (candidate.length < 2 || candidate.length > 60) return null;
+  return candidate;
+}
+
+function extractPurchaseTiming(input: string): string | null {
+  const timingPattern =
+    /\b(\d{4}|last\s+\w+|this\s+\w+|\d+\s*(day|week|month|year|yr|yrs|mth|mths)\s+ago|\d+\s*(day|week|month|year|yr|yrs|mth|mths)|yesterday|today|recently)\b/i;
+  const match = input.match(timingPattern);
+  return match ? match[0] : null;
+}
+
+function looksLikeSupportSpam(input: string): boolean {
+  const lower = input.toLowerCase();
+  const linkCount = (input.match(/https?:\/\/|www\./gi) || []).length;
+  if (linkCount >= 2) return true;
+  const spamPatterns = [
+    /\bseo\b/i,
+    /\bbacklink\b/i,
+    /\bguest\s+post\b/i,
+    /\bmarketing\b/i,
+    /\bcrypto\b/i,
+    /\btelegram\b/i,
+  ];
+  return spamPatterns.some((pattern) => pattern.test(lower));
+}
+
+function buildSupportEmailMessage(state: SupportFlowState): string {
+  const issue = state.issue ? state.issue.trim() : "Not provided";
+  const purchase = state.purchaseTiming
+    ? state.purchaseTiming.trim()
+    : "Not provided";
+  const device = state.deviceDetails
+    ? state.deviceDetails.trim()
+    : "Not provided";
+  return [
+    "Support request (warranty/issue check).",
+    `Issue: ${issue}`,
+    `Purchase timing: ${purchase}`,
+    `Device/brand: ${device}`,
+    "Location: Singapore",
+  ].join("\n");
+}
+
+function isExplicitSupportRequest(query: string): boolean {
+  const normalized = normalizeIntentQuery(query);
+  const supportPatterns = [
+    /\bcustomer\s+support\b/i,
+    /\b(contact|talk|speak)\s+(to|with)\s+(staff|support|agent)\b/i,
+    /\b(human|agent|representative)\b/i,
+    /\b(call|email)\s+me\b/i,
+  ];
+  return supportPatterns.some((pattern) => pattern.test(normalized));
 }
 
 function isWarrantySupportQuery(query: string): boolean {
@@ -3900,1526 +4035,1854 @@ export async function POST(request: NextRequest) {
   let tradeInPriceShared = false;
   let tradeUpPricingSummary: TradeUpPricingSummary | null = null;
   let forcedTradeInReply: string | null = null;
+  let supportFlowHandled = false;
+  let assistantMessage: { content?: string | null; tool_calls?: any[] } | null =
+    null;
 
   try {
-    // Load settings and system prompt
-    const { data: org } = await supabase
-      .from("organizations")
-      .select("settings")
-      .eq("id", DEFAULT_ORG_ID)
-      .single();
-    const settings = org?.settings?.chatkit || {};
-    // Allow override via settings, otherwise stay on Gemini 2.5 Flash
-    textModel = settings.textModel || textModel;
-    const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    const existingSupportState = getSupportFlowState(sessionId);
+    const tradeIntentForSupport = detectTradeInIntent(message);
+    const supportStartIntent =
+      !tradeIntentForSupport &&
+      (isWarrantySupportQuery(message) || isExplicitSupportRequest(message));
+    let supportState = existingSupportState;
 
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPrompt },
-      // Always include trade-in context so agent knows to use tools throughout conversation
-      { role: "system", content: TRADE_IN_SYSTEM_CONTEXT },
-      {
-        role: "system",
-        content:
-          "Skip greetings and get to the answer quickly. No 'Hi/Hello', no repeated clarifications—respond directly to the latest user ask.",
-      },
-    ];
-
-    if (mode === "voice") {
-      messages.push({
-        role: "system",
-        content:
-          "VOICE MODE: Keep replies under 12 words, one short sentence, pause for user. Do not repeat closings or long lists.",
-      });
-    } else {
-      messages.push({
-        role: "system",
-        content:
-          "Be concise: keep replies under 20 words, no filler like 'let me check'. If you need to fetch data, start with one short acknowledgment such as 'Checking price now...' then give the result. Avoid silence; respond with the result as soon as it’s ready.",
-      });
+    if (!supportState && supportStartIntent) {
+      const initialIssue = message.trim();
+      const initialIssueTiming = extractPurchaseTiming(initialIssue);
+      const genericSupportOnly =
+        /^(support|staff|help|customer support|customer service|contact)$/i.test(
+          initialIssue,
+        );
+      supportState = {
+        step: "location",
+        startedAt: Date.now(),
+        lastUpdatedAt: Date.now(),
+        issue:
+          initialIssue.length > 6 &&
+          !isAffirmativeReply(initialIssue) &&
+          !isNegativeReply(initialIssue) &&
+          !genericSupportOnly
+            ? initialIssue
+            : undefined,
+        purchaseTiming: initialIssueTiming || undefined,
+      };
+      setSupportFlowState(sessionId, supportState);
     }
 
-    let graphitiContext: Awaited<ReturnType<typeof fetchGraphitiContext>> = {
-      userSummary: "",
-      context: "",
-    };
-    try {
-      graphitiContext = await fetchGraphitiContext(sessionId);
-      if (graphitiContext.userSummary || graphitiContext.context) {
-        console.log("[ChatKit] Graphiti context loaded", {
-          sessionId,
-          hasUserSummary: Boolean(graphitiContext.userSummary),
-          hasContext: Boolean(graphitiContext.context),
-        });
-      }
-    } catch (graphitiError: any) {
-      console.warn(
-        "[ChatKit] Graphiti unavailable, continuing without memory",
-        {
-          error: graphitiError?.message || String(graphitiError),
-          statusCode: graphitiError?.statusCode,
-        },
-      );
-    }
-    const memoryHints = buildMemoryHintsFromGraphiti(graphitiContext);
-    let contextInsertIndex = 1;
-    if (graphitiContext.userSummary) {
-      messages.splice(contextInsertIndex, 0, {
-        role: "system",
-        content: `Customer summary:\n${graphitiContext.userSummary}`,
-      });
-      contextInsertIndex += 1;
-    }
-    if (graphitiContext.context) {
-      messages.splice(contextInsertIndex, 0, {
-        role: "system",
-        content: `Context from memory:\n${graphitiContext.context}`,
-      });
-      contextInsertIndex += 1;
-    }
-
-    // Truncate to last 20 messages (10 exchanges) to reduce token usage
-    const maxHistoryMessages = 20;
-    const truncatedHistory =
-      history && history.length > maxHistoryMessages
-        ? history.slice(-maxHistoryMessages)
-        : history || [];
-
-    if (history && history.length > maxHistoryMessages) {
-      console.log(
-        `[ChatKit] History truncated: ${history.length} → ${truncatedHistory.length} messages`,
-      );
-    }
-
-    if (history && history.length > 0) {
-      truncatedHistory.forEach((msg: any) => {
-        if (msg.role && msg.content) {
-          messages.push({ role: msg.role, content: msg.content });
+    if (supportState) {
+      const trimmed = message.trim();
+      const promptForStep = (
+        step: SupportFlowStep,
+        state: SupportFlowState,
+      ) => {
+        switch (step) {
+          case "location":
+            return "Are you in Singapore?";
+          case "issue":
+            if (state.issue && !state.purchaseTiming) {
+              return "Roughly when did you buy it?";
+            }
+            return "What's the issue? Roughly when did you buy it?";
+          case "device":
+            return "What is it for (console, game, camera, PC, phone)? Brand if you know.";
+          case "name":
+            return "Your name?";
+          case "phone":
+            return "Phone number?";
+          case "email":
+            return "Email address?";
+          case "confirm_email":
+            return `So that's ${state.email ?? "your email"}, correct?`;
+          default:
+            return "Can you share a bit more?";
         }
-      });
-    }
-
-    const isFirstTurn = !history || history.length === 0;
-    const userOpenedWithQuestion =
-      isFirstTurn &&
-      /\?|have\s+you|do\s+you|can\s+i|can\s+you|got\s+any|any\s+|price|how much|what'?s|need\s|looking for|recommend|suggest|trade.+for|trade.+to/i.test(
-        message,
-      );
-    if (userOpenedWithQuestion) {
-      messages.push({
-        role: "system",
-        content:
-          "Skip the canned greeting. The user already asked a question, so reply directly to it.",
-      });
-    }
-    if (image) {
-      // Do not send images to the LLM; just acknowledge receipt and keep the image for staff review
-      messages.push({
-        role: "system",
-        content:
-          "User uploaded an image. Acknowledge receipt briefly (e.g., 'Photo received'). DO NOT describe or summarize the image. The photo is stored for staff review.",
-      });
-    }
-
-    const warrantySupportIntent = isWarrantySupportQuery(message);
-    if (warrantySupportIntent) {
-      messages.push({
-        role: "system",
-        content:
-          "User wants to verify an existing warranty. Do NOT promote warranty extensions. Skip product searches and run the staff-support escalation flow: ask once if they are in Singapore, then collect name, phone, email, and the warranty issue, and call sendemail(info_request) with those details.",
-      });
-    }
-
-    const userMessage: OpenAI.Chat.ChatCompletionMessageParam = {
-      role: "user",
-      content: message,
-    };
-
-    messages.push(userMessage);
-
-    const tradeInNegated = hasTradeInNegation(message);
-    const productInfoIntentRaw = detectProductInfoIntent(message);
-    tradeInIntent = detectTradeInIntent(message);
-    tradeUpPairIntent = detectTradeUpPair(message);
-    tradeUpContext = tradeUpPairIntent;
-    tradeUpParts = parseTradeUpParts(message);
-    if (tradeUpPairIntent) {
-      tradeInIntent = true; // force trade-in tool path for trade-up phrasing
-      // Pre-set forced math slots so we can synthesize the reply later
-      forcedTradeUpMath = {
-        source: tradeUpParts?.source,
-        target: tradeUpParts?.target,
-        tradeValue: null,
-        retailPrice: null,
-        confirmed: false,
       };
 
-      // Confirm the pair once up front
-      messages.push({
-        role: "system",
-        content: `First, confirm the trade-up pair in one short question: "Confirm: trade ${normalizeProductName(
-          tradeUpParts?.source,
-        )} for ${normalizeProductName(tradeUpParts?.target)}?"
+      const nextContactStep = (state: SupportFlowState): SupportFlowStep => {
+        if (!state.name) return "name";
+        if (!state.phone) return "phone";
+        if (!state.email) return "email";
+        return "confirm_email";
+      };
+
+      if (looksLikeSupportSpam(trimmed)) {
+        finalResponse =
+          "I can help with TradeZone support only. Please describe the issue (product + problem), no links.";
+        supportFlowHandled = true;
+        assistantMessage = {
+          content: finalResponse,
+        };
+        setSupportFlowState(sessionId, supportState);
+      } else {
+        const extractedEmail = extractEmail(trimmed);
+        if (extractedEmail) supportState.email = extractedEmail;
+        const extractedPhone = extractPhone(trimmed);
+        if (extractedPhone) supportState.phone = extractedPhone;
+        if (!supportState.name) {
+          const hasNameCue = /(my name is|i am|i'm)/i.test(trimmed);
+          if (supportState.step === "name" || hasNameCue) {
+            const extractedName = extractNameCandidate(trimmed);
+            if (extractedName) supportState.name = extractedName;
+          }
+        }
+
+        switch (supportState.step) {
+          case "location": {
+            if (
+              isNegativeReply(trimmed) ||
+              /\b(malaysia|indonesia|overseas|outside|not in sg)\b/i.test(
+                trimmed,
+              )
+            ) {
+              clearSupportFlowState(sessionId);
+              finalResponse =
+                "Sorry, we only support Singapore customers. If you're in Singapore, let me know.";
+            } else if (
+              isAffirmativeReply(trimmed) ||
+              /\b(singapore|sg)\b/i.test(trimmed)
+            ) {
+              supportState.locationConfirmed = true;
+              supportState.step = "issue";
+              finalResponse = promptForStep("issue", supportState);
+              setSupportFlowState(sessionId, supportState);
+            } else {
+              finalResponse = promptForStep("location", supportState);
+              setSupportFlowState(sessionId, supportState);
+            }
+            break;
+          }
+          case "issue": {
+            if (trimmed.length < 3) {
+              finalResponse = promptForStep("issue", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            if (!supportState.issue) {
+              supportState.issue = trimmed;
+            }
+            const timing = extractPurchaseTiming(trimmed);
+            if (timing) supportState.purchaseTiming = timing;
+            supportState.step = "device";
+            finalResponse = promptForStep("device", supportState);
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "device": {
+            if (trimmed.length < 2) {
+              finalResponse = promptForStep("device", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.deviceDetails = trimmed;
+            supportState.step = nextContactStep(supportState);
+            finalResponse = promptForStep(supportState.step, supportState);
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "name": {
+            if (!supportState.name) {
+              finalResponse = promptForStep("name", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.step = nextContactStep(supportState);
+            finalResponse = promptForStep(supportState.step, supportState);
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "phone": {
+            if (!supportState.phone) {
+              finalResponse = promptForStep("phone", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.step = nextContactStep(supportState);
+            finalResponse = promptForStep(supportState.step, supportState);
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "email": {
+            if (!supportState.email) {
+              finalResponse = promptForStep("email", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.step = "confirm_email";
+            finalResponse = promptForStep("confirm_email", supportState);
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "confirm_email": {
+            if (!supportState.email) {
+              supportState.step = "email";
+              finalResponse = promptForStep("email", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            if (isAffirmativeReply(trimmed)) {
+              const emailPayload = {
+                emailType: "info_request" as const,
+                name: supportState.name || "Customer",
+                email: supportState.email,
+                phone: supportState.phone,
+                message: buildSupportEmailMessage(supportState),
+              };
+              try {
+                const toolStart = Date.now();
+                const toolResult = await handleEmailSend(emailPayload);
+                toolSummaries.push({
+                  name: "sendemail",
+                  args: emailPayload,
+                  resultPreview: toolResult.slice(0, 200),
+                });
+                await logToolRun({
+                  request_id: requestId,
+                  session_id: sessionId,
+                  tool_name: "sendemail",
+                  args: emailPayload,
+                  result_preview: toolResult.slice(0, 280),
+                  success: true,
+                  latency_ms: Date.now() - toolStart,
+                });
+              } catch (sendError) {
+                console.error(
+                  "[ChatKit] Support email send failed:",
+                  sendError,
+                );
+              }
+              clearSupportFlowState(sessionId);
+              finalResponse =
+                "Got it - I've sent this to the team. They'll get back to you soon. Anything else I can help with?";
+            } else if (isNegativeReply(trimmed)) {
+              supportState.email = undefined;
+              supportState.step = "email";
+              finalResponse = "Okay, what's the correct email?";
+              setSupportFlowState(sessionId, supportState);
+            } else {
+              finalResponse = promptForStep("confirm_email", supportState);
+              setSupportFlowState(sessionId, supportState);
+            }
+            break;
+          }
+          default: {
+            finalResponse = promptForStep("issue", supportState);
+            supportState.step = "issue";
+            setSupportFlowState(sessionId, supportState);
+          }
+        }
+
+        supportFlowHandled = true;
+        assistantMessage = {
+          content: finalResponse,
+        };
+      }
+    }
+
+    if (!supportFlowHandled) {
+      // Load settings and system prompt
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("settings")
+        .eq("id", DEFAULT_ORG_ID)
+        .single();
+      const settings = org?.settings?.chatkit || {};
+      // Allow override via settings, otherwise stay on Gemini 2.5 Flash
+      textModel = settings.textModel || textModel;
+      const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: "system", content: systemPrompt },
+        // Always include trade-in context so agent knows to use tools throughout conversation
+        { role: "system", content: TRADE_IN_SYSTEM_CONTEXT },
+        {
+          role: "system",
+          content:
+            "Skip greetings and get to the answer quickly. No 'Hi/Hello', no repeated clarifications—respond directly to the latest user ask.",
+        },
+      ];
+
+      if (mode === "voice") {
+        messages.push({
+          role: "system",
+          content:
+            "VOICE MODE: Keep replies under 12 words, one short sentence, pause for user. Do not repeat closings or long lists.",
+        });
+      } else {
+        messages.push({
+          role: "system",
+          content:
+            "Be concise: keep replies under 20 words, no filler like 'let me check'. If you need to fetch data, start with one short acknowledgment such as 'Checking price now...' then give the result. Avoid silence; respond with the result as soon as it’s ready.",
+        });
+      }
+
+      let graphitiContext: Awaited<ReturnType<typeof fetchGraphitiContext>> = {
+        userSummary: "",
+        context: "",
+      };
+      try {
+        graphitiContext = await fetchGraphitiContext(sessionId);
+        if (graphitiContext.userSummary || graphitiContext.context) {
+          console.log("[ChatKit] Graphiti context loaded", {
+            sessionId,
+            hasUserSummary: Boolean(graphitiContext.userSummary),
+            hasContext: Boolean(graphitiContext.context),
+          });
+        }
+      } catch (graphitiError: any) {
+        console.warn(
+          "[ChatKit] Graphiti unavailable, continuing without memory",
+          {
+            error: graphitiError?.message || String(graphitiError),
+            statusCode: graphitiError?.statusCode,
+          },
+        );
+      }
+      const memoryHints = buildMemoryHintsFromGraphiti(graphitiContext);
+      let contextInsertIndex = 1;
+      if (graphitiContext.userSummary) {
+        messages.splice(contextInsertIndex, 0, {
+          role: "system",
+          content: `Customer summary:\n${graphitiContext.userSummary}`,
+        });
+        contextInsertIndex += 1;
+      }
+      if (graphitiContext.context) {
+        messages.splice(contextInsertIndex, 0, {
+          role: "system",
+          content: `Context from memory:\n${graphitiContext.context}`,
+        });
+        contextInsertIndex += 1;
+      }
+
+      // Truncate to last 20 messages (10 exchanges) to reduce token usage
+      const maxHistoryMessages = 20;
+      const truncatedHistory =
+        history && history.length > maxHistoryMessages
+          ? history.slice(-maxHistoryMessages)
+          : history || [];
+
+      if (history && history.length > maxHistoryMessages) {
+        console.log(
+          `[ChatKit] History truncated: ${history.length} → ${truncatedHistory.length} messages`,
+        );
+      }
+
+      if (history && history.length > 0) {
+        truncatedHistory.forEach((msg: any) => {
+          if (msg.role && msg.content) {
+            messages.push({ role: msg.role, content: msg.content });
+          }
+        });
+      }
+
+      const isFirstTurn = !history || history.length === 0;
+      const userOpenedWithQuestion =
+        isFirstTurn &&
+        /\?|have\s+you|do\s+you|can\s+i|can\s+you|got\s+any|any\s+|price|how much|what'?s|need\s|looking for|recommend|suggest|trade.+for|trade.+to/i.test(
+          message,
+        );
+      if (userOpenedWithQuestion) {
+        messages.push({
+          role: "system",
+          content:
+            "Skip the canned greeting. The user already asked a question, so reply directly to it.",
+        });
+      }
+      if (image) {
+        // Do not send images to the LLM; just acknowledge receipt and keep the image for staff review
+        messages.push({
+          role: "system",
+          content:
+            "User uploaded an image. Acknowledge receipt briefly (e.g., 'Photo received'). DO NOT describe or summarize the image. The photo is stored for staff review.",
+        });
+      }
+
+      const warrantySupportIntent = isWarrantySupportQuery(message);
+      if (warrantySupportIntent) {
+        messages.push({
+          role: "system",
+          content:
+            "User wants to verify an existing warranty. Do NOT promote warranty extensions. Skip product searches and run the staff-support escalation flow: ask once if they are in Singapore, then collect name, phone, email, and the warranty issue, and call sendemail(info_request) with those details.",
+        });
+      }
+
+      const userMessage: OpenAI.Chat.ChatCompletionMessageParam = {
+        role: "user",
+        content: message,
+      };
+
+      messages.push(userMessage);
+
+      const tradeInNegated = hasTradeInNegation(message);
+      const productInfoIntentRaw = detectProductInfoIntent(message);
+      tradeInIntent = detectTradeInIntent(message);
+      tradeUpPairIntent = detectTradeUpPair(message);
+      tradeUpContext = tradeUpPairIntent;
+      tradeUpParts = parseTradeUpParts(message);
+      if (tradeUpPairIntent) {
+        tradeInIntent = true; // force trade-in tool path for trade-up phrasing
+        // Pre-set forced math slots so we can synthesize the reply later
+        forcedTradeUpMath = {
+          source: tradeUpParts?.source,
+          target: tradeUpParts?.target,
+          tradeValue: null,
+          retailPrice: null,
+          confirmed: false,
+        };
+
+        // Confirm the pair once up front
+        messages.push({
+          role: "system",
+          content: `First, confirm the trade-up pair in one short question: "Confirm: trade ${normalizeProductName(
+            tradeUpParts?.source,
+          )} for ${normalizeProductName(tradeUpParts?.target)}?"
 
 After user confirms devices, show the pricing using the precomputed values, then ask: "Want to proceed with this trade-up?"
 
 Only after user says yes/proceed, start collecting details (condition, accessories, contact info, photos, payout). If they say no or hesitate, offer to help with something else.`,
-      });
-
-      // Keep conversation locked on trade-up until user cancels
-      messages.push({
-        role: "system",
-        content:
-          "Stay in trade-up flow until customer cancels. Do NOT answer unrelated questions until trade-up is finished or they say cancel/stop.",
-      });
-
-      // Pre-fetch prices server-side to avoid LLM gaps
-      if (tradeUpParts?.source) {
-        const tradeResult = await fetchApproxPrice(
-          `trade-in ${tradeUpParts.source}`,
-          "trade_in",
-        );
-        precomputedTradeUp.tradeValue = tradeResult.amount;
-        precomputedTradeUp.tradeVersion = tradeResult.version ?? null;
-        console.log("[TradeUp] Precomputed trade-in value:", {
-          query: `trade-in ${tradeUpParts.source}`,
-          value: precomputedTradeUp.tradeValue,
         });
-        if (forcedTradeUpMath && tradeResult.amount != null) {
-          forcedTradeUpMath.tradeValue = tradeResult.amount;
-          forcedTradeUpMath.tradeVersion = tradeResult.version ?? null;
-        }
-      }
-      if (tradeUpParts?.target) {
-        // CRITICAL: Use "buy price" or "new price" to get RETAIL price, not trade-in value
-        const retailResult = await fetchApproxPrice(
-          `buy price ${tradeUpParts.target}`,
-          "retail",
-        );
-        precomputedTradeUp.retailPrice = retailResult.amount;
-        precomputedTradeUp.retailVersion = retailResult.version ?? null;
-        console.log("[TradeUp] Precomputed retail price:", {
-          query: `buy price ${tradeUpParts.target}`,
-          value: precomputedTradeUp.retailPrice,
-        });
-        if (forcedTradeUpMath && retailResult.amount != null) {
-          forcedTradeUpMath.retailPrice = retailResult.amount;
-          forcedTradeUpMath.retailVersion = retailResult.version ?? null;
-        }
-      }
-    }
 
-    // Check if there's an existing trade-in lead for this session
-    // This ensures we don't lose context mid-conversation
-    try {
-      const { data: existingLead } = await supabase
-        .from("trade_in_leads")
-        .select("id, status")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingLead) {
-        const productInfoIntent = productInfoIntentRaw;
-        const ignoreExistingTradeIn =
-          tradeInNegated || (!tradeInIntent && productInfoIntent);
-        // Only resume trade-in if it's not completed/submitted AND user shows trade-in intent
-        const completedStatuses = [
-          "submitted",
-          "completed",
-          "closed",
-          "archived",
-          "cancelled",
-        ];
-        const isCompleted = completedStatuses.includes(
-          existingLead.status || "",
-        );
-
-        if (ignoreExistingTradeIn && !isCompleted) {
-          await supabase
-            .from("trade_in_leads")
-            .update({ status: "cancelled" })
-            .eq("id", existingLead.id);
-          console.log(
-            `[ChatKit] Cancelled trade-in lead ${existingLead.id} due to product/negation intent`,
-          );
-          tradeInLeadId = null;
-          tradeInLeadStatus = null;
-          tradeInLeadDetail = null;
-        } else if (!isCompleted && tradeInIntent) {
-          // For voice, start fresh if existing lead is stale or already populated
-          let reuse = true;
-          if (mode === "voice") {
-            const detail = await getTradeInLeadDetail(tradeInLeadId!);
-            const createdAt = detail?.created_at
-              ? new Date(detail.created_at as string).getTime()
-              : Date.now();
-            const ageMinutes = (Date.now() - createdAt) / 60000;
-            const hasContact =
-              detail?.contact_email &&
-              detail?.contact_phone &&
-              detail?.contact_name;
-            const hasDevice = detail?.brand && detail?.model;
-            if (ageMinutes > 60 || (hasContact && hasDevice)) {
-              reuse = false;
-            }
-          }
-
-          if (reuse) {
-            // Resume active trade-in
-            tradeInLeadId = existingLead.id;
-            tradeInLeadStatus = existingLead.status;
-
-            console.log(
-              `[ChatKit] Resuming trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
-            );
-
-            // Add current trade-in summary (pass recent history for photo detection)
-            const tradeInSummary = await buildTradeInSummary(
-              existingLead.id,
-              truncatedHistory,
-            );
-            if (tradeInSummary) {
-              messages.splice(2, 0, {
-                role: "system",
-                content: tradeInSummary,
-              });
-            }
-          } else {
-            console.log(
-              `[ChatKit] Voice trade-in: forcing new lead (stale or populated)`,
-            );
-            const ensureResult = await ensureTradeInLead({
-              sessionId,
-              channel: "chat",
-              initialMessage: message,
-              source: "chatkit.agent.fresh",
-              forceNew: true,
-            });
-            tradeInLeadId = ensureResult.leadId;
-            tradeInLeadStatus = ensureResult.status;
-          }
-        } else if (isCompleted) {
-          console.log(
-            `[ChatKit] Ignoring completed trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
-          );
-          // Don't load completed trade-in context
-        }
-      } else if (tradeInIntent) {
-        // Create new lead only if trade-in intent detected and no existing lead
-        const ensureResult = await ensureTradeInLead({
-          sessionId,
-          channel: "chat",
-          initialMessage: message,
-          source: "chatkit.agent",
-          maxAgeMinutes: mode === "voice" ? 60 : undefined,
-          forceNew: false,
-        });
-        tradeInLeadId = ensureResult.leadId;
-        tradeInLeadStatus = ensureResult.status;
-
-        // Add current trade-in summary if available (pass recent history for photo detection)
-        const tradeInSummary = await buildTradeInSummary(
-          ensureResult.leadId,
-          truncatedHistory,
-        );
-        if (tradeInSummary) {
-          messages.splice(2, 0, { role: "system", content: tradeInSummary });
-        }
-      }
-    } catch (ensureError) {
-      console.error("[ChatKit] ensureTradeInLead failed", ensureError);
-      tradeInIntent = false;
-    }
-
-    // Always auto-save extracted trade-in clues when a lead is active,
-    // even if the current message isn’t explicitly tagged as trade-in intent.
-    if (tradeInLeadId) {
-      autoExtractedClues = extractTradeInClues(message);
-      // Block auto-setting preferred_payout until contact is present to avoid validation errors
-      if (
-        autoExtractedClues?.preferred_payout &&
-        (!tradeInLeadDetail ||
-          !tradeInLeadDetail.contact_email ||
-          !tradeInLeadDetail.contact_phone ||
-          !tradeInLeadDetail.contact_name)
-      ) {
-        delete autoExtractedClues.preferred_payout;
-      }
-      if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
-        if (!tradeDeviceQuery) {
-          const clueQuery = buildTradeDeviceQuery(null, autoExtractedClues);
-          if (clueQuery) {
-            tradeDeviceQuery = clueQuery;
-          }
-        }
-        try {
-          const { lead } = await updateTradeInLead(
-            tradeInLeadId,
-            autoExtractedClues,
-          );
-          tradeInLeadStatus = lead.status;
-
-          await logToolRun({
-            request_id: requestId,
-            session_id: sessionId,
-            tool_name: "tradein_update_lead_auto",
-            args: { ...autoExtractedClues, leadId: tradeInLeadId },
-            result_preview: "Auto-saved trade-in details from user message.",
-            source: "trade_in_lead",
-            success: true,
-            latency_ms: 0,
-          });
-        } catch (autoError) {
-          console.error("[ChatKit] Auto trade-in update failed", autoError);
-          await logToolRun({
-            request_id: requestId,
-            session_id: sessionId,
-            tool_name: "tradein_update_lead_auto",
-            args: { ...autoExtractedClues, leadId: tradeInLeadId },
-            result_preview: "Failed to auto-save trade-in details.",
-            source: "trade_in_lead",
-            success: false,
-            latency_ms: 0,
-            error_message:
-              autoError instanceof Error
-                ? autoError.message
-                : String(autoError),
-          });
-        }
-      }
-
-      try {
-        tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
-      } catch (detailError) {
-        console.error("[ChatKit] Failed to fetch trade-in detail", detailError);
-      }
-
-      // Backfill placeholder contact (User/user@example.com/12345678) from recent clues before continuing
-      if (tradeInLeadDetail) {
-        const contactPatch: TradeInUpdateInput = {};
-        const recentUserConcat = truncatedHistory
-          .filter((m) => m.role === "user")
-          .slice(-8)
-          .map((m) => m.content)
-          .join(" ");
-        const historyClues = extractTradeInClues(recentUserConcat);
-
-        const nameClue =
-          autoExtractedClues?.contact_name || historyClues.contact_name;
-        const phoneClue =
-          autoExtractedClues?.contact_phone || historyClues.contact_phone;
-        const emailClue =
-          autoExtractedClues?.contact_email || historyClues.contact_email;
-
-        const isPlaceholderName =
-          !tradeInLeadDetail.contact_name ||
-          tradeInLeadDetail.contact_name.toLowerCase() === "user";
-        const isPlaceholderEmail =
-          !tradeInLeadDetail.contact_email ||
-          tradeInLeadDetail.contact_email === "user@example.com";
-        const isPlaceholderPhone =
-          !tradeInLeadDetail.contact_phone ||
-          tradeInLeadDetail.contact_phone === "12345678";
-
-        if (isPlaceholderName && nameClue) contactPatch.contact_name = nameClue;
-        if (isPlaceholderEmail && emailClue)
-          contactPatch.contact_email = emailClue;
-        if (isPlaceholderPhone && phoneClue)
-          contactPatch.contact_phone = phoneClue;
-
-        if (Object.keys(contactPatch).length > 0) {
-          try {
-            const patched = await updateTradeInLead(
-              tradeInLeadId,
-              contactPatch,
-            );
-            tradeInLeadDetail = patched.lead || tradeInLeadDetail;
-          } catch (contactPatchError) {
-            console.warn(
-              "[ChatKit] Failed to patch contact before guardrails",
-              contactPatchError,
-            );
-          }
-        }
-      }
-
-      // Merge freshly auto-extracted clues so step reminders don't re-ask for data just provided this turn
-      if (tradeInLeadDetail) {
-        tradeUpContext =
-          tradeUpContext ||
-          tradeUpPairIntent ||
-          Boolean(
-            tradeInLeadDetail?.source_device_name &&
-              tradeInLeadDetail?.target_device_name,
-          );
-        const hasCondition = Boolean(tradeInLeadDetail?.condition);
-        const accessoriesCaptured = Array.isArray(
-          tradeInLeadDetail?.accessories,
-        )
-          ? tradeInLeadDetail.accessories.length > 0
-          : Boolean(tradeInLeadDetail?.accessories);
-        const deviceCaptured = Boolean(
-          tradeInLeadDetail.brand && tradeInLeadDetail.model,
-        );
-        const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
-        tradeInPhotoAcknowledged = photoAcknowledged;
-        tradeInReadyForPhotoPrompt =
-          deviceCaptured &&
-          hasCondition &&
-          accessoriesCaptured &&
-          !photoAcknowledged;
-      }
-
-      if (tradeInLeadDetail && autoExtractedClues) {
-        tradeInLeadDetail = { ...tradeInLeadDetail, ...autoExtractedClues };
-      }
-
-      if (tradeInLeadDetail) {
-        const guardrails = buildMemoryGuardrailMessages(
-          tradeInLeadDetail,
-          memoryHints,
-        );
-        guardrails.forEach((content) =>
-          messages.push({ role: "system", content }),
-        );
-
-        // Trade-in conversational discipline: one question at a time, full checklist, recap before submit
-        if (tradeInIntent || tradeUpPairIntent) {
-          messages.push({
-            role: "system",
-            content:
-              "Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone, name, payout preference (skip payout for trade-ups). Ask for photos ONCE after accessories and BEFORE contact; if declined, note 'Photos: Not provided — final quote on inspection.' Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout (if cash), contact, photos line, and ask for confirmation. Do NOT submit until contact (email/phone/name) is filled. Avoid repeating already captured fields; acknowledge user when they ask to go slowly.",
-          });
-        }
-
-        // In trade-up mode, mark payout as top-up so auto-submit isn't blocked later
-        if (
-          tradeUpPairIntent &&
-          tradeInLeadId &&
-          !tradeInLeadDetail.preferred_payout
-        ) {
-          // Keep it in-memory only to avoid enum write conflicts; auto-submit logic already treats trade-up as satisfied
-          tradeInLeadDetail = {
-            ...tradeInLeadDetail,
-            preferred_payout: "top_up",
-          };
-        }
-
-        const hasPhotos =
-          Array.isArray(tradeInLeadDetail.trade_in_media) &&
-          tradeInLeadDetail.trade_in_media.length > 0;
-
-        if (hasPhotos) {
-          messages.push({
-            role: "system",
-            content:
-              "Photos already uploaded. Acknowledge receipt once, do NOT ask for more photos unless user offers.",
-          });
-        } else {
-          messages.push({
-            role: "system",
-            content:
-              "Before final summary, ask ONCE for photos to speed inspection. If user says no/can't, reply briefly 'No worries, noted as no photos — final quote on inspection' and continue. Do NOT block submission.",
-          });
-        }
-      }
-
-      if (tradeInLeadDetail && autoExtractedClues) {
-        const acknowledgement = buildContactAcknowledgementResponse({
-          clues: autoExtractedClues,
-          detail: tradeInLeadDetail,
-          message,
-        });
-        if (acknowledgement) {
-          messages.push({
-            role: "system",
-            content: [
-              "AUTO-CONFIRM CONTACT DETAILS:",
-              acknowledgement,
-              "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
-            ].join("\n"),
-          });
-        }
-
-        const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
-        const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
-        const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
-        const hasCondition = Boolean(tradeInLeadDetail?.condition);
-        const accessoriesCaptured = Array.isArray(
-          tradeInLeadDetail?.accessories,
-        )
-          ? tradeInLeadDetail.accessories.length > 0
-          : Boolean(tradeInLeadDetail?.accessories);
-        const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
-        tradeInPhotoAcknowledged = photoAcknowledged;
-
-        const deviceCaptured = Boolean(
-          tradeInLeadDetail.brand && tradeInLeadDetail.model,
-        );
-        const payoutSet = tradeUpContext
-          ? true
-          : Boolean(tradeInLeadDetail.preferred_payout);
-        const readyForPayoutPrompt =
-          deviceCaptured &&
-          hasCondition &&
-          accessoriesCaptured &&
-          hasContactName &&
-          hasContactPhone &&
-          hasContactEmail;
-        const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
-        tradeInNeedsPayoutPrompt = needsPayoutPrompt;
-        // Photo prompt should trigger right after condition + accessories (before contact).
-        const readyForPhotoNudge =
-          deviceCaptured && hasCondition && accessoriesCaptured;
-        tradeInReadyForPhotoPrompt = readyForPhotoNudge && !photoAcknowledged;
-
-        if (tradeInReadyForPhotoPrompt) {
-          messages.push({
-            role: "system",
-            content:
-              "You've locked device, condition, and accessories. Ask ONCE, clearly yes/no: 'Got photos to speed inspection? Say yes to upload now, or no if you can't.' If they say yes, invite the upload briefly. If they say no, save 'Photos: Not provided — final quote upon inspection' and continue. Do not block submission; do not repeat this ask.",
-          });
-        }
-
-        // Recap once before submission when all required fields are present
-        const readyForRecap =
-          deviceCaptured &&
-          hasCondition &&
-          accessoriesCaptured &&
-          hasContactName &&
-          hasContactPhone &&
-          hasContactEmail &&
-          payoutSet;
-        if (readyForRecap) {
-          const summary = buildTradeInUserSummary(tradeInLeadDetail);
-          tradeInReadyForRecap = true;
-          tradeInRecap = summary;
-          if (summary) {
-            messages.push({
-              role: "system",
-              content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
-            });
-          }
-        }
-
-        if (
-          tradeInLeadDetail?.source_device_name &&
-          tradeInLeadDetail?.target_device_name &&
-          tradeInLeadDetail?.source_price_quoted != null &&
-          tradeInLeadDetail?.target_price_quoted != null &&
-          tradeInLeadDetail?.top_up_amount != null
-        ) {
-          messages.push({
-            role: "system",
-            content: `Price lock: ${formatDeviceLabel(tradeInLeadDetail.source_device_name)} S$${tradeInLeadDetail.source_price_quoted}, ${formatDeviceLabel(tradeInLeadDetail.target_device_name)} S$${tradeInLeadDetail.target_price_quoted}, top-up S$${tradeInLeadDetail.top_up_amount}. Do NOT change these numbers or re-quote while collecting details.`,
-          });
-        }
-      }
-
-      if (tradeInLeadDetail && !tradeInReadyForRecap) {
-        const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
-        const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
-        const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
-        const hasCondition = Boolean(tradeInLeadDetail?.condition);
-        const accessoriesCaptured = Array.isArray(
-          tradeInLeadDetail?.accessories,
-        )
-          ? tradeInLeadDetail.accessories.length > 0
-          : Boolean(tradeInLeadDetail?.accessories);
-        const deviceCaptured = Boolean(
-          tradeInLeadDetail.brand && tradeInLeadDetail.model,
-        );
-        const payoutSet = tradeUpContext
-          ? true
-          : Boolean(tradeInLeadDetail.preferred_payout);
-        const readyForRecap =
-          deviceCaptured &&
-          hasCondition &&
-          accessoriesCaptured &&
-          hasContactName &&
-          hasContactPhone &&
-          hasContactEmail &&
-          payoutSet;
-        if (readyForRecap) {
-          const summary = buildTradeInUserSummary(tradeInLeadDetail);
-          tradeInReadyForRecap = true;
-          tradeInRecap = summary;
-          if (summary) {
-            messages.push({
-              role: "system",
-              content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
-            });
-          }
-        }
-      }
-
-      const currentYes =
-        /\b(yes|ya|yep|yeah|confirm|submit|proceed|go ahead|save)\b/i.test(
-          message,
-        );
-      const currentNo = /\b(no|dont|don't|not now|later|cancel|stop)\b/i.test(
-        message,
-      );
-      proceedConfirmed = currentYes;
-      proceedDeclined = currentNo;
-
-      const lastAssistantText =
-        truncatedHistory
-          .slice()
-          .reverse()
-          .find((m) => m.role === "assistant")?.content || "";
-      lastAssistantAskedConfirm =
-        /is this correct|reply yes to submit|ready to submit|submit everything|confirm/i.test(
-          lastAssistantText,
-        );
-      finalConfirm =
-        tradeInReadyForRecap && currentYes && lastAssistantAskedConfirm;
-      const needsProceedGate =
-        tradeInPriceShared &&
-        !tradeUpContext &&
-        !proceedConfirmed &&
-        !proceedDeclined &&
-        !tradeInLeadDetail?.condition;
-
-      if (needsProceedGate) {
+        // Keep conversation locked on trade-up until user cancels
         messages.push({
           role: "system",
           content:
-            'Ask one short confirm before collecting details: "Proceed with this trade-in?"',
+            "Stay in trade-up flow until customer cancels. Do NOT answer unrelated questions until trade-up is finished or they say cancel/stop.",
+        });
+
+        // Pre-fetch prices server-side to avoid LLM gaps
+        if (tradeUpParts?.source) {
+          const tradeResult = await fetchApproxPrice(
+            `trade-in ${tradeUpParts.source}`,
+            "trade_in",
+          );
+          precomputedTradeUp.tradeValue = tradeResult.amount;
+          precomputedTradeUp.tradeVersion = tradeResult.version ?? null;
+          console.log("[TradeUp] Precomputed trade-in value:", {
+            query: `trade-in ${tradeUpParts.source}`,
+            value: precomputedTradeUp.tradeValue,
+          });
+          if (forcedTradeUpMath && tradeResult.amount != null) {
+            forcedTradeUpMath.tradeValue = tradeResult.amount;
+            forcedTradeUpMath.tradeVersion = tradeResult.version ?? null;
+          }
+        }
+        if (tradeUpParts?.target) {
+          // CRITICAL: Use "buy price" or "new price" to get RETAIL price, not trade-in value
+          const retailResult = await fetchApproxPrice(
+            `buy price ${tradeUpParts.target}`,
+            "retail",
+          );
+          precomputedTradeUp.retailPrice = retailResult.amount;
+          precomputedTradeUp.retailVersion = retailResult.version ?? null;
+          console.log("[TradeUp] Precomputed retail price:", {
+            query: `buy price ${tradeUpParts.target}`,
+            value: precomputedTradeUp.retailPrice,
+          });
+          if (forcedTradeUpMath && retailResult.amount != null) {
+            forcedTradeUpMath.retailPrice = retailResult.amount;
+            forcedTradeUpMath.retailVersion = retailResult.version ?? null;
+          }
+        }
+      }
+
+      // Check if there's an existing trade-in lead for this session
+      // This ensures we don't lose context mid-conversation
+      try {
+        const { data: existingLead } = await supabase
+          .from("trade_in_leads")
+          .select("id, status")
+          .eq("session_id", sessionId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingLead) {
+          const productInfoIntent = productInfoIntentRaw;
+          const ignoreExistingTradeIn =
+            tradeInNegated || (!tradeInIntent && productInfoIntent);
+          // Only resume trade-in if it's not completed/submitted AND user shows trade-in intent
+          const completedStatuses = [
+            "submitted",
+            "completed",
+            "closed",
+            "archived",
+            "cancelled",
+          ];
+          const isCompleted = completedStatuses.includes(
+            existingLead.status || "",
+          );
+
+          if (ignoreExistingTradeIn && !isCompleted) {
+            await supabase
+              .from("trade_in_leads")
+              .update({ status: "cancelled" })
+              .eq("id", existingLead.id);
+            console.log(
+              `[ChatKit] Cancelled trade-in lead ${existingLead.id} due to product/negation intent`,
+            );
+            tradeInLeadId = null;
+            tradeInLeadStatus = null;
+            tradeInLeadDetail = null;
+          } else if (!isCompleted && tradeInIntent) {
+            // For voice, start fresh if existing lead is stale or already populated
+            let reuse = true;
+            if (mode === "voice") {
+              const detail = await getTradeInLeadDetail(tradeInLeadId!);
+              const createdAt = detail?.created_at
+                ? new Date(detail.created_at as string).getTime()
+                : Date.now();
+              const ageMinutes = (Date.now() - createdAt) / 60000;
+              const hasContact =
+                detail?.contact_email &&
+                detail?.contact_phone &&
+                detail?.contact_name;
+              const hasDevice = detail?.brand && detail?.model;
+              if (ageMinutes > 60 || (hasContact && hasDevice)) {
+                reuse = false;
+              }
+            }
+
+            if (reuse) {
+              // Resume active trade-in
+              tradeInLeadId = existingLead.id;
+              tradeInLeadStatus = existingLead.status;
+
+              console.log(
+                `[ChatKit] Resuming trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
+              );
+
+              // Add current trade-in summary (pass recent history for photo detection)
+              const tradeInSummary = await buildTradeInSummary(
+                existingLead.id,
+                truncatedHistory,
+              );
+              if (tradeInSummary) {
+                messages.splice(2, 0, {
+                  role: "system",
+                  content: tradeInSummary,
+                });
+              }
+            } else {
+              console.log(
+                `[ChatKit] Voice trade-in: forcing new lead (stale or populated)`,
+              );
+              const ensureResult = await ensureTradeInLead({
+                sessionId,
+                channel: "chat",
+                initialMessage: message,
+                source: "chatkit.agent.fresh",
+                forceNew: true,
+              });
+              tradeInLeadId = ensureResult.leadId;
+              tradeInLeadStatus = ensureResult.status;
+            }
+          } else if (isCompleted) {
+            console.log(
+              `[ChatKit] Ignoring completed trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
+            );
+            // Don't load completed trade-in context
+          }
+        } else if (tradeInIntent) {
+          // Create new lead only if trade-in intent detected and no existing lead
+          const ensureResult = await ensureTradeInLead({
+            sessionId,
+            channel: "chat",
+            initialMessage: message,
+            source: "chatkit.agent",
+            maxAgeMinutes: mode === "voice" ? 60 : undefined,
+            forceNew: false,
+          });
+          tradeInLeadId = ensureResult.leadId;
+          tradeInLeadStatus = ensureResult.status;
+
+          // Add current trade-in summary if available (pass recent history for photo detection)
+          const tradeInSummary = await buildTradeInSummary(
+            ensureResult.leadId,
+            truncatedHistory,
+          );
+          if (tradeInSummary) {
+            messages.splice(2, 0, { role: "system", content: tradeInSummary });
+          }
+        }
+      } catch (ensureError) {
+        console.error("[ChatKit] ensureTradeInLead failed", ensureError);
+        tradeInIntent = false;
+      }
+
+      // Always auto-save extracted trade-in clues when a lead is active,
+      // even if the current message isn’t explicitly tagged as trade-in intent.
+      if (tradeInLeadId) {
+        autoExtractedClues = extractTradeInClues(message);
+        // Block auto-setting preferred_payout until contact is present to avoid validation errors
+        if (
+          autoExtractedClues?.preferred_payout &&
+          (!tradeInLeadDetail ||
+            !tradeInLeadDetail.contact_email ||
+            !tradeInLeadDetail.contact_phone ||
+            !tradeInLeadDetail.contact_name)
+        ) {
+          delete autoExtractedClues.preferred_payout;
+        }
+        if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
+          if (!tradeDeviceQuery) {
+            const clueQuery = buildTradeDeviceQuery(null, autoExtractedClues);
+            if (clueQuery) {
+              tradeDeviceQuery = clueQuery;
+            }
+          }
+          try {
+            const { lead } = await updateTradeInLead(
+              tradeInLeadId,
+              autoExtractedClues,
+            );
+            tradeInLeadStatus = lead.status;
+
+            await logToolRun({
+              request_id: requestId,
+              session_id: sessionId,
+              tool_name: "tradein_update_lead_auto",
+              args: { ...autoExtractedClues, leadId: tradeInLeadId },
+              result_preview: "Auto-saved trade-in details from user message.",
+              source: "trade_in_lead",
+              success: true,
+              latency_ms: 0,
+            });
+          } catch (autoError) {
+            console.error("[ChatKit] Auto trade-in update failed", autoError);
+            await logToolRun({
+              request_id: requestId,
+              session_id: sessionId,
+              tool_name: "tradein_update_lead_auto",
+              args: { ...autoExtractedClues, leadId: tradeInLeadId },
+              result_preview: "Failed to auto-save trade-in details.",
+              source: "trade_in_lead",
+              success: false,
+              latency_ms: 0,
+              error_message:
+                autoError instanceof Error
+                  ? autoError.message
+                  : String(autoError),
+            });
+          }
+        }
+
+        try {
+          tradeInLeadDetail = await getTradeInLeadDetail(tradeInLeadId);
+        } catch (detailError) {
+          console.error(
+            "[ChatKit] Failed to fetch trade-in detail",
+            detailError,
+          );
+        }
+
+        // Backfill placeholder contact (User/user@example.com/12345678) from recent clues before continuing
+        if (tradeInLeadDetail) {
+          const contactPatch: TradeInUpdateInput = {};
+          const recentUserConcat = truncatedHistory
+            .filter((m) => m.role === "user")
+            .slice(-8)
+            .map((m) => m.content)
+            .join(" ");
+          const historyClues = extractTradeInClues(recentUserConcat);
+
+          const nameClue =
+            autoExtractedClues?.contact_name || historyClues.contact_name;
+          const phoneClue =
+            autoExtractedClues?.contact_phone || historyClues.contact_phone;
+          const emailClue =
+            autoExtractedClues?.contact_email || historyClues.contact_email;
+
+          const isPlaceholderName =
+            !tradeInLeadDetail.contact_name ||
+            tradeInLeadDetail.contact_name.toLowerCase() === "user";
+          const isPlaceholderEmail =
+            !tradeInLeadDetail.contact_email ||
+            tradeInLeadDetail.contact_email === "user@example.com";
+          const isPlaceholderPhone =
+            !tradeInLeadDetail.contact_phone ||
+            tradeInLeadDetail.contact_phone === "12345678";
+
+          if (isPlaceholderName && nameClue)
+            contactPatch.contact_name = nameClue;
+          if (isPlaceholderEmail && emailClue)
+            contactPatch.contact_email = emailClue;
+          if (isPlaceholderPhone && phoneClue)
+            contactPatch.contact_phone = phoneClue;
+
+          if (Object.keys(contactPatch).length > 0) {
+            try {
+              const patched = await updateTradeInLead(
+                tradeInLeadId,
+                contactPatch,
+              );
+              tradeInLeadDetail = patched.lead || tradeInLeadDetail;
+            } catch (contactPatchError) {
+              console.warn(
+                "[ChatKit] Failed to patch contact before guardrails",
+                contactPatchError,
+              );
+            }
+          }
+        }
+
+        // Merge freshly auto-extracted clues so step reminders don't re-ask for data just provided this turn
+        if (tradeInLeadDetail) {
+          tradeUpContext =
+            tradeUpContext ||
+            tradeUpPairIntent ||
+            Boolean(
+              tradeInLeadDetail?.source_device_name &&
+                tradeInLeadDetail?.target_device_name,
+            );
+          const hasCondition = Boolean(tradeInLeadDetail?.condition);
+          const accessoriesCaptured = Array.isArray(
+            tradeInLeadDetail?.accessories,
+          )
+            ? tradeInLeadDetail.accessories.length > 0
+            : Boolean(tradeInLeadDetail?.accessories);
+          const deviceCaptured = Boolean(
+            tradeInLeadDetail.brand && tradeInLeadDetail.model,
+          );
+          const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+          tradeInPhotoAcknowledged = photoAcknowledged;
+          tradeInReadyForPhotoPrompt =
+            deviceCaptured &&
+            hasCondition &&
+            accessoriesCaptured &&
+            !photoAcknowledged;
+        }
+
+        if (tradeInLeadDetail && autoExtractedClues) {
+          tradeInLeadDetail = { ...tradeInLeadDetail, ...autoExtractedClues };
+        }
+
+        if (tradeInLeadDetail) {
+          const guardrails = buildMemoryGuardrailMessages(
+            tradeInLeadDetail,
+            memoryHints,
+          );
+          guardrails.forEach((content) =>
+            messages.push({ role: "system", content }),
+          );
+
+          // Trade-in conversational discipline: one question at a time, full checklist, recap before submit
+          if (tradeInIntent || tradeUpPairIntent) {
+            messages.push({
+              role: "system",
+              content:
+                "Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone, name, payout preference (skip payout for trade-ups). Ask for photos ONCE after accessories and BEFORE contact; if declined, note 'Photos: Not provided — final quote on inspection.' Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout (if cash), contact, photos line, and ask for confirmation. Do NOT submit until contact (email/phone/name) is filled. Avoid repeating already captured fields; acknowledge user when they ask to go slowly.",
+            });
+          }
+
+          // In trade-up mode, mark payout as top-up so auto-submit isn't blocked later
+          if (
+            tradeUpPairIntent &&
+            tradeInLeadId &&
+            !tradeInLeadDetail.preferred_payout
+          ) {
+            // Keep it in-memory only to avoid enum write conflicts; auto-submit logic already treats trade-up as satisfied
+            tradeInLeadDetail = {
+              ...tradeInLeadDetail,
+              preferred_payout: "top_up",
+            };
+          }
+
+          const hasPhotos =
+            Array.isArray(tradeInLeadDetail.trade_in_media) &&
+            tradeInLeadDetail.trade_in_media.length > 0;
+
+          if (hasPhotos) {
+            messages.push({
+              role: "system",
+              content:
+                "Photos already uploaded. Acknowledge receipt once, do NOT ask for more photos unless user offers.",
+            });
+          } else {
+            messages.push({
+              role: "system",
+              content:
+                "Before final summary, ask ONCE for photos to speed inspection. If user says no/can't, reply briefly 'No worries, noted as no photos — final quote on inspection' and continue. Do NOT block submission.",
+            });
+          }
+        }
+
+        if (tradeInLeadDetail && autoExtractedClues) {
+          const acknowledgement = buildContactAcknowledgementResponse({
+            clues: autoExtractedClues,
+            detail: tradeInLeadDetail,
+            message,
+          });
+          if (acknowledgement) {
+            messages.push({
+              role: "system",
+              content: [
+                "AUTO-CONFIRM CONTACT DETAILS:",
+                acknowledgement,
+                "Repeat the confirmation above (same formatting) before your next checklist question, and do not re-ask for the contact info you just saved.",
+              ].join("\n"),
+            });
+          }
+
+          const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
+          const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
+          const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
+          const hasCondition = Boolean(tradeInLeadDetail?.condition);
+          const accessoriesCaptured = Array.isArray(
+            tradeInLeadDetail?.accessories,
+          )
+            ? tradeInLeadDetail.accessories.length > 0
+            : Boolean(tradeInLeadDetail?.accessories);
+          const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+          tradeInPhotoAcknowledged = photoAcknowledged;
+
+          const deviceCaptured = Boolean(
+            tradeInLeadDetail.brand && tradeInLeadDetail.model,
+          );
+          const payoutSet = tradeUpContext
+            ? true
+            : Boolean(tradeInLeadDetail.preferred_payout);
+          const readyForPayoutPrompt =
+            deviceCaptured &&
+            hasCondition &&
+            accessoriesCaptured &&
+            hasContactName &&
+            hasContactPhone &&
+            hasContactEmail;
+          const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
+          tradeInNeedsPayoutPrompt = needsPayoutPrompt;
+          // Photo prompt should trigger right after condition + accessories (before contact).
+          const readyForPhotoNudge =
+            deviceCaptured && hasCondition && accessoriesCaptured;
+          tradeInReadyForPhotoPrompt = readyForPhotoNudge && !photoAcknowledged;
+
+          if (tradeInReadyForPhotoPrompt) {
+            messages.push({
+              role: "system",
+              content:
+                "You've locked device, condition, and accessories. Ask ONCE, clearly yes/no: 'Got photos to speed inspection? Say yes to upload now, or no if you can't.' If they say yes, invite the upload briefly. If they say no, save 'Photos: Not provided — final quote upon inspection' and continue. Do not block submission; do not repeat this ask.",
+            });
+          }
+
+          // Recap once before submission when all required fields are present
+          const readyForRecap =
+            deviceCaptured &&
+            hasCondition &&
+            accessoriesCaptured &&
+            hasContactName &&
+            hasContactPhone &&
+            hasContactEmail &&
+            payoutSet;
+          if (readyForRecap) {
+            const summary = buildTradeInUserSummary(tradeInLeadDetail);
+            tradeInReadyForRecap = true;
+            tradeInRecap = summary;
+            if (summary) {
+              messages.push({
+                role: "system",
+                content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
+              });
+            }
+          }
+
+          if (
+            tradeInLeadDetail?.source_device_name &&
+            tradeInLeadDetail?.target_device_name &&
+            tradeInLeadDetail?.source_price_quoted != null &&
+            tradeInLeadDetail?.target_price_quoted != null &&
+            tradeInLeadDetail?.top_up_amount != null
+          ) {
+            messages.push({
+              role: "system",
+              content: `Price lock: ${formatDeviceLabel(tradeInLeadDetail.source_device_name)} S$${tradeInLeadDetail.source_price_quoted}, ${formatDeviceLabel(tradeInLeadDetail.target_device_name)} S$${tradeInLeadDetail.target_price_quoted}, top-up S$${tradeInLeadDetail.top_up_amount}. Do NOT change these numbers or re-quote while collecting details.`,
+            });
+          }
+        }
+
+        if (tradeInLeadDetail && !tradeInReadyForRecap) {
+          const hasContactName = Boolean(tradeInLeadDetail?.contact_name);
+          const hasContactPhone = Boolean(tradeInLeadDetail?.contact_phone);
+          const hasContactEmail = Boolean(tradeInLeadDetail?.contact_email);
+          const hasCondition = Boolean(tradeInLeadDetail?.condition);
+          const accessoriesCaptured = Array.isArray(
+            tradeInLeadDetail?.accessories,
+          )
+            ? tradeInLeadDetail.accessories.length > 0
+            : Boolean(tradeInLeadDetail?.accessories);
+          const deviceCaptured = Boolean(
+            tradeInLeadDetail.brand && tradeInLeadDetail.model,
+          );
+          const payoutSet = tradeUpContext
+            ? true
+            : Boolean(tradeInLeadDetail.preferred_payout);
+          const readyForRecap =
+            deviceCaptured &&
+            hasCondition &&
+            accessoriesCaptured &&
+            hasContactName &&
+            hasContactPhone &&
+            hasContactEmail &&
+            payoutSet;
+          if (readyForRecap) {
+            const summary = buildTradeInUserSummary(tradeInLeadDetail);
+            tradeInReadyForRecap = true;
+            tradeInRecap = summary;
+            if (summary) {
+              messages.push({
+                role: "system",
+                content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
+              });
+            }
+          }
+        }
+
+        const currentYes =
+          /\b(yes|ya|yep|yeah|confirm|submit|proceed|go ahead|save)\b/i.test(
+            message,
+          );
+        const currentNo = /\b(no|dont|don't|not now|later|cancel|stop)\b/i.test(
+          message,
+        );
+        proceedConfirmed = currentYes;
+        proceedDeclined = currentNo;
+
+        const lastAssistantText =
+          truncatedHistory
+            .slice()
+            .reverse()
+            .find((m) => m.role === "assistant")?.content || "";
+        lastAssistantAskedConfirm =
+          /is this correct|reply yes to submit|ready to submit|submit everything|confirm/i.test(
+            lastAssistantText,
+          );
+        finalConfirm =
+          tradeInReadyForRecap && currentYes && lastAssistantAskedConfirm;
+        const needsProceedGate =
+          tradeInPriceShared &&
+          !tradeUpContext &&
+          !proceedConfirmed &&
+          !proceedDeclined &&
+          !tradeInLeadDetail?.condition;
+
+        if (needsProceedGate) {
+          messages.push({
+            role: "system",
+            content:
+              'Ask one short confirm before collecting details: "Proceed with this trade-in?"',
+          });
+        }
+
+        const allowMissingPrompt =
+          tradeInPriceShared ||
+          tradeUpContext ||
+          (tradeInLeadDetail?.initial_quote_given === true &&
+            (tradeInLeadDetail?.price_hint ||
+              tradeInLeadDetail?.range_min ||
+              tradeInLeadDetail?.range_max ||
+              tradeInLeadDetail?.source_price_quoted));
+        const missingPrompt =
+          allowMissingPrompt && !needsProceedGate
+            ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpContext)
+            : null;
+        if (missingPrompt) {
+          messages.push({ role: "system", content: missingPrompt });
+        } else {
+          // 🔴 TRADE-UP: All fields complete - provide context for submission message
+          const isTradeUp =
+            tradeInLeadDetail?.source_device_name &&
+            tradeInLeadDetail?.target_device_name;
+          if (isTradeUp) {
+            const sourceName = formatDeviceLabel(
+              tradeInLeadDetail.source_device_name,
+            );
+            const sourcePrice = tradeInLeadDetail.source_price_quoted;
+            const targetName = formatDeviceLabel(
+              tradeInLeadDetail.target_device_name,
+            );
+            const targetPrice = tradeInLeadDetail.target_price_quoted;
+            const topUp = tradeInLeadDetail.top_up_amount;
+
+            messages.push({
+              role: "system",
+              content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, reply in one short paragraph (light markdown ok, no quotes): Trade-up submitted. **${sourceName}** (S$${sourcePrice}) → **${targetName}** (S$${targetPrice}). Top-up: **S$${topUp}**. We’ll contact you to arrange, or you can visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?`,
+            });
+          }
+        }
+      }
+
+      // Delivery FAQ override (avoid tools & vectors)
+      const deliveryIntent =
+        /\b(same[- ]?day|express)\b.*\b(delivery|shipping)\b/i.test(message) ||
+        /\bdelivery\b.*\b(saturday|sat)\b/i.test(message);
+
+      if (deliveryIntent) {
+        messages.push({
+          role: "system",
+          content:
+            "DELIVERY FAQ: Reply directly (no tools) with: 'Yes, we offer same-day delivery, including Saturdays, subject to courier cutoff and stock. For trade-ins we still do in-store inspection. Want me to arrange or share fee/time window?' Keep it under 2 sentences.",
         });
       }
 
-      const allowMissingPrompt =
-        tradeInPriceShared ||
-        tradeUpContext ||
-        (tradeInLeadDetail?.initial_quote_given === true &&
-          (tradeInLeadDetail?.price_hint ||
-            tradeInLeadDetail?.range_min ||
-            tradeInLeadDetail?.range_max ||
-            tradeInLeadDetail?.source_price_quoted));
-      const missingPrompt =
-        allowMissingPrompt && !needsProceedGate
-          ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpContext)
-          : null;
-      if (missingPrompt) {
-        messages.push({ role: "system", content: missingPrompt });
-      } else {
-        // 🔴 TRADE-UP: All fields complete - provide context for submission message
-        const isTradeUp =
-          tradeInLeadDetail?.source_device_name &&
-          tradeInLeadDetail?.target_device_name;
-        if (isTradeUp) {
-          const sourceName = formatDeviceLabel(
-            tradeInLeadDetail.source_device_name,
-          );
-          const sourcePrice = tradeInLeadDetail.source_price_quoted;
-          const targetName = formatDeviceLabel(
-            tradeInLeadDetail.target_device_name,
-          );
-          const targetPrice = tradeInLeadDetail.target_price_quoted;
-          const topUp = tradeInLeadDetail.top_up_amount;
+      // First call to OpenAI to determine if tools are needed
+      // 🔴 CRITICAL FIX: Force searchProducts for trade-in pricing queries
+      isTradeInPricingQuery =
+        !deliveryIntent &&
+        detectTradeInIntent(message) &&
+        /\b(price|worth|value|quote|offer|how much|goes? for|typically|payout|cash out)\b/i.test(
+          message,
+        );
 
+      isProductInfoQuery = !deliveryIntent && productInfoIntentRaw;
+      const productLinkMatch = message.match(
+        /tradezone\.sg\/product\/([\w-]+)/i,
+      );
+      productSlug = productLinkMatch?.[1] || productSlug;
+
+      if (productSlug) {
+        messages.push({
+          role: "system",
+          content: `User shared a TradeZone product link. Treat this as a direct request for "${productSlug.replace(/-/g, " ")}". Respond with a short peek (1-2 sentences) plus the product link. Do NOT speculate about stock; say the page has live availability and they can add to cart there or ask us to reserve.`,
+        });
+      }
+
+      // 🔴 CRITICAL: Check if quote already given - prevent re-searching during qualification
+      const looksLikePricingRefresh =
+        /\b(trade[- ]?in|trade in|how much|value|worth|quote)\b/i.test(
+          message,
+        ) ||
+        (tradeInLeadId && TRADE_IN_DEVICE_HINTS.test(message.toLowerCase()));
+      const leadHasPrice = Boolean(
+        tradeInLeadDetail?.price_hint ||
+          tradeInLeadDetail?.range_min ||
+          tradeInLeadDetail?.range_max ||
+          tradeInLeadDetail?.source_price_quoted,
+      );
+      const quoteAlreadyGiven =
+        tradeInLeadDetail?.initial_quote_given === true &&
+        leadHasPrice &&
+        !looksLikePricingRefresh &&
+        !productInfoIntentRaw &&
+        !tradeInNegated;
+
+      if (quoteAlreadyGiven) {
+        console.log(
+          "[ChatKit] Quote already given - blocking further product searches during qualification",
+        );
+        messages.push({
+          role: "system",
+          content: `CRITICAL: Initial price quote already given. DO NOT call searchProducts again. You are now in QUALIFICATION mode - only collect condition, accessories, contact info. Use tradein_update_lead to save details. Do NOT re-quote or change prices; only use the already-quoted numbers when confirming at the end.`,
+        });
+      }
+
+      // Note: isSaleContext was removed; treat as false by default.
+      const saleIntent =
+        !deliveryIntent &&
+        /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
+          message,
+        );
+
+      if (saleIntent) {
+        messages.push({
+          role: "system",
+          content:
+            "PROMO RESPONSE: Do NOT call tools or list products. Reply with ONLY: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. Check promos here: https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1 or tell me a product and I'll check it.' Keep it under 2 sentences and ask which product to apply the code to. Never invent products or prices.",
+        });
+      }
+
+      // Single-device trade-in: fetch price server-side and block catalog listing
+      let forcedTradeInPrice: number | null = null;
+      if (tradeInIntent && !tradeUpPairIntent && !quoteAlreadyGiven) {
+        const tradeQuery =
+          tradeDeviceQuery || `trade-in ${normalizeProductName(message)}`;
+        const tradeResult = await fetchApproxPrice(tradeQuery, "trade_in");
+        forcedTradeInPrice = tradeResult.amount ?? null;
+        const normalizedQuery = normalizeText(message);
+        if (isGenericPs5Query(normalizedQuery)) {
+          const range = await lookupTradeInRangeFromGrid("ps5");
+          if (range.min != null && range.max != null) {
+            forcedTradeInReply = `Yes, you can trade in. **PS5** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
+            tradeInPriceShared = true;
+          }
+        } else if (
+          isRogAllyXQuery(normalizedQuery) &&
+          !isRogAllyXVariantSpecified(normalizedQuery)
+        ) {
+          const range = await lookupTradeInRangeFromGrid("rog ally x");
+          if (range.min != null && range.max != null) {
+            forcedTradeInReply = `Yes, you can trade in. **ROG Ally X** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
+            tradeInPriceShared = true;
+          }
+        }
+        if (forcedTradeInPrice != null) {
+          lastTradeInPrice = forcedTradeInPrice;
+          tradeInPriceShared = true;
+          if (!forcedTradeInReply) {
+            const deviceLabel = formatDeviceLabel(cleanTradeInLabel(message));
+            forcedTradeInReply = `Yes, trade-in: **${deviceLabel}** (S$${forcedTradeInPrice}, subject to inspection).\nProceed?`;
+          }
           messages.push({
             role: "system",
-            content: `TRADE-UP SUBMISSION CONTEXT: When user confirms submission, reply in one short paragraph (light markdown ok, no quotes): Trade-up submitted. **${sourceName}** (S$${sourcePrice}) → **${targetName}** (S$${targetPrice}). Top-up: **S$${topUp}**. We’ll contact you to arrange, or you can visit 21 Hougang St 51, #02-09, 11am–8pm for inspection. Anything else?`,
+            content: `Deterministic trade-in pricing: "${normalizeProductName(
+              tradeQuery,
+            )}" S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply in two short lines (price line + Proceed?), light markdown for key numbers. Continue the checklist after the user confirms: condition, accessories, photos (reuse if on file), email, phone, name, payout. No catalog links.`,
           });
         }
       }
-    }
 
-    // Delivery FAQ override (avoid tools & vectors)
-    const deliveryIntent =
-      /\b(same[- ]?day|express)\b.*\b(delivery|shipping)\b/i.test(message) ||
-      /\bdelivery\b.*\b(saturday|sat)\b/i.test(message);
+      const hasMixedIntent =
+        !deliveryIntent && detectTradeInIntent(message) && productInfoIntentRaw;
 
-    if (deliveryIntent) {
-      messages.push({
-        role: "system",
-        content:
-          "DELIVERY FAQ: Reply directly (no tools) with: 'Yes, we offer same-day delivery, including Saturdays, subject to courier cutoff and stock. For trade-ins we still do in-store inspection. Want me to arrange or share fee/time window?' Keep it under 2 sentences.",
-      });
-    }
-
-    // First call to OpenAI to determine if tools are needed
-    // 🔴 CRITICAL FIX: Force searchProducts for trade-in pricing queries
-    isTradeInPricingQuery =
-      !deliveryIntent &&
-      detectTradeInIntent(message) &&
-      /\b(price|worth|value|quote|offer|how much|goes? for|typically|payout|cash out)\b/i.test(
-        message,
-      );
-
-    isProductInfoQuery = !deliveryIntent && productInfoIntentRaw;
-    const productLinkMatch = message.match(/tradezone\.sg\/product\/([\w-]+)/i);
-    productSlug = productLinkMatch?.[1] || productSlug;
-
-    if (productSlug) {
-      messages.push({
-        role: "system",
-        content: `User shared a TradeZone product link. Treat this as a direct request for "${productSlug.replace(/-/g, " ")}". Respond with a short peek (1-2 sentences) plus the product link. Do NOT speculate about stock; say the page has live availability and they can add to cart there or ask us to reserve.`,
-      });
-    }
-
-    // 🔴 CRITICAL: Check if quote already given - prevent re-searching during qualification
-    const looksLikePricingRefresh =
-      /\b(trade[- ]?in|trade in|how much|value|worth|quote)\b/i.test(message) ||
-      (tradeInLeadId && TRADE_IN_DEVICE_HINTS.test(message.toLowerCase()));
-    const leadHasPrice = Boolean(
-      tradeInLeadDetail?.price_hint ||
-        tradeInLeadDetail?.range_min ||
-        tradeInLeadDetail?.range_max ||
-        tradeInLeadDetail?.source_price_quoted,
-    );
-    const quoteAlreadyGiven =
-      tradeInLeadDetail?.initial_quote_given === true &&
-      leadHasPrice &&
-      !looksLikePricingRefresh &&
-      !productInfoIntentRaw &&
-      !tradeInNegated;
-
-    if (quoteAlreadyGiven) {
-      console.log(
-        "[ChatKit] Quote already given - blocking further product searches during qualification",
-      );
-      messages.push({
-        role: "system",
-        content: `CRITICAL: Initial price quote already given. DO NOT call searchProducts again. You are now in QUALIFICATION mode - only collect condition, accessories, contact info. Use tradein_update_lead to save details. Do NOT re-quote or change prices; only use the already-quoted numbers when confirming at the end.`,
-      });
-    }
-
-    // Note: isSaleContext was removed; treat as false by default.
-    const saleIntent =
-      !deliveryIntent &&
-      /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
-        message,
-      );
-
-    if (saleIntent) {
-      messages.push({
-        role: "system",
-        content:
-          "PROMO RESPONSE: Do NOT call tools or list products. Reply with ONLY: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. Check promos here: https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1 or tell me a product and I'll check it.' Keep it under 2 sentences and ask which product to apply the code to. Never invent products or prices.",
-      });
-    }
-
-    // Single-device trade-in: fetch price server-side and block catalog listing
-    let forcedTradeInPrice: number | null = null;
-    if (tradeInIntent && !tradeUpPairIntent && !quoteAlreadyGiven) {
-      const tradeQuery =
-        tradeDeviceQuery || `trade-in ${normalizeProductName(message)}`;
-      const tradeResult = await fetchApproxPrice(tradeQuery, "trade_in");
-      forcedTradeInPrice = tradeResult.amount ?? null;
-      const normalizedQuery = normalizeText(message);
-      if (isGenericPs5Query(normalizedQuery)) {
-        const range = await lookupTradeInRangeFromGrid("ps5");
-        if (range.min != null && range.max != null) {
-          forcedTradeInReply = `Yes, you can trade in. **PS5** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;
-          tradeInPriceShared = true;
-        }
-      } else if (
-        isRogAllyXQuery(normalizedQuery) &&
-        !isRogAllyXVariantSpecified(normalizedQuery)
-      ) {
-        const range = await lookupTradeInRangeFromGrid("rog ally x");
-        if (range.min != null && range.max != null) {
-          forcedTradeInReply = `Yes, you can trade in. **ROG Ally X** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which variant do you have (1TB, 2TB, Xbox edition)?`;
-          tradeInPriceShared = true;
-        }
-      }
-      if (forcedTradeInPrice != null) {
-        lastTradeInPrice = forcedTradeInPrice;
-        tradeInPriceShared = true;
-        if (!forcedTradeInReply) {
-          const deviceLabel = formatDeviceLabel(cleanTradeInLabel(message));
-          forcedTradeInReply = `Yes, trade-in: **${deviceLabel}** (S$${forcedTradeInPrice}, subject to inspection).\nProceed?`;
-        }
+      if (hasMixedIntent) {
         messages.push({
           role: "system",
-          content: `Deterministic trade-in pricing: "${normalizeProductName(
-            tradeQuery,
-          )}" S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply in two short lines (price line + Proceed?), light markdown for key numbers. Continue the checklist after the user confirms: condition, accessories, photos (reuse if on file), email, phone, name, payout. No catalog links.`,
+          content:
+            "User has mixed intent (trade-in + buying). Ask one short clarifying question: 'Are you trading in a PS5 or looking to buy one?' Do NOT list products until clarified.",
         });
       }
-    }
 
-    const hasMixedIntent =
-      !deliveryIntent && detectTradeInIntent(message) && productInfoIntentRaw;
+      const shouldForceCatalog =
+        !deliveryIntent &&
+        !quoteAlreadyGiven &&
+        !saleIntent &&
+        !tradeUpPairIntent &&
+        !tradeInIntent &&
+        (isProductInfoQuery || Boolean(productSlug));
 
-    if (hasMixedIntent) {
-      messages.push({
-        role: "system",
-        content:
-          "User has mixed intent (trade-in + buying). Ask one short clarifying question: 'Are you trading in a PS5 or looking to buy one?' Do NOT list products until clarified.",
-      });
-    }
+      let toolChoice = shouldForceCatalog
+        ? { type: "function" as const, function: { name: "searchProducts" } }
+        : ("auto" as const);
 
-    const shouldForceCatalog =
-      !deliveryIntent &&
-      !quoteAlreadyGiven &&
-      !saleIntent &&
-      !tradeUpPairIntent &&
-      !tradeInIntent &&
-      (isProductInfoQuery || Boolean(productSlug));
-
-    let toolChoice = shouldForceCatalog
-      ? { type: "function" as const, function: { name: "searchProducts" } }
-      : ("auto" as const);
-
-    // Trade-up and single-device trade-in are fully server-side priced; block product search tools
-    if (tradeUpPairIntent || tradeInIntent || hasMixedIntent) {
-      toolChoice = "none" as const;
-    }
-
-    // Sale/promo intents: static reply only (no tools) to avoid noisy/hallucinated product lists
-    if (saleIntent && !deliveryIntent) {
-      toolChoice = "none" as const;
-    }
-
-    // Query-specific guardrails
-    if (/\bgalaxy\s+tab\b/i.test(message)) {
-      messages.push({
-        role: "system",
-        content:
-          "User asked for Samsung Galaxy Tab tablets. Recommend only Samsung tablets (Tab A7/A8/A9/S6/S7/S8/S9, etc.). Exclude phones (Fold/Flip/S series), games, and non-tablet items. Prefer affordable options first if they said cheap. Provide price + product link; keep response under 3 bullet points plus one closing line if needed.",
-      });
-    }
-
-    // 🔴 CONTROLLER/GAMEPAD GUARDRAIL: Only show controllers/gamepads, not consoles or bundles
-    if (/\b(gamepad|controller|pro\s*controller)\b/i.test(message)) {
-      messages.push({
-        role: "system",
-        content:
-          "User wants a CONTROLLER/GAMEPAD (the handheld input device), NOT a console or bundle. ONLY show products with 'Controller', 'Gamepad', or 'Pro Controller' in the name. NEVER show console bundles (Switch 2 + Pokemon, etc.) or standalone consoles. If WooCommerce returns controllers, show ONLY those exact products with their exact names and prices. Do NOT add products that aren't in the search results.",
-      });
-    }
-
-    // Installment guardrail: include rough estimates (3 / 6 / 12) when user asks about installment
-    if (/installment|instalment|payment\s*plan/i.test(message)) {
-      installmentRequested = true;
-      messages.push({
-        role: "system",
-        content:
-          "Installment request: Offer rough monthly estimates (3/6/12 months) using top-up ÷ months, rounded, and say it's an estimate subject to checkout. Keep the price + installment reply to MAX 2 short sentences (≤25 words total). Set preferred_payout=installment when confirmed.",
-      });
-    }
-
-    // Trade-up pair guardrail: math-first, two sentences, no extra products
-    if (tradeUpPairIntent) {
-      const hintSource = tradeUpParts?.source
-        ? `Use trade-in value for "${tradeUpParts.source}"`
-        : "Use trade-in value for the first device mentioned";
-      const hintTarget = tradeUpParts?.target
-        ? `Use retail price for "${tradeUpParts.target}" (default to NEW unless user said preowned/used/open-box)`
-        : "Use retail price for the second device (default NEW unless user said preowned/used/open-box)";
-
-      messages.push({
-        role: "system",
-        content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} S$X. {Target device} S$Y. Top-up S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values. Do NOT call searchProducts or list WooCommerce items during trade-up.`,
-      });
-
-      // Payout/top-up clarity: always disambiguate who pays whom
-      messages.push({
-        role: "system",
-        content:
-          "When showing the top-up, add a parenthetical to clarify direction: 'Top-up S$Z (you pay us)'. If the math implies cash-out, use 'Cash-out S$Z (we pay you)'. Keep the wording short.",
-      });
-
-      // Photo reuse clarity
-      messages.push({
-        role: "system",
-        content:
-          "If photos already exist on the lead, say 'I have your previous photos on file—use those or upload new ones?' and proceed based on their answer. If none, ask for photos once and note refusal if they decline.",
-      });
-    }
-
-    // Graceful fallback when no price found (trade-in only)
-    if (tradeInIntent) {
-      messages.push({
-        role: "system",
-        content:
-          "If you cannot find a trade-in price after checks, DO NOT list products. Say briefly: 'Sorry, I couldn't find a trade-in price for that model right now. I can ask staff to confirm—want me to pass this to the team?' If yes, collect name, phone, and email, then call sendemail(info_request) with the context.",
-      });
-    }
-
-    messages.push({
-      role: "system",
-      content:
-        "Only handle consumer electronics/gaming (consoles, handhelds, phones, tablets, laptops, cameras, drones, GoPro/Osmo). If the user asks about cars, bikes, e-bikes, scooters, appliances, or furniture, politely decline: 'We currently trade only electronics/gaming devices.' If they insist, offer to ask staff via sendemail(info_request) after collecting name, phone, and email.",
-    });
-
-    messages.push({
-      role: "system",
-      content:
-        "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New S$500; Preowned S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
-    });
-
-    messages.push({
-      role: "system",
-      content:
-        "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in S$100'; 'Switch 2 trade-in S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
-    });
-
-    messages.push({
-      role: "system",
-      content:
-        "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) email; 5) phone; 6) name; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
-    });
-
-    console.log("[ChatKit] Tool choice:", {
-      isTradeInPricingQuery,
-      isProductInfoQuery,
-      toolChoice: shouldForceCatalog ? "FORCED searchProducts" : "auto",
-    });
-
-    const userMessageIndex = messages.length - 1;
-    let imageStrippedForTimeout = false;
-
-    const execChatCompletion = async () => {
-      return openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        tools,
-        tool_choice: toolChoice,
-        temperature: 0.7,
-        max_tokens: 800,
-      });
-    };
-
-    let response;
-    try {
-      response = await execChatCompletion();
-    } catch (initialError) {
-      if (
-        image &&
-        !imageStrippedForTimeout &&
-        isImageDownloadError(initialError)
-      ) {
-        console.warn(
-          "[ChatKit] Image download failed for OpenAI. Retrying without image.",
-          { sessionId, image },
-        );
-        messages[userMessageIndex] = { role: "user", content: message };
-        imageStrippedForTimeout = true;
-        response = await execChatCompletion();
-      } else {
-        throw initialError;
+      // Trade-up and single-device trade-in are fully server-side priced; block product search tools
+      if (tradeUpPairIntent || tradeInIntent || hasMixedIntent) {
+        toolChoice = "none" as const;
       }
-    }
 
-    const assistantMessage = response.choices[0].message;
+      // Sale/promo intents: static reply only (no tools) to avoid noisy/hallucinated product lists
+      if (saleIntent && !deliveryIntent) {
+        toolChoice = "none" as const;
+      }
 
-    // Track token usage
-    if (response.usage) {
-      promptTokens += response.usage.prompt_tokens || 0;
-      completionTokens += response.usage.completion_tokens || 0;
-    }
+      // Query-specific guardrails
+      if (/\bgalaxy\s+tab\b/i.test(message)) {
+        messages.push({
+          role: "system",
+          content:
+            "User asked for Samsung Galaxy Tab tablets. Recommend only Samsung tablets (Tab A7/A8/A9/S6/S7/S8/S9, etc.). Exclude phones (Fold/Flip/S series), games, and non-tablet items. Prefer affordable options first if they said cheap. Provide price + product link; keep response under 3 bullet points plus one closing line if needed.",
+        });
+      }
 
-    if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-      messages.push(assistantMessage);
+      // 🔴 CONTROLLER/GAMEPAD GUARDRAIL: Only show controllers/gamepads, not consoles or bundles
+      if (/\b(gamepad|controller|pro\s*controller)\b/i.test(message)) {
+        messages.push({
+          role: "system",
+          content:
+            "User wants a CONTROLLER/GAMEPAD (the handheld input device), NOT a console or bundle. ONLY show products with 'Controller', 'Gamepad', or 'Pro Controller' in the name. NEVER show console bundles (Switch 2 + Pokemon, etc.) or standalone consoles. If WooCommerce returns controllers, show ONLY those exact products with their exact names and prices. Do NOT add products that aren't in the search results.",
+        });
+      }
 
-      for (const toolCall of assistantMessage.tool_calls) {
-        const functionName = toolCall.function.name;
-        const functionArgs = JSON.parse(toolCall.function.arguments);
-        let toolResult = "";
+      // Installment guardrail: include rough estimates (3 / 6 / 12) when user asks about installment
+      if (/installment|instalment|payment\s*plan/i.test(message)) {
+        installmentRequested = true;
+        messages.push({
+          role: "system",
+          content:
+            "Installment request: Offer rough monthly estimates (3/6/12 months) using top-up ÷ months, rounded, and say it's an estimate subject to checkout. Keep the price + installment reply to MAX 2 short sentences (≤25 words total). Set preferred_payout=installment when confirmed.",
+        });
+      }
 
-        // 🚫 Trade-up intent: skip product/vector search tools to avoid catalog lists
-        const isProductSearchTool =
-          /searchProducts|searchtool|vectorSearch|woo/i.test(functionName);
-        if (tradeUpPairIntent && isProductSearchTool) {
-          console.log(
-            `[ChatKit] Skipping ${functionName} during trade-up flow (avoid WooCommerce listing)`,
+      // Trade-up pair guardrail: math-first, two sentences, no extra products
+      if (tradeUpPairIntent) {
+        const hintSource = tradeUpParts?.source
+          ? `Use trade-in value for "${tradeUpParts.source}"`
+          : "Use trade-in value for the first device mentioned";
+        const hintTarget = tradeUpParts?.target
+          ? `Use retail price for "${tradeUpParts.target}" (default to NEW unless user said preowned/used/open-box)`
+          : "Use retail price for the second device (default NEW unless user said preowned/used/open-box)";
+
+        messages.push({
+          role: "system",
+          content: `User is trading one device for another. ${hintSource}. ${hintTarget}. Respond with ONLY the two numbers and the top-up in this exact pattern (include both device names): '{Trade device} S$X. {Target device} S$Y. Top-up S$Z (subject to inspection/stock).' Keep it within 2 short sentences (≤25 words), no other products or lists. Do NOT mention target trade-in values. Do NOT call searchProducts or list WooCommerce items during trade-up.`,
+        });
+
+        // Payout/top-up clarity: always disambiguate who pays whom
+        messages.push({
+          role: "system",
+          content:
+            "When showing the top-up, add a parenthetical to clarify direction: 'Top-up S$Z (you pay us)'. If the math implies cash-out, use 'Cash-out S$Z (we pay you)'. Keep the wording short.",
+        });
+
+        // Photo reuse clarity
+        messages.push({
+          role: "system",
+          content:
+            "If photos already exist on the lead, say 'I have your previous photos on file—use those or upload new ones?' and proceed based on their answer. If none, ask for photos once and note refusal if they decline.",
+        });
+      }
+
+      // Graceful fallback when no price found (trade-in only)
+      if (tradeInIntent) {
+        messages.push({
+          role: "system",
+          content:
+            "If you cannot find a trade-in price after checks, DO NOT list products. Say briefly: 'Sorry, I couldn't find a trade-in price for that model right now. I can ask staff to confirm—want me to pass this to the team?' If yes, collect name, phone, and email, then call sendemail(info_request) with the context.",
+        });
+      }
+
+      messages.push({
+        role: "system",
+        content:
+          "Only handle consumer electronics/gaming (consoles, handhelds, phones, tablets, laptops, cameras, drones, GoPro/Osmo). If the user asks about cars, bikes, e-bikes, scooters, appliances, or furniture, politely decline: 'We currently trade only electronics/gaming devices.' If they insist, offer to ask staff via sendemail(info_request) after collecting name, phone, and email.",
+      });
+
+      messages.push({
+        role: "system",
+        content:
+          "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New S$500; Preowned S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
+      });
+
+      messages.push({
+        role: "system",
+        content:
+          "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in S$100'; 'Switch 2 trade-in S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
+      });
+
+      messages.push({
+        role: "system",
+        content:
+          "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) email; 5) phone; 6) name; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
+      });
+
+      console.log("[ChatKit] Tool choice:", {
+        isTradeInPricingQuery,
+        isProductInfoQuery,
+        toolChoice: shouldForceCatalog ? "FORCED searchProducts" : "auto",
+      });
+
+      const userMessageIndex = messages.length - 1;
+      let imageStrippedForTimeout = false;
+
+      const execChatCompletion = async () => {
+        return openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages,
+          tools,
+          tool_choice: toolChoice,
+          temperature: 0.7,
+          max_tokens: 800,
+        });
+      };
+
+      let response;
+      try {
+        response = await execChatCompletion();
+      } catch (initialError) {
+        if (
+          image &&
+          !imageStrippedForTimeout &&
+          isImageDownloadError(initialError)
+        ) {
+          console.warn(
+            "[ChatKit] Image download failed for OpenAI. Retrying without image.",
+            { sessionId, image },
           );
-          continue;
+          messages[userMessageIndex] = { role: "user", content: message };
+          imageStrippedForTimeout = true;
+          response = await execChatCompletion();
+        } else {
+          throw initialError;
         }
+      }
 
-        let toolSource: HybridSearchSource | undefined;
-        try {
-          if (
-            functionName === "searchProducts" ||
-            functionName === "searchtool"
-          ) {
-            const toolStart = Date.now();
-            const rawQuery =
-              typeof functionArgs.query === "string"
-                ? functionArgs.query.trim()
-                : "";
+      assistantMessage = response.choices[0].message;
 
-            if (!rawQuery) {
-              const warningMessage =
-                "I need the exact model name or more details to check pricing.";
-              console.warn(
-                `[ChatKit] ${functionName} called without a usable query`,
-                {
-                  args: functionArgs,
-                  sessionId,
-                },
-              );
-              toolResult = warningMessage;
-              toolSummaries.push({
-                name: functionName,
-                args: functionArgs,
-                resultPreview: warningMessage,
-              });
-              await logToolRun({
-                request_id: requestId,
-                session_id: sessionId,
-                tool_name: functionName,
-                args: functionArgs,
-                result_preview: warningMessage,
-                success: false,
-                latency_ms: Date.now() - toolStart,
-                error_message: "Missing search query",
-              });
-              messages.push({
-                role: "tool",
-                tool_call_id: toolCall.id,
-                content: warningMessage,
-              });
-              continue;
-            }
+      // Track token usage
+      if (response.usage) {
+        promptTokens += response.usage.prompt_tokens || 0;
+        completionTokens += response.usage.completion_tokens || 0;
+      }
 
-            const isTradeInIntent =
-              detectTradeInIntent(rawQuery) ||
-              tradeInIntent ||
-              Boolean(tradeInLeadId);
-            console.log(`[ChatKit] 🔍 Tool called: ${functionName}`, {
-              query: rawQuery,
-              isTradeInIntent,
-              sessionId,
-            });
-            const vectorContext: VectorSearchContext = {
-              toolUsed: functionName,
-            };
-            if (isTradeInIntent) {
-              vectorContext.intent = "trade_in";
-              if (tradeDeviceQuery) {
-                vectorContext.tradeDeviceQuery = tradeDeviceQuery;
-              }
-            }
-            console.log(`[ChatKit] Vector context:`, vectorContext);
+      if (
+        assistantMessage.tool_calls &&
+        assistantMessage.tool_calls.length > 0
+      ) {
+        messages.push(assistantMessage);
 
-            const { modifier, cleanedQuery } = analyzePriceModifier(rawQuery);
-            let searchQuery = cleanedQuery || rawQuery;
-            if (!cleanedQuery && modifier && lastHybridQuery) {
-              searchQuery = lastHybridQuery;
-            }
+        for (const toolCall of assistantMessage.tool_calls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+          let toolResult = "";
 
-            // For product queries, always use the user's message to keep searches deterministic
-            if (!isTradeInIntent && isProductInfoQuery) {
-              const userQuery = message.trim();
-              if (userQuery) {
-                searchQuery = userQuery;
-              }
-            }
-
-            const { result, source, matches } = await runHybridSearch(
-              searchQuery,
-              vectorContext,
+          // 🚫 Trade-up intent: skip product/vector search tools to avoid catalog lists
+          const isProductSearchTool =
+            /searchProducts|searchtool|vectorSearch|woo/i.test(functionName);
+          if (tradeUpPairIntent && isProductSearchTool) {
+            console.log(
+              `[ChatKit] Skipping ${functionName} during trade-up flow (avoid WooCommerce listing)`,
             );
+            continue;
+          }
 
-            toolSource = source;
-            if (source === "trade_in_vector_store") {
-              tradeInPriceShared = true;
-            }
-            let resolvedResult = result;
-
+          let toolSource: HybridSearchSource | undefined;
+          try {
             if (
-              modifier &&
-              source !== "trade_in_vector_store" &&
-              matches.length > 0
+              functionName === "searchProducts" ||
+              functionName === "searchtool"
             ) {
-              const modifierSummary = summarizeMatchesByModifier(
-                matches,
-                modifier,
-              );
-              if (modifierSummary) {
-                resolvedResult = modifierSummary;
-              }
-            }
+              const toolStart = Date.now();
+              const rawQuery =
+                typeof functionArgs.query === "string"
+                  ? functionArgs.query.trim()
+                  : "";
 
-            toolResult = resolvedResult;
-            lastHybridResult = resolvedResult;
-            lastHybridSource = source;
-            lastHybridQuery = searchQuery;
-            lastHybridMatches = matches;
-            if (tradeUpPairIntent) {
-              // In trade-up mode, suppress verbose catalog lists; keep only numeric captures
-              toolResult = "";
-              lastHybridResult = null;
-              lastHybridMatches = [];
-            }
-            // Capture generic price hints for fallback
-            const parsed = pickFirstNumber(resolvedResult);
-            if (parsed) {
-              if (source === "trade_in_vector_store") {
-                lastTradeInPrice = parsed;
-              } else if (source === "product_catalog" || source === "woo") {
-                lastRetailPrice = parsed;
+              if (!rawQuery) {
+                const warningMessage =
+                  "I need the exact model name or more details to check pricing.";
+                console.warn(
+                  `[ChatKit] ${functionName} called without a usable query`,
+                  {
+                    args: functionArgs,
+                    sessionId,
+                  },
+                );
+                toolResult = warningMessage;
+                toolSummaries.push({
+                  name: functionName,
+                  args: functionArgs,
+                  resultPreview: warningMessage,
+                });
+                await logToolRun({
+                  request_id: requestId,
+                  session_id: sessionId,
+                  tool_name: functionName,
+                  args: functionArgs,
+                  result_preview: warningMessage,
+                  success: false,
+                  latency_ms: Date.now() - toolStart,
+                  error_message: "Missing search query",
+                });
+                messages.push({
+                  role: "tool",
+                  tool_call_id: toolCall.id,
+                  content: warningMessage,
+                });
+                continue;
               }
-            }
-            // Capture trade-up prices deterministically based on the query (no reliance on LLM wording)
-            if (tradeUpPairIntent && forcedTradeUpMath) {
-              const parsedNumber = pickFirstNumber(resolvedResult);
-              if (parsedNumber) {
-                const sourceHint = forcedTradeUpMath.source
-                  ?.toLowerCase()
-                  .slice(0, 40);
-                const targetHint = forcedTradeUpMath.target
-                  ?.toLowerCase()
-                  .slice(0, 40);
-                const lowerQuery = searchQuery.toLowerCase();
-                const looksLikeSource =
-                  lowerQuery.includes("trade-in") ||
-                  (sourceHint && lowerQuery.includes(sourceHint));
-                const looksLikeTarget =
-                  targetHint && lowerQuery.includes(targetHint);
-                if (looksLikeSource && forcedTradeUpMath.tradeValue == null) {
-                  forcedTradeUpMath.tradeValue = parsedNumber;
-                } else if (
-                  looksLikeTarget &&
-                  forcedTradeUpMath.retailPrice == null
-                ) {
-                  forcedTradeUpMath.retailPrice = parsedNumber;
+
+              const isTradeInIntent =
+                detectTradeInIntent(rawQuery) ||
+                tradeInIntent ||
+                Boolean(tradeInLeadId);
+              console.log(`[ChatKit] 🔍 Tool called: ${functionName}`, {
+                query: rawQuery,
+                isTradeInIntent,
+                sessionId,
+              });
+              const vectorContext: VectorSearchContext = {
+                toolUsed: functionName,
+              };
+              if (isTradeInIntent) {
+                vectorContext.intent = "trade_in";
+                if (tradeDeviceQuery) {
+                  vectorContext.tradeDeviceQuery = tradeDeviceQuery;
                 }
               }
-            }
-            const toolLatency = Date.now() - toolStart;
-            const loggedArgs = {
-              ...functionArgs,
-              query: rawQuery,
-              searchQuery,
-            };
-            toolSummaries.push({
-              name: functionName,
-              args: { ...loggedArgs, source },
-              resultPreview: resolvedResult.slice(0, 200),
-            });
-            await logToolRun({
-              request_id: requestId,
-              session_id: sessionId,
-              tool_name: functionName,
-              args: loggedArgs,
-              result_preview: resolvedResult.slice(0, 280),
-              source,
-              success: true,
-              latency_ms: toolLatency,
-            });
-          } else if (functionName === "tradezone_graph_query") {
-            const toolStart = Date.now();
-            const question =
-              typeof functionArgs.question === "string"
-                ? functionArgs.question.trim()
-                : "";
-            let graphCallSuccess = false;
-            if (!question) {
-              toolResult =
-                "I need a specific pricing or bundle question to query the TradeZone graph.";
-            } else {
-              const normalizedQuestion = normalizeGraphQuestion(question);
-              const catalogGroupId =
-                process.env.GRAPHTI_DEFAULT_GROUP_ID || null;
-              const cachedResult = getCachedGraphResult(
-                sessionId,
-                normalizedQuestion,
-                catalogGroupId,
+              console.log(`[ChatKit] Vector context:`, vectorContext);
+
+              const { modifier, cleanedQuery } = analyzePriceModifier(rawQuery);
+              let searchQuery = cleanedQuery || rawQuery;
+              if (!cleanedQuery && modifier && lastHybridQuery) {
+                searchQuery = lastHybridQuery;
+              }
+
+              // For product queries, always use the user's message to keep searches deterministic
+              if (!isTradeInIntent && isProductInfoQuery) {
+                const userQuery = message.trim();
+                if (userQuery) {
+                  searchQuery = userQuery;
+                }
+              }
+
+              const { result, source, matches } = await runHybridSearch(
+                searchQuery,
+                vectorContext,
               );
-              let graphResult = cachedResult;
-              let usedCache = Boolean(cachedResult);
 
-              const now = Date.now();
-              const cooldownUntil =
-                graphitiGraphSessionCooldowns.get(sessionId) || 0;
+              toolSource = source;
+              if (source === "trade_in_vector_store") {
+                tradeInPriceShared = true;
+              }
+              let resolvedResult = result;
 
-              if (!graphResult) {
-                if (now < cooldownUntil) {
-                  toolResult =
-                    "Structured catalog is cooling down—try again in a few seconds.";
-                } else {
-                  graphitiGraphSessionCooldowns.set(sessionId, now);
-                  const freshResult = await queryGraphitiContext(question, {
-                    groupId: catalogGroupId || undefined,
-                  });
-                  if (freshResult.rateLimited) {
-                    graphitiGraphSessionCooldowns.set(
-                      sessionId,
-                      now + GRAPHITI_GRAPH_RATE_LIMIT_COOLDOWN_MS,
-                    );
-                    toolResult =
-                      "Structured catalog is cooling down—reusing recent info.";
-                    const fallbackCached = getCachedGraphResult(
-                      sessionId,
-                      normalizedQuestion,
-                      catalogGroupId,
-                    );
-                    if (fallbackCached) {
-                      graphResult = fallbackCached;
-                      usedCache = true;
-                    }
-                  } else {
-                    graphResult = freshResult;
-                    storeGraphResult(
-                      sessionId,
-                      normalizedQuestion,
-                      freshResult,
-                      catalogGroupId,
-                    );
+              if (
+                modifier &&
+                source !== "trade_in_vector_store" &&
+                matches.length > 0
+              ) {
+                const modifierSummary = summarizeMatchesByModifier(
+                  matches,
+                  modifier,
+                );
+                if (modifierSummary) {
+                  resolvedResult = modifierSummary;
+                }
+              }
+
+              toolResult = resolvedResult;
+              lastHybridResult = resolvedResult;
+              lastHybridSource = source;
+              lastHybridQuery = searchQuery;
+              lastHybridMatches = matches;
+              if (tradeUpPairIntent) {
+                // In trade-up mode, suppress verbose catalog lists; keep only numeric captures
+                toolResult = "";
+                lastHybridResult = null;
+                lastHybridMatches = [];
+              }
+              // Capture generic price hints for fallback
+              const parsed = pickFirstNumber(resolvedResult);
+              if (parsed) {
+                if (source === "trade_in_vector_store") {
+                  lastTradeInPrice = parsed;
+                } else if (source === "product_catalog" || source === "woo") {
+                  lastRetailPrice = parsed;
+                }
+              }
+              // Capture trade-up prices deterministically based on the query (no reliance on LLM wording)
+              if (tradeUpPairIntent && forcedTradeUpMath) {
+                const parsedNumber = pickFirstNumber(resolvedResult);
+                if (parsedNumber) {
+                  const sourceHint = forcedTradeUpMath.source
+                    ?.toLowerCase()
+                    .slice(0, 40);
+                  const targetHint = forcedTradeUpMath.target
+                    ?.toLowerCase()
+                    .slice(0, 40);
+                  const lowerQuery = searchQuery.toLowerCase();
+                  const looksLikeSource =
+                    lowerQuery.includes("trade-in") ||
+                    (sourceHint && lowerQuery.includes(sourceHint));
+                  const looksLikeTarget =
+                    targetHint && lowerQuery.includes(targetHint);
+                  if (looksLikeSource && forcedTradeUpMath.tradeValue == null) {
+                    forcedTradeUpMath.tradeValue = parsedNumber;
+                  } else if (
+                    looksLikeTarget &&
+                    forcedTradeUpMath.retailPrice == null
+                  ) {
+                    forcedTradeUpMath.retailPrice = parsedNumber;
                   }
                 }
               }
-
-              if (graphResult) {
-                toolResult = graphResult.summary;
-                toolSource = "product_catalog";
-                pushGraphProvenanceEntries({
-                  nodes: graphResult.nodes,
-                  verificationData,
-                });
-                const conflictList = await detectGraphConflictsFromNodes(
-                  graphResult.nodes,
-                );
-                if (conflictList.length) {
-                  verificationData.flags.requires_human_review = true;
-                  verificationData.flags.is_provisional = true;
-                  messages.push({
-                    role: "system",
-                    content: formatGraphConflictSystemMessage(conflictList),
-                  });
-                }
-                const citationReminder = summarizeGraphNodesForPrompt(
-                  graphResult.nodes,
-                );
-                if (citationReminder) {
-                  messages.push({ role: "system", content: citationReminder });
-                }
-                if (usedCache) {
-                  messages.push({
-                    role: "system",
-                    content:
-                      "Using cached structured catalog data to avoid repeated graph lookups.",
-                  });
-                }
-                graphCallSuccess = true;
-              }
-            }
-
-            toolSummaries.push({
-              name: functionName,
-              args: functionArgs,
-              resultPreview: truncateString(toolResult, 280),
-              source: toolSource,
-            });
-            await logToolRun({
-              request_id: requestId,
-              session_id: sessionId,
-              tool_name: functionName,
-              args: functionArgs,
-              result_preview: toolResult.slice(0, 280),
-              source: toolSource,
-              success: graphCallSuccess,
-              latency_ms: Date.now() - toolStart,
-            });
-          } else if (functionName === "tradein_update_lead") {
-            const toolStart = Date.now();
-            try {
-              if (!tradeInLeadId) {
-                const ensured = await ensureTradeInLead({
-                  sessionId,
-                  channel: "chat",
-                  initialMessage: message,
-                  source: "chatkit.agent.autostart",
-                });
-                tradeInLeadId = ensured.leadId;
-                tradeInLeadStatus = ensured.status;
-              }
-
-              if (!tradeInLeadId) {
-                throw new Error("Unable to obtain trade-in lead ID");
-              }
-
-              const patch = functionArgs as TradeInUpdateInput;
-              const { lead } = await updateTradeInLead(tradeInLeadId, patch);
-              tradeInLeadStatus = lead.status;
-
-              const updatedFields = Object.keys(patch);
-              const fieldSummary = updatedFields.length
-                ? updatedFields.join(", ")
-                : "no fields";
-
-              toolResult = `Saved trade-in lead. Updated ${fieldSummary}. Current status: ${lead.status}.`;
+              const toolLatency = Date.now() - toolStart;
+              const loggedArgs = {
+                ...functionArgs,
+                query: rawQuery,
+                searchQuery,
+              };
               toolSummaries.push({
                 name: functionName,
-                args: { ...patch, leadId: tradeInLeadId },
-                resultPreview: toolResult.slice(0, 200),
+                args: { ...loggedArgs, source },
+                resultPreview: resolvedResult.slice(0, 200),
               });
-
-              const toolLatency = Date.now() - toolStart;
               await logToolRun({
                 request_id: requestId,
                 session_id: sessionId,
                 tool_name: functionName,
-                args: { ...patch, leadId: tradeInLeadId },
-                result_preview: toolResult.slice(0, 280),
-                source: "trade_in_lead",
+                args: loggedArgs,
+                result_preview: resolvedResult.slice(0, 280),
+                source,
                 success: true,
                 latency_ms: toolLatency,
               });
-            } catch (err) {
-              const toolLatency = Date.now() - toolStart;
-              if (err instanceof TradeInValidationError) {
-                toolResult = `Validation error: ${err.message}`;
+            } else if (functionName === "tradezone_graph_query") {
+              const toolStart = Date.now();
+              const question =
+                typeof functionArgs.question === "string"
+                  ? functionArgs.question.trim()
+                  : "";
+              let graphCallSuccess = false;
+              if (!question) {
+                toolResult =
+                  "I need a specific pricing or bundle question to query the TradeZone graph.";
               } else {
-                toolResult = "Failed to save trade-in details. Please retry.";
+                const normalizedQuestion = normalizeGraphQuestion(question);
+                const catalogGroupId =
+                  process.env.GRAPHTI_DEFAULT_GROUP_ID || null;
+                const cachedResult = getCachedGraphResult(
+                  sessionId,
+                  normalizedQuestion,
+                  catalogGroupId,
+                );
+                let graphResult = cachedResult;
+                let usedCache = Boolean(cachedResult);
+
+                const now = Date.now();
+                const cooldownUntil =
+                  graphitiGraphSessionCooldowns.get(sessionId) || 0;
+
+                if (!graphResult) {
+                  if (now < cooldownUntil) {
+                    toolResult =
+                      "Structured catalog is cooling down—try again in a few seconds.";
+                  } else {
+                    graphitiGraphSessionCooldowns.set(sessionId, now);
+                    const freshResult = await queryGraphitiContext(question, {
+                      groupId: catalogGroupId || undefined,
+                    });
+                    if (freshResult.rateLimited) {
+                      graphitiGraphSessionCooldowns.set(
+                        sessionId,
+                        now + GRAPHITI_GRAPH_RATE_LIMIT_COOLDOWN_MS,
+                      );
+                      toolResult =
+                        "Structured catalog is cooling down—reusing recent info.";
+                      const fallbackCached = getCachedGraphResult(
+                        sessionId,
+                        normalizedQuestion,
+                        catalogGroupId,
+                      );
+                      if (fallbackCached) {
+                        graphResult = fallbackCached;
+                        usedCache = true;
+                      }
+                    } else {
+                      graphResult = freshResult;
+                      storeGraphResult(
+                        sessionId,
+                        normalizedQuestion,
+                        freshResult,
+                        catalogGroupId,
+                      );
+                    }
+                  }
+                }
+
+                if (graphResult) {
+                  toolResult = graphResult.summary;
+                  toolSource = "product_catalog";
+                  pushGraphProvenanceEntries({
+                    nodes: graphResult.nodes,
+                    verificationData,
+                  });
+                  const conflictList = await detectGraphConflictsFromNodes(
+                    graphResult.nodes,
+                  );
+                  if (conflictList.length) {
+                    verificationData.flags.requires_human_review = true;
+                    verificationData.flags.is_provisional = true;
+                    messages.push({
+                      role: "system",
+                      content: formatGraphConflictSystemMessage(conflictList),
+                    });
+                  }
+                  const citationReminder = summarizeGraphNodesForPrompt(
+                    graphResult.nodes,
+                  );
+                  if (citationReminder) {
+                    messages.push({
+                      role: "system",
+                      content: citationReminder,
+                    });
+                  }
+                  if (usedCache) {
+                    messages.push({
+                      role: "system",
+                      content:
+                        "Using cached structured catalog data to avoid repeated graph lookups.",
+                    });
+                  }
+                  graphCallSuccess = true;
+                }
               }
 
+              toolSummaries.push({
+                name: functionName,
+                args: functionArgs,
+                resultPreview: truncateString(toolResult, 280),
+                source: toolSource,
+              });
               await logToolRun({
                 request_id: requestId,
                 session_id: sessionId,
                 tool_name: functionName,
                 args: functionArgs,
                 result_preview: toolResult.slice(0, 280),
-                source: "trade_in_lead",
-                success: false,
-                latency_ms: toolLatency,
-                error_message: err instanceof Error ? err.message : String(err),
+                source: toolSource,
+                success: graphCallSuccess,
+                latency_ms: Date.now() - toolStart,
               });
-            }
-          } else if (functionName === "tradein_submit_lead") {
-            const toolStart = Date.now();
-            try {
-              let readyForRecap = false;
-              if (!tradeInLeadId) {
-                const ensured = await ensureTradeInLead({
-                  sessionId,
-                  channel: "chat",
-                  initialMessage: message,
-                  source: "chatkit.agent.autostart",
+            } else if (functionName === "tradein_update_lead") {
+              const toolStart = Date.now();
+              try {
+                if (!tradeInLeadId) {
+                  const ensured = await ensureTradeInLead({
+                    sessionId,
+                    channel: "chat",
+                    initialMessage: message,
+                    source: "chatkit.agent.autostart",
+                  });
+                  tradeInLeadId = ensured.leadId;
+                  tradeInLeadStatus = ensured.status;
+                }
+
+                if (!tradeInLeadId) {
+                  throw new Error("Unable to obtain trade-in lead ID");
+                }
+
+                const patch = functionArgs as TradeInUpdateInput;
+                const { lead } = await updateTradeInLead(tradeInLeadId, patch);
+                tradeInLeadStatus = lead.status;
+
+                const updatedFields = Object.keys(patch);
+                const fieldSummary = updatedFields.length
+                  ? updatedFields.join(", ")
+                  : "no fields";
+
+                toolResult = `Saved trade-in lead. Updated ${fieldSummary}. Current status: ${lead.status}.`;
+                toolSummaries.push({
+                  name: functionName,
+                  args: { ...patch, leadId: tradeInLeadId },
+                  resultPreview: toolResult.slice(0, 200),
                 });
-                tradeInLeadId = ensured.leadId;
-                tradeInLeadStatus = ensured.status;
-              }
 
-              if (!tradeInLeadId) {
-                throw new Error("Unable to obtain trade-in lead ID");
-              }
-
-              // Block submission if photos haven't been acknowledged yet.
-              try {
-                const detailBeforeSubmit =
-                  await getTradeInLeadDetail(tradeInLeadId);
-                let hydratedDetail = await syncPhotoNoteWithMedia(
-                  tradeInLeadId,
-                  detailBeforeSubmit,
-                );
-                let photosOk = isPhotoStepAcknowledged(
-                  hydratedDetail,
-                  truncatedHistory,
-                );
-
-                // Try to backfill missing contact just before submit, in case the model forgot to call update
-                if (
-                  hydratedDetail &&
-                  (!hydratedDetail.contact_phone ||
-                    !hydratedDetail.contact_email ||
-                    !hydratedDetail.contact_name)
-                ) {
-                  const recentUserConcat = truncatedHistory
-                    .filter((m) => m.role === "user")
-                    .slice(-6)
-                    .map((m) => m.content)
-                    .join(" ");
-                  const clues = extractTradeInClues(recentUserConcat);
-                  const contactPatch: TradeInUpdateInput = {};
-                  if (!hydratedDetail.contact_name && clues.contact_name) {
-                    contactPatch.contact_name = clues.contact_name;
-                  }
-                  if (!hydratedDetail.contact_phone && clues.contact_phone) {
-                    contactPatch.contact_phone = clues.contact_phone;
-                  }
-                  if (!hydratedDetail.contact_email && clues.contact_email) {
-                    contactPatch.contact_email = clues.contact_email;
-                  }
-                  if (Object.keys(contactPatch).length > 0) {
-                    await updateTradeInLead(tradeInLeadId, contactPatch);
-                    const refreshed = await getTradeInLeadDetail(tradeInLeadId);
-                    hydratedDetail = await syncPhotoNoteWithMedia(
-                      tradeInLeadId,
-                      refreshed,
-                    );
-                    photosOk = isPhotoStepAcknowledged(
-                      hydratedDetail,
-                      truncatedHistory,
-                    );
-                  }
+                const toolLatency = Date.now() - toolStart;
+                await logToolRun({
+                  request_id: requestId,
+                  session_id: sessionId,
+                  tool_name: functionName,
+                  args: { ...patch, leadId: tradeInLeadId },
+                  result_preview: toolResult.slice(0, 280),
+                  source: "trade_in_lead",
+                  success: true,
+                  latency_ms: toolLatency,
+                });
+              } catch (err) {
+                const toolLatency = Date.now() - toolStart;
+                if (err instanceof TradeInValidationError) {
+                  toolResult = `Validation error: ${err.message}`;
+                } else {
+                  toolResult = "Failed to save trade-in details. Please retry.";
                 }
 
-                if (!photosOk) {
-                  // Auto-mark photos as not provided to avoid blocking submission.
-                  await updateTradeInLead(tradeInLeadId, {
-                    notes:
-                      "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
-                  });
-                  toolSummaries.push({
-                    name: functionName,
-                    args: { ...functionArgs, leadId: tradeInLeadId },
-                    resultPreview:
-                      'Auto-marked photos as "Not provided" before submitting.',
-                  });
-                }
-              } catch (photoCheckError) {
-                console.warn(
-                  "[ChatKit] Failed to verify photo acknowledgement before submit",
-                  photoCheckError,
-                );
+                await logToolRun({
+                  request_id: requestId,
+                  session_id: sessionId,
+                  tool_name: functionName,
+                  args: functionArgs,
+                  result_preview: toolResult.slice(0, 280),
+                  source: "trade_in_lead",
+                  success: false,
+                  latency_ms: toolLatency,
+                  error_message:
+                    err instanceof Error ? err.message : String(err),
+                });
               }
-
-              // Block premature submit when required details are missing
+            } else if (functionName === "tradein_submit_lead") {
+              const toolStart = Date.now();
               try {
-                const latest = await getTradeInLeadDetail(tradeInLeadId);
-                const isTradeUp =
-                  tradeUpContext ||
-                  Boolean(
-                    latest?.source_device_name && latest?.target_device_name,
+                let readyForRecap = false;
+                if (!tradeInLeadId) {
+                  const ensured = await ensureTradeInLead({
+                    sessionId,
+                    channel: "chat",
+                    initialMessage: message,
+                    source: "chatkit.agent.autostart",
+                  });
+                  tradeInLeadId = ensured.leadId;
+                  tradeInLeadStatus = ensured.status;
+                }
+
+                if (!tradeInLeadId) {
+                  throw new Error("Unable to obtain trade-in lead ID");
+                }
+
+                // Block submission if photos haven't been acknowledged yet.
+                try {
+                  const detailBeforeSubmit =
+                    await getTradeInLeadDetail(tradeInLeadId);
+                  let hydratedDetail = await syncPhotoNoteWithMedia(
+                    tradeInLeadId,
+                    detailBeforeSubmit,
                   );
-                const missing: string[] = [];
-                if (!latest.brand) missing.push("device brand");
-                if (!latest.model) missing.push("device model");
-                if (!latest.condition) missing.push("condition");
-                if (!latest.storage) missing.push("storage");
-                if (
-                  !latest.accessories ||
-                  (Array.isArray(latest.accessories) &&
-                    latest.accessories.length === 0)
-                ) {
-                  missing.push("accessories");
-                }
-                if (!latest.contact_name) missing.push("contact name");
-                if (!latest.contact_phone) missing.push("contact phone");
-                if (!latest.contact_email) missing.push("contact email");
-                if (!isTradeUp && !latest.preferred_payout) {
-                  missing.push("payout method");
+                  let photosOk = isPhotoStepAcknowledged(
+                    hydratedDetail,
+                    truncatedHistory,
+                  );
+
+                  // Try to backfill missing contact just before submit, in case the model forgot to call update
+                  if (
+                    hydratedDetail &&
+                    (!hydratedDetail.contact_phone ||
+                      !hydratedDetail.contact_email ||
+                      !hydratedDetail.contact_name)
+                  ) {
+                    const recentUserConcat = truncatedHistory
+                      .filter((m) => m.role === "user")
+                      .slice(-6)
+                      .map((m) => m.content)
+                      .join(" ");
+                    const clues = extractTradeInClues(recentUserConcat);
+                    const contactPatch: TradeInUpdateInput = {};
+                    if (!hydratedDetail.contact_name && clues.contact_name) {
+                      contactPatch.contact_name = clues.contact_name;
+                    }
+                    if (!hydratedDetail.contact_phone && clues.contact_phone) {
+                      contactPatch.contact_phone = clues.contact_phone;
+                    }
+                    if (!hydratedDetail.contact_email && clues.contact_email) {
+                      contactPatch.contact_email = clues.contact_email;
+                    }
+                    if (Object.keys(contactPatch).length > 0) {
+                      await updateTradeInLead(tradeInLeadId, contactPatch);
+                      const refreshed =
+                        await getTradeInLeadDetail(tradeInLeadId);
+                      hydratedDetail = await syncPhotoNoteWithMedia(
+                        tradeInLeadId,
+                        refreshed,
+                      );
+                      photosOk = isPhotoStepAcknowledged(
+                        hydratedDetail,
+                        truncatedHistory,
+                      );
+                    }
+                  }
+
+                  if (!photosOk) {
+                    // Auto-mark photos as not provided to avoid blocking submission.
+                    await updateTradeInLead(tradeInLeadId, {
+                      notes:
+                        "Photos: Not provided — final quote upon inspection (auto-marked before submit)",
+                    });
+                    toolSummaries.push({
+                      name: functionName,
+                      args: { ...functionArgs, leadId: tradeInLeadId },
+                      resultPreview:
+                        'Auto-marked photos as "Not provided" before submitting.',
+                    });
+                  }
+                } catch (photoCheckError) {
+                  console.warn(
+                    "[ChatKit] Failed to verify photo acknowledgement before submit",
+                    photoCheckError,
+                  );
                 }
 
-                if (missing.length) {
+                // Block premature submit when required details are missing
+                try {
+                  const latest = await getTradeInLeadDetail(tradeInLeadId);
+                  const isTradeUp =
+                    tradeUpContext ||
+                    Boolean(
+                      latest?.source_device_name && latest?.target_device_name,
+                    );
+                  const missing: string[] = [];
+                  if (!latest.brand) missing.push("device brand");
+                  if (!latest.model) missing.push("device model");
+                  if (!latest.condition) missing.push("condition");
+                  if (!latest.storage) missing.push("storage");
+                  if (
+                    !latest.accessories ||
+                    (Array.isArray(latest.accessories) &&
+                      latest.accessories.length === 0)
+                  ) {
+                    missing.push("accessories");
+                  }
+                  if (!latest.contact_name) missing.push("contact name");
+                  if (!latest.contact_phone) missing.push("contact phone");
+                  if (!latest.contact_email) missing.push("contact email");
+                  if (!isTradeUp && !latest.preferred_payout) {
+                    missing.push("payout method");
+                  }
+
+                  if (missing.length) {
+                    toolResult =
+                      "Need more details before submitting: " +
+                      missing.join(", ") +
+                      ". Please confirm these, save with tradein_update_lead, then submit again.";
+                    toolSummaries.push({
+                      name: functionName,
+                      args: { ...functionArgs, leadId: tradeInLeadId },
+                      resultPreview: toolResult,
+                    });
+                    await logToolRun({
+                      request_id: requestId,
+                      session_id: sessionId,
+                      tool_name: functionName,
+                      args: { ...functionArgs, leadId: tradeInLeadId },
+                      result_preview: toolResult.slice(0, 280),
+                      source: "trade_in_lead",
+                      success: false,
+                      latency_ms: 0,
+                      error_message: "Missing required fields",
+                    });
+                    // 🔧 FIX: Must push tool response to messages array, not break
+                    messages.push({
+                      role: "tool",
+                      tool_call_id: toolCall.id,
+                      content: toolResult,
+                    });
+                    continue; // Continue to next tool call instead of break
+                  }
+                  readyForRecap = true;
+                } catch (guardError) {
+                  console.warn(
+                    "[ChatKit] Submit guard check failed",
+                    guardError,
+                  );
+                }
+
+                const submitArgs = functionArgs as {
+                  summary?: string;
+                  notify?: boolean;
+                  status?: string;
+                };
+
+                // Require an explicit final yes/submit in the last user turn
+                const lastUserText =
+                  truncatedHistory
+                    .slice()
+                    .reverse()
+                    .find((m) => m.role === "user")?.content || "";
+                const latestUserText = message || lastUserText;
+                const positive =
+                  /\b(yes|ya|can|submit|go ahead|proceed)\b/i.test(
+                    latestUserText,
+                  );
+                const negative =
+                  /\b(no|cannot|can't|dont|don't|cancel|stop)\b/i.test(
+                    latestUserText,
+                  );
+                const lastAssistantText =
+                  truncatedHistory
+                    .slice()
+                    .reverse()
+                    .find((m) => m.role === "assistant")?.content || "";
+                const askedForConfirm =
+                  /is this correct|reply yes to submit|ready to submit|submit everything|confirm/i.test(
+                    lastAssistantText,
+                  );
+                if (
+                  negative ||
+                  !positive ||
+                  (readyForRecap && !askedForConfirm)
+                ) {
                   toolResult =
-                    "Need more details before submitting: " +
-                    missing.join(", ") +
-                    ". Please confirm these, save with tradein_update_lead, then submit again.";
+                    'I’ll wait for a clear yes after the summary. Reply "yes" to submit.';
                   toolSummaries.push({
                     name: functionName,
-                    args: { ...functionArgs, leadId: tradeInLeadId },
+                    args: { ...submitArgs, leadId: tradeInLeadId },
                     resultPreview: toolResult,
                   });
                   await logToolRun({
                     request_id: requestId,
                     session_id: sessionId,
                     tool_name: functionName,
-                    args: { ...functionArgs, leadId: tradeInLeadId },
+                    args: { ...submitArgs, leadId: tradeInLeadId },
                     result_preview: toolResult.slice(0, 280),
                     source: "trade_in_lead",
                     success: false,
-                    latency_ms: 0,
-                    error_message: "Missing required fields",
+                    latency_ms: Date.now() - toolStart,
+                    error_message: "Missing explicit yes",
                   });
                   // 🔧 FIX: Must push tool response to messages array, not break
                   messages.push({
@@ -5429,52 +5892,25 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   });
                   continue; // Continue to next tool call instead of break
                 }
-                readyForRecap = true;
-              } catch (guardError) {
-                console.warn("[ChatKit] Submit guard check failed", guardError);
-              }
 
-              const submitArgs = functionArgs as {
-                summary?: string;
-                notify?: boolean;
-                status?: string;
-              };
+                const { emailSent } = await submitTradeInLead({
+                  leadId: tradeInLeadId,
+                  summary: submitArgs.summary,
+                  notify: submitArgs.notify,
+                  status: submitArgs.status,
+                  emailContext: "initial",
+                });
 
-              // Require an explicit final yes/submit in the last user turn
-              const lastUserText =
-                truncatedHistory
-                  .slice()
-                  .reverse()
-                  .find((m) => m.role === "user")?.content || "";
-              const latestUserText = message || lastUserText;
-              const positive = /\b(yes|ya|can|submit|go ahead|proceed)\b/i.test(
-                latestUserText,
-              );
-              const negative =
-                /\b(no|cannot|can't|dont|don't|cancel|stop)\b/i.test(
-                  latestUserText,
-                );
-              const lastAssistantText =
-                truncatedHistory
-                  .slice()
-                  .reverse()
-                  .find((m) => m.role === "assistant")?.content || "";
-              const askedForConfirm =
-                /is this correct|reply yes to submit|ready to submit|submit everything|confirm/i.test(
-                  lastAssistantText,
-                );
-              if (
-                negative ||
-                !positive ||
-                (readyForRecap && !askedForConfirm)
-              ) {
-                toolResult =
-                  'I’ll wait for a clear yes after the summary. Reply "yes" to submit.';
+                toolResult = emailSent
+                  ? "Trade-in lead submitted and email notification sent."
+                  : "Trade-in lead submitted (email notification disabled).";
                 toolSummaries.push({
                   name: functionName,
                   args: { ...submitArgs, leadId: tradeInLeadId },
                   resultPreview: toolResult,
                 });
+
+                const toolLatency = Date.now() - toolStart;
                 await logToolRun({
                   request_id: requestId,
                   session_id: sessionId,
@@ -5482,597 +5918,575 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   args: { ...submitArgs, leadId: tradeInLeadId },
                   result_preview: toolResult.slice(0, 280),
                   source: "trade_in_lead",
+                  success: true,
+                  latency_ms: toolLatency,
+                });
+              } catch (err) {
+                const toolLatency = Date.now() - toolStart;
+                if (err instanceof TradeInValidationError) {
+                  toolResult = `Validation error: ${err.message}`;
+                } else {
+                  toolResult = "Failed to submit trade-in lead.";
+                }
+                await logToolRun({
+                  request_id: requestId,
+                  session_id: sessionId,
+                  tool_name: functionName,
+                  args: functionArgs,
+                  result_preview: toolResult.slice(0, 280),
+                  source: "trade_in_lead",
                   success: false,
-                  latency_ms: Date.now() - toolStart,
-                  error_message: "Missing explicit yes",
+                  latency_ms: toolLatency,
+                  error_message:
+                    err instanceof Error ? err.message : String(err),
                 });
-                // 🔧 FIX: Must push tool response to messages array, not break
-                messages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  content: toolResult,
-                });
-                continue; // Continue to next tool call instead of break
               }
-
-              const { emailSent } = await submitTradeInLead({
-                leadId: tradeInLeadId,
-                summary: submitArgs.summary,
-                notify: submitArgs.notify,
-                status: submitArgs.status,
-                emailContext: "initial",
-              });
-
-              toolResult = emailSent
-                ? "Trade-in lead submitted and email notification sent."
-                : "Trade-in lead submitted (email notification disabled).";
+            } else if (functionName === "normalize_product") {
+              const rawQuery =
+                typeof functionArgs.query === "string"
+                  ? functionArgs.query
+                  : "";
+              const slotParam =
+                functionArgs.slot === "trade_in" ||
+                functionArgs.slot === "target"
+                  ? functionArgs.slot
+                  : "target";
+              if (!rawQuery) {
+                toolResult = "I need a product description to normalize.";
+              } else {
+                const normalized = await normalizeProduct(rawQuery);
+                const payload: NormalizeProductResult & { slot: string } = {
+                  ...normalized,
+                  slot: slotParam,
+                };
+                toolResult = JSON.stringify(payload);
+                const topCandidate = normalized.candidates[0];
+                if (topCandidate) {
+                  normalizeConfidence = topCandidate.confidence;
+                  if (slotParam === "target") {
+                    verificationData.slots_filled.target_model =
+                      topCandidate.name;
+                    verificationData.slots_filled.target_variant =
+                      topCandidate.familyId;
+                  } else {
+                    verificationData.slots_filled.trade_in_model =
+                      topCandidate.name;
+                    verificationData.slots_filled.trade_in_variant =
+                      topCandidate.familyId;
+                  }
+                }
+              }
+            } else if (functionName === "price_lookup") {
+              const productId =
+                typeof functionArgs.productId === "string"
+                  ? functionArgs.productId
+                  : "";
+              const priceType =
+                functionArgs.priceType === "retail" ||
+                functionArgs.priceType === "trade_in"
+                  ? functionArgs.priceType
+                  : "trade_in";
+              const subject =
+                functionArgs.subject === "target" ||
+                functionArgs.subject === "trade_in"
+                  ? functionArgs.subject
+                  : priceType === "trade_in"
+                    ? "trade_in"
+                    : "target";
+              if (!productId) {
+                toolResult = "productId is required.";
+              } else {
+                const lookup = await priceLookup({
+                  productId,
+                  condition:
+                    typeof functionArgs.condition === "string"
+                      ? functionArgs.condition
+                      : undefined,
+                  priceType,
+                });
+                priceConfidence = lookup.confidence;
+                verificationData.provenance.push({
+                  field:
+                    subject === "trade_in"
+                      ? "trade_in_value_sgd"
+                      : "target_price_sgd",
+                  source: lookup.source,
+                  confidence: lookup.confidence,
+                });
+                if (subject === "trade_in") {
+                  verificationData.slots_filled.trade_in_value_sgd =
+                    lookup.value_sgd;
+                  verificationData.slots_filled.trade_in_condition =
+                    lookup.condition;
+                } else {
+                  verificationData.slots_filled.target_price_sgd =
+                    lookup.value_sgd;
+                }
+                toolResult = JSON.stringify({ ...lookup, subject });
+              }
+            } else if (functionName === "calculate_top_up") {
+              const targetPrice = Number(functionArgs.targetPrice);
+              const tradeValue = Number(functionArgs.tradeInValue);
+              const discount = Number(functionArgs.usedDiscount || 0);
+              if (
+                !Number.isFinite(targetPrice) ||
+                !Number.isFinite(tradeValue)
+              ) {
+                toolResult = "targetPrice and tradeInValue are required.";
+              } else {
+                const calc = calculateTopUp(targetPrice, tradeValue, discount);
+                latestTopUp = calc;
+                verificationData.top_up_sgd = calc.top_up_sgd;
+                verificationData.calculation_steps = calc.steps;
+                verificationData.slots_filled.used_device_discount_sgd =
+                  discount;
+                toolResult = JSON.stringify(calc);
+              }
+            } else if (functionName === "inventory_check") {
+              const productId =
+                typeof functionArgs.productId === "string"
+                  ? functionArgs.productId
+                  : "";
+              if (!productId) {
+                toolResult = "productId is required.";
+              } else {
+                const stock = await inventoryCheck(productId);
+                toolResult = JSON.stringify(stock);
+              }
+            } else if (functionName === "order_create") {
+              try {
+                const order = await createOrder({
+                  sessionId,
+                  userId: functionArgs.userId,
+                  productId: functionArgs.productId,
+                  paymentMethod: functionArgs.paymentMethod,
+                  options: functionArgs.options ?? null,
+                });
+                toolResult = JSON.stringify(order);
+              } catch (err) {
+                toolResult = `Order creation failed: ${err instanceof Error ? err.message : String(err)}`;
+              }
+            } else if (functionName === "schedule_inspection") {
+              try {
+                const booking = await scheduleInspection({
+                  sessionId,
+                  userId: functionArgs.userId,
+                  storeId: functionArgs.storeId,
+                  timeslot: functionArgs.timeslot,
+                  notes: functionArgs.notes,
+                });
+                toolResult = JSON.stringify(booking);
+              } catch (err) {
+                toolResult = `Inspection scheduling failed: ${err instanceof Error ? err.message : String(err)}`;
+              }
+            } else if (functionName === "ocr_and_extract") {
+              if (!functionArgs.imageUrl) {
+                toolResult = "imageUrl is required.";
+              } else {
+                const extraction = await ocrAndExtract({
+                  imageUrl: functionArgs.imageUrl,
+                  promptHint: functionArgs.promptHint,
+                });
+                ocrConfidence = extraction.photoscore;
+                if (
+                  extraction.detected_model &&
+                  !verificationData.slots_filled.trade_in_model
+                ) {
+                  verificationData.slots_filled.trade_in_model =
+                    extraction.detected_model;
+                }
+                toolResult = JSON.stringify(extraction);
+              }
+            } else if (functionName === "enqueue_human_review") {
+              try {
+                const ticket = await enqueueHumanReview({
+                  sessionId,
+                  reason: functionArgs.reason || "manual_review",
+                  payload: functionArgs.payload ?? null,
+                });
+                verificationData.flags.requires_human_review = true;
+                toolResult = JSON.stringify(ticket);
+              } catch (err) {
+                toolResult = `Failed to enqueue review: ${err instanceof Error ? err.message : String(err)}`;
+              }
+            } else if (functionName === "sendemail") {
+              const toolStart = Date.now();
+              const normalizedArgs = {
+                ...functionArgs,
+                phone:
+                  functionArgs.phone ??
+                  functionArgs.phone_number ??
+                  functionArgs.phoneNumber ??
+                  undefined,
+              };
+              toolResult = await handleEmailSend(normalizedArgs);
+              const toolLatency = Date.now() - toolStart;
               toolSummaries.push({
                 name: functionName,
-                args: { ...submitArgs, leadId: tradeInLeadId },
-                resultPreview: toolResult,
+                args: normalizedArgs,
+                resultPreview: toolResult.slice(0, 200),
               });
-
-              const toolLatency = Date.now() - toolStart;
               await logToolRun({
                 request_id: requestId,
                 session_id: sessionId,
                 tool_name: functionName,
-                args: { ...submitArgs, leadId: tradeInLeadId },
+                args: normalizedArgs,
                 result_preview: toolResult.slice(0, 280),
-                source: "trade_in_lead",
                 success: true,
                 latency_ms: toolLatency,
               });
-            } catch (err) {
-              const toolLatency = Date.now() - toolStart;
-              if (err instanceof TradeInValidationError) {
-                toolResult = `Validation error: ${err.message}`;
-              } else {
-                toolResult = "Failed to submit trade-in lead.";
-              }
-              await logToolRun({
-                request_id: requestId,
-                session_id: sessionId,
-                tool_name: functionName,
-                args: functionArgs,
-                result_preview: toolResult.slice(0, 280),
-                source: "trade_in_lead",
-                success: false,
-                latency_ms: toolLatency,
-                error_message: err instanceof Error ? err.message : String(err),
-              });
-            }
-          } else if (functionName === "normalize_product") {
-            const rawQuery =
-              typeof functionArgs.query === "string" ? functionArgs.query : "";
-            const slotParam =
-              functionArgs.slot === "trade_in" || functionArgs.slot === "target"
-                ? functionArgs.slot
-                : "target";
-            if (!rawQuery) {
-              toolResult = "I need a product description to normalize.";
             } else {
-              const normalized = await normalizeProduct(rawQuery);
-              const payload: NormalizeProductResult & { slot: string } = {
-                ...normalized,
-                slot: slotParam,
-              };
-              toolResult = JSON.stringify(payload);
-              const topCandidate = normalized.candidates[0];
-              if (topCandidate) {
-                normalizeConfidence = topCandidate.confidence;
-                if (slotParam === "target") {
-                  verificationData.slots_filled.target_model =
-                    topCandidate.name;
-                  verificationData.slots_filled.target_variant =
-                    topCandidate.familyId;
-                } else {
-                  verificationData.slots_filled.trade_in_model =
-                    topCandidate.name;
-                  verificationData.slots_filled.trade_in_variant =
-                    topCandidate.familyId;
-                }
-              }
+              console.warn("[ChatKit] Unknown tool requested:", functionName);
+              toolResult = `Tool ${functionName} is not implemented.`;
             }
-          } else if (functionName === "price_lookup") {
-            const productId =
-              typeof functionArgs.productId === "string"
-                ? functionArgs.productId
-                : "";
-            const priceType =
-              functionArgs.priceType === "retail" ||
-              functionArgs.priceType === "trade_in"
-                ? functionArgs.priceType
-                : "trade_in";
-            const subject =
-              functionArgs.subject === "target" ||
-              functionArgs.subject === "trade_in"
-                ? functionArgs.subject
-                : priceType === "trade_in"
-                  ? "trade_in"
-                  : "target";
-            if (!productId) {
-              toolResult = "productId is required.";
-            } else {
-              const lookup = await priceLookup({
-                productId,
-                condition:
-                  typeof functionArgs.condition === "string"
-                    ? functionArgs.condition
-                    : undefined,
-                priceType,
-              });
-              priceConfidence = lookup.confidence;
-              verificationData.provenance.push({
-                field:
-                  subject === "trade_in"
-                    ? "trade_in_value_sgd"
-                    : "target_price_sgd",
-                source: lookup.source,
-                confidence: lookup.confidence,
-              });
-              if (subject === "trade_in") {
-                verificationData.slots_filled.trade_in_value_sgd =
-                  lookup.value_sgd;
-                verificationData.slots_filled.trade_in_condition =
-                  lookup.condition;
-              } else {
-                verificationData.slots_filled.target_price_sgd =
-                  lookup.value_sgd;
-              }
-              toolResult = JSON.stringify({ ...lookup, subject });
-            }
-          } else if (functionName === "calculate_top_up") {
-            const targetPrice = Number(functionArgs.targetPrice);
-            const tradeValue = Number(functionArgs.tradeInValue);
-            const discount = Number(functionArgs.usedDiscount || 0);
-            if (!Number.isFinite(targetPrice) || !Number.isFinite(tradeValue)) {
-              toolResult = "targetPrice and tradeInValue are required.";
-            } else {
-              const calc = calculateTopUp(targetPrice, tradeValue, discount);
-              latestTopUp = calc;
-              verificationData.top_up_sgd = calc.top_up_sgd;
-              verificationData.calculation_steps = calc.steps;
-              verificationData.slots_filled.used_device_discount_sgd = discount;
-              toolResult = JSON.stringify(calc);
-            }
-          } else if (functionName === "inventory_check") {
-            const productId =
-              typeof functionArgs.productId === "string"
-                ? functionArgs.productId
-                : "";
-            if (!productId) {
-              toolResult = "productId is required.";
-            } else {
-              const stock = await inventoryCheck(productId);
-              toolResult = JSON.stringify(stock);
-            }
-          } else if (functionName === "order_create") {
-            try {
-              const order = await createOrder({
-                sessionId,
-                userId: functionArgs.userId,
-                productId: functionArgs.productId,
-                paymentMethod: functionArgs.paymentMethod,
-                options: functionArgs.options ?? null,
-              });
-              toolResult = JSON.stringify(order);
-            } catch (err) {
-              toolResult = `Order creation failed: ${err instanceof Error ? err.message : String(err)}`;
-            }
-          } else if (functionName === "schedule_inspection") {
-            try {
-              const booking = await scheduleInspection({
-                sessionId,
-                userId: functionArgs.userId,
-                storeId: functionArgs.storeId,
-                timeslot: functionArgs.timeslot,
-                notes: functionArgs.notes,
-              });
-              toolResult = JSON.stringify(booking);
-            } catch (err) {
-              toolResult = `Inspection scheduling failed: ${err instanceof Error ? err.message : String(err)}`;
-            }
-          } else if (functionName === "ocr_and_extract") {
-            if (!functionArgs.imageUrl) {
-              toolResult = "imageUrl is required.";
-            } else {
-              const extraction = await ocrAndExtract({
-                imageUrl: functionArgs.imageUrl,
-                promptHint: functionArgs.promptHint,
-              });
-              ocrConfidence = extraction.photoscore;
-              if (
-                extraction.detected_model &&
-                !verificationData.slots_filled.trade_in_model
-              ) {
-                verificationData.slots_filled.trade_in_model =
-                  extraction.detected_model;
-              }
-              toolResult = JSON.stringify(extraction);
-            }
-          } else if (functionName === "enqueue_human_review") {
-            try {
-              const ticket = await enqueueHumanReview({
-                sessionId,
-                reason: functionArgs.reason || "manual_review",
-                payload: functionArgs.payload ?? null,
-              });
-              verificationData.flags.requires_human_review = true;
-              toolResult = JSON.stringify(ticket);
-            } catch (err) {
-              toolResult = `Failed to enqueue review: ${err instanceof Error ? err.message : String(err)}`;
-            }
-          } else if (functionName === "sendemail") {
-            const toolStart = Date.now();
-            const normalizedArgs = {
-              ...functionArgs,
-              phone:
-                functionArgs.phone ??
-                functionArgs.phone_number ??
-                functionArgs.phoneNumber ??
-                undefined,
-            };
-            toolResult = await handleEmailSend(normalizedArgs);
-            const toolLatency = Date.now() - toolStart;
+          } catch (error) {
+            console.error(`[ChatKit] Tool error:`, error);
+            toolResult = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
             toolSummaries.push({
               name: functionName,
-              args: normalizedArgs,
-              resultPreview: toolResult.slice(0, 200),
+              args: functionArgs,
+              error: toolResult,
             });
             await logToolRun({
               request_id: requestId,
               session_id: sessionId,
               tool_name: functionName,
-              args: normalizedArgs,
-              result_preview: toolResult.slice(0, 280),
-              success: true,
-              latency_ms: toolLatency,
+              args: functionArgs,
+              success: false,
+              error_message:
+                error instanceof Error ? error.message : String(error),
             });
-          } else {
-            console.warn("[ChatKit] Unknown tool requested:", functionName);
-            toolResult = `Tool ${functionName} is not implemented.`;
           }
-        } catch (error) {
-          console.error(`[ChatKit] Tool error:`, error);
-          toolResult = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
-          toolSummaries.push({
-            name: functionName,
-            args: functionArgs,
-            error: toolResult,
-          });
-          await logToolRun({
-            request_id: requestId,
-            session_id: sessionId,
-            tool_name: functionName,
-            args: functionArgs,
-            success: false,
-            error_message:
-              error instanceof Error ? error.message : String(error),
+
+          if (
+            (functionName === "searchProducts" ||
+              functionName === "searchtool") &&
+            (!toolResult ||
+              toolResult.includes("No results found") ||
+              toolResult.includes("not found"))
+          ) {
+            const rawQuery =
+              typeof functionArgs.query === "string"
+                ? functionArgs.query.trim()
+                : "";
+            const suggestion = rawQuery
+              ? await findClosestMatch(rawQuery)
+              : null;
+            if (suggestion) {
+              finalResponse = `I couldn't find anything for \"${rawQuery}\". Did you mean \"${suggestion}\"?`;
+              await logToolRun({
+                request_id: requestId,
+                session_id: sessionId,
+                tool_name: `${functionName}:suggestion`,
+                args: { query: rawQuery, suggestion },
+                success: true,
+              });
+              break; // Exit loop to return suggestion
+            }
+          }
+
+          lastSearchProductsResult = toolResult;
+
+          // Sale/promo/live intent: use tool result directly to avoid LLM rewrites
+          if (
+            saleIntent &&
+            toolResult &&
+            toolResult.trim().length > 0 &&
+            !finalResponse
+          ) {
+            finalResponse = toolResult.trim();
+            console.log(
+              `[ChatKit] ✅ Sale/promo intent - using tool result directly (length ${finalResponse.length})`,
+            );
+            continue; // Skip adding tool result to messages
+          }
+
+          // ✅ CRITICAL: Extract deterministic response BEFORE sending to LLM
+          if (toolResult && toolResult.includes("<<<DETERMINISTIC_START>>>")) {
+            const startMarker = "<<<DETERMINISTIC_START>>>";
+            const endMarker = "<<<DETERMINISTIC_END>>>";
+            const startIdx = toolResult.indexOf(startMarker);
+            const endIdx = toolResult.indexOf(endMarker);
+
+            if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+              const extracted = toolResult
+                .substring(startIdx + startMarker.length, endIdx)
+                .trim();
+              console.log(
+                `[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars) - setting finalResponse immediately`,
+              );
+              finalResponse = extracted;
+              // Don't add this tool result to messages - we already have the final response
+              continue; // Skip adding to messages and move to next tool call
+            }
+          }
+
+          // Capture trade-up prices deterministically based on the query
+          if (tradeUpPairIntent && forcedTradeUpMath) {
+            const rawQuery =
+              typeof functionArgs.query === "string"
+                ? functionArgs.query.toLowerCase()
+                : "";
+            const parsedNumber = pickFirstNumber(toolResult);
+            if (parsedNumber) {
+              const sourceHint = forcedTradeUpMath.source
+                ?.toLowerCase()
+                .slice(0, 40);
+              const targetHint = forcedTradeUpMath.target
+                ?.toLowerCase()
+                .slice(0, 40);
+
+              const looksLikeSource =
+                rawQuery.includes("trade-in") ||
+                (sourceHint && rawQuery.includes(sourceHint));
+              const looksLikeTarget =
+                targetHint && rawQuery.includes(targetHint);
+
+              if (looksLikeSource && forcedTradeUpMath.tradeValue == null) {
+                forcedTradeUpMath.tradeValue = parsedNumber;
+              } else if (
+                looksLikeTarget &&
+                forcedTradeUpMath.retailPrice == null
+              ) {
+                forcedTradeUpMath.retailPrice = parsedNumber;
+              }
+            }
+          }
+
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: toolSource
+              ? `${toolResult}\n\n[Source: ${toolSource}]`
+              : toolResult,
           });
         }
 
+        // 🔴 CRITICAL: Add system reminder to enforce concise responses after tool calls
         if (
-          (functionName === "searchProducts" ||
-            functionName === "searchtool") &&
-          (!toolResult ||
-            toolResult.includes("No results found") ||
-            toolResult.includes("not found"))
+          assistantMessage.tool_calls &&
+          assistantMessage.tool_calls.length > 0
         ) {
-          const rawQuery =
-            typeof functionArgs.query === "string"
-              ? functionArgs.query.trim()
-              : "";
-          const suggestion = rawQuery ? await findClosestMatch(rawQuery) : null;
-          if (suggestion) {
-            finalResponse = `I couldn't find anything for \"${rawQuery}\". Did you mean \"${suggestion}\"?`;
-            await logToolRun({
-              request_id: requestId,
-              session_id: sessionId,
-              tool_name: `${functionName}:suggestion`,
-              args: { query: rawQuery, suggestion },
-              success: true,
-            });
-            break; // Exit loop to return suggestion
-          }
+          messages.push({
+            role: "system",
+            content:
+              "🔴 REMINDER: Extract ONLY the key info from the tool results above (price, condition, etc.). Respond in MAX 2-3 SHORT sentences. DO NOT copy/paste or repeat verbose details. Be CONCISE and conversational. Avoid filler like “Let me check” or “One moment” — go straight to the answer.",
+          });
         }
 
-        lastSearchProductsResult = toolResult;
+        // Skip LLM call if we already have a deterministic response (trade-up or Woo list)
+        const skipLLMForTradeUp =
+          tradeUpPairIntent &&
+          (precomputedTradeUp.tradeValue != null ||
+            precomputedTradeUp.retailPrice != null);
 
-        // Sale/promo/live intent: use tool result directly to avoid LLM rewrites
-        if (
-          saleIntent &&
-          toolResult &&
-          toolResult.trim().length > 0 &&
-          !finalResponse
-        ) {
-          finalResponse = toolResult.trim();
+        // 🔴 DETERMINISTIC: Generate trade-up response without LLM
+        if (!finalResponse && skipLLMForTradeUp && tradeUpParts) {
+          const tradeValue = precomputedTradeUp.tradeValue ?? 0;
+          const retailPrice = precomputedTradeUp.retailPrice ?? 0;
+          const topUp = Math.max(0, retailPrice - tradeValue);
+
+          const sourceLabel = formatDeviceLabel(tradeUpParts.source);
+          const targetLabel = formatDeviceLabel(tradeUpParts.target);
+          finalResponse = [
+            `Trade-in: **${sourceLabel}** (S$${tradeValue}, subject to inspection).`,
+            `Target: **${targetLabel}** (S$${retailPrice}). Top-up: **S$${topUp}**.`,
+            "Proceed?",
+          ].join("\n");
+
           console.log(
-            `[ChatKit] ✅ Sale/promo intent - using tool result directly (length ${finalResponse.length})`,
+            "[ChatKit] 🔒 Deterministic trade-up response:",
+            finalResponse,
           );
-          continue; // Skip adding tool result to messages
         }
 
-        // ✅ CRITICAL: Extract deterministic response BEFORE sending to LLM
-        if (toolResult && toolResult.includes("<<<DETERMINISTIC_START>>>")) {
+        // ✅ DETERMINISTIC: Extract and use deterministic responses from vectorSearch.ts
+        // Check if any tool result contains a deterministic response marker
+        if (
+          !finalResponse &&
+          lastSearchProductsResult &&
+          lastSearchProductsResult.includes("<<<DETERMINISTIC_START>>>")
+        ) {
           const startMarker = "<<<DETERMINISTIC_START>>>";
           const endMarker = "<<<DETERMINISTIC_END>>>";
-          const startIdx = toolResult.indexOf(startMarker);
-          const endIdx = toolResult.indexOf(endMarker);
+          const startIdx = lastSearchProductsResult.indexOf(startMarker);
+          const endIdx = lastSearchProductsResult.indexOf(endMarker);
 
           if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-            const extracted = toolResult
+            const extracted = lastSearchProductsResult
               .substring(startIdx + startMarker.length, endIdx)
               .trim();
             console.log(
-              `[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars) - setting finalResponse immediately`,
+              `[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars, bypassing LLM)`,
             );
             finalResponse = extracted;
-            // Don't add this tool result to messages - we already have the final response
-            continue; // Skip adding to messages and move to next tool call
           }
         }
 
-        // Capture trade-up prices deterministically based on the query
-        if (tradeUpPairIntent && forcedTradeUpMath) {
-          const rawQuery =
-            typeof functionArgs.query === "string"
-              ? functionArgs.query.toLowerCase()
-              : "";
-          const parsedNumber = pickFirstNumber(toolResult);
-          if (parsedNumber) {
-            const sourceHint = forcedTradeUpMath.source
-              ?.toLowerCase()
-              .slice(0, 40);
-            const targetHint = forcedTradeUpMath.target
-              ?.toLowerCase()
-              .slice(0, 40);
+        if (!finalResponse && !skipLLMForTradeUp) {
+          // If no suggestion was made
+          const execFinalCompletion = async () => {
+            const hasTools =
+              Array.isArray(assistantMessage.tool_calls) &&
+              assistantMessage.tool_calls.length > 0;
+            const isGemini = textModel.toLowerCase().includes("gemini");
+            const canUseGemini =
+              isGemini && process.env.GEMINI_API_KEY && !hasTools;
 
-            const looksLikeSource =
-              rawQuery.includes("trade-in") ||
-              (sourceHint && rawQuery.includes(sourceHint));
-            const looksLikeTarget = targetHint && rawQuery.includes(targetHint);
-
-            if (looksLikeSource && forcedTradeUpMath.tradeValue == null) {
-              forcedTradeUpMath.tradeValue = parsedNumber;
-            } else if (
-              looksLikeTarget &&
-              forcedTradeUpMath.retailPrice == null
-            ) {
-              forcedTradeUpMath.retailPrice = parsedNumber;
+            if (canUseGemini) {
+              try {
+                return await createGeminiChatCompletion({
+                  model: textModel,
+                  messages,
+                  temperature: 0.7,
+                  max_tokens: 800,
+                });
+              } catch (geminiError) {
+                console.error(
+                  "[ChatKit] Gemini failed, falling back to OpenAI:",
+                  geminiError,
+                );
+              }
             }
-          }
-        }
 
-        messages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: toolSource
-            ? `${toolResult}\n\n[Source: ${toolSource}]`
-            : toolResult,
-        });
-      }
+            // Default / fallback: OpenAI
+            const model = textModel.includes("gemini")
+              ? "gpt-4o-mini"
+              : textModel;
+            return openai.chat.completions.create({
+              model,
+              messages,
+              temperature: 0.7,
+              max_tokens: 800,
+            });
+          };
 
-      // 🔴 CRITICAL: Add system reminder to enforce concise responses after tool calls
-      if (
-        assistantMessage.tool_calls &&
-        assistantMessage.tool_calls.length > 0
-      ) {
-        messages.push({
-          role: "system",
-          content:
-            "🔴 REMINDER: Extract ONLY the key info from the tool results above (price, condition, etc.). Respond in MAX 2-3 SHORT sentences. DO NOT copy/paste or repeat verbose details. Be CONCISE and conversational. Avoid filler like “Let me check” or “One moment” — go straight to the answer.",
-        });
-      }
-
-      // Skip LLM call if we already have a deterministic response (trade-up or Woo list)
-      const skipLLMForTradeUp =
-        tradeUpPairIntent &&
-        (precomputedTradeUp.tradeValue != null ||
-          precomputedTradeUp.retailPrice != null);
-
-      // 🔴 DETERMINISTIC: Generate trade-up response without LLM
-      if (!finalResponse && skipLLMForTradeUp && tradeUpParts) {
-        const tradeValue = precomputedTradeUp.tradeValue ?? 0;
-        const retailPrice = precomputedTradeUp.retailPrice ?? 0;
-        const topUp = Math.max(0, retailPrice - tradeValue);
-
-        const sourceLabel = formatDeviceLabel(tradeUpParts.source);
-        const targetLabel = formatDeviceLabel(tradeUpParts.target);
-        finalResponse = [
-          `Trade-in: **${sourceLabel}** (S$${tradeValue}, subject to inspection).`,
-          `Target: **${targetLabel}** (S$${retailPrice}). Top-up: **S$${topUp}**.`,
-          "Proceed?",
-        ].join("\n");
-
-        console.log(
-          "[ChatKit] 🔒 Deterministic trade-up response:",
-          finalResponse,
-        );
-      }
-
-      // ✅ DETERMINISTIC: Extract and use deterministic responses from vectorSearch.ts
-      // Check if any tool result contains a deterministic response marker
-      if (
-        !finalResponse &&
-        lastSearchProductsResult &&
-        lastSearchProductsResult.includes("<<<DETERMINISTIC_START>>>")
-      ) {
-        const startMarker = "<<<DETERMINISTIC_START>>>";
-        const endMarker = "<<<DETERMINISTIC_END>>>";
-        const startIdx = lastSearchProductsResult.indexOf(startMarker);
-        const endIdx = lastSearchProductsResult.indexOf(endMarker);
-
-        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-          const extracted = lastSearchProductsResult
-            .substring(startIdx + startMarker.length, endIdx)
-            .trim();
-          console.log(
-            `[ChatKit] 🔒 Extracted deterministic response (${extracted.length} chars, bypassing LLM)`,
-          );
-          finalResponse = extracted;
-        }
-      }
-
-      if (!finalResponse && !skipLLMForTradeUp) {
-        // If no suggestion was made
-        const execFinalCompletion = async () => {
-          const hasTools =
-            Array.isArray(assistantMessage.tool_calls) &&
-            assistantMessage.tool_calls.length > 0;
-          const isGemini = textModel.toLowerCase().includes("gemini");
-          const canUseGemini =
-            isGemini && process.env.GEMINI_API_KEY && !hasTools;
-
-          if (canUseGemini) {
-            try {
-              return await createGeminiChatCompletion({
-                model: textModel,
-                messages,
-                temperature: 0.7,
-                max_tokens: 800,
-              });
-            } catch (geminiError) {
-              console.error(
-                "[ChatKit] Gemini failed, falling back to OpenAI:",
-                geminiError,
-              );
-            }
-          }
-
-          // Default / fallback: OpenAI
-          const model = textModel.includes("gemini")
-            ? "gpt-4o-mini"
-            : textModel;
-          return openai.chat.completions.create({
-            model,
-            messages,
-            temperature: 0.7,
-            max_tokens: 800,
-          });
-        };
-
-        let finalCompletion;
-        try {
-          finalCompletion = await execFinalCompletion();
-        } catch (finalError) {
-          if (
-            image &&
-            !imageStrippedForTimeout &&
-            isImageDownloadError(finalError)
-          ) {
-            console.warn(
-              "[ChatKit] Final response image fetch failed, retrying without image.",
-              { sessionId, image },
-            );
-            messages[userMessageIndex] = { role: "user", content: message };
-            imageStrippedForTimeout = true;
+          let finalCompletion;
+          try {
             finalCompletion = await execFinalCompletion();
-          } else {
-            throw finalError;
-          }
-        }
-        finalResponse = finalCompletion.choices[0].message.content || "";
-
-        // If deterministic block is present, strip everything outside it
-        if (finalResponse.includes("<<<DETERMINISTIC_START>>")) {
-          const startMarker = "<<<DETERMINISTIC_START>>>";
-          const endMarker = "<<<DETERMINISTIC_END>>>";
-          const start = finalResponse.indexOf(startMarker) + startMarker.length;
-          const end = finalResponse.indexOf(endMarker, start);
-          if (end !== -1) {
-            finalResponse = finalResponse.slice(start, end).trim();
-          }
-        }
-
-        // ✅ FAILSAFE: Catch hallucinations if they somehow bypass deterministic responses
-        // This should rarely trigger now that vectorSearch.ts returns pre-formatted responses
-        if (
-          lastHybridQuery &&
-          /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop|notebook|computer)\b/i.test(
-            lastHybridQuery,
-          )
-        ) {
-          const hallucinatedProducts = ["chorvs", "anthem", "hades"];
-          const responseL = finalResponse.toLowerCase();
-
-          for (const fake of hallucinatedProducts) {
-            if (responseL.includes(fake)) {
-              console.log(
-                `[ChatKit] 🚨 FAILSAFE TRIGGERED - Blocked hallucinated product: ${fake}`,
+          } catch (finalError) {
+            if (
+              image &&
+              !imageStrippedForTimeout &&
+              isImageDownloadError(finalError)
+            ) {
+              console.warn(
+                "[ChatKit] Final response image fetch failed, retrying without image.",
+                { sessionId, image },
               );
-              // This shouldn't happen with deterministic responses, but regenerate if it does
-              messages.push({
-                role: "system",
-                content: `CRITICAL: Do NOT mention "${fake}" - it does not exist. Only show products from the WooCommerce list provided.`,
-              });
-              const retryCompletion = await execFinalCompletion();
-              finalResponse = retryCompletion.choices[0].message.content || "";
-              break;
+              messages[userMessageIndex] = { role: "user", content: message };
+              imageStrippedForTimeout = true;
+              finalCompletion = await execFinalCompletion();
+            } else {
+              throw finalError;
             }
           }
-        }
+          finalResponse = finalCompletion.choices[0].message.content || "";
 
-        // Track second call token usage
-        if (finalCompletion.usage) {
-          promptTokens += finalCompletion.usage.prompt_tokens || 0;
-          completionTokens += finalCompletion.usage.completion_tokens || 0;
-        }
+          // If deterministic block is present, strip everything outside it
+          if (finalResponse.includes("<<<DETERMINISTIC_START>>")) {
+            const startMarker = "<<<DETERMINISTIC_START>>>";
+            const endMarker = "<<<DETERMINISTIC_END>>>";
+            const start =
+              finalResponse.indexOf(startMarker) + startMarker.length;
+            const end = finalResponse.indexOf(endMarker, start);
+            if (end !== -1) {
+              finalResponse = finalResponse.slice(start, end).trim();
+            }
+          }
 
-        if (
-          lastHybridResult &&
-          lastHybridSource &&
-          lastHybridQuery &&
-          !tradeUpPairIntent
-        ) {
-          const hasLink = /https?:\/\//i.test(finalResponse);
-          const toolResultHasProducts =
-            /WooCommerce Live Data|Product Link:|Product ID:/i.test(
-              lastHybridResult,
-            );
-          const fallback = formatHybridFallback(
-            lastHybridQuery,
-            lastHybridResult,
-            lastHybridSource,
-          );
+          // ✅ FAILSAFE: Catch hallucinations if they somehow bypass deterministic responses
+          // This should rarely trigger now that vectorSearch.ts returns pre-formatted responses
+          if (
+            lastHybridQuery &&
+            /\b(phone|handphone|mobile|smartphone|tablet|ipad|laptop|notebook|computer)\b/i.test(
+              lastHybridQuery,
+            )
+          ) {
+            const hallucinatedProducts = ["chorvs", "anthem", "hades"];
+            const responseL = finalResponse.toLowerCase();
 
-          // 🔴 CRITICAL: For trade-in queries, NEVER append verbose fallback
-          // The LLM already has the concise response from the system reminder
-          const isTradeInQuery = lastHybridSource === "trade_in_vector_store";
+            for (const fake of hallucinatedProducts) {
+              if (responseL.includes(fake)) {
+                console.log(
+                  `[ChatKit] 🚨 FAILSAFE TRIGGERED - Blocked hallucinated product: ${fake}`,
+                );
+                // This shouldn't happen with deterministic responses, but regenerate if it does
+                messages.push({
+                  role: "system",
+                  content: `CRITICAL: Do NOT mention "${fake}" - it does not exist. Only show products from the WooCommerce list provided.`,
+                });
+                const retryCompletion = await execFinalCompletion();
+                finalResponse =
+                  retryCompletion.choices[0].message.content || "";
+                break;
+              }
+            }
+          }
+
+          // Track second call token usage
+          if (finalCompletion.usage) {
+            promptTokens += finalCompletion.usage.prompt_tokens || 0;
+            completionTokens += finalCompletion.usage.completion_tokens || 0;
+          }
 
           if (
-            isGenericAssistantReply(finalResponse) ||
-            (lastHybridSource === "product_catalog" &&
-              !hasLink &&
-              !toolResultHasProducts)
+            lastHybridResult &&
+            lastHybridSource &&
+            lastHybridQuery &&
+            !tradeUpPairIntent
           ) {
-            // If catalog search had no link AND no WooCommerce products, send user to search page
+            const hasLink = /https?:\/\//i.test(finalResponse);
+            const toolResultHasProducts =
+              /WooCommerce Live Data|Product Link:|Product ID:/i.test(
+                lastHybridResult,
+              );
+            const fallback = formatHybridFallback(
+              lastHybridQuery,
+              lastHybridResult,
+              lastHybridSource,
+            );
+
+            // 🔴 CRITICAL: For trade-in queries, NEVER append verbose fallback
+            // The LLM already has the concise response from the system reminder
+            const isTradeInQuery = lastHybridSource === "trade_in_vector_store";
+
             if (
-              lastHybridSource === "product_catalog" &&
-              !hasLink &&
-              !toolResultHasProducts
+              isGenericAssistantReply(finalResponse) ||
+              (lastHybridSource === "product_catalog" &&
+                !hasLink &&
+                !toolResultHasProducts)
             ) {
-              const encoded = encodeURIComponent(lastHybridQuery || "product");
-              finalResponse = [
-                `Sorry, I couldn't find that in the catalog. Check the latest price/availability on the site: https://tradezone.sg/?s=${encoded}`,
-                "If you prefer, share the product link and I'll fetch details from that page.",
-              ].join(" ");
-            } else {
-              finalResponse = fallback;
+              // If catalog search had no link AND no WooCommerce products, send user to search page
+              if (
+                lastHybridSource === "product_catalog" &&
+                !hasLink &&
+                !toolResultHasProducts
+              ) {
+                const encoded = encodeURIComponent(
+                  lastHybridQuery || "product",
+                );
+                finalResponse = [
+                  `Sorry, I couldn't find that in the catalog. Check the latest price/availability on the site: https://tradezone.sg/?s=${encoded}`,
+                  "If you prefer, share the product link and I'll fetch details from that page.",
+                ].join(" ");
+              } else {
+                finalResponse = fallback;
+              }
+            } else if (
+              !hasLink &&
+              !isTradeInQuery &&
+              lastHybridSource !== "vector_store"
+            ) {
+              // Only append fallback for non-trade-in queries
+              finalResponse = `${finalResponse}\n\n${fallback}`;
             }
-          } else if (
-            !hasLink &&
-            !isTradeInQuery &&
-            lastHybridSource !== "vector_store"
-          ) {
-            // Only append fallback for non-trade-in queries
-            finalResponse = `${finalResponse}\n\n${fallback}`;
+            // For trade-in queries: keep the concise LLM response, don't append fallback
           }
-          // For trade-in queries: keep the concise LLM response, don't append fallback
         }
+      } else {
+        finalResponse = assistantMessage.content || "";
       }
-    } else {
-      finalResponse = assistantMessage.content || "";
     }
 
     const tradeSummaryForResponse = formatTradeUpSummary(
@@ -6133,7 +6547,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
 
     const pendingToolCalls = Boolean(
-      assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0,
+      assistantMessage &&
+        assistantMessage.tool_calls &&
+        assistantMessage.tool_calls.length > 0,
     );
     // Auto-submit whenever there's an active trade-in lead
     // (even if the model just called a tool such as searchProducts).

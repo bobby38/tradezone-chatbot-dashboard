@@ -218,6 +218,10 @@ async def test_staff_support_complete_flow():
             elif "correct?" in lower or "right?" in lower:
                 reply = "yes"
                 step = "confirm"
+            # Reason/message
+            elif "reason" in lower or "issue" in lower:
+                reply = "Warranty check for my computer"
+                step = "reason"
 
             if reply is None:
                 print(f"\n[DEBUG] Iteration {i}: No reply matched for: {content}")
@@ -246,6 +250,8 @@ async def test_staff_support_complete_flow():
             for word in [
                 "sent",
                 "staff will contact",
+                "they'll contact",
+                "contact you soon",
                 "will get back",
                 "will reach out",
             ]
