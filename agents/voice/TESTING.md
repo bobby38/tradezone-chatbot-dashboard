@@ -26,6 +26,9 @@ pytest test_livekit_agent.py -v
 # Run voice quality tests (short replies, $ currency, filters)
 pytest test_livekit_voice_quality.py -v
 
+# Run trade flow tests (end-to-end trade-in + trade-up + staff support)
+pytest test_livekit_trade_flow.py -v
+
 # Run specific test
 pytest test_livekit_agent.py::test_greeting -v
 
