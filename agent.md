@@ -1697,14 +1697,15 @@ Message: Request to talk to staff.
 ```
 No information about what the customer actually asked about.
 
-**Solution**: Cascading Perplexity search provides instant research + sources
+**Solution**: Cascading Perplexity search provides instant research + sources (short hint for fast staff triage)
 
 **Features Implemented**:
 
 1. **Enhanced Message Context** (`lib/chatkit/defaultPrompt.ts:248`)
    - Prompt now explicitly requires full conversation summary
-   - Must include: original question, products discussed, reason for escalation
-   - Example: "Customer asked: Is PS5 portal playable without PS5? Question not answered, needs expert advice."
+   - Must include: original question, products discussed, **Reason: {reason}**
+   - Escalation requires **reason + email + name** (phone optional but preferred)
+   - Example: "Customer asked: Is PS5 portal playable without PS5? Reason: needs expert advice."
 
 2. **Cascading Search Strategy** (`lib/tools/emailSend.ts:84-140`)
    - **Step 1**: Search tradezone.sg first (store-specific info)
@@ -2715,14 +2716,15 @@ if (!emailRegex.test(customerEmail)) {
 **sendemail Tool Updated:**
 ```typescript
 {
-  emailType: "trade_in | info_request | contact",
-  name: string,
-  email: string,  // Now validated and auto-corrected
-  phone_number?: string,
-  message: string,
-  note?: string  // NEW: Optional context for staff
+  emailType: "info_request | contact",
+  name: string,   // REQUIRED
+  email: string,  // REQUIRED (validated + auto-corrected)
+  phone_number?: string, // optional but preferred
+  message: string, // REQUIRED: must include "Reason: {reason}"
+  note?: string   // Optional context for staff
 }
 ```
+**Note:** AI hint is intentionally short (≈280 chars) for fast scanning.
 
 #### **5. Dashboard Submissions - FIXED** ✅
 **Problem:** Agent emails didn't appear in `/dashboard/submissions`
