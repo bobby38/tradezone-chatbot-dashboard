@@ -1372,8 +1372,8 @@ export default function SettingsPage() {
           {!scheduledTasksLoading && scheduledTasks.length === 0 && (
             <Card>
               <CardContent className="py-6 text-sm text-muted-foreground">
-                No scheduled tasks found. Wire your Coolify/N8N cron jobs to the
-                `/api/scheduled-tasks` source to populate this view.
+                No scheduled tasks found. Set `SCHEDULED_TASKS_URL` (JSON feed)
+                or `SCHEDULED_TASKS_JSON` to populate this view.
               </CardContent>
             </Card>
           )}
@@ -1382,10 +1382,10 @@ export default function SettingsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               {scheduledTasks.map((task) => {
                 const topRuns = task.recentRuns.slice(0, 3);
+                const lastRun = task.lastRun ?? task.recentRuns[0];
+                const lastRunStatus = lastRun?.status ?? "failed";
                 const statusVariant: "secondary" | "destructive" =
-                  task.lastRun.status === "success"
-                    ? "secondary"
-                    : "destructive";
+                  lastRunStatus === "success" ? "secondary" : "destructive";
                 return (
                   <Card key={task.id} className="flex flex-col">
                     <CardHeader className="space-y-3">
@@ -1393,7 +1393,7 @@ export default function SettingsPage() {
                         <CardTitle className="flex items-center gap-2">
                           {task.title}
                           <Badge variant={statusVariant}>
-                            {task.lastRun.status === "success"
+                            {lastRunStatus === "success"
                               ? "Healthy"
                               : "Attention"}
                           </Badge>
@@ -1415,16 +1415,17 @@ export default function SettingsPage() {
                         Last run:{" "}
                         <span
                           className={
-                            task.lastRun.status === "success"
+                            lastRunStatus === "success"
                               ? "text-emerald-600 dark:text-emerald-500"
                               : "text-destructive"
                           }
                         >
-                          {task.lastRun.status === "success"
-                            ? "Success"
-                            : "Failed"}
+                          {lastRunStatus === "success" ? "Success" : "Failed"}
                         </span>{" "}
-                        • {formatRelativeTimeFromNow(task.lastRun.endedAt)}
+                        •{" "}
+                        {lastRun?.endedAt
+                          ? formatRelativeTimeFromNow(lastRun.endedAt)
+                          : "No runs yet"}
                       </div>
                     </CardHeader>
                     <CardContent className="flex-1 space-y-4">

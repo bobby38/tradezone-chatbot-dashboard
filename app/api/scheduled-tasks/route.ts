@@ -165,10 +165,23 @@ const RAW_TASKS = [
 ] satisfies Array<Omit<ScheduledTask, "lastRun">>;
 
 function normalizeTasks(tasks: Array<Omit<ScheduledTask, "lastRun">>) {
-  return tasks.map((task) => ({
-    ...task,
-    lastRun: task.recentRuns[0],
-  }));
+  return tasks.map((task) => {
+    const latestRun = task.recentRuns?.[0];
+    const nowIso = new Date().toISOString();
+    return {
+      ...task,
+      lastRun:
+        latestRun ??
+        ({
+          id: `${task.id}-no-runs`,
+          status: "failed",
+          startedAt: nowIso,
+          endedAt: nowIso,
+          durationMs: 0,
+          notes: "No runs recorded yet",
+        } satisfies ScheduledTaskRun),
+    };
+  });
 }
 
 async function loadExternalTasks(): Promise<Array<
@@ -208,6 +221,14 @@ async function loadExternalTasks(): Promise<Array<
     }
   }
 
+  const allowFile =
+    process.env.SCHEDULED_TASKS_ALLOW_FILE === "1" ||
+    process.env.NODE_ENV !== "production";
+
+  if (!allowFile) {
+    return null;
+  }
+
   try {
     const filePath = path.join(process.cwd(), "data", "scheduled_tasks.json");
     if (fs.existsSync(filePath)) {
@@ -224,7 +245,7 @@ async function loadExternalTasks(): Promise<Array<
 
 export async function GET() {
   const external = await loadExternalTasks();
-  const tasks = normalizeTasks(external ?? RAW_TASKS);
+  const tasks = normalizeTasks(external ?? []);
   return NextResponse.json(
     { tasks },
     {
