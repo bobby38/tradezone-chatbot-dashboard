@@ -1,17 +1,16 @@
 #!/bin/bash
-# Refresh WooCommerce catalog cron job with dashboard logging
+# Refresh WooCommerce catalog with Perplexity enrichment
 
 API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
 START=$(date +%s)
 
-# Run the actual task
-if curl -sS -X POST https://trade.rezult.co/api/woocommerce/refresh-catalog \
-  -H "X-API-Key: $API_KEY" > /dev/null 2>&1; then
+# Run the actual enrichment script
+if cd /app && node scripts/refresh-product-catalog.mjs > /tmp/catalog-refresh.log 2>&1; then
   STATUS="success"
-  NOTES=""
+  NOTES="Catalog refreshed with enrichment"
 else
   STATUS="failed"
-  NOTES="WooCommerce catalog refresh failed"
+  NOTES="Catalog refresh failed: $(tail -1 /tmp/catalog-refresh.log)"
 fi
 
 # Calculate duration and log to dashboard
