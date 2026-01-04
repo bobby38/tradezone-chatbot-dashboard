@@ -36,8 +36,9 @@ async def start_session(session: AgentSession) -> None:
 
 def skip_tool_events(result) -> None:
     """Skip optional tool call events before assistant messages."""
-    result.expect.skip_next_event_if(type="function_call")
-    result.expect.skip_next_event_if(type="function_call_output")
+    for _ in range(3):
+        result.expect.skip_next_event_if(type="function_call")
+        result.expect.skip_next_event_if(type="function_call_output")
 
 
 def message_text(msg) -> str:

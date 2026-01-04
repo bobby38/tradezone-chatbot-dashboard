@@ -419,10 +419,10 @@ def _proceed_prompt() -> str:
 
 def _greeting_prompt() -> str:
     options = [
-        "Hi, Amara here. Want product info, trade-in or upgrade help, or to talk to staff?",
-        "Hello, this is Amara. Product info, trade-in/upgrade, or staff?",
-        "Hi! Amara here. Product info, trade-in help, or staff?",
-        "Hey, Amara here. Need product info, trade-in/upgrade, or staff?",
+        "Hi, I'm Amara—electronics, gaming, trade-ins, or staff support?",
+        "Hello, Amara here. Gaming, electronics, trade-ins, or staff support?",
+        "Hi! Amara here. Need electronics, gaming, trade-ins, or staff support?",
+        "Hey, Amara here—gaming gear, electronics, trade-ins, or staff support?",
     ]
     return random.choice(options)
 
@@ -489,7 +489,9 @@ def _build_tradein_price_reply(device: str) -> str:
         return _normalize_voice_currency(
             f"Your {device} is worth about ${price_int} for trade-in. {_proceed_prompt()}"
         )
-    return f"I couldn't find a trade-in price for {device}. Want staff to check?"
+    return (
+        f"I couldn't find a trade-in price for {device}. Want staff support to check?"
+    )
 
 
 def _maybe_force_reply(message: str) -> Optional[str]:
@@ -504,7 +506,10 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         )
 
     if "warranty" in lower or "covered" in lower or "coverage" in lower:
-        return "We can ask staff to check warranty. In Singapore? Name, phone, email?"
+        return (
+            "We can ask staff support to check warranty. "
+            "In Singapore? Name, phone, email?"
+        )
 
     if "opening hours" in lower or "open hours" in lower or "what time" in lower:
         return "Open daily, 12 pm to 8 pm."
@@ -520,7 +525,7 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         return "Shipping is $5, 1-3 business days in Singapore."
 
     if any(token in lower for token in ["ps6", "osmo pocket 4", "pocket 4"]):
-        return "Not in stock yet. Want staff to notify you when available?"
+        return "Not in stock yet. Want staff support to notify you when available?"
 
     if _extract_tradeup_devices(message):
         return None
@@ -754,7 +759,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                     if "couldn't find" in lower_answer or "no products" in lower_answer:
                         return (
                             "Sorry, I couldn't find that in our catalog. "
-                            "Want staff to check or notify you?"
+                            "Want staff support to check or notify you? "
+                            "What do you want to do next?"
                         )
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
                 return answer if answer else "No products found"
@@ -820,7 +826,7 @@ async def check_tradein_price(
         logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
         return (
             f"I couldn't find a trade-in price for {device_name}. "
-            f"Want me to connect you to staff to check it?"
+            "Want staff support to check it?"
         )
 
 
@@ -1888,7 +1894,7 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
   - Confirmations: Display all details in text chat, then ask "Everything correct?" - let user READ and confirm visually
   - This avoids annoying voice readback that users can't stop
 
-- Start every call with: "Hi, Amara here. Want product info, trade-in or upgrade help, or to talk to staff?" Wait for a clear choice before running any tools.
+- Start every call with: "Hi, I'm Amara—electronics, gaming, trade-ins, or staff support?" Wait for a clear choice before running any tools.
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
 - If user says "trade in my {device}" without a target device, treat as price-only: call check_tradein_price for that device, then ask if they want to proceed. Do NOT ask for condition or accessories before they confirm.
 - If you detect trade/upgrade intent with a target device, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
@@ -2361,14 +2367,10 @@ async def entrypoint(ctx: JobContext):
                 content = _normalize_voice_currency(content)
                 last_user = (_last_user_utterance.get(room_name) or "").lower()
                 if "basketball" in last_user and "nba" not in last_user:
-                    if (
-                        "gaming" not in content.lower()
-                        and "electronics" not in content.lower()
-                    ):
-                        content = (
-                            "We focus on gaming and electronics. "
-                            "Do you mean basketball video games like NBA 2K?"
-                        )
+                    content = (
+                        "We focus on gaming and electronics. "
+                        "Do you mean basketball video games like NBA 2K?"
+                    )
                 if "gpu" in last_user and any(
                     token in last_user for token in ["llm", "ai", "chatbot", "training"]
                 ):
@@ -2382,6 +2384,8 @@ async def entrypoint(ctx: JobContext):
                         )
                 try:
                     event.item.content = [content]
+                    if hasattr(event.item, "text_content"):
+                        event.item.text_content = content
                 except Exception:
                     pass
                 conversation_buffer["bot_response"] = content

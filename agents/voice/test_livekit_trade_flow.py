@@ -24,8 +24,9 @@ def _message_text(msg) -> str:
 
 
 def _skip_tool_events(result) -> None:
-    result.expect.skip_next_event_if(type="function_call")
-    result.expect.skip_next_event_if(type="function_call_output")
+    for _ in range(3):
+        result.expect.skip_next_event_if(type="function_call")
+        result.expect.skip_next_event_if(type="function_call_output")
 
 
 async def _start_session(session: AgentSession) -> None:
@@ -65,9 +66,18 @@ def _next_reply_for_prompt(content: str) -> tuple[str | None, str | None]:
         if "correct" in lower:
             return "yes", "email_confirm"
         return "test@gmail.com", "email"
-    if "paynow" in lower or "installment" in lower or "bank" in lower or "cash" in lower:
+    if (
+        "paynow" in lower
+        or "installment" in lower
+        or "bank" in lower
+        or "cash" in lower
+    ):
         return "cash", "payout"
-    if "everything correct" in lower or "is this correct" in lower or "reply yes" in lower:
+    if (
+        "everything correct" in lower
+        or "is this correct" in lower
+        or "reply yes" in lower
+    ):
         return "yes", "recap"
     if "singapore" in lower and "?" in lower:
         return "yes", "location"
@@ -96,7 +106,10 @@ async def test_tradein_full_flow_submits():
                 seen_steps.add(step)
             content = await _send_and_get(session, reply)
 
-        assert any(token in content.lower() for token in ["submitted", "contact", "we'll", "we will"])
+        assert any(
+            token in content.lower()
+            for token in ["submitted", "contact", "we'll", "we will"]
+        )
         # Ensure we reached contact capture steps
         assert "name" in seen_steps
         assert "phone" in seen_steps
