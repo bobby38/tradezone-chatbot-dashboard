@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
@@ -184,9 +185,215 @@ function normalizeTasks(tasks: Array<Omit<ScheduledTask, "lastRun">>) {
   });
 }
 
+/**
+ * Fetch scheduled task executions from Coolify API
+ */
+async function fetchCoolifyScheduledTasks(): Promise<Array<
+  Omit<ScheduledTask, "lastRun">
+> | null> {
+  const coolifyUrl = process.env.COOLIFY_API_URL;
+  const coolifyKey = process.env.COOLIFY_API_KEY;
+  const coolifyAppUuid = process.env.COOLIFY_APP_UUID;
+
+  if (!coolifyUrl || !coolifyKey || !coolifyAppUuid) {
+    console.log("[ScheduledTasks] Coolify config not found, skipping");
+    return null;
+  }
+
+  try {
+    console.log(
+      `[ScheduledTasks] Fetching from Coolify: ${coolifyUrl}/api/v1/applications/${coolifyAppUuid}`,
+    );
+
+    const response = await fetch(
+      `${coolifyUrl}/api/v1/applications/${coolifyAppUuid}`,
+      {
+        headers: {
+          Authorization: `Bearer ${coolifyKey}`,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `[ScheduledTasks] Coolify API error ${response.status}:`,
+        errorText,
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(
+      "[ScheduledTasks] Coolify response:",
+      JSON.stringify(data, null, 2),
+    );
+
+    // Map Coolify deployments to scheduled tasks
+    // This is a placeholder - adjust based on actual Coolify API response structure
+    const tasks: Array<Omit<ScheduledTask, "lastRun">> = [];
+
+    // If Coolify returns deployment history, map it here
+    if (data.deployments && Array.isArray(data.deployments)) {
+      // Example mapping - adjust based on actual response
+      const recentDeployments = data.deployments.slice(0, 5).map((d: any) => ({
+        id: d.id || d.uuid || `deploy-${Date.now()}`,
+        status: d.status === "finished" ? "success" : "failed",
+        startedAt: d.started_at || new Date().toISOString(),
+        endedAt: d.finished_at || new Date().toISOString(),
+        durationMs:
+          new Date(d.finished_at).getTime() - new Date(d.started_at).getTime(),
+        logUrl: d.log_url || null,
+        notes: d.message || null,
+      }));
+
+      tasks.push({
+        id: "coolify-auto-deploy",
+        title: "Auto Deploy",
+        description: "Coolify automatic deployments",
+        frequency: "On commit",
+        cron: "N/A",
+        owner: "Coolify",
+        environment: data.environment || "production",
+        recentRuns: recentDeployments,
+      });
+    }
+
+    return tasks.length > 0 ? tasks : null;
+  } catch (error) {
+    console.error("[ScheduledTasks] Coolify API error:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetch scheduled task executions from Supabase
+ */
+async function fetchSupabaseScheduledTasks(): Promise<Array<
+  Omit<ScheduledTask, "lastRun">
+> | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return null;
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false },
+    });
+
+    const { data: runs, error } = await supabase
+      .from("scheduled_task_runs")
+      .select("*")
+      .order("started_at", { ascending: false })
+      .limit(100);
+
+    if (error || !runs || runs.length === 0) {
+      return null;
+    }
+
+    // Group by task_id
+    const taskMap = new Map<string, any[]>();
+    runs.forEach((run) => {
+      if (!taskMap.has(run.task_id)) {
+        taskMap.set(run.task_id, []);
+      }
+      taskMap.get(run.task_id)!.push(run);
+    });
+
+    // Task metadata
+    const taskMetadata: Record<
+      string,
+      { description: string; frequency: string; cron: string }
+    > = {
+      "sync-price-grid": {
+        description:
+          "Refreshes the Supabase trade-in price grid so AI payouts stay in sync with the latest CSV upload.",
+        frequency: "Weekly (Sunday 10:00 AM SGT)",
+        cron: "0 2 * * 0",
+      },
+      "refresh-woocommerce-catalog": {
+        description:
+          "Downloads the WooCommerce product snapshot, rebuilds products_master, and pushes updates into Supabase.",
+        frequency: "Weekly (Sunday 10:05 AM SGT)",
+        cron: "5 2 * * 0",
+      },
+      "graphiti-sync": {
+        description:
+          "Uploads the rebuilt products + trade grid facts into Graphiti so memory/context stay fresh.",
+        frequency: "Weekly (Sunday 10:30 AM SGT)",
+        cron: "30 2 * * 0",
+      },
+      "tradein-auto-submit": {
+        description:
+          "Submits completed trade-in leads and triggers staff email notifications.",
+        frequency: "Every minute",
+        cron: "*/1 * * * *",
+      },
+      "tradein-email-retry": {
+        description: "Retries failed trade-in email notifications.",
+        frequency: "Every 5 minutes",
+        cron: "*/5 * * * *",
+      },
+    };
+
+    const tasks: Array<Omit<ScheduledTask, "lastRun">> = [];
+    taskMap.forEach((runs, taskId) => {
+      const metadata = taskMetadata[taskId] || {
+        description: "Scheduled task",
+        frequency: "Unknown",
+        cron: "N/A",
+      };
+
+      const firstRun = runs[0];
+      tasks.push({
+        id: taskId,
+        title: firstRun.task_title,
+        description: metadata.description,
+        frequency: metadata.frequency,
+        cron: metadata.cron,
+        owner: firstRun.owner || "Coolify Cron",
+        environment: firstRun.environment || "production",
+        recentRuns: runs.slice(0, 10).map((run) => ({
+          id: run.id,
+          status: run.status as ScheduledTaskStatus,
+          startedAt: run.started_at,
+          endedAt: run.ended_at || run.started_at,
+          durationMs: run.duration_ms || 0,
+          logUrl: run.log_url || undefined,
+          notes: run.notes || undefined,
+        })),
+      });
+    });
+
+    return tasks;
+  } catch (error) {
+    console.error("[ScheduledTasks] Supabase error:", error);
+    return null;
+  }
+}
+
 async function loadExternalTasks(): Promise<Array<
   Omit<ScheduledTask, "lastRun">
 > | null> {
+  // Try Supabase first (preferred)
+  const supabaseTasks = await fetchSupabaseScheduledTasks();
+  if (supabaseTasks) {
+    return supabaseTasks;
+  }
+
+  // Fallback to Coolify
+  const coolifyTasks = await fetchCoolifyScheduledTasks();
+  if (coolifyTasks) {
+    return coolifyTasks;
+  }
+
   const rawJson = process.env.SCHEDULED_TASKS_JSON;
   if (rawJson) {
     try {
