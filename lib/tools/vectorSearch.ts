@@ -773,6 +773,10 @@ export async function handleVectorSearch(
       tokens: ["fifa", "fc"],
     },
     {
+      regex: /\b(football|soccer)\b/i,
+      tokens: ["fifa", "fc", "football"],
+    },
+    {
       regex: /\bpeter\s+parker|spidey|spider-?man/i,
       tokens: ["spider", "spider-man"],
     },

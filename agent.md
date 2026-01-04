@@ -34,6 +34,16 @@ Is this correct? Reply yes to submit.
 **Trade-Up Rule:** Skip payout questions for trade-ups (top-up only).
 **Session Note:** Trade-in sessions are persistent by design to avoid losing data on reload.
 
+## Change Log — Jan 4, 2026 (Text Chat Game Search Coverage)
+
+### Game Search Results Coverage (Jan 4, 2026) ✅
+**Goal**: Avoid empty or single-item results for broad game queries.
+
+**Fixes:**
+- Include **pre-order** game categories in game matching (treated as brand new unless user asks for pre-owned).
+- If a game query returns zero matches, fall back to **game category listings** (brand new by default; pre-owned only if requested).
+- Add football/soccer entity hints so “football game” resolves to FIFA/FC titles.
+
 ### Dashboard Ops (Jan 3, 2026) ✅
 - Trade-in dashboard now shows **Email Sent / Failed / Not Sent** status.
 - Added **Resend Trade-In Email** action on lead detail view.

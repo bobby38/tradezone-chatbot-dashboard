@@ -512,9 +512,10 @@ export async function searchWooProducts(
       // FILTER: When user asks for "game", ONLY show actual games (use WooCommerce categories)
       if (/\b(game|games)\b/i.test(query)) {
         // Check if product is in a game category
-        const isInGameCategory = /brand-new-games|pre-owned-games/i.test(
-          productCategories,
-        );
+        const isInGameCategory =
+          /brand-new-games|pre-owned-games|pre-order-games/i.test(
+            productCategories,
+          );
 
         if (!isInGameCategory) {
           return { product, score: 0 }; // Exclude non-game products (controllers, warranties, etc.)
@@ -531,7 +532,9 @@ export async function searchWooProducts(
 
         // Default to brand new games unless user specifically asks for pre-owned
         const isPreOwned = /pre-owned-games/i.test(productCategories);
-        const isBrandNew = /brand-new-games/i.test(productCategories);
+        const isBrandNew = /brand-new-games|pre-order-games/i.test(
+          productCategories,
+        );
 
         if (!wantsPreOwned && isPreOwned) {
           return { product, score: 0 }; // Skip pre-owned unless specifically requested
@@ -806,6 +809,33 @@ export async function searchWooProducts(
           slug: c.slug,
         })),
       }));
+    }
+  }
+
+  if (results.length === 0 && isGameQuery) {
+    const gameSlugs = wantsPreOwned
+      ? [
+          "pre-owned-games",
+          "pre-owned-games-playstation-4",
+          "pre-owned-games-nintendo",
+        ]
+      : [
+          "brand-new-games",
+          "brand-new-games-playstation-4",
+          "brand-new-games-nintendo",
+          "pre-order-games",
+          "pre-order-games-ps5",
+        ];
+    const fallbackGames = await getWooProductsByCategory(
+      gameSlugs,
+      Math.max(limit, 120),
+      "asc",
+    );
+    if (fallbackGames.length) {
+      console.log(
+        `[searchWooProducts] Game category fallback hit (${fallbackGames.length} products)`,
+      );
+      return fallbackGames;
     }
   }
 

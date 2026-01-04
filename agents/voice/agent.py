@@ -713,6 +713,81 @@ def _get_last_assistant_message_from_chat_ctx(chat_ctx: Any) -> str:
     return ""
 
 
+def _chat_ctx_has_tradein_context(chat_ctx: Any) -> bool:
+    if not chat_ctx:
+        return False
+    items = getattr(chat_ctx, "items", None)
+    if items is None:
+        items = getattr(chat_ctx, "messages", None)
+    if not items:
+        return False
+    for msg in reversed(items):
+        role = getattr(msg, "role", None)
+        if role is None and isinstance(msg, dict):
+            role = msg.get("role")
+        if role != "assistant":
+            continue
+        content = getattr(msg, "text_content", None)
+        if content is None:
+            content = getattr(msg, "content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content") or msg.get("text")
+        if isinstance(content, list):
+            content = " ".join(str(item) for item in content)
+        text = str(content or "").lower()
+        if any(
+            token in text
+            for token in [
+                "trade-in",
+                "trade in",
+                "trades for",
+                "top-up",
+                "top up",
+                "proceed",
+            ]
+        ):
+            return True
+    return False
+
+
+def _chat_ctx_asked_phone(chat_ctx: Any) -> bool:
+    if not chat_ctx:
+        return False
+    items = getattr(chat_ctx, "items", None)
+    if items is None:
+        items = getattr(chat_ctx, "messages", None)
+    if not items:
+        return False
+    for msg in reversed(items):
+        role = getattr(msg, "role", None)
+        if role is None and isinstance(msg, dict):
+            role = msg.get("role")
+        if role != "assistant":
+            continue
+        content = getattr(msg, "text_content", None)
+        if content is None:
+            content = getattr(msg, "content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content") or msg.get("text")
+        if isinstance(content, list):
+            content = " ".join(str(item) for item in content)
+        text = str(content or "").lower()
+        if "contact number" in text or "phone" in text:
+            return True
+    return False
+
+
+def _looks_like_name(value: str) -> bool:
+    if not value:
+        return False
+    text = value.strip()
+    if "@" in text or any(ch.isdigit() for ch in text):
+        return False
+    if len(text) < 2 or len(text) > 60:
+        return False
+    return bool(re.fullmatch(r"[A-Za-z][A-Za-z\\s'\\-\\.]{1,59}", text))
+
+
 def _is_valid_contact_name(name: Optional[str]) -> bool:
     if not name or not isinstance(name, str):
         return False
@@ -1783,7 +1858,7 @@ class TradeInChecklistState:
         "accessories": "Got the box?",
         "photos": "Photos help. Want to send one?",
         "name": "Your name?",
-        "phone": "Contact number?",
+        "phone": "Phone number?",
         "email": "Email address?",
         "payout": "Cash, PayNow, bank, or installments?",
         "recap": "recap",  # Special: triggers summary
@@ -2211,7 +2286,7 @@ If NO: "No problem! Need help with anything else?"
 
 **Step 7: Collect Contact Info** (ONLY after photos step is complete!)
 6. ✅ Ask name: "Your name?"
-7. ✅ Ask phone: "Contact number?" → repeat back for confirmation
+7. ✅ Ask phone: "Phone number?" → repeat back for confirmation
 8. ✅ Ask email: "Email address?" → repeat back for confirmation
 9. ✅ NOW call tradein_update_lead with contact info:
    ```
@@ -2246,7 +2321,7 @@ User: "No photos"
 Agent: [tradein_update_lead(photos_acknowledged=False)]
 Agent: "Your name?" [WAIT]
 User: "Bobby"
-Agent: "Contact number?" [WAIT]
+Agent: "Phone number?" [WAIT]
 User: "8448 9068"
 Agent: "That's 84489068, correct?" [WAIT]
 User: "Yes"
@@ -2297,7 +2372,7 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
                 ):
 
                     async def _ask_phone():
-                        yield "Thanks! Contact number?"
+                        yield "Thanks! Phone number?"
 
                     return _ask_phone()
                 if (
@@ -2310,6 +2385,16 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
                         yield "Got it. Email address?"
 
                     return _ask_email()
+            if (
+                _looks_like_name(last_user)
+                and _chat_ctx_has_tradein_context(chat_ctx)
+                and not _chat_ctx_asked_phone(chat_ctx)
+            ):
+
+                async def _ask_phone_after_name():
+                    yield "Thanks! Phone number?"
+
+                return _ask_phone_after_name()
             tradeup = _extract_tradeup_devices(last_user)
             if not tradeup:
                 tradein_device = _extract_tradein_device(last_user)
