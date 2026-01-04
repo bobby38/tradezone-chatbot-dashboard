@@ -1,5 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  enhanceSearchQuery,
+  shouldEnhanceQuery,
+} from "@/lib/graphiti-search-enhancer";
 
 export type ConditionKey = "brand_new" | "pre_owned";
 
@@ -527,18 +531,35 @@ export async function findCatalogMatches(
   query: string,
   limit = 3,
 ): Promise<CatalogMatch[]> {
-  const normalizedQuery = normalizeQuery(query);
+  // 🎯 GRAPHITI GRAPH RAG - Enhance query with synonyms FIRST
+  let effectiveQuery = query;
+  if (shouldEnhanceQuery(query)) {
+    const enhancement = await enhanceSearchQuery(query);
+    if (enhancement.redirect) {
+      effectiveQuery = enhancement.redirect;
+      console.log("[CatalogSearch] 🔍 Graph RAG enhanced query", {
+        original: query,
+        enhanced: effectiveQuery,
+        source: enhancement.source,
+      });
+    }
+  }
+
+  const normalizedQuery = normalizeQuery(effectiveQuery);
   if (!normalizedQuery) return [];
 
-  const intent = deriveQueryIntent(query);
+  const intent = deriveQueryIntent(effectiveQuery);
   const queryTokens = tokenize(normalizedQuery);
   const { models, aliasMap } = await loadCatalogContext();
 
   // Domain filters to cut noise (tablets, games, coolers, etc.)
-  const wantsTablet = /\b(tab|tablet)\b/i.test(query);
-  const wantsSamsung = /\bgalaxy|samsung\b/i.test(query);
-  const wantsGame = /(ps[45]|playstation|xbox|switch|nintendo|game)\b/i.test(query) || /aladdin|aladin/i.test(query);
-  const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(query);
+  // Use effectiveQuery (enhanced) for filter detection
+  const wantsTablet = /\b(tab|tablet)\b/i.test(effectiveQuery);
+  const wantsSamsung = /\bgalaxy|samsung\b/i.test(effectiveQuery);
+  const wantsGame =
+    /(ps[45]|playstation|xbox|switch|nintendo|game)\b/i.test(effectiveQuery) ||
+    /aladdin|aladin/i.test(effectiveQuery);
+  const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(effectiveQuery);
 
   const filteredModels = models.filter((model) => {
     const categories = (model.categories || []).map((c) => c.toLowerCase());
@@ -553,14 +574,21 @@ export async function findCatalogMatches(
       const isGame = categories.some((c) => c.includes("game"));
       if (!isGame) return false;
       // platform hints
-      if (/switch|nintendo/i.test(query)) return categories.some((c) => c.includes("switch"));
-      if (/ps5|playstation 5|ps 5/i.test(query)) return categories.some((c) => c.includes("ps5"));
-      if (/ps4|playstation 4|ps 4/i.test(query)) return categories.some((c) => c.includes("ps4"));
-      if (/xbox/i.test(query)) return categories.some((c) => c.includes("xbox"));
+      if (/switch|nintendo/i.test(query))
+        return categories.some((c) => c.includes("switch"));
+      if (/ps5|playstation 5|ps 5/i.test(query))
+        return categories.some((c) => c.includes("ps5"));
+      if (/ps4|playstation 4|ps 4/i.test(query))
+        return categories.some((c) => c.includes("ps4"));
+      if (/xbox/i.test(query))
+        return categories.some((c) => c.includes("xbox"));
     }
 
     if (wantsCooler) {
-      if (!categories.some((c) => c.includes("cooler") || c.includes("thermal"))) return false;
+      if (
+        !categories.some((c) => c.includes("cooler") || c.includes("thermal"))
+      )
+        return false;
     }
 
     return true;

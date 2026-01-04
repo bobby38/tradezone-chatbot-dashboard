@@ -16,6 +16,11 @@ import {
   DIRECT_CATEGORY_SET,
   getWooProductsByCategory,
 } from "@/lib/agent-tools";
+import {
+  enhanceSearchQuery,
+  shouldEnhanceQuery,
+} from "@/lib/graphiti-search-enhancer";
+import { logFailedSearch } from "@/lib/graphiti-learning-loop";
 
 type VectorStoreLabel = "catalog" | "trade_in";
 
@@ -650,9 +655,24 @@ export async function handleVectorSearch(
   query: string,
   context?: VectorSearchContext,
 ): Promise<VectorSearchResult> {
+  // 🎯 GRAPHITI GRAPH RAG - Enhance query with synonyms FIRST
+  let effectiveQuery = query;
+  if (shouldEnhanceQuery(query)) {
+    const enhancement = await enhanceSearchQuery(query);
+    if (enhancement.redirect) {
+      effectiveQuery = enhancement.redirect;
+      console.log("[VectorSearch] 🔍 Graph RAG enhanced query", {
+        original: query,
+        enhanced: effectiveQuery,
+        source: enhancement.source,
+        confidence: enhancement.confidence,
+      });
+    }
+  }
+
   const resolvedStore = resolveVectorStore(context);
-  const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
-  const queryTokens = extractQueryTokens(query);
+  const enrichedQuery = enrichQueryWithCategory(effectiveQuery); // Returns original query now
+  const queryTokens = extractQueryTokens(effectiveQuery); // Use enhanced query for tokenization
   const filteringTokens = selectFilteringTokens(queryTokens);
   let detectedCategory = extractProductCategory(query);
   // Hard override to avoid mis-detection for critical categories

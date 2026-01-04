@@ -77,6 +77,7 @@ def _next_reply_for_prompt(content: str) -> tuple[str | None, str | None]:
         "everything correct" in lower
         or "is this correct" in lower
         or "reply yes" in lower
+        or "correct?" in lower
     ):
         return "yes", "recap"
     if "singapore" in lower and "?" in lower:
@@ -95,16 +96,23 @@ async def test_tradein_full_flow_submits():
         seen_steps = set()
 
         # Iterate through prompts until submission confirmation
-        for _ in range(20):
+        for i in range(20):
             lower = content.lower()
             if "submitted" in lower or "contact" in lower:
                 break
             reply, step = _next_reply_for_prompt(content)
             if reply is None:
+                print(f"\n[DEBUG] Iteration {i}: No reply matched for: {content}")
+                print(f"[DEBUG] Seen steps so far: {seen_steps}")
                 break
             if step:
                 seen_steps.add(step)
+            print(f"\n[DEBUG] Iteration {i}: Question: {content}")
+            print(f"[DEBUG] Reply: {reply} (Step: {step})")
             content = await _send_and_get(session, reply)
+
+        print(f"\n[DEBUG] Final content: {content}")
+        print(f"[DEBUG] Final seen_steps: {seen_steps}")
 
         assert any(
             token in content.lower()
@@ -147,3 +155,98 @@ async def test_staff_support_warranty_flow():
         )
         lower = content.lower()
         assert "staff" in lower or "name" in lower or "phone" in lower
+
+
+@pytest.mark.asyncio
+async def test_staff_support_complete_flow():
+    """Test complete staff support flow with warranty inquiry - collects name, email, phone"""
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        content = await _send_and_get(
+            session, "I want to know if my warranty is still okay for my computer"
+        )
+        seen_steps = set()
+
+        # Iterate through prompts until email sent confirmation
+        for i in range(15):
+            lower = content.lower()
+
+            # Check if we reached the final confirmation
+            if any(
+                word in lower
+                for word in ["sent", "staff", "contact you", "get back", "reach out"]
+            ):
+                # Make sure it's actually a confirmation, not just asking if we want staff
+                if any(
+                    word in lower
+                    for word in ["sent", "will contact", "will get back", "will reach"]
+                ):
+                    break
+
+            # Determine reply based on question
+            reply = None
+            step = None
+
+            # Singapore location check
+            if "singapore" in lower and "?" in lower:
+                reply = "yes"
+                step = "location"
+            # Name
+            elif "name" in lower and "?" in lower:
+                reply = "John Doe"
+                step = "name"
+            # Email
+            elif "email" in lower and "?" in lower:
+                if "correct" in lower:
+                    reply = "yes"
+                    step = "email_confirm"
+                else:
+                    reply = "test@gmail.com"
+                    step = "email"
+            # Phone
+            elif "phone" in lower or "contact number" in lower or "number" in lower:
+                if "correct" in lower:
+                    reply = "yes"
+                    step = "phone_confirm"
+                else:
+                    reply = "6584489066"
+                    step = "phone"
+            # Any confirmation
+            elif "correct?" in lower or "right?" in lower:
+                reply = "yes"
+                step = "confirm"
+
+            if reply is None:
+                print(f"\n[DEBUG] Iteration {i}: No reply matched for: {content}")
+                print(f"[DEBUG] Seen steps so far: {seen_steps}")
+                break
+
+            if step:
+                seen_steps.add(step)
+
+            print(f"\n[DEBUG] Iteration {i}: Question: {content}")
+            print(f"[DEBUG] Reply: {reply} (Step: {step})")
+            content = await _send_and_get(session, reply)
+
+        print(f"\n[DEBUG] Final content: {content}")
+        print(f"[DEBUG] Final seen_steps: {seen_steps}")
+
+        # Verify we collected all contact information
+        assert "name" in seen_steps, "Should have collected name"
+        assert "email" in seen_steps, "Should have collected email"
+        assert "phone" in seen_steps, "Should have collected phone number"
+
+        # Verify final message indicates email was sent
+        lower_final = content.lower()
+        assert any(
+            word in lower_final
+            for word in [
+                "sent",
+                "staff will contact",
+                "will get back",
+                "will reach out",
+            ]
+        ), f"Expected confirmation message but got: {content}"
