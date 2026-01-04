@@ -127,38 +127,101 @@ export async function addGraphitiMemoryTurn(
   sessionId: string,
   userContent: string,
   assistantContent?: string,
+  metadata?: { userId?: string; clientIp?: string },
 ): Promise<void> {
   const config = resolveGraphitiConfig();
   if (!config) return;
 
+  // Extract user preferences and entities for richer graph
+  const enrichedUserContent = enrichContentWithEntities(userContent);
+  const enrichedAssistantContent = assistantContent
+    ? enrichContentWithEntities(assistantContent)
+    : undefined;
+
   const messages = [
     buildGraphitiMessage({
-      content: userContent,
+      content: enrichedUserContent,
       roleType: "user",
       roleName: "Customer",
+      metadata: {
+        original_length: userContent.length,
+        has_preferences: enrichedUserContent !== userContent,
+      },
     }),
   ];
-  if (assistantContent) {
+  if (enrichedAssistantContent) {
     messages.push(
       buildGraphitiMessage({
-        content: assistantContent,
+        content: enrichedAssistantContent,
         roleType: "assistant",
         roleName: "TradeZone Assistant",
+        metadata: {
+          original_length: assistantContent?.length || 0,
+        },
       }),
     );
   }
+
+  // Use userId for cross-session tracking if available, fallback to sessionId
+  const groupId = metadata?.userId || sessionId;
 
   try {
     await graphitiFetch("/messages", {
       method: "POST",
       body: JSON.stringify({
-        group_id: sessionId,
+        group_id: groupId,
         messages,
       }),
     });
   } catch (error) {
     console.warn("[Graphiti] Failed to store memory turn", error);
   }
+}
+
+/**
+ * Enrich content with extracted entities for better graph relationships
+ * Simple pattern matching - safe and non-breaking
+ */
+function enrichContentWithEntities(content: string): string {
+  if (!content || content.length > 500) return content; // Skip long messages
+
+  const lower = content.toLowerCase();
+  const entities: string[] = [];
+
+  // Console/platform preferences
+  if (/\b(playstation|ps5|ps4|sony)\b/i.test(content)) {
+    entities.push("[preference:PlayStation]");
+  }
+  if (/\b(xbox|microsoft|series x|series s)\b/i.test(content)) {
+    entities.push("[preference:Xbox]");
+  }
+  if (/\b(nintendo|switch|mario|zelda)\b/i.test(content)) {
+    entities.push("[preference:Nintendo]");
+  }
+
+  // Budget indicators
+  const budgetMatch = content.match(
+    /\b(?:budget|spending|afford|max)\s+(?:is|of)?\s*\$?(\d{2,4})/i,
+  );
+  if (budgetMatch) {
+    entities.push(`[budget:$${budgetMatch[1]}]`);
+  }
+
+  // Trade-in intent
+  if (/\b(trade|sell|upgrade|swap)\b.*\b(my|the)\b/i.test(content)) {
+    entities.push("[intent:trade-in]");
+  }
+
+  // Purchase intent
+  if (/\b(buy|purchase|get|looking for|want)\b/i.test(content)) {
+    entities.push("[intent:purchase]");
+  }
+
+  // Return original if no entities found
+  if (entities.length === 0) return content;
+
+  // Append entities to end of content for Graphiti to process
+  return `${content}\n${entities.join(" ")}`;
 }
 
 export async function queryGraphitiContext(
@@ -217,8 +280,9 @@ function buildGraphitiMessage(params: {
   content: string;
   roleType: "user" | "assistant" | "system";
   roleName: string;
+  metadata?: Record<string, any>;
 }) {
-  return {
+  const message: Record<string, any> = {
     content: params.content,
     role_type: params.roleType,
     role: params.roleName,
@@ -226,6 +290,13 @@ function buildGraphitiMessage(params: {
     timestamp: new Date().toISOString(),
     source_description: "chatkit",
   };
+
+  // Add metadata if provided
+  if (params.metadata && Object.keys(params.metadata).length > 0) {
+    message.metadata = params.metadata;
+  }
+
+  return message;
 }
 
 function convertFactToNode(fact: GraphitiFact): GraphitiNodeSummary {

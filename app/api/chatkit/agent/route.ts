@@ -6164,7 +6164,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     }
 
     try {
-      await addGraphitiMemoryTurn(sessionId, message, finalResponse);
+      // Enhanced Graphiti memory with user tracking and entity extraction
+      await addGraphitiMemoryTurn(sessionId, message, finalResponse, {
+        userId: userId || undefined,
+        clientIp: clientIp || undefined,
+      });
     } catch (memoryError) {
       console.warn("[ChatKit] Failed to persist Graphiti memory", memoryError);
     }
