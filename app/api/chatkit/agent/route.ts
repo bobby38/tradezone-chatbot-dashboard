@@ -148,6 +148,8 @@ let tradeGridEntriesCache: TradeGridEntry[] | null = null;
 
 type SupportFlowStep =
   | "location"
+  | "purpose"
+  | "relevance"
   | "issue"
   | "purchase"
   | "device"
@@ -161,6 +163,9 @@ type SupportFlowState = {
   startedAt: number;
   lastUpdatedAt: number;
   locationConfirmed?: boolean;
+  kind?: "warranty" | "general";
+  purpose?: string;
+  relevanceConfirmed?: boolean;
   issue?: string;
   purchaseTiming?: string;
   deviceDetails?: string;
@@ -1362,6 +1367,11 @@ function looksLikeSupportSpam(input: string): boolean {
 }
 
 function buildSupportEmailMessage(state: SupportFlowState): string {
+  const purpose = state.purpose
+    ? state.purpose.trim()
+    : state.kind === "warranty"
+      ? "Warranty support"
+      : "Support request";
   const issue = state.issue ? state.issue.trim() : "Not provided";
   const purchase = state.purchaseTiming
     ? state.purchaseTiming.trim()
@@ -1369,13 +1379,16 @@ function buildSupportEmailMessage(state: SupportFlowState): string {
   const device = state.deviceDetails
     ? state.deviceDetails.trim()
     : "Not provided";
-  return [
-    "Support request (warranty/issue check).",
-    `Issue: ${issue}`,
-    `Purchase timing: ${purchase}`,
+  const lines = [
+    `Support request (${state.kind || "general"}).`,
+    `Purpose: ${purpose}`,
     `Device/brand: ${device}`,
     "Location: Singapore",
-  ].join("\n");
+  ];
+  if (state.kind === "warranty") {
+    lines.splice(2, 0, `Issue: ${issue}`, `Purchase timing: ${purchase}`);
+  }
+  return lines.join("\n");
 }
 
 function isExplicitSupportRequest(query: string): boolean {
@@ -4072,16 +4085,22 @@ export async function POST(request: NextRequest) {
           initialIssue,
         );
       const issueIsSpecific = hasIssueKeywords(initialIssue);
+      const supportKind = isWarrantySupportQuery(message)
+        ? "warranty"
+        : "general";
       supportState = {
         step: "location",
         startedAt: Date.now(),
         lastUpdatedAt: Date.now(),
+        kind: supportKind,
+        purpose: supportKind === "warranty" ? "Warranty check" : undefined,
         issue:
           initialIssue.length > 6 &&
           !isAffirmativeReply(initialIssue) &&
           !isNegativeReply(initialIssue) &&
           !genericSupportOnly &&
-          issueIsSpecific
+          issueIsSpecific &&
+          supportKind === "warranty"
             ? initialIssue
             : undefined,
         purchaseTiming: initialIssueTiming || undefined,
@@ -4090,6 +4109,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (supportState) {
+      if (!supportState.kind) {
+        supportState.kind = isWarrantySupportQuery(message)
+          ? "warranty"
+          : "general";
+      }
       if (!supportState.locationConfirmed) {
         supportState.step = "location";
       }
@@ -4101,6 +4125,10 @@ export async function POST(request: NextRequest) {
         switch (step) {
           case "location":
             return "Are you in Singapore?";
+          case "purpose":
+            return "What do you need help with?";
+          case "relevance":
+            return "Is it about a product we sell (console, game, phone, PC parts)?";
           case "issue":
             return "What's the issue?";
           case "purchase":
@@ -4164,21 +4192,73 @@ export async function POST(request: NextRequest) {
               /\b(singapore|sg)\b/i.test(trimmed)
             ) {
               supportState.locationConfirmed = true;
-              if (!supportState.issue) {
-                supportState.step = "issue";
-                finalResponse = promptForStep("issue", supportState);
-              } else if (!supportState.purchaseTiming) {
-                supportState.step = "purchase";
-                finalResponse = promptForStep("purchase", supportState);
+              if (supportState.kind === "warranty") {
+                if (!supportState.issue) {
+                  supportState.step = "issue";
+                  finalResponse = promptForStep("issue", supportState);
+                } else if (!supportState.purchaseTiming) {
+                  supportState.step = "purchase";
+                  finalResponse = promptForStep("purchase", supportState);
+                } else {
+                  supportState.step = "device";
+                  finalResponse = promptForStep("device", supportState);
+                }
               } else {
-                supportState.step = "device";
-                finalResponse = promptForStep("device", supportState);
+                supportState.step = "purpose";
+                finalResponse = promptForStep("purpose", supportState);
               }
               setSupportFlowState(sessionId, supportState);
             } else {
               finalResponse = promptForStep("location", supportState);
               setSupportFlowState(sessionId, supportState);
             }
+            break;
+          }
+          case "purpose": {
+            if (trimmed.length < 3) {
+              finalResponse = promptForStep("purpose", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.purpose = trimmed;
+            if (isWarrantySupportQuery(trimmed)) {
+              supportState.kind = "warranty";
+              supportState.step = "issue";
+              finalResponse = promptForStep("issue", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            const productRelated =
+              detectProductInfoIntent(trimmed) ||
+              /\b(console|game|camera|pc|laptop|desktop|phone|tablet|gpu|cpu|headset|controller|accessor(y|ies)|monitor|playstation|xbox|switch|nintendo)\b/i.test(
+                trimmed,
+              );
+            if (!productRelated) {
+              supportState.step = "relevance";
+              finalResponse = promptForStep("relevance", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            supportState.step = "device";
+            finalResponse = promptForStep("device", supportState);
+            setSupportFlowState(sessionId, supportState);
+            break;
+          }
+          case "relevance": {
+            if (isNegativeReply(trimmed)) {
+              clearSupportFlowState(sessionId);
+              finalResponse =
+                "We only support electronics and gaming products we sell. If that's what you need, let me know.";
+              break;
+            }
+            if (isAffirmativeReply(trimmed)) {
+              supportState.step = "device";
+              finalResponse = promptForStep("device", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            finalResponse = promptForStep("relevance", supportState);
+            setSupportFlowState(sessionId, supportState);
             break;
           }
           case "issue": {
