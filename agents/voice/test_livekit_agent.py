@@ -163,43 +163,50 @@ async def test_tradein_multi_turn_flow():
         AgentSession(llm=llm) as session,
     ):
         await start_session(session)
-        # Step 1: Initial inquiry
+        # Step 1: Initial inquiry -> price + proceed
         result1 = await session.run(user_input="I want to trade in my PS4 Pro")
         skip_tool_events(result1)
         msg1 = result1.expect.next_event().is_message()
         content1 = message_text(msg1).lower()
         assert "ps4" in content1
-        assert any(
-            token in content1
-            for token in ["confirm", "trade", "storage", "condition", "capacity"]
-        )
+        assert "$" in content1 or "dollar" in content1 or "which" in content1
 
-        # Step 2: Ask for condition
-        result2 = await session.run(user_input="It's in good condition")
-        skip_tool_events(result2)
-        msg2 = result2.expect.next_event().is_message()
-        content2 = message_text(msg2).lower()
-        assert any(
-            token in content2
-            for token in [
-                "condition",
-                "accessor",
-                "box",
-                "controller",
-                "storage",
-                "?",
-            ]
-        )
+        if "which" in content1:
+            result2 = await session.run(user_input="PS4 Pro 1TB")
+            skip_tool_events(result2)
+            msg2 = result2.expect.next_event().is_message()
+            content2 = message_text(msg2).lower()
+            assert "$" in content2 or "dollar" in content2
+            assert "proceed" in content2 or "continue" in content2
+            result3 = await session.run(user_input="yes")
+            skip_tool_events(result3)
+            msg3 = result3.expect.next_event().is_message()
+            content3 = message_text(msg3).lower()
+            assert "storage" in content3 or "capacity" in content3
+        else:
+            # Step 2: Confirm proceed -> storage
+            result2 = await session.run(user_input="yes")
+            skip_tool_events(result2)
+            msg2 = result2.expect.next_event().is_message()
+            content2 = message_text(msg2).lower()
+            assert "storage" in content2 or "capacity" in content2
 
-        # Step 3: Provide details
-        result3 = await session.run(user_input="I have the box and one controller")
-        skip_tool_events(result3)
-        msg3 = result3.expect.next_event().is_message()
-        content3 = message_text(msg3).lower()
-        assert any(
-            token in content3
-            for token in ["box", "controller", "accessor", "next", "photo", "?"]
-        )
+            # Step 3: Provide storage -> condition/accessories
+            result3 = await session.run(user_input="1TB")
+            skip_tool_events(result3)
+            msg3 = result3.expect.next_event().is_message()
+            content3 = message_text(msg3).lower()
+            assert any(
+                token in content3
+                for token in [
+                    "condition",
+                    "accessor",
+                    "box",
+                    "controller",
+                    "photo",
+                    "?",
+                ]
+            )
 
 
 @pytest.mark.asyncio

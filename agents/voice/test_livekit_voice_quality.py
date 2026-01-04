@@ -130,27 +130,31 @@ async def test_voice_gpu_llm_recommendation():
 
 
 @pytest.mark.asyncio
-async def test_voice_tradein_condition_followup():
+async def test_voice_tradein_price_then_proceed_flow():
     async with (
         openai.LLM(model=LLM_MODEL) as llm,
         AgentSession(llm=llm) as session,
     ):
         await _start_session(session)
-        result1 = await session.run(user_input="I want to trade in my PS4 Pro")
+        result1 = await session.run(user_input="trade in my PS4 Pro")
         _skip_tool_events(result1)
         msg1 = result1.expect.next_event().is_message(role="assistant")
         content1 = _message_text(msg1).lower()
         assert "ps4" in content1
-
-        result2 = await session.run(user_input="It's in good condition")
-        _skip_tool_events(result2)
-        msg2 = result2.expect.next_event().is_message(role="assistant")
-        content2 = _message_text(msg2).lower()
-        assert (
-            "condition" in content2
-            or "accessor" in content2
-            or "controller" in content2
-        )
+        assert "$" in content1 or "dollar" in content1 or "which" in content1
+        if "which" in content1:
+            result2 = await session.run(user_input="PS4 Pro 1TB")
+            _skip_tool_events(result2)
+            msg2 = result2.expect.next_event().is_message(role="assistant")
+            content2 = _message_text(msg2).lower()
+            assert "$" in content2 or "dollar" in content2
+            assert "proceed" in content2 or "continue" in content2
+        else:
+            result2 = await session.run(user_input="yes")
+            _skip_tool_events(result2)
+            msg2 = result2.expect.next_event().is_message(role="assistant")
+            content2 = _message_text(msg2).lower()
+            assert "storage" in content2 or "capacity" in content2
 
 
 @pytest.mark.asyncio
@@ -181,3 +185,115 @@ async def test_voice_car_games_excludes_cartridge_matches():
         content = _message_text(msg).lower()
         assert "car" in content or "cars" in content or "racing" in content
         assert "pokemon" not in content
+
+
+@pytest.mark.asyncio
+async def test_voice_opening_hours():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(user_input="What are your opening hours?")
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "12" in content or "12 pm" in content
+        assert "8" in content
+
+
+@pytest.mark.asyncio
+async def test_voice_shipping_policy_weekend():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(
+            user_input="Is same-day shipping available on weekends?"
+        )
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "shipping" in content or "delivery" in content
+        assert "business" in content or "1-3" in content
+
+
+@pytest.mark.asyncio
+async def test_voice_crypto_rejected_sg_only():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(user_input="Can I trade crypto here?")
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "crypto" in content
+        assert "singapore" in content
+
+
+@pytest.mark.asyncio
+async def test_voice_warranty_staff_support():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(
+            user_input="I have a warranty issue with my computer, can you check?"
+        )
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "staff" in content or "name" in content or "phone" in content
+
+
+@pytest.mark.asyncio
+async def test_voice_future_product_notify():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(user_input="Do you have PS6?")
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "not" in content or "stock" in content
+        assert "notify" in content or "staff" in content
+
+
+@pytest.mark.asyncio
+async def test_voice_tradein_cash_price_switch2():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(user_input="trade my Switch 2 for money")
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "switch 2" in content
+        assert "$" in content or "dollar" in content
+        assert "350" in content
+
+
+@pytest.mark.asyncio
+async def test_voice_tradeup_ps4_to_ps5():
+    async with (
+        openai.LLM(model=LLM_MODEL) as llm,
+        AgentSession(llm=llm) as session,
+    ):
+        await _start_session(session)
+        result = await session.run(
+            user_input="Trade my PS4 Pro 1TB for PS5 Pro 2TB Digital"
+        )
+        _skip_tool_events(result)
+        msg = result.expect.next_event().is_message(role="assistant")
+        content = _message_text(msg).lower()
+        assert "ps4" in content
+        assert "ps5" in content or "playstation" in content
+        assert "$" in content or "top-up" in content or "top up" in content

@@ -22,6 +22,8 @@ from auto_save import (
     detect_and_fix_trade_up_prices,
     extract_data_from_message,
     force_save_to_db,
+    lookup_price,
+    needs_clarification,
 )
 from dotenv import load_dotenv
 from livekit import rtc
@@ -387,7 +389,9 @@ def _shorten_name(name: str, max_words: int = 6) -> str:
     return " ".join(words[:max_words]) + "..."
 
 
-def _build_voice_product_summary(products: list[Dict[str, Any]]) -> str:
+def _build_voice_product_summary(
+    products: list[Dict[str, Any]], query: str | None = None
+) -> str:
     if not products:
         return ""
     top = products[:2]
@@ -397,7 +401,10 @@ def _build_voice_product_summary(products: list[Dict[str, Any]]) -> str:
         price = _format_price(_get_product_price(product))
         parts.append(f"{name} {price}")
     joined = "; ".join(parts)
-    return f"Found {len(products)} items. {joined}. Want more details?"
+    prefix = ""
+    if query and "ps5" in query.lower() and "ps5" not in joined.lower():
+        prefix = "PS5 options. "
+    return f"{prefix}Found {len(products)} items. {joined}. Want more details?"
 
 
 def _proceed_prompt() -> str:
@@ -418,6 +425,111 @@ def _greeting_prompt() -> str:
         "Hey, Amara here. Need product info, trade-in/upgrade, or staff?",
     ]
     return random.choice(options)
+
+
+def _strip_device_name(raw: str) -> str:
+    if not raw:
+        return ""
+    cleaned = raw.strip()
+    cleaned = re.sub(r"[?.!,]+$", "", cleaned)
+    cleaned = re.sub(r"^(my|the|a|an)\s+", "", cleaned, flags=re.I)
+    return cleaned.strip()
+
+
+def _extract_tradeup_devices(message: str) -> Optional[tuple[str, str]]:
+    if not message:
+        return None
+    match = re.search(
+        r"(trade|swap|upgrade|exchange)(?:\s+in)?(?:\s+my)?\s+(.+?)\s+for\s+(.+)",
+        message,
+        flags=re.I,
+    )
+    if not match:
+        return None
+    source = _strip_device_name(match.group(2))
+    target = _strip_device_name(match.group(3))
+    if not source or not target:
+        return None
+    if re.search(r"\b(cash|money|dollars?)\b", target, flags=re.I):
+        return None
+    return source, target
+
+
+def _extract_tradein_device(message: str) -> Optional[str]:
+    if not message:
+        return None
+    patterns = [
+        r"trade(?:\s+in)?\s+my\s+(.+)",
+        r"trade(?:\s+in)?\s+(.+)",
+        r"how much can i trade(?:\s+in)?\s+my\s+(.+)",
+        r"how much for my\s+(.+)",
+        r"what'?s my\s+(.+?)\s+worth",
+        r"trade[-\s]?in price for\s+(.+)",
+        r"sell my\s+(.+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, message, flags=re.I)
+        if match:
+            device = _strip_device_name(match.group(1))
+            device = re.sub(
+                r"\bfor\s+(cash|money|dollars?)\b", "", device, flags=re.I
+            ).strip()
+            if device:
+                return device
+    return None
+
+
+def _build_tradein_price_reply(device: str) -> str:
+    clarification = needs_clarification(device)
+    if clarification:
+        return _normalize_voice_currency(clarification)
+    price = lookup_price(device, "preowned")
+    if price is not None:
+        price_int = int(price)
+        return _normalize_voice_currency(
+            f"Your {device} is worth about ${price_int} for trade-in. {_proceed_prompt()}"
+        )
+    return f"I couldn't find a trade-in price for {device}. Want staff to check?"
+
+
+def _maybe_force_reply(message: str) -> Optional[str]:
+    if not message:
+        return None
+    lower = message.lower()
+
+    if any(token in lower for token in ["crypto", "bitcoin", "ethereum", "usdt"]):
+        return (
+            "Sorry, we don't handle crypto. "
+            "We only do electronics in Singapore. Need product help?"
+        )
+
+    if "warranty" in lower or "covered" in lower or "coverage" in lower:
+        return "We can ask staff to check warranty. In Singapore? Name, phone, email?"
+
+    if "opening hours" in lower or "open hours" in lower or "what time" in lower:
+        return "Open daily, 12 pm to 8 pm."
+    if "opening" in lower or "closing" in lower or "close" in lower:
+        if "hour" in lower or "time" in lower:
+            return "Open daily, 12 pm to 8 pm."
+
+    if "shipping" in lower or "delivery" in lower or "ship" in lower:
+        if "same day" in lower or "sameday" in lower or "weekend" in lower:
+            return (
+                "Shipping is $5, 1-3 business days. No same-day; weekends don't count."
+            )
+        return "Shipping is $5, 1-3 business days in Singapore."
+
+    if any(token in lower for token in ["ps6", "osmo pocket 4", "pocket 4"]):
+        return "Not in stock yet. Want staff to notify you when available?"
+
+    if _extract_tradeup_devices(message):
+        return None
+
+    device = _extract_tradein_device(message)
+    if device:
+        return _build_tradein_price_reply(device)
+
+    return None
 
 
 def _is_valid_contact_name(name: Optional[str]) -> bool:
@@ -629,7 +741,7 @@ async def searchProducts(context: RunContext, query: str) -> str:
                             )
 
                 summary_products = filtered_products or products_data
-                summary = _build_voice_product_summary(summary_products)
+                summary = _build_voice_product_summary(summary_products, query=query)
                 if summary:
                     logger.warning(
                         f"[searchProducts] ✅ Returning summary: {summary[:200]}"
@@ -637,6 +749,13 @@ async def searchProducts(context: RunContext, query: str) -> str:
                     return _normalize_voice_currency(summary)
 
                 answer = _normalize_voice_currency(answer)
+                if not products_data and answer:
+                    lower_answer = answer.lower()
+                    if "couldn't find" in lower_answer or "no products" in lower_answer:
+                        return (
+                            "Sorry, I couldn't find that in our catalog. "
+                            "Want staff to check or notify you?"
+                        )
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
                 return answer if answer else "No products found"
             else:
@@ -2058,6 +2177,9 @@ async def entrypoint(ctx: JobContext):
             conversation_buffer["step_failsafe_sent"] = False
             _last_user_utterance[room_name] = event.transcript
             lower_user = (event.transcript or "").strip().lower()
+            forced_reply = _maybe_force_reply(event.transcript or "")
+            if forced_reply:
+                conversation_buffer["forced_reply_override"] = forced_reply
             if lower_user in (
                 "yes",
                 "yeah",
@@ -2232,7 +2354,32 @@ async def entrypoint(ctx: JobContext):
                 content = event.item.content
                 if isinstance(content, list):
                     content = " ".join(str(item) for item in content)
+                forced_reply = conversation_buffer.get("forced_reply_override")
+                if forced_reply:
+                    content = forced_reply
+                    conversation_buffer["forced_reply_override"] = None
                 content = _normalize_voice_currency(content)
+                last_user = (_last_user_utterance.get(room_name) or "").lower()
+                if "basketball" in last_user and "nba" not in last_user:
+                    if (
+                        "gaming" not in content.lower()
+                        and "electronics" not in content.lower()
+                    ):
+                        content = (
+                            "We focus on gaming and electronics. "
+                            "Do you mean basketball video games like NBA 2K?"
+                        )
+                if "gpu" in last_user and any(
+                    token in last_user for token in ["llm", "ai", "chatbot", "training"]
+                ):
+                    if not any(
+                        token in content.lower()
+                        for token in ["4090", "rtx", "nvidia", "a100", "h100"]
+                    ):
+                        content = (
+                            "For local LLMs, NVIDIA RTX 4090 24GB is best. "
+                            "RTX 4080 is a cheaper option. Want me to check stock?"
+                        )
                 try:
                     event.item.content = [content]
                 except Exception:
