@@ -1186,13 +1186,10 @@ async def check_tradein_price(
     # Get trade-in price
     price = lookup_price(device_name, "preowned")
     if price:
-        # Voice-safe wording: avoid reading currency symbols awkwardly
+        # Voice-safe wording: "100 dollars" not "$100" (TTS-friendly)
         price_int = int(price)
         logger.info(f"[check_tradein_price] ✅ Found: ${price_int}")
-        return (
-            f"Your {device_name} is worth about ${price_int} for trade-in. "
-            f"{_proceed_prompt()}"
-        )
+        return f"Yes, we trade this. Price is {price_int} dollars. Want to proceed?"
     else:
         logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
         return (
@@ -2787,6 +2784,8 @@ async def entrypoint(ctx: JobContext):
                 model="cartesia/sonic-3",
                 voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
                 language="en",
+                # Increase speed for more dynamic feel (1.0 = normal, 1.1-1.2 = slightly faster)
+                speed=float(os.getenv("VOICE_TTS_SPEED", "1.15")),
             ),
             turn_detection=MultilingualModel(),
             preemptive_generation=False,  # listen for full turn before speaking
