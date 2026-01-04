@@ -5,9 +5,20 @@ Tests key flows: greetings, product search, trade-ins, sports filtering.
 Setup: pip install "livekit-agents[openai]~=1.0" pytest pytest-asyncio
 Run: pytest voice-agent/tests/test_voice_agent.py -v
 """
+
+import sys
+from pathlib import Path
+
+# Add agents directory to Python path
+agents_dir = Path(__file__).parent.parent.parent / "agents" / "voice"
+sys.path.insert(0, str(agents_dir))
+
 import pytest
 from livekit.agents import AgentSession
 from livekit.plugins import openai
+
+# Import the actual agent (will be initialized in tests)
+# from agent import create_agent  # Uncomment when ready to test
 
 # Configuration
 LLM_MODEL = "gpt-4o-mini"
@@ -22,13 +33,16 @@ async def test_greeting():
     ):
         # Note: Replace with your actual agent initialization
         # await session.start(TradeZoneAgent())
-        
+
         result = await session.run(user_input="Hello")
-        
+
         await (
             result.expect.next_event()
             .is_message(role="assistant")
-            .judge(llm, intent="Friendly greeting offering help with electronics, gaming, or trade-ins.")
+            .judge(
+                llm,
+                intent="Friendly greeting offering help with electronics, gaming, or trade-ins.",
+            )
         )
         result.expect.no_more_events()
 
@@ -41,7 +55,7 @@ async def test_product_search_ps5():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="Do you have PS5?")
-        
+
         # Should call search tool and return products
         await result.expect.skip_next_event_if(lambda e: e.type == "function_call")
         msg = await result.expect.next_event().is_message(role="assistant")
@@ -57,9 +71,11 @@ async def test_sports_filter_basketball():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="Do you have basketball games?")
-        
+
         msg = await result.expect.next_event().is_message(role="assistant")
-        await msg.judge(llm, intent="Explains we don't stock basketball games or equipment")
+        await msg.judge(
+            llm, intent="Explains we don't stock basketball games or equipment"
+        )
         await msg.judge(llm, contains="don't.*stock|focus on")
 
 
@@ -71,7 +87,7 @@ async def test_sports_filter_nba_2k():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="Do you have NBA 2K?")
-        
+
         await result.expect.skip_next_event_if(lambda e: e.type == "function_call")
         msg = await result.expect.next_event().is_message(role="assistant")
         await msg.judge(llm, contains="NBA 2K")
@@ -86,7 +102,7 @@ async def test_racing_games_allowed():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="Any car games?")
-        
+
         await result.expect.skip_next_event_if(lambda e: e.type == "function_call")
         msg = await result.expect.next_event().is_message(role="assistant")
         # Should find Project CARS 3, Cars 3 games
@@ -101,7 +117,7 @@ async def test_tradein_ps5_pricing():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="How much can I trade in my PS5 for?")
-        
+
         # Should call trade-in pricing tool
         await result.expect.skip_next_event_if(lambda e: e.type == "function_call")
         msg = await result.expect.next_event().is_message(role="assistant")
@@ -121,12 +137,15 @@ async def test_tradein_multi_turn_flow():
         await result1.expect.skip_next_event_if(lambda e: e.type == "function_call")
         msg1 = await result1.expect.next_event().is_message()
         await msg1.judge(llm, contains="S$")
-        
+
         # Step 2: Ask for condition
         result2 = await session.run("It's in good condition")
         msg2 = await result2.expect.next_event().is_message()
-        await msg2.judge(llm, intent="Acknowledges condition and asks about accessories or next steps")
-        
+        await msg2.judge(
+            llm,
+            intent="Acknowledges condition and asks about accessories or next steps",
+        )
+
         # Step 3: Provide details
         result3 = await session.run("I have the box and one controller")
         msg3 = await result3.expect.next_event().is_message()
@@ -141,7 +160,7 @@ async def test_phone_search_affordable():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="Any affordable phones?")
-        
+
         await result.expect.skip_next_event_if(lambda e: e.type == "function_call")
         msg = await result.expect.next_event().is_message(role="assistant")
         await msg.judge(llm, contains="S$")
@@ -156,13 +175,13 @@ async def test_location_singapore_only():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="I'm from Malaysia, can I trade in?")
-        
+
         msg = await result.expect.next_event().is_message(role="assistant")
         await msg.judge(llm, contains="Singapore")
         await msg.judge(llm, intent="Explains service is Singapore-only")
 
 
-@pytest.mark.asyncio  
+@pytest.mark.asyncio
 async def test_unknown_product():
     """Test handling of products not in catalog."""
     async with (
@@ -170,6 +189,9 @@ async def test_unknown_product():
         AgentSession(llm=llm) as session,
     ):
         result = await session.run(user_input="Do you have webcams?")
-        
+
         msg = await result.expect.next_event().is_message(role="assistant")
-        await msg.judge(llm, intent="Politely indicates item not available and suggests checking website")
+        await msg.judge(
+            llm,
+            intent="Politely indicates item not available and suggests checking website",
+        )
