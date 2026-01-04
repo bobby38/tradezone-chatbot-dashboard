@@ -2,23 +2,17 @@
 Unit tests for TradeZone voice agent using LiveKit Agents testing framework.
 Tests key flows: greetings, product search, trade-ins, sports filtering.
 
-Setup: pip install "livekit-agents[openai]~=1.0" pytest pytest-asyncio
-Run: pytest voice-agent/tests/test_voice_agent.py -v
+Setup: pip install -r requirements-test.txt
+Run: pytest test_livekit_agent.py -v
+Run with verbose: LIVEKIT_EVALS_VERBOSE=1 pytest test_livekit_agent.py -s
 """
-
-import sys
-from pathlib import Path
-
-# Add agents directory to Python path
-agents_dir = Path(__file__).parent.parent.parent / "agents" / "voice"
-sys.path.insert(0, str(agents_dir))
 
 import pytest
 from livekit.agents import AgentSession
 from livekit.plugins import openai
 
-# Import the actual agent (will be initialized in tests)
-# from agent import create_agent  # Uncomment when ready to test
+# Agent is in the same directory, can be imported if needed
+# from agent import <agent_function>
 
 # Configuration
 LLM_MODEL = "gpt-4o-mini"

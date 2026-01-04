@@ -5,27 +5,29 @@ Automated behavioral tests for the LiveKit voice agent using text inputs.
 ## Setup
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+cd agents/voice
 
-# Or install individually
-pip install "livekit-agents[openai]~=1.0" pytest pytest-asyncio
+# Install test dependencies
+pip install -r requirements-test.txt
 ```
 
 ## Running Tests
 
 ```bash
-# Run all tests
-pytest test_voice_agent.py -v
+# Run all LiveKit framework tests
+pytest test_livekit_agent.py -v
 
 # Run specific test
-pytest test_voice_agent.py::test_greeting -v
+pytest test_livekit_agent.py::test_greeting -v
 
 # Run with verbose output
-LIVEKIT_EVALS_VERBOSE=1 pytest test_voice_agent.py -s
+LIVEKIT_EVALS_VERBOSE=1 pytest test_livekit_agent.py -s
 
 # Run only sports filter tests
-pytest test_voice_agent.py -k "sports" -v
+pytest test_livekit_agent.py -k "sports" -v
+
+# Run all tests (including existing ones)
+pytest test_*.py -v
 ```
 
 ## Test Coverage
