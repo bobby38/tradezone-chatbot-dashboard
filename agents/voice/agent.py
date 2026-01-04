@@ -420,9 +420,9 @@ def _proceed_prompt() -> str:
 def _greeting_prompt() -> str:
     options = [
         "Hi, Amara here. Electronics, gaming, trade-ins, or staff support?",
-        "Hello—Amara here. Need electronics, gaming, trade-ins, or staff support?",
-        "Hi! Amara here. Product info, trade-ins, or staff support?",
-        "Hey, Amara here. Gaming gear, electronics, trade-ins, or staff support?",
+        "Hello—Amara here. Need electronics, gaming, or trade-ins?",
+        "Hi! Amara here. Electronics, gaming, or trade-ins?",
+        "Hey, Amara here. Gaming gear, electronics, or trade-ins?",
     ]
     return random.choice(options)
 
@@ -2669,6 +2669,7 @@ async def entrypoint(ctx: JobContext):
                 if (
                     ("couldn't find" in content.lower())
                     or ("could not find" in content.lower())
+                    or ("not in stock" in content.lower())
                 ) and "what do you want to do next" not in content.lower():
                     content = content.rstrip()
                     if not content.endswith("?"):
