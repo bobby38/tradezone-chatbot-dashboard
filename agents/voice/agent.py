@@ -2290,7 +2290,11 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
             last_assistant = _get_last_assistant_message_from_chat_ctx(chat_ctx)
             if last_assistant:
                 last_lower = last_assistant.lower()
-                if "name" in last_lower and "?" in last_lower:
+                if (
+                    "name" in last_lower
+                    and "email" not in last_lower
+                    and "phone" not in last_lower
+                ):
 
                     async def _ask_phone():
                         yield "Thanks! Contact number?"
