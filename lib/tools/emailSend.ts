@@ -8,7 +8,7 @@ export const emailSendTool = {
   function: {
     name: "sendemail",
     description:
-      "Escalate a support request to TradeZone staff after you've confirmed the customer is in Singapore and you cannot resolve the issue yourself. Never use this to submit trade-in requests—those must go through the trade-in tools.",
+      "Escalate a support request to TradeZone staff after you've confirmed the customer is in Singapore and you cannot resolve the issue yourself. Collect reason/issue + email + name (required) and phone if available. Never use this to submit trade-in requests—those must go through the trade-in tools.",
     parameters: {
       type: "object",
       properties: {
@@ -39,7 +39,7 @@ export const emailSendTool = {
         message: {
           type: "string",
           description:
-            "Customer message or inquiry details. Include phone number in message if provided.",
+            "Customer reason/issue and inquiry details. Include phone number in message if provided.",
         },
       },
       required: ["emailType", "name", "email", "message"],
@@ -156,7 +156,7 @@ export async function handleEmailSend(params: {
         }
       }
 
-      aiHint = answerLines.join(" ").slice(0, 500); // Keep it concise
+      aiHint = answerLines.join(" ").slice(0, 280); // Keep it concise
       aiSources = sourceLines.slice(0, 3); // Top 3 sources
 
       console.log("[EmailSend] AI hint generated:", {

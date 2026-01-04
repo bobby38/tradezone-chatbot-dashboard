@@ -419,10 +419,10 @@ def _proceed_prompt() -> str:
 
 def _greeting_prompt() -> str:
     options = [
-        "Hi, Amara here. Electronics, gaming, trade-ins, or support?",
-        "Hello—Amara here. Need electronics, gaming, trade-ins, or support?",
-        "Hi! Amara here. Product info, trade-ins, or support?",
-        "Hey, Amara here. Gaming gear, electronics, trade-ins, or support?",
+        "Hi, Amara here. Electronics, gaming, trade-ins, or staff support?",
+        "Hello—Amara here. Need electronics, gaming, trade-ins, or staff support?",
+        "Hi! Amara here. Product info, trade-ins, or staff support?",
+        "Hey, Amara here. Gaming gear, electronics, trade-ins, or staff support?",
     ]
     return random.choice(options)
 
@@ -467,6 +467,7 @@ def _extract_tradein_device(message: str) -> Optional[str]:
         r"trade[-\s]?in price for\s+(.+)",
         r"sell my\s+(.+)",
     ]
+    stopwords = {"in", "for", "here", "there", "this", "that"}
     for pattern in patterns:
         match = re.search(pattern, message, flags=re.I)
         if match:
@@ -474,6 +475,9 @@ def _extract_tradein_device(message: str) -> Optional[str]:
             device = re.sub(
                 r"\bfor\s+(cash|money|dollars?)\b", "", device, flags=re.I
             ).strip()
+            device = re.sub(r"\bfor\b$", "", device, flags=re.I).strip()
+            if not device or device.lower() in stopwords:
+                return None
             if device:
                 return device
     return None
@@ -588,10 +592,10 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         )
 
     if "warranty" in lower or "covered" in lower or "coverage" in lower:
-        return (
-            "We can ask staff support to check warranty. "
-            "In Singapore? Name, phone, email?"
-        )
+        return "We can ask staff support to check warranty. In Singapore?"
+
+    if "malaysia" in lower:
+        return "Sorry, Singapore only."
 
     if "opening hours" in lower or "open hours" in lower or "what time" in lower:
         return "Open daily, 12 pm to 8 pm."
@@ -609,8 +613,10 @@ def _maybe_force_reply(message: str) -> Optional[str]:
     if any(token in lower for token in ["ps6", "osmo pocket 4", "pocket 4"]):
         return "Not in stock yet. Want staff support to notify you when available?"
 
-    if _extract_tradeup_devices(message):
-        return None
+    tradeup = _extract_tradeup_devices(message)
+    if tradeup:
+        source_device, target_device = tradeup
+        return _build_tradeup_price_reply(source_device, target_device)
 
     device = _extract_tradein_device(message)
     if device:
@@ -620,19 +626,77 @@ def _maybe_force_reply(message: str) -> Optional[str]:
 
 
 def _get_last_user_message_from_session(session: Any) -> str:
-    ctx = getattr(session, "chat_ctx", None) or getattr(session, "_chat_ctx", None)
+    ctx = (
+        getattr(session, "history", None)
+        or getattr(session, "chat_ctx", None)
+        or getattr(session, "_chat_ctx", None)
+    )
     if not ctx:
         return ""
-    messages = getattr(ctx, "messages", None) or []
-    for msg in reversed(messages):
+    items = getattr(ctx, "items", None)
+    if items is None:
+        items = getattr(ctx, "messages", None)
+    if not items:
+        return ""
+    for msg in reversed(items):
         role = getattr(msg, "role", None)
         if role is None and isinstance(msg, dict):
             role = msg.get("role")
         if role != "user":
             continue
-        content = getattr(msg, "content", None)
+        content = getattr(msg, "text_content", None)
         if content is None:
-            content = getattr(msg, "text_content", None)
+            content = getattr(msg, "content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content") or msg.get("text")
+        if isinstance(content, list):
+            content = " ".join(str(item) for item in content)
+        return str(content) if content else ""
+    return ""
+
+
+def _get_last_user_message_from_chat_ctx(chat_ctx: Any) -> str:
+    if not chat_ctx:
+        return ""
+    items = getattr(chat_ctx, "items", None)
+    if items is None:
+        items = getattr(chat_ctx, "messages", None)
+    if not items:
+        return ""
+    for msg in reversed(items):
+        role = getattr(msg, "role", None)
+        if role is None and isinstance(msg, dict):
+            role = msg.get("role")
+        if role != "user":
+            continue
+        content = getattr(msg, "text_content", None)
+        if content is None:
+            content = getattr(msg, "content", None)
+        if content is None and isinstance(msg, dict):
+            content = msg.get("content") or msg.get("text")
+        if isinstance(content, list):
+            content = " ".join(str(item) for item in content)
+        return str(content) if content else ""
+    return ""
+
+
+def _get_last_assistant_message_from_chat_ctx(chat_ctx: Any) -> str:
+    if not chat_ctx:
+        return ""
+    items = getattr(chat_ctx, "items", None)
+    if items is None:
+        items = getattr(chat_ctx, "messages", None)
+    if not items:
+        return ""
+    for msg in reversed(items):
+        role = getattr(msg, "role", None)
+        if role is None and isinstance(msg, dict):
+            role = msg.get("role")
+        if role != "assistant":
+            continue
+        content = getattr(msg, "text_content", None)
+        if content is None:
+            content = getattr(msg, "content", None)
         if content is None and isinstance(msg, dict):
             content = msg.get("content") or msg.get("text")
         if isinstance(content, list):
@@ -1998,7 +2062,7 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
   - Confirmations: Display all details in text chat, then ask "Everything correct?" - let user READ and confirm visually
   - This avoids annoying voice readback that users can't stop
 
-- Start every call with: "Hi, I'm Amara—electronics, gaming, trade-ins, or staff support?" Wait for a clear choice before running any tools.
+- Start every call with a short greeting that mentions electronics, gaming, trade-ins, and staff support. Wait for a clear choice before running any tools.
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
 - If user says "trade in my {device}" without a target device, treat as price-only: call check_tradein_price for that device, then ask if they want to proceed. Do NOT ask for condition or accessories before they confirm.
 - If you detect trade/upgrade intent with a target device, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
@@ -2043,11 +2107,15 @@ If you cannot find a satisfactory answer OR customer requests staff contact (inc
    - If NO: "Sorry, Singapore only."
    - If YES: Continue to step 3
 
-3. Collect info (ask ONCE): "Name, phone, email?" (≤5 words, wait for ALL three)
-   - Listen for all three pieces of info
+3. Collect info (one at a time):
+   - Reason/issue (required)
+   - Email (required)
+   - Name (required)
+   - Phone (optional but preferred)
    - If email sounds unclear, confirm: "So that's [email]?" then WAIT
 
-4. Use sendemail tool IMMEDIATELY with all details including phone number
+4. Use sendemail tool IMMEDIATELY with reason + name + email (and phone if provided)
+   - Message must include: "Reason: {reason}" plus any key details
 
 5. Confirm ONCE: "Done! They'll contact you soon." (≤6 words)
 
@@ -2199,6 +2267,39 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
 - NEVER skip contact collection, photo prompt, or recap
 - ALWAYS call tradein_update_lead after each detail collected""",
         )
+
+    def llm_node(self, chat_ctx, tools, model_settings):
+        # Deterministic trade-in price-only response (no target device).
+        last_user = _get_last_user_message_from_chat_ctx(chat_ctx)
+        if last_user:
+            forced = _maybe_force_reply(last_user)
+            if forced:
+
+                async def _forced():
+                    yield forced
+
+                return _forced()
+            tradeup = _extract_tradeup_devices(last_user)
+            if not tradeup:
+                tradein_device = _extract_tradein_device(last_user)
+                if tradein_device:
+
+                    async def _single():
+                        yield _build_tradein_price_reply(tradein_device)
+
+                    return _single()
+                last_assistant = _get_last_assistant_message_from_chat_ctx(chat_ctx)
+                if last_assistant:
+                    last_lower = last_assistant.lower()
+                    if last_lower.startswith("which ") and "?" in last_lower:
+                        device_reply = last_user.strip()
+                        if device_reply:
+
+                            async def _variant():
+                                yield _build_tradein_price_reply(device_reply)
+
+                            return _variant()
+        return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
 
     async def on_enter(self):
         await self.session.generate_reply(
@@ -2506,6 +2607,23 @@ async def entrypoint(ctx: JobContext):
                         forced_reply = _maybe_force_reply(last_user)
                         if forced_reply:
                             conversation_buffer["forced_reply_override"] = forced_reply
+                    if not conversation_buffer.get("forced_reply_override"):
+                        tradeup = _extract_tradeup_devices(last_user)
+                        if tradeup:
+                            source_device, target_device = tradeup
+                            forced_tradeup = _build_tradeup_price_reply(
+                                source_device, target_device, room_name
+                            )
+                            if forced_tradeup:
+                                conversation_buffer["forced_reply_override"] = (
+                                    forced_tradeup
+                                )
+                        else:
+                            tradein_device = _extract_tradein_device(last_user)
+                            if tradein_device:
+                                conversation_buffer["forced_reply_override"] = (
+                                    _build_tradein_price_reply(tradein_device)
+                                )
                     pending_tradeup = conversation_buffer.get("pending_tradeup") or {}
                     tradeup_ctx = _tradeup_context.get(room_name) or {}
                     if (

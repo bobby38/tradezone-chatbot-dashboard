@@ -194,7 +194,7 @@ const TRADE_IN_NO_MATCH_GUIDANCE = [
   "- Confirm the caller is in Singapore before continuing.",
   '- Let them know we need a manual review: "We don\'t have this device in our system yet. Want me to have TradeZone staff review it?"',
   "- Keep saving any trade-in details with tradein_update_lead.",
-  '- If they confirm, collect name, phone, and email, then call sendemail with emailType:\"contact\" and include a note like \"Manual trade-in review needed\" plus the device details.',
+  '- If they confirm, collect reason/issue + email + name (required) and phone if available, then call sendemail with emailType:\"contact\". Message should include: \"Reason: {reason}\" plus the device details.',
   "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
 ].join("\n");
 
@@ -404,7 +404,11 @@ export function RealtimeVoice({ sessionId, onTranscript }: RealtimeVoiceProps) {
       const streamSettings = streamTrack.getSettings();
       const nativeSampleRate = streamSettings.sampleRate || 48000; // Most browsers use 48kHz
 
-      console.log("[Audio Capture] Using native microphone rate:", nativeSampleRate, "Hz");
+      console.log(
+        "[Audio Capture] Using native microphone rate:",
+        nativeSampleRate,
+        "Hz",
+      );
 
       // Create AudioContext with SAME rate as mic (prevents Firefox errors)
       // Browser handles resampling internally when processing audio

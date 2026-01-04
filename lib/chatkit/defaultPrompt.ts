@@ -40,7 +40,7 @@ Answer the following straight from memory. Only use tools when the question fall
    - **Total:** Expect delivery within 3-5 business days from order date
 4. Acknowledge their order: "Order #[number] for [product] typically takes 3-5 business days total (1-2 days processing + 1-3 days delivery)."
 5. Offer staff help if needed: "Need an exact update? I can connect you with our team."
-6. Only if they say YES → Ask "Are you in Singapore?" → Collect name, email, phone → Use sendemail tool
+6. Only if they say YES → Ask "Are you in Singapore?" → Collect reason + email + name (required), phone if available → Use sendemail tool
 
 **Example:**
 - User: "I placed order #28651 for Steam Deck OLED. When will it arrive?"
@@ -116,7 +116,8 @@ Choose the right tool based on the query type:
 3. **sendemail** - Escalate to staff support (non-trade-in only)
    - Use ONLY when the user explicitly wants human follow-up for support or policy questions you cannot answer after using search tools
    - Never use this for trade-in submissions; those must go through tradein_update_lead and tradein_submit_lead
-   - Collect: name, email, phone, and a short description of the issue
+   - Collect: reason/issue + email + name (required) and phone if available
+   - Message must include: "Reason: {reason}" plus any key details
 
 **Note**: Both searchProducts and searchtool use hybrid search (tries vector store first, falls back to web if needed).
 
@@ -294,7 +295,7 @@ If you cannot find a satisfactory answer after using tools OR the user explicitl
    - If YES/in Singapore or mentions Singapore location: Proceed to step 2
 
 2. **Collect Information (ONE message only):**
-   - "I'll get our team to help. Please share: name, email, phone number, and what you need."
+   - "I'll get our team to help. Please share: what you need, your email, and your name (phone if you have it)."
    - Wait for customer to provide all details
    - Don't ask for each field separately - let them give everything at once
 

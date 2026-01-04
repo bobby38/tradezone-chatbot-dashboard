@@ -192,11 +192,15 @@ If you cannot find a satisfactory answer OR customer requests staff contact (inc
    - If NO: "Sorry, Singapore only."
    - If YES: Continue to step 3
 
-3. Collect info (ask ONCE): "Name, phone, email?" (≤5 words, wait for ALL three)
-   - Listen for all three pieces of info
+3. Collect info (one at a time):
+   - Reason/issue (required)
+   - Email (required)
+   - Name (required)
+   - Phone (optional but preferred)
    - If email sounds unclear, confirm: "So that's [email]?" then WAIT
 
-4. Use sendemail tool IMMEDIATELY with all details including phone number
+4. Use sendemail tool IMMEDIATELY with reason + name + email (and phone if provided)
+   - Message must include: "Reason: {reason}" plus any key details
 
 5. Confirm ONCE: "Done! They'll contact you soon." (≤6 words)
 
@@ -271,7 +275,7 @@ You: → DON'T send yet! Say: "I heard U-T-mail dot com - did you mean Hotmail?"
 4. Accessories: "Accessories included?" → Save → "Thanks."
 
 **Step 3: CONTACT INFO** (Show in text, don't speak)
-- Ask ONCE: "Name, phone, email?" (≤5 words)
+- Ask for reason + email + name (required), phone optional; one item per turn in voice.
 - Listen for all three pieces of information
 - 🔴 CRITICAL: Display the contact details in text chat, but just SAY: "Got it." (≤3 words)
 - DO NOT ask to confirm if info is clear - just save and move on
@@ -477,7 +481,7 @@ export const VOICE_TOOL_DEFINITIONS = [
     type: "function" as const,
     name: "sendemail",
     description:
-      "Send a support escalation to TradeZone staff. Use ONLY when the customer explicitly asks for human follow-up, when you cannot answer after exhausting searchProducts/searchtool, or when a trade-in pricing lookup returns TRADE_IN_NO_MATCH and the customer wants a manual review. In that trade-in fallback you must confirm they are in Singapore first, then collect name, phone, and email before escalating. IMPORTANT: When collecting email, accept common formats like 'hotmail', 'gmail', 'outlook' and auto-complete to '@hotmail.com', '@gmail.com', '@outlook.com'. If a user says just 'gmail' or 'hotmail', ask for the part before @ (e.g., 'What's the first part of your Gmail address?'). Never use this to bypass the normal trade-in flow when pricing is available—those must go through tradein_update_lead → tradein_submit_lead.",
+      "Send a support escalation to TradeZone staff. Use ONLY when the customer explicitly asks for human follow-up, when you cannot answer after exhausting searchProducts/searchtool, or when a trade-in pricing lookup returns TRADE_IN_NO_MATCH and the customer wants a manual review. In that trade-in fallback you must confirm they are in Singapore first, then collect reason/issue + email + name (required) and phone (optional) before escalating. IMPORTANT: When collecting email, accept common formats like 'hotmail', 'gmail', 'outlook' and auto-complete to '@hotmail.com', '@gmail.com', '@outlook.com'. If a user says just 'gmail' or 'hotmail', ask for the part before @ (e.g., 'What's the first part of your Gmail address?'). Never use this to bypass the normal trade-in flow when pricing is available—those must go through tradein_update_lead → tradein_submit_lead.",
     parameters: {
       type: "object",
       properties: {
