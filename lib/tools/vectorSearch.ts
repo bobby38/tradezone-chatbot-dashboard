@@ -2356,7 +2356,10 @@ export async function handleVectorSearch(
     // Step 4: Combine WooCommerce (source of truth) + Vector/Graphiti enrichment
     let finalText = "";
 
-    if (sportFilters.length && wooProducts.length === 0) {
+    // CRITICAL FIX: Block ALL sports game queries with helpful message
+    // Even if products exist (like "Project CARS 3" for "car games"),
+    // we want to redirect users to our core catalog
+    if (sportFilters.length > 0) {
       // Detect sport type for better messaging
       const sportType = lowerQuery.match(/basketball|nba|curry|jordan/i)
         ? "basketball"
@@ -2373,6 +2376,13 @@ export async function handleVectorSearch(
                 : "sports";
 
       finalText = `We don't currently stock ${sportType} games, but we focus on other popular titles! Check out our console games section or let me know what else you're looking for.`;
+
+      return {
+        text: finalText,
+        store: label,
+        matches: [],
+        wooProducts: undefined,
+      };
     } else if (wooProducts.length > 0) {
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
