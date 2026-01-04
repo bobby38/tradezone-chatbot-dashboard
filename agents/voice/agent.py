@@ -617,10 +617,43 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         )
 
     if "warranty" in lower or "covered" in lower or "coverage" in lower:
-        return "We can ask staff support to check warranty. In Singapore?"
+        return "Are you in Singapore?"
 
-    if "malaysia" in lower:
-        return "Sorry, Singapore only."
+    # General support requests - ask location first
+    if any(
+        token in lower
+        for token in [
+            "speak to staff",
+            "talk to staff",
+            "contact staff",
+            "reach support",
+            "human support",
+            "need help",
+            "customer service",
+        ]
+    ):
+        return "Are you in Singapore?"
+
+    # Non-Singapore locations - reject immediately
+    if any(
+        token in lower
+        for token in [
+            "malaysia",
+            "indonesia",
+            "thailand",
+            "philippines",
+            "vietnam",
+            "india",
+            "china",
+            "hong kong",
+            "taiwan",
+            "australia",
+            "usa",
+            "europe",
+            "uk",
+        ]
+    ):
+        return "Sorry, Singapore only. We don't ship internationally."
 
     if "opening hours" in lower or "open hours" in lower or "what time" in lower:
         return "Open daily, 12 to 8:30 pm at Hougang Green—team is on-site then."
@@ -2299,13 +2332,15 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
 - Keep spoken responses to 1–2 sentences, and stop immediately if the caller interrupts.
 
 ## When You Can't Answer (Fallback Protocol)
-If you cannot find a satisfactory answer OR customer requests staff contact (including when a trade-in price lookup returns **TRADE_IN_NO_MATCH**):
+If you cannot find a satisfactory answer OR customer requests staff contact OR warranty support (including when a trade-in price lookup returns **TRADE_IN_NO_MATCH**):
 
-**🔴 SINGAPORE-ONLY SERVICE - Verify Location First:**
-1. If customer already confirmed Singapore or mentions Singapore location: Skip location check, go to step 2
-2. If location unknown, ask ONCE: "In Singapore?" (≤3 words)
-   - If NO: "Sorry, Singapore only."
+**🔴 SINGAPORE-ONLY SERVICE - Verify Location First (MANDATORY):**
+1. **ALWAYS ask location FIRST** unless user EXPLICITLY says "I'm in Singapore" or "from Singapore"
+2. Ask ONCE: "Are you in Singapore?" (≤5 words)
+   - If NO: "Sorry, Singapore only." → END conversation
    - If YES: Continue to step 3
+
+🔴 **CRITICAL:** Warranty questions, support requests, or "I can't find X" do NOT count as location confirmation. You MUST ask "Are you in Singapore?" before proceeding.
 
 3. Collect info (one at a time):
    - Reason/issue (required)
