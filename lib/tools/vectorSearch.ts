@@ -2306,10 +2306,28 @@ export async function handleVectorSearch(
       if (!sportFilters.length) return items;
       return items.filter((item) => {
         const hay = (item.name || "").toLowerCase();
-        const hasSport = sportFilters.some((tok) => hay.includes(tok));
-        const isGameLike = /\b(game|edition|2k|fc|fifa|nba|wwe)\b/i.test(
-          item.name || "",
-        );
+
+        // Exclude false positives (graphic card, SD card, etc.)
+        if (
+          /graphic\s*card|sd\s*card|micro\s*sd|wifi\s*card|trading\s*card/i.test(
+            hay,
+          )
+        ) {
+          return false;
+        }
+
+        const hasSport = sportFilters.some((tok) => {
+          // For "car", only match if it's a standalone word (not part of "card")
+          if (tok === "car") {
+            return /\bcar\b/i.test(hay);
+          }
+          return hay.includes(tok);
+        });
+
+        const isGameLike =
+          /\b(game|edition|2k|fc|fifa|nba|wwe|racing|cars)\b/i.test(
+            item.name || "",
+          );
         return hasSport && isGameLike;
       });
     };
