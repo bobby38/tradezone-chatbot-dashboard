@@ -52,6 +52,10 @@ interface WooProduct {
   stock_quantity?: number | null;
   images?: Array<{ id: number; src: string; alt?: string }>;
   categories?: Array<{ id: number; name: string; slug: string }>;
+  short_description?: string;
+  description?: string;
+  tags?: Array<{ id: number; name: string; slug: string }>;
+  enrichment?: string | null;
 }
 
 export interface WooProductSearchResult {
@@ -716,9 +720,34 @@ export async function searchWooProducts(
       }
 
       // Score based on token matching
+      // Search across name, description, tags, and AI enrichment
+      const shortDesc = (product.short_description || "").toLowerCase();
+      const fullDesc = (product.description || "").toLowerCase();
+      const productTags = (product.tags || [])
+        .map((t) => t.name.toLowerCase())
+        .join(" ");
+      const enrichment = (product.enrichment || "").toLowerCase();
+
       tokens.forEach((token) => {
+        // Name matches = highest priority (original scoring)
         if (name.includes(token)) {
           score += token.length;
+        }
+        // Enrichment matches = very high priority (90% weight - accurate semantic keywords)
+        else if (enrichment.includes(token)) {
+          score += Math.ceil(token.length * 0.9);
+        }
+        // Tag matches = medium-high priority
+        else if (productTags.includes(token)) {
+          score += Math.ceil(token.length * 0.6);
+        }
+        // Short description matches = medium priority (half weight)
+        else if (shortDesc.includes(token)) {
+          score += Math.ceil(token.length * 0.5);
+        }
+        // Full description matches = lower priority (quarter weight)
+        else if (fullDesc.includes(token)) {
+          score += Math.ceil(token.length * 0.25);
         }
       });
       return { product, score };

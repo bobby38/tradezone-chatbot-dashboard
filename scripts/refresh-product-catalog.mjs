@@ -10,6 +10,9 @@ if (fs.existsSync(envLocalPath)) {
   loadEnv();
 }
 
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+const ENABLE_ENRICHMENT = process.env.ENABLE_PRODUCT_ENRICHMENT === "true";
+
 const API_BASE = (
   process.env.WOOCOMMERCE_API_BASE ?? "https://tradezone.sg/wp-json/wc/v3"
 ).replace(/\/$/, "");
@@ -92,7 +95,58 @@ async function fetchAllProducts() {
   return products;
 }
 
-function trimProduct(product) {
+async function enrichProductWithPerplexity(product) {
+  if (!PERPLEXITY_API_KEY || !ENABLE_ENRICHMENT) {
+    return null;
+  }
+
+  const categories = (product.categories || []).map((c) => c.name).join(", ");
+  const isGame = /game/i.test(categories);
+
+  if (!isGame) {
+    return null; // Only enrich games for now (can expand later)
+  }
+
+  try {
+    const prompt = `Game: ${product.name}
+
+Return ONLY 3-5 single keywords (lowercase, space-separated):
+- Genre: sports, racing, rpg, shooter, adventure, puzzle, fighting, strategy
+- Sport type: basketball, football, soccer, skateboard, baseball (if applicable)
+- Gameplay: multiplayer, story, open-world, competitive
+
+Example output: "sports basketball multiplayer competitive"
+Output:`;
+
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-sonar-small-128k-online",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 50,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`[Enrichment] Perplexity API error for ${product.name}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const enrichment = data.choices?.[0]?.message?.content?.trim() || null;
+    return enrichment;
+  } catch (error) {
+    console.warn(`[Enrichment] Failed for ${product.name}:`, error.message);
+    return null;
+  }
+}
+
+function trimProduct(product, enrichment = null) {
   return {
     id: product.id,
     name: product.name,
@@ -107,6 +161,7 @@ function trimProduct(product) {
     date_modified: product.date_modified,
     short_description: product.short_description,
     description: product.description,
+    enrichment: enrichment, // Add semantic metadata
     categories: (product.categories || []).map(({ id, name, slug }) => ({
       id,
       name,
@@ -128,7 +183,39 @@ function trimProduct(product) {
 }
 
 async function writeCatalog(products) {
-  const trimmed = products.map(trimProduct);
+  const trimmed = [];
+
+  if (ENABLE_ENRICHMENT && PERPLEXITY_API_KEY) {
+    console.log("[Catalog] Enriching products with Perplexity (games only)...");
+    let enrichedCount = 0;
+
+    for (const product of products) {
+      const enrichment = await enrichProductWithPerplexity(product);
+      trimmed.push(trimProduct(product, enrichment));
+
+      if (enrichment) {
+        enrichedCount++;
+        if (enrichedCount % 10 === 0) {
+          console.log(`[Catalog] Enriched ${enrichedCount} products...`);
+        }
+      }
+
+      // Rate limit: 10 requests per minute for free tier
+      if (enrichment) {
+        await new Promise((resolve) => setTimeout(resolve, 6000));
+      }
+    }
+
+    console.log(
+      `[Catalog] ✅ Enriched ${enrichedCount}/${products.length} products`,
+    );
+  } else {
+    console.log(
+      "[Catalog] Enrichment disabled (set ENABLE_PRODUCT_ENRICHMENT=true to enable)",
+    );
+    trimmed.push(...products.map((p) => trimProduct(p, null)));
+  }
+
   const dir = path.dirname(OUTPUT_PATH);
   await fsp.mkdir(dir, { recursive: true });
   await fsp.writeFile(OUTPUT_PATH, JSON.stringify(trimmed, null, 2), "utf8");
