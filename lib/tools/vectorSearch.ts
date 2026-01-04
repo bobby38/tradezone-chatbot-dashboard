@@ -2291,7 +2291,7 @@ export async function handleVectorSearch(
       },
       {
         regex:
-          /\bcar\s+game|\bracing\s+game|\bgran turismo|forza|need\s+for\s+speed|nfs|burnout|mario\s+kart/i,
+          /\bcar\s+games?|\bracing\s+games?|\bgran turismo|forza|need\s+for\s+speed|nfs|burnout|mario\s+kart/i,
         tokens: ["racing", "car", "turismo", "forza", "kart", "speed"],
       },
     ];
@@ -2361,16 +2361,18 @@ export async function handleVectorSearch(
     // If NO products found AND sports keyword → show helpful redirect message
     if (sportFilters.length > 0 && wooProducts.length === 0) {
       // No products found for sports query - offer helpful redirect
-      const sportType = lowerQuery.match(/basketball|curry|jordan/i)
+      const sportType = lowerQuery.match(
+        /basketball|nba(?!\s*2k)|curry|jordan/i,
+      )
         ? "basketball"
         : lowerQuery.match(/skateboard|skate|tony hawk/i)
           ? "skateboarding"
           : lowerQuery.match(/football|soccer|messi|ronaldo/i)
             ? "football/soccer"
-            : lowerQuery.match(/wrestling|cena/i)
+            : lowerQuery.match(/wrestling|wwe|cena/i)
               ? "wrestling"
               : lowerQuery.match(
-                    /\bcar\s+game|\bracing|gran turismo|forza|need\s+for\s+speed/i,
+                    /\bcar\s+games?|\bracing\s+games?|gran turismo|forza|need\s+for\s+speed/i,
                   )
                 ? "racing/car"
                 : "sports";
