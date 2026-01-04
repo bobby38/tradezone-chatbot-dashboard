@@ -595,7 +595,7 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         token in lower for token in ["llm", "ai", "chatbot", "training"]
     ):
         return (
-            "For local LLMs, NVIDIA RTX 4090 24GB is best. "
+            "For local LLMs, best GPU is NVIDIA RTX 4090 24GB. "
             "RTX 4080 is a cheaper option. Want me to check stock?"
         )
 
