@@ -591,6 +591,14 @@ def _maybe_force_reply(message: str) -> Optional[str]:
             "We only do electronics in Singapore. Need product help?"
         )
 
+    if "gpu" in lower and any(
+        token in lower for token in ["llm", "ai", "chatbot", "training"]
+    ):
+        return (
+            "For local LLMs, NVIDIA RTX 4090 24GB is best. "
+            "RTX 4080 is a cheaper option. Want me to check stock?"
+        )
+
     if "warranty" in lower or "covered" in lower or "coverage" in lower:
         return "We can ask staff support to check warranty. In Singapore?"
 
