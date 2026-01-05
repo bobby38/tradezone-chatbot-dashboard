@@ -757,38 +757,21 @@ const CONVERSATION_EXIT_PATTERNS =
   /^\s*(?:ok(?:ay)?\s+)?(never\s?-?\s?mind|forget\s+it|no\s+need|cancel\s+that|stop\s+please|bye|goodbye|its\s+ok|it's\s+ok|leave\s+it|nvm)(?:[.!?,\s]*(?:thanks|thank\s+you|ya|yeah|ok|okay|pls|please))?\s*[.!?,\s]*$/i;
 
 const PLACEHOLDER_NAME_TOKENS = new Set([
-  "here",
-  "there",
-  "see",
-  "you",
-  "see you",
-  "thanks",
-  "thank",
-  "thankyou",
-  "thank you",
-  "bye",
-  "good",
-  "later",
-  "photo",
-  "photos",
-  "pic",
-  "pics",
-  "cash",
-  "paynow",
-  "bank",
-  "ok",
-  "okay",
-  "none",
-  "na",
-  "n/a",
-  "no",
-  "sure",
-  "yup",
-  "yeah",
-  "yep",
-  "alright",
-  "alrighty",
-  "thanks!",
+  "i", "me", "my", "am", "is", "this", "call", "name", "the", "a", "an",
+  "want", "sell", "to", "trade", "buy", "good", "mint", "fair", "faulty",
+  "excellent", "condition", "everything", "included", "box", "cables",
+  "controller", "controllers", "accessories", "accessory", "no", "yes",
+  "yeah", "yep", "ok", "okay", "sure", "can", "do", "it", "for", "with",
+  "and", "but", "or", "so", "if", "not", "none", "photo", "photos",
+  "pic", "pics", "picture", "pictures", "image", "images", "rog", "ally",
+  "steam", "deck", "oled", "lcd", "ps5", "ps4", "playstation", "xbox",
+  "switch", "nintendo", "iphone", "samsung", "galaxy", "ipad", "tablet",
+  "phone", "mobile", "handphone", "smartphone", "pro", "slim", "fat",
+  "digital", "disc", "portal", "midnight", "black", "white", "vr", "psvr",
+  "meta", "quest", "pico", "dji", "osmo", "pocket", "creator", "msi", "claw",
+  "here", "there", "see", "you", "see you", "thanks", "thank", "thankyou",
+  "thank you", "bye", "later", "cash", "paynow", "bank", "na", "n/a",
+  "alright", "alrighty", "thanks!", "yup",
 ]);
 
 const CONTACT_MESSAGE_STOP_WORDS = new Set([
@@ -2513,19 +2496,9 @@ const DEVICE_PATTERNS: Array<{
   {
     regex: /dji osmo pocket 3 creator/i,
     brand: "DJI",
-    model: "Osmo Pocket 3 Creator Combo",
+    model: "Osmo Pocket 3 Creator",
   },
-  {
-    regex: /dji osmo pocket 3/i,
-    brand: "DJI",
-    model: "Osmo Pocket 3 Handheld",
-  },
-  { regex: /dji osmo/i, brand: "DJI", model: "Osmo" },
-  {
-    regex: /iphone\s*(\d+\s*(pro\s*max|pro)?)?/i,
-    brand: "Apple",
-    model: "iPhone",
-  },
+  { regex: /dji osmo pocket 3/i, brand: "DJI", model: "Osmo Pocket 3" },
   { regex: /ipad/i, brand: "Apple", model: "iPad" },
 ];
 
@@ -2657,11 +2630,14 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
         scrubbedLower,
       );
     
-    // Only block extraction if message is clearly about the device, not a name response
+    // Block extraction if message contains common trade-in / sell phrasing without an explicit name cue
+    const isSellIntent = /\b(want to|id like to|i would like to)?\s*(sell|trade|trade[- ]?in|quote)\b/i.test(scrubbedLower);
+    const hasConditionWords = /\b(condition|mint|good|fair|faulty|excellent|perfect|everything|included)\b/i.test(scrubbedLower);
+    
     const isDeviceOnlyMessage = 
-      scrubbed.length < 20 && 
-      /\b(trade|trade[- ]?in|sell|buy)\b/i.test(scrubbedLower) &&
-      /\b(ps5|ps4|playstation|xbox|switch|pokemon|nba|fifa|rog|ally|steam|deck|iphone|samsung|galaxy)\b/i.test(scrubbedLower);
+      scrubbed.length < 40 && 
+      (isSellIntent || hasConditionWords) &&
+      /\b(ps5|ps4|playstation|xbox|switch|pokemon|nba|fifa|rog|ally|steam|deck|iphone|samsung|galaxy|ipad|console|game|phone|tablet)\b/i.test(scrubbedLower);
     
     if (!hasExplicitNameCue && isDeviceOnlyMessage) {
       return patch;
@@ -2672,7 +2648,9 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
       .map((token) => token.trim())
       .filter((token) => {
         if (!token) return false;
+        // Names must start with a letter and have at least 2 chars
         if (!/^[A-Za-z][A-Za-z'\-]{1,}$/.test(token)) return false;
+        // Filter out placeholder tokens and common trade-in verbs/nouns
         return !PLACEHOLDER_NAME_TOKENS.has(token.toLowerCase());
       });
 
