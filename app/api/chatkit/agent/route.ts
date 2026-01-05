@@ -2613,8 +2613,40 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.notes = "Photos: Not provided — customer has none on hand.";
   }
 
-  // Note: Name extraction removed from here to prevent contamination from device names and intent phrases.
-  // Name should only be extracted via extractFullNameFromHistory which looks at individual clean messages.
+  // Extract name only from clean, short messages that look like name responses
+  // Skip if message contains device/accessory/condition keywords (likely not a name response)
+  const scrubbed = message
+    .replace(emailMatch ? emailMatch[0] : "", " ")
+    .replace(phoneMatch ? phoneMatch[0] : "", " ")
+    .replace(/[,.;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!patch.contact_name && scrubbed.length >= 2 && scrubbed.length < 50) {
+    const lower = scrubbed.toLowerCase();
+    
+    // Skip if message contains device/trade/accessory/condition keywords
+    const hasDeviceKeywords = /\b(trade|sell|buy|quote|rog|ally|legion|steam|deck|ps5|ps4|playstation|xbox|switch|iphone|samsung|galaxy|ipad|console|handheld)\b/i.test(scrubbed);
+    const hasAccessoryKeywords = /\b(box|cables?|charger|controller|accessories?|included|everything)\b/i.test(scrubbed);
+    const hasConditionKeywords = /\b(mint|good|fair|faulty|excellent|condition|perfect)\b/i.test(scrubbed);
+    
+    if (!hasDeviceKeywords && !hasAccessoryKeywords && !hasConditionKeywords) {
+      const tokens = scrubbed
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter((t) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(t))
+        .filter((t) => !PLACEHOLDER_NAME_TOKENS.has(t.toLowerCase()));
+      
+      // Require at least 2 valid name tokens
+      if (tokens.length >= 2) {
+        const candidateName = tokens.slice(0, 3).join(" ");
+        if (!isPlaceholderName(candidateName)) {
+          patch.contact_name = candidateName;
+          console.log(`[AutoExtract] Extracted name: "${candidateName}" from: "${scrubbed}"`);
+        }
+      }
+    }
+  }
   
   return patch;
 }
