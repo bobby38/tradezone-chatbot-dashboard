@@ -5292,7 +5292,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         messages.push({
           role: "system",
           content:
-            "PROMO RESPONSE: Do NOT call tools or list products. Reply with ONLY: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. Check promos here: https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1 or tell me a product and I'll check it.' Keep it under 2 sentences and ask which product to apply the code to. Never invent products or prices.",
+            "PROMO RESPONSE: Do NOT call tools or list products. Reply with ONLY: 'Flash sale unlocked ⚡ 5% off with code “TZSALE”. [Check promos here](https://tradezone.sg/?s=promotion&post_type=product&dgwt_wcas=1) or tell me a product and I'll check it.' Keep it under 2 sentences and ask which product to apply the code to. Never invent products or prices.",
         });
       }
 
@@ -6684,7 +6684,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               ) {
                 // Auto-offer staff support for product not found
                 const searchTerm = lastHybridQuery || "that product";
-                finalResponse = `I couldn't find "${searchTerm}" in our catalog. Would you like me to connect you with our team? They can check stock or help with special orders.`;
+                finalResponse = [
+                  `I couldn't find "${searchTerm}" in our catalog.`,
+                  "",
+                  "Would you like me to connect you with our team? They can check stock or help with special orders.",
+                ].join("\n");
 
                 // Set support offer state for next turn
                 supportOfferState = {
@@ -7221,7 +7225,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
     // Don't make users ask for links - share price AND link by default
     if (productSlug && !/https?:\/\//i.test(finalResponse)) {
       const productUrl = `https://tradezone.sg/product/${productSlug}/`;
-      finalResponse = `${finalResponse}\n\nView product: ${productUrl}`.trim();
+      finalResponse =
+        `${finalResponse}\n\n[View Product](${productUrl})`.trim();
     }
 
     // If the response contains numbered bullets with product names but no links, append links for voice/text parity
