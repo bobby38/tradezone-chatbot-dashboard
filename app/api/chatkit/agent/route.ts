@@ -775,7 +775,8 @@ const PLACEHOLDER_NAME_TOKENS = new Set([
   "here", "there", "see", "you", "see you", "thanks", "thank", "thankyou",
   "thank you", "bye", "later", "cash", "paynow", "bank", "na", "n/a",
   "alright", "alrighty", "thanks!", "yup", "proceed", "with", "month",
-  "months", "installment", "installments", "plan",
+  "months", "installment", "installments", "plan", "seo", "backlink",
+  "backlinks", "website", "help", "can",
 ]);
 
 const CONTACT_MESSAGE_STOP_WORDS = new Set([
