@@ -6,6 +6,25 @@
 - Inputs: catalog changes, search demand, stock status, price shifts, and trusted release/news sources.
 - Guardrails: cite sources, never promote out‑of‑stock items, keep SG context.
 
+## Change Log — Jan 5, 2026 (Trade-In Reliability & Flexibility)
+
+### Trade-In Lead Reuse & Name Capture (Jan 5, 2026) ✅
+**Goal**: Stabilize lead reuse to prevent duplicates and improve name capture.
+**Changes** (Commit `a1254957`):
+- **Lead Reuse**: Reuse active trade-in lead by session_id for ~60 minutes to prevent duplicate leads.
+- **Contact Reuse**: When creating a new lead, reuse contact info (name/email/phone) from previous leads with same hash.
+- **Smart Name Capture**: Improved regex to capture explicit "my name is X" or "name: X" patterns and avoid collecting filler words.
+- **Recap Fix**: Fixed scoping of `alreadyAskedConfirm` variable to prevent repeated confirmation prompts.
+
+### Trade-In Submission Flexibility (Jan 5, 2026) ✅
+**Goal**: Prevent submission blocks due to missing optional fields.
+**Changes** (Commit `d36a83fb`):
+- **Relaxed Requirements**: `contact_name` and `preferred_payout` are now OPTIONAL for submission.
+- **Premature Recap Prevention**: Forces missing-field prompt if model tries to recap before all required data is collected.
+- **False Success Prevention**: Agent checks `tradeInSubmissionSucceeded` flag before claiming success.
+- **Payout Prompt**: Moved to after email+phone collection, and made purely optional (does not block submit).
+- **Submission Guard**: Validation logic only strictly requires Device details, Condition, and Contact (Phone + Email).
+
 ## Change Log — Jan 3, 2026 (Trade-In Flow Structure & Formatting)
 
 ### Trade-In Reply Formatting (Jan 3, 2026) ✅

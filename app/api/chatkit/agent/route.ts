@@ -93,10 +93,10 @@ const ALLOWED_ORIGINS = [
   "https://www.sabaisensations.com",
   ...(process.env.NODE_ENV === "development"
     ? [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3003",
-      ]
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3003",
+    ]
     : []),
 ];
 
@@ -509,9 +509,9 @@ function isPreferredGridEntry(
 function getCorsHeaders(origin: string | null): HeadersInit {
   const allowedOrigin =
     origin &&
-    ALLOWED_ORIGINS.some((allowed) =>
-      origin.includes(allowed.replace("https://", "").replace("http://", "")),
-    )
+      ALLOWED_ORIGINS.some((allowed) =>
+        origin.includes(allowed.replace("https://", "").replace("http://", "")),
+      )
       ? origin
       : ALLOWED_ORIGINS[0];
 
@@ -560,10 +560,10 @@ function renderCatalogMatches(
       : match.name;
     const flagship =
       match.flagshipCondition?.basePrice !== null &&
-      match.flagshipCondition?.basePrice !== undefined
+        match.flagshipCondition?.basePrice !== undefined
         ? " — S$" +
-          match.flagshipCondition.basePrice.toFixed(0) +
-          ` (${match.flagshipCondition.label})`
+        match.flagshipCondition.basePrice.toFixed(0) +
+        ` (${match.flagshipCondition.label})`
         : match.price
           ? " — S$" + match.price
           : "";
@@ -663,9 +663,9 @@ function summarizeMatchesByModifier(
       return { match, price };
     })
     .filter(({ price }) => typeof price === "number") as Array<{
-    match: CatalogMatch;
-    price: number;
-  }>;
+      match: CatalogMatch;
+      price: number;
+    }>;
 
   if (!pricedMatches.length) return null;
 
@@ -760,10 +760,13 @@ const PLACEHOLDER_NAME_TOKENS = new Set([
   "i", "me", "my", "am", "is", "this", "call", "name", "the", "a", "an",
   "want", "sell", "to", "trade", "buy", "good", "mint", "fair", "faulty",
   "excellent", "condition", "everything", "included", "box", "cables",
-  "controller", "controllers", "accessories", "accessory", "no", "yes",
-  "yeah", "yep", "ok", "okay", "sure", "can", "do", "it", "for", "with",
-  "and", "but", "or", "so", "if", "not", "none", "photo", "photos",
-  "pic", "pics", "picture", "pictures", "image", "images", "rog", "ally",
+  "console", "device", "phone", "number", "email", "address", "contact",
+  "thanks", "thank", "you", "ok", "okay", "yes", "yeah", "yep", "no",
+  "nah", "nope", "sure", "maybe", "later", "now", "today", "tomorrow",
+  "hi", "hello", "hey", "yo", "please", "pls", "thx", "ty",
+  // French/non-name tokens that should not become names
+  "pas", "de", "photo", "pas_de", "pas_de_photo",
+  "picture", "pictures", "image", "images", "rog", "ally",
   "steam", "deck", "oled", "lcd", "ps5", "ps4", "playstation", "xbox",
   "switch", "nintendo", "iphone", "samsung", "galaxy", "ipad", "tablet",
   "phone", "mobile", "handphone", "smartphone", "pro", "slim", "fat",
@@ -2153,13 +2156,13 @@ const TRADE_IN_PRICE_OVERRIDES: Array<{
   range: string;
   header: string;
 }> = [
-  {
-    patterns: [/osmo pocket 3/i, /creator combo/i],
-    range: "S$350 – S$400",
-    header:
-      "Approximate trade-in value for the DJI Osmo Pocket 3 Creator Combo: S$350 – S$400 (subject to inspection).",
-  },
-];
+    {
+      patterns: [/osmo pocket 3/i, /creator combo/i],
+      range: "S$350 – S$400",
+      header:
+        "Approximate trade-in value for the DJI Osmo Pocket 3 Creator Combo: S$350 – S$400 (subject to inspection).",
+    },
+  ];
 
 function applyTradeInPriceOverrides(
   text: string,
@@ -2211,9 +2214,9 @@ function enforceTradeInResponseOverrides(response: string): string {
         return match.includes("subject to inspection")
           ? match
           : match.replace(
-              desiredRange,
-              `${desiredRange} (subject to inspection)`,
-            );
+            desiredRange,
+            `${desiredRange} (subject to inspection)`,
+          );
       }
       return match.replace(
         /S\$[0-9][0-9,]*(?:\s*[–-]\s*S\$[0-9][0-9,]*)?/g,
@@ -2381,126 +2384,126 @@ const DEVICE_PATTERNS: Array<{
   brand: string;
   model: string;
 }> = [
-  // Order matters: specific variants first, then general fallbacks
-  { regex: /legion go 2/i, brand: "Lenovo", model: "Legion Go Gen 2" },
-  { regex: /legion go/i, brand: "Lenovo", model: "Legion Go Gen 1" },
-  { regex: /rog ally x xbox/i, brand: "Asus", model: "ROG Ally X Xbox" },
-  { regex: /rog ally x/i, brand: "Asus", model: "ROG Ally X" },
-  { regex: /rog ally/i, brand: "Asus", model: "ROG Ally" },
-  { regex: /steam deck oled/i, brand: "Valve", model: "Steam Deck OLED" },
-  { regex: /steam deck lcd/i, brand: "Valve", model: "Steam Deck LCD" },
-  { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
-  { regex: /switch 2/i, brand: "Nintendo", model: "Switch 2" },
-  { regex: /switch lite/i, brand: "Nintendo", model: "Switch Lite" },
-  { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
-  { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
-  {
-    regex: /ps5\s*pro|playstation 5\s*pro/i,
-    brand: "Sony",
-    model: "PlayStation 5 Pro",
-  },
-  {
-    regex: /ps5\s*slim.*digital|playstation 5\s*slim.*digital/i,
-    brand: "Sony",
-    model: "PlayStation 5 Slim Digital",
-  },
-  {
-    regex: /ps5\s*slim.*disc|playstation 5\s*slim.*disc/i,
-    brand: "Sony",
-    model: "PlayStation 5 Slim Disc",
-  },
-  {
-    regex: /ps5\s*slim|playstation 5\s*slim/i,
-    brand: "Sony",
-    model: "PlayStation 5 Slim",
-  },
-  {
-    regex: /ps5\s*fat.*digital|playstation 5\s*fat.*digital/i,
-    brand: "Sony",
-    model: "PlayStation 5 Fat Digital",
-  },
-  {
-    regex: /ps5\s*fat.*disc|playstation 5\s*fat.*disc/i,
-    brand: "Sony",
-    model: "PlayStation 5 Fat Disc",
-  },
-  {
-    regex: /ps5\s*fat|playstation 5\s*fat/i,
-    brand: "Sony",
-    model: "PlayStation 5 Fat",
-  },
-  {
-    regex: /ps5\s*digital|playstation 5\s*digital/i,
-    brand: "Sony",
-    model: "PlayStation 5 Digital",
-  },
-  {
-    regex: /ps5\s*disc|playstation 5\s*disc/i,
-    brand: "Sony",
-    model: "PlayStation 5 Disc",
-  },
-  { regex: /ps5|playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
-  {
-    regex: /ps4\s*pro|playstation 4\s*pro/i,
-    brand: "Sony",
-    model: "PlayStation 4 Pro",
-  },
-  {
-    regex: /ps4\s*slim|playstation 4\s*slim/i,
-    brand: "Sony",
-    model: "PlayStation 4 Slim",
-  },
-  {
-    regex: /ps4\s*fat|playstation 4\s*fat/i,
-    brand: "Sony",
-    model: "PlayStation 4 Fat",
-  },
-  { regex: /ps4|playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
-  {
-    regex: /xbox series x|\bxsx\b/i,
-    brand: "Microsoft",
-    model: "Xbox Series X",
-  },
-  {
-    regex: /xbox series s|\bxss\b/i,
-    brand: "Microsoft",
-    model: "Xbox Series S",
-  },
-  {
-    regex: /xbox series x digital/i,
-    brand: "Microsoft",
-    model: "Xbox Series X Digital",
-  },
-  { regex: /xbox one/i, brand: "Microsoft", model: "Xbox One" },
-  { regex: /msi claw 8ai\+/i, brand: "MSI", model: "Claw 8AI+" },
-  { regex: /msi claw a8/i, brand: "MSI", model: "Claw A8" },
-  { regex: /msi claw/i, brand: "MSI", model: "Claw" },
-  {
-    regex: /ps portal midnight black/i,
-    brand: "Sony",
-    model: "Portal Midnight Black",
-  },
-  { regex: /ps portal|portal white/i, brand: "Sony", model: "Portal White" },
-  {
-    regex: /playstation vr 2|psvr2|ps vr2/i,
-    brand: "Sony",
-    model: "PlayStation VR 2",
-  },
-  { regex: /meta quest 3s/i, brand: "Meta", model: "Quest 3S" },
-  { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
-  { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
-  { regex: /meta quest/i, brand: "Meta", model: "Quest" },
-  { regex: /pico 4 ultra/i, brand: "Pico", model: "Pico 4 Ultra" },
-  { regex: /pico 4/i, brand: "Pico", model: "Pico 4" },
-  { regex: /legion go s/i, brand: "Lenovo", model: "Legion GO S Z1 Ext" },
-  {
-    regex: /dji osmo pocket 3 creator/i,
-    brand: "DJI",
-    model: "Osmo Pocket 3 Creator",
-  },
-  { regex: /dji osmo pocket 3/i, brand: "DJI", model: "Osmo Pocket 3" },
-  { regex: /ipad/i, brand: "Apple", model: "iPad" },
-];
+    // Order matters: specific variants first, then general fallbacks
+    { regex: /legion go 2/i, brand: "Lenovo", model: "Legion Go Gen 2" },
+    { regex: /legion go/i, brand: "Lenovo", model: "Legion Go Gen 1" },
+    { regex: /rog ally x xbox/i, brand: "Asus", model: "ROG Ally X Xbox" },
+    { regex: /rog ally x/i, brand: "Asus", model: "ROG Ally X" },
+    { regex: /rog ally/i, brand: "Asus", model: "ROG Ally" },
+    { regex: /steam deck oled/i, brand: "Valve", model: "Steam Deck OLED" },
+    { regex: /steam deck lcd/i, brand: "Valve", model: "Steam Deck LCD" },
+    { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
+    { regex: /switch 2/i, brand: "Nintendo", model: "Switch 2" },
+    { regex: /switch lite/i, brand: "Nintendo", model: "Switch Lite" },
+    { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
+    { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
+    {
+      regex: /ps5\s*pro|playstation 5\s*pro/i,
+      brand: "Sony",
+      model: "PlayStation 5 Pro",
+    },
+    {
+      regex: /ps5\s*slim.*digital|playstation 5\s*slim.*digital/i,
+      brand: "Sony",
+      model: "PlayStation 5 Slim Digital",
+    },
+    {
+      regex: /ps5\s*slim.*disc|playstation 5\s*slim.*disc/i,
+      brand: "Sony",
+      model: "PlayStation 5 Slim Disc",
+    },
+    {
+      regex: /ps5\s*slim|playstation 5\s*slim/i,
+      brand: "Sony",
+      model: "PlayStation 5 Slim",
+    },
+    {
+      regex: /ps5\s*fat.*digital|playstation 5\s*fat.*digital/i,
+      brand: "Sony",
+      model: "PlayStation 5 Fat Digital",
+    },
+    {
+      regex: /ps5\s*fat.*disc|playstation 5\s*fat.*disc/i,
+      brand: "Sony",
+      model: "PlayStation 5 Fat Disc",
+    },
+    {
+      regex: /ps5\s*fat|playstation 5\s*fat/i,
+      brand: "Sony",
+      model: "PlayStation 5 Fat",
+    },
+    {
+      regex: /ps5\s*digital|playstation 5\s*digital/i,
+      brand: "Sony",
+      model: "PlayStation 5 Digital",
+    },
+    {
+      regex: /ps5\s*disc|playstation 5\s*disc/i,
+      brand: "Sony",
+      model: "PlayStation 5 Disc",
+    },
+    { regex: /ps5|playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
+    {
+      regex: /ps4\s*pro|playstation 4\s*pro/i,
+      brand: "Sony",
+      model: "PlayStation 4 Pro",
+    },
+    {
+      regex: /ps4\s*slim|playstation 4\s*slim/i,
+      brand: "Sony",
+      model: "PlayStation 4 Slim",
+    },
+    {
+      regex: /ps4\s*fat|playstation 4\s*fat/i,
+      brand: "Sony",
+      model: "PlayStation 4 Fat",
+    },
+    { regex: /ps4|playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
+    {
+      regex: /xbox series x|\bxsx\b/i,
+      brand: "Microsoft",
+      model: "Xbox Series X",
+    },
+    {
+      regex: /xbox series s|\bxss\b/i,
+      brand: "Microsoft",
+      model: "Xbox Series S",
+    },
+    {
+      regex: /xbox series x digital/i,
+      brand: "Microsoft",
+      model: "Xbox Series X Digital",
+    },
+    { regex: /xbox one/i, brand: "Microsoft", model: "Xbox One" },
+    { regex: /msi claw 8ai\+/i, brand: "MSI", model: "Claw 8AI+" },
+    { regex: /msi claw a8/i, brand: "MSI", model: "Claw A8" },
+    { regex: /msi claw/i, brand: "MSI", model: "Claw" },
+    {
+      regex: /ps portal midnight black/i,
+      brand: "Sony",
+      model: "Portal Midnight Black",
+    },
+    { regex: /ps portal|portal white/i, brand: "Sony", model: "Portal White" },
+    {
+      regex: /playstation vr 2|psvr2|ps vr2/i,
+      brand: "Sony",
+      model: "PlayStation VR 2",
+    },
+    { regex: /meta quest 3s/i, brand: "Meta", model: "Quest 3S" },
+    { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
+    { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
+    { regex: /meta quest/i, brand: "Meta", model: "Quest" },
+    { regex: /pico 4 ultra/i, brand: "Pico", model: "Pico 4 Ultra" },
+    { regex: /pico 4/i, brand: "Pico", model: "Pico 4" },
+    { regex: /legion go s/i, brand: "Lenovo", model: "Legion GO S Z1 Ext" },
+    {
+      regex: /dji osmo pocket 3 creator/i,
+      brand: "DJI",
+      model: "Osmo Pocket 3 Creator",
+    },
+    { regex: /dji osmo pocket 3/i, brand: "DJI", model: "Osmo Pocket 3" },
+    { regex: /ipad/i, brand: "Apple", model: "iPad" },
+  ];
 
 function extractTradeInClues(message: string): TradeInUpdateInput {
   const trimmed = message.trim();
@@ -2611,6 +2614,8 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
 
   if (!patch.notes && (declinedWithContext || shortPhotoDecline)) {
     patch.notes = "Photos: Not provided — customer has none on hand.";
+    // If the user explicitly declined photos, do NOT try to extract a name from this message.
+    return patch;
   }
 
   // Prefer explicit name patterns when present (avoid capturing filler words).
@@ -2619,6 +2624,7 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
   // - "name: Berta Bone"
   // - "yes got my name right : Berta Bone"
   if (!patch.contact_name) {
+
     const explicitNameSource = (() => {
       const m1 = message.match(
         /\b(?:my\s+name\s+is|name\s+is|i\s+am|i'?m|im|this\s+is)\b\s*[:\-]?\s*([A-Za-z][A-Za-z'\-]+(?:\s+[A-Za-z][A-Za-z'\-]+){1,2})/i,
@@ -2662,19 +2668,19 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
 
   if (!patch.contact_name && scrubbed.length >= 2 && scrubbed.length < 50) {
     const lower = scrubbed.toLowerCase();
-    
+
     // Skip if message contains device/trade/accessory/condition keywords
     const hasDeviceKeywords = /\b(trade|sell|buy|quote|rog|ally|legion|steam|deck|ps5|ps4|playstation|xbox|switch|iphone|samsung|galaxy|ipad|console|handheld)\b/i.test(scrubbed);
     const hasAccessoryKeywords = /\b(box|cables?|charger|controller|accessories?|included|everything)\b/i.test(scrubbed);
     const hasConditionKeywords = /\b(mint|good|fair|faulty|excellent|condition|perfect)\b/i.test(scrubbed);
-    
+
     if (!hasDeviceKeywords && !hasAccessoryKeywords && !hasConditionKeywords) {
       const tokens = scrubbed
         .split(/\s+/)
         .map((t) => t.trim())
         .filter((t) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(t))
         .filter((t) => !PLACEHOLDER_NAME_TOKENS.has(t.toLowerCase()));
-      
+
       // Require at least 2 valid name tokens
       if (tokens.length >= 2) {
         const candidateName = tokens.slice(0, 3).join(" ");
@@ -2685,7 +2691,7 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
       }
     }
   }
-  
+
   return patch;
 }
 
@@ -2698,19 +2704,19 @@ function extractFullNameFromHistory(
     if (!msg || msg.role !== "user" || typeof msg.content !== "string") {
       continue;
     }
-    
+
     const lower = msg.content.toLowerCase();
-    
+
     // Skip messages that are clearly about devices, not names
     const isDeviceMessage = /\b(trade|sell|buy|quote|rog|ally|legion|steam|deck|ps5|ps4|playstation|xbox|switch|iphone|samsung|galaxy|ipad|console|handheld)\b/i.test(msg.content);
     const isAccessoryMessage = /\b(box|cables?|charger|controller|accessories?|included|everything)\b/i.test(msg.content);
     const isConditionMessage = /\b(mint|good|fair|faulty|excellent|condition|perfect)\b/i.test(msg.content);
-    
+
     // Skip if message is clearly not a name response
     if ((isDeviceMessage || isAccessoryMessage || isConditionMessage) && msg.content.length < 50) {
       continue;
     }
-    
+
     const emailMatch = msg.content.match(
       /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
     );
@@ -2722,13 +2728,13 @@ function extractFullNameFromHistory(
       .replace(/\s+/g, " ")
       .trim();
     if (!cleaned) continue;
-    
+
     const tokens = cleaned
       .split(/\s+/)
       .map((t) => t.trim())
       .filter((t) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(t))
       .filter((t) => !PLACEHOLDER_NAME_TOKENS.has(t.toLowerCase()));
-    
+
     // Require at least 2 valid name tokens
     if (tokens.length >= 2) {
       const candidateName = tokens.slice(0, 3).join(" ");
@@ -2834,8 +2840,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
 
     const alreadyNotified = Array.isArray(detail.trade_in_actions)
       ? detail.trade_in_actions.some(
-          (action: any) => action.action_type === "email_sent",
-        )
+        (action: any) => action.action_type === "email_sent",
+      )
       : false;
 
     // In-store flow: accept model-only capture (brand can be missing). Trade-up can also rely on source device name.
@@ -2843,7 +2849,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     // Storage is optional, and is often embedded in model text (e.g., "ROG Ally X 1TB")
     const hasStorage = Boolean(
       detail.storage ||
-        (typeof detail.model === "string" && /\b\d+\s*(gb|tb)\b/i.test(detail.model)),
+      (typeof detail.model === "string" && /\b\d+\s*(gb|tb)\b/i.test(detail.model)),
     );
     let hasContactPhone = Boolean(detail.contact_phone);
     let hasEmail = Boolean(detail.contact_email);
@@ -2853,8 +2859,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const isTradeUp = Boolean(
       (params.tradeUpPricingSummary?.source &&
         params.tradeUpPricingSummary?.target) ||
-        (detail.source_device_name && detail.target_device_name) ||
-        detail.top_up_amount,
+      (detail.source_device_name && detail.target_device_name) ||
+      detail.top_up_amount,
     );
 
     console.log("[ChatKit] Trade-up detection:", {
@@ -2883,7 +2889,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       params.history
     ) {
       const patch: TradeInUpdateInput = {};
-      
+
       // For device/storage/email/phone: extract from concatenated text (clear patterns)
       if (!hasDevice || !hasStorage || !hasContactPhone || !hasEmail) {
         const recentUserConcat = params.history
@@ -2899,7 +2905,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
           patch.contact_phone = clues.contact_phone;
         if (!hasEmail && clues.contact_email) patch.contact_email = clues.contact_email;
       }
-      
+
       // For name: extract from individual clean messages only (avoid device/intent contamination)
       if (!hasContactName) {
         const nameFromHistory = extractFullNameFromHistory(params.history);
@@ -2908,7 +2914,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
           console.log(`[ChatKit] Backfilled name from history: "${nameFromHistory}"`);
         }
       }
-      
+
       if (Object.keys(patch).length > 0) {
         try {
           await updateTradeInLead(params.leadId, patch);
@@ -2966,10 +2972,10 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     try {
       const freshDetail = await getTradeInLeadDetail(params.leadId);
       const missingCritical: string[] = [];
-      
+
       if (!freshDetail.contact_email) missingCritical.push("email");
       if (!freshDetail.contact_phone) missingCritical.push("phone");
-      
+
       // For trade-ups: require source + target devices and top-up amount
       // For regular trade-ins: require device (model or source_device_name)
       if (isTradeUp) {
@@ -2979,7 +2985,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       } else {
         if (!freshDetail.model && !freshDetail.source_device_name) missingCritical.push("device");
       }
-      
+
       if (missingCritical.length > 0) {
         console.error("[ChatKit] SAFETY CHECK FAILED - Critical data not saved to database:", {
           leadId: params.leadId,
@@ -2998,12 +3004,12 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         });
         return null;
       }
-      
+
       // Log if payout missing but don't block (staff can follow up)
       if (!isTradeUp && !freshDetail.preferred_payout) {
         console.warn("[ChatKit] Payout preference missing but proceeding - staff can follow up");
       }
-      
+
       console.log("[ChatKit] Safety check passed - all critical data in database");
     } catch (safetyError) {
       console.error("[ChatKit] Safety check failed:", safetyError);
@@ -3395,14 +3401,18 @@ async function buildTradeInSummary(
       .join(" ")
       .trim()
       .replace(/\s+/g, " ");
-    const accessories = Array.isArray(lead.accessories)
-      ? lead.accessories.join(", ")
-      : lead.accessories || "None";
-    const isTradeUp = Boolean(
-      lead.source_device_name &&
-        lead.target_device_name &&
-        lead.top_up_amount != null,
-    );
+
+    const accessories =
+      Array.isArray(lead.accessories) && lead.accessories.length > 0
+        ? lead.accessories.join(", ")
+        : lead.accessories || "Not specified";
+
+    const defects =
+      Array.isArray(lead.defects) && lead.defects.length > 0
+        ? lead.defects.join(", ")
+        : lead.defects || "None";
+
+    const photosProvided = lead.trade_in_media && lead.trade_in_media.length > 0 ? "Yes" : "No photos provided";
 
     // Check if user indicated they're providing photos (from recent conversation)
     let photoIntentDetected = false;
@@ -3427,19 +3437,11 @@ async function buildTradeInSummary(
       );
     }
 
-    const photosProvided = lead.trade_in_media?.length
-      ? "Provided"
-      : photoIntentDetected
-        ? "Upload in progress"
-        : "Not provided — final quote upon inspection";
-
-    const tradeInPriceLine = !isTradeUp
-      ? lead.price_hint != null
-        ? `Trade-in: S$${lead.price_hint} (subject to inspection)`
-        : lead.range_min && lead.range_max
-          ? `Trade-in: S$${lead.range_min}-${lead.range_max} (subject to inspection)`
-          : null
-      : null;
+    const isTradeUp = Boolean(
+      lead.source_device_name &&
+      lead.target_device_name &&
+      lead.top_up_amount != null,
+    );
 
     // Build trade-up line with installment estimate if applicable
     let tradeUpLine = null;
@@ -3453,24 +3455,27 @@ async function buildTradeInSummary(
       tradeUpLine = `Trade-up: ${formatDeviceLabel(lead.source_device_name)} S$${lead.source_price_quoted ?? "?"} → ${formatDeviceLabel(lead.target_device_name)} S$${lead.target_price_quoted ?? "?"} (Top-up S$${topUpAmount}${installmentEstimate})`;
     }
 
-    return [
-      "Trade-In Context Summary:",
-      tradeUpLine,
-      tradeInPriceLine,
-      device ? `Device: ${device}` : null,
-      lead.condition ? `Condition: ${lead.condition}` : null,
-      accessories ? `Accessories: ${accessories}` : null,
-      !isTradeUp && lead.preferred_payout
-        ? `Payout Preference: ${lead.preferred_payout}`
-        : null,
+    const lines = [
+      `Trade-In Context Summary:`,
+      `Device: ${lead.model || lead.source_device_name || "Not specified"}`,
+      lead.storage ? `Storage: ${lead.storage}` : null,
+      `Condition: ${lead.condition || "Not specified"}`,
+      `Accessories: ${accessories}`,
+      `Defects: ${defects}`,
+      lead.preferred_payout ? `Payout Preference: ${lead.preferred_payout}` : null,
       lead.contact_name || lead.contact_email || lead.contact_phone
-        ? `Contact: ${[lead.contact_name, lead.contact_phone, lead.contact_email].filter(Boolean).join(" · ")}`
+        ? [
+          "Contact:",
+          `  Name: ${lead.contact_name || "—"}`,
+          `  Email: ${lead.contact_email || "—"}`,
+          `  Phone: ${lead.contact_phone || "—"}`,
+        ].join("\n")
         : null,
       `Photos: ${photosProvided}`,
       lead.notes ? `Latest Notes: ${lead.notes}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ].filter(Boolean);
+
+    return lines.join("\n");
   } catch (err) {
     console.error("[ChatKit] Failed to build trade-in summary", err);
     return null;
@@ -3524,6 +3529,9 @@ function buildTradeInUserSummary(detail: any): string | null {
     // Only show payout for non-trade-ups (cash trade-ins). Keep visible even if missing.
     !isTradeUp
       ? `• Payout: ${detail.preferred_payout || "—"}`
+      : null,
+    isTradeUp && detail.preferred_payout === "installment"
+      ? "• Installment: requested (subject to approval)"
       : null,
     `• Name: ${detail.contact_name || "—"}`,
     `• Email: ${detail.contact_email || "—"}`,
@@ -4372,11 +4380,11 @@ export async function POST(request: NextRequest) {
         purpose: supportKind === "warranty" ? "Warranty check" : undefined,
         issue:
           initialIssue.length > 6 &&
-          !isAffirmativeReply(initialIssue) &&
-          !isNegativeReply(initialIssue) &&
-          !genericSupportOnly &&
-          issueIsSpecific &&
-          supportKind === "warranty"
+            !isAffirmativeReply(initialIssue) &&
+            !isNegativeReply(initialIssue) &&
+            !genericSupportOnly &&
+            issueIsSpecific &&
+            supportKind === "warranty"
             ? initialIssue
             : undefined,
         purchaseTiming: initialIssueTiming || undefined,
@@ -4985,7 +4993,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           // NEVER auto-cancel leads during data collection
           // Only cancel if user explicitly says "cancel", "stop", "nevermind"
           const explicitCancel = /\b(cancel|stop|nevermind|never\s*mind|forget\s*it)\b/i.test(message);
-          
+
           if (explicitCancel && !isCompleted) {
             await supabase
               .from("trade_in_leads")
@@ -5109,7 +5117,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       // even if current message isn't explicitly tagged as trade-in intent.
       if (tradeInLeadId) {
         autoExtractedClues = extractTradeInClues(message);
-        
+
         console.log("[DATA-FLOW] Step 1 - Extraction from message:", {
           message: message.substring(0, 100),
           extracted: autoExtractedClues,
@@ -5124,13 +5132,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           }
           try {
             console.log("[DATA-FLOW] Step 2 - Calling updateTradeInLead with:", autoExtractedClues);
-            
+
             const { lead } = await updateTradeInLead(
               tradeInLeadId,
               autoExtractedClues,
             );
             tradeInLeadStatus = lead.status;
-            
+
             console.log("[DATA-FLOW] Step 3 - Database updated, lead now contains:", {
               email: lead.contact_email,
               phone: lead.contact_phone,
@@ -5234,7 +5242,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             tradeUpPairIntent ||
             Boolean(
               tradeInLeadDetail?.source_device_name &&
-                tradeInLeadDetail?.target_device_name,
+              tradeInLeadDetail?.target_device_name,
             );
           const hasCondition = Boolean(tradeInLeadDetail?.condition);
           const accessoriesCaptured = Array.isArray(
@@ -5270,10 +5278,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           // Trade-in conversational discipline: one question at a time, full checklist, recap before submit
           if (tradeInIntent || tradeUpPairIntent) {
             const isTradeUpFlow = tradeUpPairIntent || Boolean(tradeInLeadDetail?.source_device_name && tradeInLeadDetail?.target_device_name);
-            const payoutInstruction = isTradeUpFlow 
+            const payoutInstruction = isTradeUpFlow
               ? "Skip payout preference for trade-ups (customer pays us the top-up)."
               : "Ask payout preference once after you have email + phone, but do NOT block submission if they skip it.";
-            
+
             messages.push({
               role: "system",
               content:
@@ -5298,11 +5306,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             Array.isArray(tradeInLeadDetail.trade_in_media) &&
             tradeInLeadDetail.trade_in_media.length > 0;
 
-          if (hasPhotos) {
+          if (hasPhotos || tradeInPhotoAcknowledged) {
             messages.push({
               role: "system",
               content:
-                "Photos already uploaded. Acknowledge receipt once, do NOT ask for more photos unless user offers.",
+                "Photos status settled (provided or declined). Do NOT ask for photos again.",
             });
           } else {
             messages.push({
@@ -5339,7 +5347,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           )
             ? tradeInLeadDetail.accessories.length > 0
             : Boolean(tradeInLeadDetail?.accessories);
-          const photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+          let photoAcknowledged = isPhotoStepAcknowledged(tradeInLeadDetail);
+          if (!photoAcknowledged && truncatedHistory) {
+            const userSaidNoPhoto = truncatedHistory.some(
+              (m: any) =>
+                m.role === "user" &&
+                /\b(no\s+photos?|no\s+photo|pas\s+de\s+photo|no pic|no picture|no images?)\b/i.test(
+                  m.content || "",
+                ),
+            );
+            if (userSaidNoPhoto) photoAcknowledged = true;
+          }
           tradeInPhotoAcknowledged = photoAcknowledged;
 
           const deviceCaptured = Boolean(
@@ -5348,18 +5366,50 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           const payoutSet = tradeUpContext
             ? true
             : Boolean(tradeInLeadDetail.preferred_payout);
+          const nameAlreadyAsked = truncatedHistory?.some(
+            (m: any) =>
+              m.role === "assistant" &&
+              /what(?:'s| is)\s+your\s+name|name should i note|may i have your name/i.test(
+                m.content || "",
+              ),
+          );
+          const readyForNamePrompt =
+            deviceCaptured &&
+            hasCondition &&
+            accessoriesCaptured &&
+            hasContactPhone &&
+            hasContactEmail;
+          const needsNamePrompt =
+            !hasContactName && readyForNamePrompt && !nameAlreadyAsked;
+          const payoutAlreadyAsked = truncatedHistory?.some(
+            (m: any) =>
+              m.role === "assistant" &&
+              /payout|paynow|bank transfer|cash/i.test(m.content || ""),
+          );
           const readyForPayoutPrompt =
             deviceCaptured &&
             hasCondition &&
             accessoriesCaptured &&
             hasContactPhone &&
             hasContactEmail;
-          const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
-          tradeInNeedsPayoutPrompt = needsPayoutPrompt;
+          // Payout is needed if not set, not trade-up (context), not gathered, and not already asked
+          const needsPayoutPrompt =
+            readyForPayoutPrompt &&
+            !payoutSet &&
+            !tradeInSubmissionSucceeded &&
+            !payoutAlreadyAsked;
+
+          tradeInNeedsPayoutPrompt = needsPayoutPrompt && !tradeInReadyForRecap;
+
           // Photo prompt should trigger right after condition + accessories (before contact).
           const readyForPhotoNudge =
             deviceCaptured && hasCondition && accessoriesCaptured;
-          tradeInReadyForPhotoPrompt = readyForPhotoNudge && !photoAcknowledged;
+          tradeInReadyForPhotoPrompt =
+            readyForPhotoNudge &&
+            !photoAcknowledged &&
+            !photoAlreadyAsked &&
+            !tradeInReadyForRecap &&
+            !tradeInSubmissionSucceeded;
 
           if (tradeInReadyForPhotoPrompt) {
             messages.push({
@@ -5375,7 +5425,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             hasCondition &&
             accessoriesCaptured &&
             hasContactPhone &&
-            hasContactEmail;
+            hasContactEmail &&
+            !needsNamePrompt &&
+            !needsPayoutPrompt; // Ensure we don't recap if we still need to ask questions
 
           const lastAssistantConfirmText =
             truncatedHistory
@@ -5387,7 +5439,24 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               lastAssistantConfirmText,
             );
 
-          if (readyForRecap) {
+          if (tradeInSubmissionSucceeded) {
+            messages.push({
+              role: "system",
+              content: "Trade-in submitted successfully. Confirm receipt to the user and end the trade-in flow. Do NOT ask any more checklist questions.",
+            });
+          } else if (needsNamePrompt) {
+            messages.push({
+              role: "system",
+              content:
+                "Ask for the customer's name once (e.g., \"What's your name?\"). Keep it short; do not proceed to recap until they answer or decline.",
+            });
+          } else if (needsPayoutPrompt) {
+            messages.push({
+              role: "system",
+              content:
+                "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.",
+            });
+          } else if (readyForRecap) {
             const summary = buildTradeInUserSummary(tradeInLeadDetail);
             tradeInReadyForRecap = true;
             tradeInRecap = summary;
@@ -5430,12 +5499,20 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           const payoutSet = tradeUpContext
             ? true
             : Boolean(tradeInLeadDetail.preferred_payout);
-          const readyForRecap =
+          const readyForNamePrompt =
             deviceCaptured &&
             hasCondition &&
             accessoriesCaptured &&
             hasContactPhone &&
             hasContactEmail;
+          const needsNamePrompt = !hasContactName && readyForNamePrompt;
+          const readyForRecap =
+            deviceCaptured &&
+            hasCondition &&
+            accessoriesCaptured &&
+            hasContactPhone &&
+            hasContactEmail &&
+            !needsNamePrompt;
 
           const lastAssistantConfirmText2 =
             truncatedHistory
@@ -5577,9 +5654,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         (tradeInLeadId && TRADE_IN_DEVICE_HINTS.test(message.toLowerCase()));
       const leadHasPrice = Boolean(
         tradeInLeadDetail?.price_hint ||
-          tradeInLeadDetail?.range_min ||
-          tradeInLeadDetail?.range_max ||
-          tradeInLeadDetail?.source_price_quoted,
+        tradeInLeadDetail?.range_min ||
+        tradeInLeadDetail?.range_max ||
+        tradeInLeadDetail?.source_price_quoted,
       );
       const quoteAlreadyGiven =
         tradeInLeadDetail?.initial_quote_given === true &&
@@ -6475,7 +6552,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   : "";
               const slotParam =
                 functionArgs.slot === "trade_in" ||
-                functionArgs.slot === "target"
+                  functionArgs.slot === "target"
                   ? functionArgs.slot
                   : "target";
               if (!rawQuery) {
@@ -6510,12 +6587,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   : "";
               const priceType =
                 functionArgs.priceType === "retail" ||
-                functionArgs.priceType === "trade_in"
+                  functionArgs.priceType === "trade_in"
                   ? functionArgs.priceType
                   : "trade_in";
               const subject =
                 functionArgs.subject === "target" ||
-                functionArgs.subject === "trade_in"
+                  functionArgs.subject === "trade_in"
                   ? functionArgs.subject
                   : priceType === "trade_in"
                     ? "trade_in"
@@ -7093,8 +7170,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
     const pendingToolCalls = Boolean(
       assistantMessage &&
-        assistantMessage.tool_calls &&
-        assistantMessage.tool_calls.length > 0,
+      assistantMessage.tool_calls &&
+      assistantMessage.tool_calls.length > 0,
     );
     // Auto-submit whenever there's an active trade-in lead
     // (even if the model just called a tool such as searchProducts).
@@ -7406,6 +7483,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
     }
 
+    // If we already submitted this lead in this turn, acknowledge submission instead of re-asking payout/photos.
+    if (tradeInSubmissionSucceeded) {
+      const payoutLine = tradeInLeadDetail?.preferred_payout
+        ? `Payout noted as ${tradeInLeadDetail.preferred_payout}. `
+        : "";
+      finalResponse = `${payoutLine}Thanks! I've submitted your trade-in. Our team will follow up shortly.`;
+    }
+
     // Prevent premature recap: if the model tries to recap/confirm before we're ready, force the missing-field prompt.
     if (
       tradeInLeadDetail &&
@@ -7623,9 +7708,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const imageLines =
           imageMatches.length > 0
             ? `\n\nImages:\n${imageMatches
-                .slice(0, 3)
-                .map((u, idx) => `${idx + 1}. ![Product image](${u})`)
-                .join("\n")}`
+              .slice(0, 3)
+              .map((u, idx) => `${idx + 1}. ![Product image](${u})`)
+              .join("\n")}`
             : "";
         finalResponse = `${finalResponse}\n\n${linkLines}${imageLines}`.trim();
       }
@@ -7735,8 +7820,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         session_name: sessionDisplayName,
       });
       console.log(
-        `[ChatKit] Logged chat turn to chat_logs (source=${
-          mode === "voice" ? "chatkit_voice" : "chatkit"
+        `[ChatKit] Logged chat turn to chat_logs (source=${mode === "voice" ? "chatkit_voice" : "chatkit"
         }, sessionId=${sessionId}, turn=${turnIndex})`,
       );
     } catch (logError) {
