@@ -4593,9 +4593,27 @@ export async function POST(request: NextRequest) {
           }
           case "email": {
             if (!supportState.email) {
-              // Fallback: accept response with @ sign as email (be lenient on format)
+              // Smart email correction: detect common mistakes and suggest fixes
               if (trimmed.includes('@') && trimmed.length > 5) {
                 supportState.email = trimmed.toLowerCase().replace(/\s+/g, '');
+              } else if (trimmed.length > 5 && /[a-z0-9]/i.test(trimmed)) {
+                // Missing @ sign - try to suggest correction
+                const hasDomain = /\.(com|net|org|sg|co|io|edu|gov)$/i.test(trimmed);
+                if (hasDomain) {
+                  // Looks like email domain, suggest adding @
+                  const parts = trimmed.split(/[.\s]+/);
+                  if (parts.length >= 2) {
+                    const suggested = `${parts[0]}@${parts.slice(1).join('.')}`;
+                    supportState.email = suggested.toLowerCase();
+                    finalResponse = `I think you meant ${suggested}. Is that correct?`;
+                    supportState.step = "confirm_email";
+                    setSupportFlowState(sessionId, supportState);
+                    break;
+                  }
+                }
+                finalResponse = "Please provide a valid email address (must include @). For example: yourname@email.com";
+                setSupportFlowState(sessionId, supportState);
+                break;
               } else {
                 finalResponse = "Please provide a valid email address (must include @).";
                 setSupportFlowState(sessionId, supportState);
