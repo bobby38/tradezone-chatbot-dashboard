@@ -5369,7 +5369,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             if (summary && !alreadyAskedConfirm) {
               messages.push({
                 role: "system",
-                content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
+                content: `TRADE-IN RECAP READY. Show this recap to the user EXACTLY as written below. DO NOT add any additional text, questions, or confirmation requests. The recap already ends with "Is this correct? Reply yes to submit." - that is the ONLY confirmation needed. Just output the recap and wait for user response:\n\n${summary}`,
               });
             }
           }
