@@ -6221,14 +6221,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   const latest = await getTradeInLeadDetail(tradeInLeadId);
                   const isTradeUp =
                     tradeUpContext ||
+                    tradeUpPairIntent ||
                     Boolean(
                       latest?.source_device_name && latest?.target_device_name,
-                    );
+                    ) ||
+                    Boolean(latest?.top_up_amount);
                   const missing: string[] = [];
                   if (!latest.brand) missing.push("device brand");
                   if (!latest.model) missing.push("device model");
                   if (!latest.condition) missing.push("condition");
-                  if (!latest.storage) missing.push("storage");
+                  // Storage is often in the model name (e.g., "ROG Ally X 1TB"), be lenient
+                  if (!latest.storage && !latest.model?.match(/\d+(gb|tb)/i)) {
+                    missing.push("storage");
+                  }
                   if (
                     !latest.accessories ||
                     (Array.isArray(latest.accessories) &&
@@ -6239,6 +6244,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   if (!latest.contact_name) missing.push("contact name");
                   if (!latest.contact_phone) missing.push("contact phone");
                   if (!latest.contact_email) missing.push("contact email");
+                  // For trade-ups, payout is not applicable (it's a top-up payment, not a payout)
                   if (!isTradeUp && !latest.preferred_payout) {
                     missing.push("payout method");
                   }
