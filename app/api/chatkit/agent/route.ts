@@ -774,7 +774,8 @@ const PLACEHOLDER_NAME_TOKENS = new Set([
   "meta", "quest", "pico", "dji", "osmo", "pocket", "creator", "msi", "claw",
   "here", "there", "see", "you", "see you", "thanks", "thank", "thankyou",
   "thank you", "bye", "later", "cash", "paynow", "bank", "na", "n/a",
-  "alright", "alrighty", "thanks!", "yup",
+  "alright", "alrighty", "thanks!", "yup", "proceed", "with", "month",
+  "months", "installment", "installments", "plan",
 ]);
 
 const CONTACT_MESSAGE_STOP_WORDS = new Set([
@@ -5385,6 +5386,11 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             (m: any) =>
               m.role === "assistant" &&
               /payout|paynow|bank transfer|cash/i.test(m.content || ""),
+          );
+          const photoAlreadyAsked = truncatedHistory?.some(
+            (m: any) =>
+              m.role === "assistant" &&
+              /photos?\s+to\s+speed|got photos|any photos/i.test(m.content || ""),
           );
           const readyForPayoutPrompt =
             deviceCaptured &&

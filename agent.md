@@ -8,6 +8,14 @@
 
 ## Change Log — Jan 5, 2026 (Trade-In Reliability & Flexibility)
 
+### Trade-In Flow Hardening (Jan 5, 2026) ✅
+**Goal**: Fix looping prompts and ensure critical questions (payout) are asked.
+**Changes** (Commit `86561393`):
+- **Name Capture Fix**: Added negative lookahead/guard to prevent "pas de photo" and declined photo responses from being captured as names.
+- **Photo Loop Fix**: Suppressed photo prompt if `tradeInPhotoAcknowledged` is true (handles "no" response correctly).
+- **Payout Prompt**: Added explicit `needsPayoutPrompt` logic to ensure "Cash/PayNow/Bank" is asked for sell flows before recap.
+- **Submission Guard**: Added `tradeInSubmissionSucceeded` check to stop the agent from asking further checklist questions after a successful submit.
+
 ### Trade-In Lead Reuse & Name Capture (Jan 5, 2026) ✅
 **Goal**: Stabilize lead reuse to prevent duplicates and improve name capture.
 **Changes** (Commit `a1254957`):
