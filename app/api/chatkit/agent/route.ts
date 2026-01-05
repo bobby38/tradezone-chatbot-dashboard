@@ -4100,6 +4100,7 @@ export async function POST(request: NextRequest) {
   let supportFlowHandled = false;
   let assistantMessage: { content?: string | null; tool_calls?: any[] } | null =
     null;
+  let truncatedHistory: any[] = [];
 
   try {
     // Check if user is responding to a support offer
@@ -4564,7 +4565,7 @@ export async function POST(request: NextRequest) {
 
       // Truncate to last 20 messages (10 exchanges) to reduce token usage
       const maxHistoryMessages = 20;
-      const truncatedHistory =
+      truncatedHistory =
         history && history.length > maxHistoryMessages
           ? history.slice(-maxHistoryMessages)
           : history || [];
