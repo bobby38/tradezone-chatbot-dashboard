@@ -15,6 +15,7 @@
 - **Photo Loop Fix**: Suppressed photo prompt if `tradeInPhotoAcknowledged` is true (handles "no" response correctly).
 - **Payout Prompt**: Added explicit `needsPayoutPrompt` logic to ensure "Cash/PayNow/Bank" is asked for sell flows before recap.
 - **Submission Guard**: Added `tradeInSubmissionSucceeded` check to stop the agent from asking further checklist questions after a successful submit.
+- **Installment Logic**: Updated formula to include 5% processing fee (`(amount * 1.05) / 3`) and force-append this estimate to the summary for email/dashboard visibility.
 
 ### Trade-In Lead Reuse & Name Capture (Jan 5, 2026) ✅
 **Goal**: Stabilize lead reuse to prevent duplicates and improve name capture.
