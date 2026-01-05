@@ -2657,13 +2657,17 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
       /\b(my name is|name is|i am|i'm|this is|call me|name:)\b/i.test(
         scrubbedLower,
       );
-    const hasTradeOrProductCue =
-      /\b(trade|trade[- ]?in|sell|buy|games?|ps5|ps4|playstation|xbox|switch|pokemon|nba|fifa|rog|ally)\b/i.test(
-        scrubbedLower,
-      );
-    if (!hasExplicitNameCue && hasTradeOrProductCue) {
+    
+    // Only block extraction if message is clearly about the device, not a name response
+    const isDeviceOnlyMessage = 
+      scrubbed.length < 20 && 
+      /\b(trade|trade[- ]?in|sell|buy)\b/i.test(scrubbedLower) &&
+      /\b(ps5|ps4|playstation|xbox|switch|pokemon|nba|fifa|rog|ally|steam|deck|iphone|samsung|galaxy)\b/i.test(scrubbedLower);
+    
+    if (!hasExplicitNameCue && isDeviceOnlyMessage) {
       return patch;
     }
+    
     const candidateTokens = scrubbed
       .split(/\s+/)
       .map((token) => token.trim())
