@@ -4157,6 +4157,11 @@ export async function POST(request: NextRequest) {
         purchaseTiming: initialIssueTiming || undefined,
       };
       setSupportFlowState(sessionId, supportState);
+
+      // Immediately ask for location verification
+      finalResponse = "Are you in Singapore?";
+      supportFlowHandled = true;
+      assistantMessage = { content: finalResponse };
     }
 
     if (supportState) {
