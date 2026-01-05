@@ -6682,13 +6682,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 !hasLink &&
                 !toolResultHasProducts
               ) {
-                const encoded = encodeURIComponent(
-                  lastHybridQuery || "product",
-                );
-                finalResponse = [
-                  `Sorry, I couldn't find that in the catalog. Check the latest price/availability on the site: https://tradezone.sg/?s=${encoded}`,
-                  "If you prefer, share the product link and I'll fetch details from that page.",
-                ].join(" ");
+                // Auto-offer staff support for product not found
+                const searchTerm = lastHybridQuery || "that product";
+                finalResponse = `I couldn't find "${searchTerm}" in our catalog. Would you like me to connect you with our team? They can check stock or help with special orders.`;
+
+                // Set support offer state for next turn
+                supportOfferState = {
+                  pending: true,
+                  reason: `Product inquiry: ${searchTerm}`,
+                  context: `User searched for: ${searchTerm}`,
+                };
               } else {
                 finalResponse = fallback;
               }
