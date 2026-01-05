@@ -2535,6 +2535,11 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     return {};
   }
 
+  const tradeUpPartsForClues = detectTradeUpPair(trimmed)
+    ? parseTradeUpParts(trimmed)
+    : null;
+  const clueSourceText = tradeUpPartsForClues?.source || message;
+
   const lower = message.toLowerCase();
   const normalizedSimple = lower
     .replace(/[\r\n]+/g, " ")
@@ -2559,14 +2564,14 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
   const accessories = new Set<string>();
 
   for (const pattern of DEVICE_PATTERNS) {
-    if (pattern.regex.test(message)) {
+    if (pattern.regex.test(clueSourceText)) {
       patch.brand = patch.brand || pattern.brand;
       patch.model = patch.model || pattern.model;
       break;
     }
   }
 
-  const storageMatch = message.match(/\b(\d+)\s*(tb|gb)\b/i);
+  const storageMatch = clueSourceText.match(/\b(\d+)\s*(tb|gb)\b/i);
   if (storageMatch) {
     patch.storage = `${storageMatch[1]}${storageMatch[2].toUpperCase()}`;
   }
@@ -2605,12 +2610,6 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.preferred_payout = "paynow";
   } else if (/bank/i.test(lower)) {
     patch.preferred_payout = "bank";
-  } else if (
-    /installment|instalment|payment\s+plan|\b\d+\s*(month|mth|mo)\b/i.test(
-      lower,
-    )
-  ) {
-    patch.preferred_payout = "installment";
   }
 
   const emailMatch = message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -2828,18 +2827,23 @@ async function autoSubmitTradeInLeadIfComplete(params: {
         )
       : false;
 
-    const hasDevice = Boolean(detail.brand && detail.model);
-    // Storage is optional - many devices have fixed storage (PS5 825GB/2TB, Switch 64GB, etc.)
-    const hasStorage = Boolean(detail.storage);
+    // In-store flow: accept model-only capture (brand can be missing). Trade-up can also rely on source device name.
+    const hasDevice = Boolean(detail.model || detail.source_device_name);
+    // Storage is optional, and is often embedded in model text (e.g., "ROG Ally X 1TB")
+    const hasStorage = Boolean(
+      detail.storage ||
+        (typeof detail.model === "string" && /\b\d+\s*(gb|tb)\b/i.test(detail.model)),
+    );
     let hasContactPhone = Boolean(detail.contact_phone);
     let hasEmail = Boolean(detail.contact_email);
     let hasContactName = Boolean(detail.contact_name);
-    // For trade-up (customer pays us), treat payout as satisfied even if not set yet
+    // Payout preference is collected for convenience, but should NOT block in-store submission.
     let hasPayout = Boolean(detail.preferred_payout);
     const isTradeUp = Boolean(
       (params.tradeUpPricingSummary?.source &&
         params.tradeUpPricingSummary?.target) ||
-        (detail.source_device_name && detail.target_device_name),
+        (detail.source_device_name && detail.target_device_name) ||
+        detail.top_up_amount,
     );
 
     console.log("[ChatKit] Trade-up detection:", {
@@ -2862,27 +2866,28 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     // Check if photos step acknowledged (encouraged but should not block email)
     let photoStepAcknowledged = isPhotoStepAcknowledged(detail, params.history);
 
-    // Attempt to backfill missing contact from recent user messages
-    if ((!hasContactName || !hasContactPhone || !hasEmail) && params.history) {
+    // Attempt to backfill missing fields from recent user messages (contact + device/storage)
+    if (
+      (!hasDevice || !hasStorage || !hasContactName || !hasContactPhone || !hasEmail) &&
+      params.history
+    ) {
       const recentUserConcat = params.history
         .filter((m) => m.role === "user")
         .slice(-6)
         .map((m) => m.content)
         .join(" ");
-      const contactClues = extractTradeInClues(recentUserConcat);
-      const contactPatch: TradeInUpdateInput = {};
-      if (!hasContactName && contactClues.contact_name) {
-        contactPatch.contact_name = contactClues.contact_name;
-      }
-      if (!hasContactPhone && contactClues.contact_phone) {
-        contactPatch.contact_phone = contactClues.contact_phone;
-      }
-      if (!hasEmail && contactClues.contact_email) {
-        contactPatch.contact_email = contactClues.contact_email;
-      }
-      if (Object.keys(contactPatch).length > 0) {
+      const clues = extractTradeInClues(recentUserConcat);
+      const patch: TradeInUpdateInput = {};
+      if (!detail.model && clues.model) patch.model = clues.model;
+      if (!detail.brand && clues.brand) patch.brand = clues.brand;
+      if (!detail.storage && clues.storage) patch.storage = clues.storage;
+      if (!hasContactName && clues.contact_name) patch.contact_name = clues.contact_name;
+      if (!hasContactPhone && clues.contact_phone)
+        patch.contact_phone = clues.contact_phone;
+      if (!hasEmail && clues.contact_email) patch.contact_email = clues.contact_email;
+      if (Object.keys(patch).length > 0) {
         try {
-          await updateTradeInLead(params.leadId, contactPatch);
+          await updateTradeInLead(params.leadId, patch);
           detail = await getTradeInLeadDetail(params.leadId);
           hasContactPhone = Boolean(detail.contact_phone);
           hasEmail = Boolean(detail.contact_email);
@@ -2917,8 +2922,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       alreadyNotified ||
       !hasDevice ||
       !hasContactPhone ||
-      !hasEmail ||
-      !hasPayout
+      !hasEmail
     ) {
       console.log("[ChatKit] Auto-submit conditions not met:", {
         alreadyNotified,
@@ -3024,7 +3028,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     );
 
     const summary = await buildTradeInSummary(params.leadId, params.history);
-    const tradeSummaryLine = formatTradeUpSummary(params.tradeUpPricingSummary);
+    const tradeSummaryLine = formatTradeUpSummary(params.tradeUpPricingSummary ?? null);
     const summaryWithPricing = summary
       ? tradeSummaryLine
         ? `Trade-up: ${tradeSummaryLine}\n${summary}`
@@ -7058,6 +7062,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         tradeVersion,
         retailVersion,
       } = tradeUpPricingSummary;
+
+      // Persist trade-up identity early so downstream submit/auto-submit can reliably detect trade-up
+      try {
+        await updateTradeInLead(tradeInLeadId, {
+          source_device_name: source,
+          target_device_name: target,
+        });
+      } catch (prePersistIdentityError) {
+        console.warn(
+          "[ChatKit] Failed to pre-persist trade-up identity",
+          prePersistIdentityError,
+        );
+      }
 
       if (tradeValue != null && retailPrice != null && topUp != null) {
         console.log(

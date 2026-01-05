@@ -110,7 +110,8 @@ export async function POST(request: Request) {
     );
     if (alreadyNotified) continue;
 
-    const hasDevice = Boolean(lead.brand && lead.model);
+    // In-store: accept model-only capture; trade-up can rely on source_device_name
+    const hasDevice = Boolean(lead.model || lead.source_device_name);
     const hasCondition = Boolean(lead.condition);
     const accessoriesCaptured = isAccessoriesCaptured(lead.accessories);
     const hasContactEmail = Boolean(lead.contact_email);
@@ -118,7 +119,8 @@ export async function POST(request: Request) {
     const isTradeUp = Boolean(
       lead.source_device_name && lead.target_device_name,
     );
-    const hasPayout = isTradeUp ? true : Boolean(lead.preferred_payout);
+    // In-store: payout should not block submissions; trade-up never needs payout.
+    const hasPayout = true;
 
     if (
       !hasDevice ||
