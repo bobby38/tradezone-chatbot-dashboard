@@ -43,10 +43,17 @@ function normalizeLeadHash(value: string) {
   // - chat-client_..._<timestamp>
   // into a stable hash based on the client id portion.
   const match = normalized.match(
-    /^(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
+    /^(chat-)?(?:text-|voice-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
   );
   if (match && match[2]) {
     return match[2];
+  }
+
+  const prefixedMatch = normalized.match(
+    /^(?:text-|voice-)(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
+  );
+  if (prefixedMatch && prefixedMatch[2]) {
+    return prefixedMatch[2];
   }
 
   return normalized;
@@ -259,6 +266,31 @@ export async function ensureTradeInLead(
 
   if (!leadHash) {
     throw new TradeInValidationError("Lead hash or session id is required");
+  }
+
+  if (params.sessionId && !params.forceNew) {
+    const { data: sessionLead, error: sessionLeadError } = await supabaseAdmin
+      .from("trade_in_leads")
+      .select("id, status, created_at")
+      .eq("session_id", params.sessionId)
+      .not("status", "in", "(completed,closed,archived,cancelled)")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sessionLeadError) {
+      throw new Error(
+        `Trade-in lead lookup by session_id failed: ${sessionLeadError.message}`,
+      );
+    }
+
+    if (sessionLead) {
+      return {
+        leadId: sessionLead.id,
+        status: sessionLead.status,
+        created: false,
+      };
+    }
   }
 
   const leadHashCandidates = new Set<string>();
