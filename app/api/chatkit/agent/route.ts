@@ -2613,6 +2613,44 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.notes = "Photos: Not provided — customer has none on hand.";
   }
 
+  // Prefer explicit name patterns when present (avoid capturing filler words).
+  // Examples:
+  // - "my name is Berta Bone"
+  // - "name: Berta Bone"
+  // - "yes got my name right : Berta Bone"
+  if (!patch.contact_name) {
+    const explicitNameSource = (() => {
+      const m1 = message.match(
+        /\b(?:my\s+name\s+is|name\s+is|i\s+am|i'?m|im|this\s+is)\b\s*[:\-]?\s*([A-Za-z][A-Za-z'\-]+(?:\s+[A-Za-z][A-Za-z'\-]+){1,2})/i,
+      );
+      if (m1 && m1[1]) return m1[1];
+
+      if (/\bname\b/i.test(message) && message.includes(":")) {
+        const afterColon = message.split(":").slice(-1)[0]?.trim();
+        if (afterColon) return afterColon;
+      }
+      return null;
+    })();
+
+    if (explicitNameSource) {
+      const explicitTokens = explicitNameSource
+        .replace(/[,.;]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter((t) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(t))
+        .filter((t) => !PLACEHOLDER_NAME_TOKENS.has(t.toLowerCase()));
+
+      if (explicitTokens.length >= 2) {
+        const candidateName = explicitTokens.slice(0, 3).join(" ");
+        if (!isPlaceholderName(candidateName)) {
+          patch.contact_name = candidateName;
+        }
+      }
+    }
+  }
+
   // Extract name only from clean, short messages that look like name responses
   // Skip if message contains device/accessory/condition keywords (likely not a name response)
   const scrubbed = message
@@ -5364,15 +5402,14 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             hasContactEmail &&
             payoutSet;
 
-          // Check if assistant already asked for confirmation in last turn
-          const lastAssistantText =
-            history
+          const lastAssistantConfirmText =
+            truncatedHistory
               ?.slice()
               .reverse()
               .find((m: any) => m.role === "assistant")?.content || "";
           const alreadyAskedConfirm =
             /is this correct|reply yes to submit|shall i proceed|confirm.*before submission/i.test(
-              lastAssistantText,
+              lastAssistantConfirmText,
             );
 
           if (readyForRecap) {
@@ -5426,12 +5463,22 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             hasContactPhone &&
             hasContactEmail &&
             payoutSet;
+
+          const lastAssistantConfirmText2 =
+            truncatedHistory
+              .slice()
+              .reverse()
+              .find((m) => m.role === "assistant")?.content || "";
+          const alreadyAskedConfirm2 =
+            /is this correct|reply yes to submit|shall i proceed|confirm.*before submission/i.test(
+              lastAssistantConfirmText2,
+            );
           if (readyForRecap) {
             const summary = buildTradeInUserSummary(tradeInLeadDetail);
             tradeInReadyForRecap = true;
             tradeInRecap = summary;
             // Only add recap prompt if we haven't already asked for confirmation (checked above)
-            if (summary && !alreadyAskedConfirm) {
+            if (summary && !alreadyAskedConfirm2) {
               messages.push({
                 role: "system",
                 content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,

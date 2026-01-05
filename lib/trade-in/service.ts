@@ -285,11 +285,26 @@ export async function ensureTradeInLead(
     }
 
     if (sessionLead) {
-      return {
-        leadId: sessionLead.id,
-        status: sessionLead.status,
-        created: false,
-      };
+      if (params.maxAgeMinutes && sessionLead.created_at) {
+        const ageMs =
+          Date.now() - new Date(sessionLead.created_at as string).getTime();
+        const maxMs = params.maxAgeMinutes * 60 * 1000;
+        if (ageMs > maxMs) {
+          // Stale lead for this session_id: allow creating a fresh one
+        } else {
+          return {
+            leadId: sessionLead.id,
+            status: sessionLead.status,
+            created: false,
+          };
+        }
+      } else {
+        return {
+          leadId: sessionLead.id,
+          status: sessionLead.status,
+          created: false,
+        };
+      }
     }
   }
 
@@ -348,6 +363,46 @@ export async function ensureTradeInLead(
       ? params.initialMessage.slice(0, 500)
       : null,
   };
+
+  // If we're creating a fresh lead (new trade), reuse known contact info from the most recent lead
+  // with the same lead_hash. This prevents the customer from retyping name/email/phone.
+  // The chatbot can still confirm the values in-chat before submitting.
+  try {
+    const { data: previousLead } = await supabaseAdmin
+      .from("trade_in_leads")
+      .select("contact_name, contact_phone, contact_email, created_at")
+      .eq("lead_hash", leadHash)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (previousLead) {
+      const candidateName =
+        typeof previousLead.contact_name === "string"
+          ? previousLead.contact_name.trim()
+          : null;
+      const candidatePhone =
+        typeof previousLead.contact_phone === "string"
+          ? previousLead.contact_phone.trim()
+          : null;
+      const candidateEmail =
+        typeof previousLead.contact_email === "string"
+          ? previousLead.contact_email.trim()
+          : null;
+
+      if (hasMeaningfulValue(candidateName)) {
+        (insertPayload as any).contact_name = candidateName;
+      }
+      if (isValidPhone(candidatePhone)) {
+        (insertPayload as any).contact_phone = candidatePhone;
+      }
+      if (isValidEmail(candidateEmail)) {
+        (insertPayload as any).contact_email = candidateEmail;
+      }
+    }
+  } catch (reuseContactError) {
+    console.warn("[TradeIn] Failed to reuse contact info for new lead", reuseContactError);
+  }
 
   const { data: createdLead, error: insertError } = await supabaseAdmin
     .from("trade_in_leads")

@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       channel,
       initialMessage,
       source: "api.tradein.start",
+      maxAgeMinutes: 60,
     });
 
     console.log("[tradein/start]", {
