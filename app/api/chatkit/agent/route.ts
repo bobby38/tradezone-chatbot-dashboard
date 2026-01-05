@@ -4512,6 +4512,13 @@ export async function POST(request: NextRequest) {
               break;
             }
             const timing = extractPurchaseTiming(trimmed);
+            // If user only provided timing info, extract it but ask for actual issue
+            if (timing && trimmed.length < 20 && /^(about|around|roughly|approximately)?\s*\d+\s*(year|month|week|day)s?\s*ago$/i.test(trimmed)) {
+              supportState.purchaseTiming = timing;
+              finalResponse = "Got it. What's the issue with it?";
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
             // Accept ANY response as the issue description, not just keyword matches
             if (!supportState.issue) {
               supportState.issue = trimmed;
