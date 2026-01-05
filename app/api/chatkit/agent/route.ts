@@ -3372,7 +3372,9 @@ function buildTradeInUserSummary(detail: any): string | null {
       ? `• For: ${formatDeviceLabel(detail.target_device_name)} (retail S$${detail.target_price_quoted})`
       : null,
     isTradeUp && detail.top_up_amount
-      ? `• Top-up: S$${detail.top_up_amount}`
+      ? detail.preferred_payout === "installment" && detail.top_up_amount >= 300
+        ? `• Top-up: S$${detail.top_up_amount} (3-month installment: ~S$${Math.ceil(detail.top_up_amount / 3)}/month)`
+        : `• Top-up: S$${detail.top_up_amount}`
       : null,
     tradeInPriceLine,
     detail.condition ? `• Condition: ${detail.condition}` : null,
@@ -4190,6 +4192,30 @@ export async function POST(request: NextRequest) {
       };
       setSupportFlowState(sessionId, supportState);
       finalResponse = "Are you in Singapore?";
+      supportFlowHandled = true;
+      assistantMessage = { content: finalResponse };
+    }
+
+    // Early spam detection - catch before any flow starts
+    if (!supportFlowHandled && looksLikeSupportSpam(message)) {
+      try {
+        await handleEmailSend({
+          emailType: "info_request" as const,
+          name: "Anonymous",
+          email: "no-reply@spam-detected.com",
+          phone: "Not provided",
+          message: `[SPAM DETECTED]\n\nMessage: ${message}\n\nSession: ${sessionId}\nIP: ${clientIp}`,
+        });
+        console.log("[ChatKit] Spam message flagged for staff review", {
+          sessionId,
+          message: message.substring(0, 100),
+        });
+      } catch (emailError) {
+        console.error("[ChatKit] Failed to send spam notification", emailError);
+      }
+
+      finalResponse =
+        "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?";
       supportFlowHandled = true;
       assistantMessage = { content: finalResponse };
     }
