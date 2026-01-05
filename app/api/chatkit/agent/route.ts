@@ -4321,13 +4321,14 @@ export async function POST(request: NextRequest) {
       };
       setSupportFlowState(sessionId, supportState);
 
-      // Immediately ask for location verification
-      finalResponse = "Are you in Singapore?";
+      // Immediately ask for location verification - don't process the initial message
+      finalResponse = "I can help you with that. Are you in Singapore?";
       supportFlowHandled = true;
       assistantMessage = { content: finalResponse };
     }
 
-    if (supportState) {
+    // Only process support flow messages if this isn't the initial support request
+    if (supportState && !supportFlowHandled) {
       if (!supportState.kind) {
         supportState.kind = isWarrantySupportQuery(message)
           ? "warranty"
@@ -4511,16 +4512,11 @@ export async function POST(request: NextRequest) {
               break;
             }
             const timing = extractPurchaseTiming(trimmed);
-            const issueSpecific = hasIssueKeywords(trimmed);
-            if (issueSpecific) {
-              supportState.issue = supportState.issue || trimmed;
+            // Accept ANY response as the issue description, not just keyword matches
+            if (!supportState.issue) {
+              supportState.issue = trimmed;
             }
             if (timing) supportState.purchaseTiming = timing;
-            if (!supportState.issue) {
-              finalResponse = "What's the issue?";
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
             if (!supportState.purchaseTiming) {
               supportState.step = "purchase";
               finalResponse = promptForStep("purchase", supportState);
@@ -4558,9 +4554,14 @@ export async function POST(request: NextRequest) {
           }
           case "name": {
             if (!supportState.name) {
-              finalResponse = promptForStep("name", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
+              // Fallback: accept any reasonable response as name if extraction failed
+              if (trimmed.length > 2 && !/^(yes|no|ok|okay)$/i.test(trimmed)) {
+                supportState.name = trimmed;
+              } else {
+                finalResponse = promptForStep("name", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
             }
             supportState.step = nextContactStep(supportState);
             finalResponse = promptForStep(supportState.step, supportState);
@@ -4569,9 +4570,14 @@ export async function POST(request: NextRequest) {
           }
           case "phone": {
             if (!supportState.phone) {
-              finalResponse = promptForStep("phone", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
+              // Fallback: accept any reasonable response as phone if extraction failed
+              if (trimmed.length >= 8 && /\d/.test(trimmed)) {
+                supportState.phone = trimmed.replace(/\D/g, '');
+              } else {
+                finalResponse = promptForStep("phone", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
             }
             supportState.step = nextContactStep(supportState);
             finalResponse = promptForStep(supportState.step, supportState);
@@ -4580,9 +4586,14 @@ export async function POST(request: NextRequest) {
           }
           case "email": {
             if (!supportState.email) {
-              finalResponse = promptForStep("email", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
+              // Fallback: accept any reasonable response as email if extraction failed
+              if (trimmed.includes('@') || (trimmed.length > 5 && /[a-z0-9]/i.test(trimmed))) {
+                supportState.email = trimmed.toLowerCase().replace(/\s+/g, '');
+              } else {
+                finalResponse = promptForStep("email", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
             }
             supportState.step = "confirm_email";
             finalResponse = promptForStep("confirm_email", supportState);
@@ -4596,7 +4607,8 @@ export async function POST(request: NextRequest) {
               setSupportFlowState(sessionId, supportState);
               break;
             }
-            if (isAffirmativeReply(trimmed)) {
+            // Accept affirmative reply OR any non-negative response to prevent infinite loop
+            if (isAffirmativeReply(trimmed) || (!isNegativeReply(trimmed) && trimmed.length > 0)) {
               const emailPayload = {
                 emailType: "info_request" as const,
                 name: supportState.name || "Customer",
@@ -4634,9 +4646,6 @@ export async function POST(request: NextRequest) {
               supportState.email = undefined;
               supportState.step = "email";
               finalResponse = "Okay, what's the correct email?";
-              setSupportFlowState(sessionId, supportState);
-            } else {
-              finalResponse = promptForStep("confirm_email", supportState);
               setSupportFlowState(sessionId, supportState);
             }
             break;
