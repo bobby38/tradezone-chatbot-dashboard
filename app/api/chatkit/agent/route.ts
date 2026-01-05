@@ -1398,6 +1398,60 @@ function looksLikeSupportSpam(input: string): boolean {
   return spamPatterns.some((pattern) => pattern.test(lower));
 }
 
+function isRelevantDevice(message: string): {
+  relevant: boolean;
+  reason?: string;
+} {
+  const lower = message.toLowerCase();
+
+  // Accepted categories - gaming devices, electronics we trade
+  const relevantCategories = [
+    /\b(playstation|ps\d|sony|xbox|microsoft|nintendo|switch|steam|valve)\b/i,
+    /\b(console|handheld|gaming|game|gamer)\b/i,
+    /\b(rog|asus|msi|lenovo|legion)\b/i,
+    /\b(vr|virtual reality|quest|meta|pico|psvr)\b/i,
+    /\b(controller|gamepad|joystick)\b/i,
+    /\b(iphone|ipad|apple|samsung|phone|tablet)\b/i,
+    /\b(camera|dji|osmo|gopro)\b/i,
+    /\b(laptop|macbook|computer|pc)\b/i,
+    /\b(headset|earbuds|airpods)\b/i,
+    /\b(watch|smartwatch|apple watch)\b/i,
+  ];
+
+  // Explicitly irrelevant items
+  const irrelevantPatterns = [
+    /\b(car|vehicle|motorcycle|bike|scooter|truck)\b/i,
+    /\b(furniture|table|chair|bed|sofa)\b/i,
+    /\b(clothing|shirt|shoes|pants|dress)\b/i,
+    /\b(house|apartment|property|real estate)\b/i,
+    /\b(book|magazine|novel)\b/i,
+    /\b(food|restaurant|grocery)\b/i,
+    /\b(pet|dog|cat|animal)\b/i,
+    /\b(toy|doll|action figure)\b/i,
+    /\b(appliance|fridge|washing machine|dryer|oven)\b/i,
+  ];
+
+  // Check if clearly irrelevant
+  for (const pattern of irrelevantPatterns) {
+    if (pattern.test(lower)) {
+      return {
+        relevant: false,
+        reason: "We only trade gaming devices and electronics",
+      };
+    }
+  }
+
+  // Check if matches our categories
+  for (const pattern of relevantCategories) {
+    if (pattern.test(lower)) {
+      return { relevant: true };
+    }
+  }
+
+  // Unknown device - allow it (non-blocking approach)
+  return { relevant: true };
+}
+
 function buildSupportEmailMessage(state: SupportFlowState): string {
   const purpose = state.purpose
     ? state.purpose.trim()
@@ -3309,11 +3363,21 @@ async function buildTradeInSummary(
           : null
       : null;
 
+    // Build trade-up line with installment estimate if applicable
+    let tradeUpLine = null;
+    if (isTradeUp) {
+      const topUpAmount = lead.top_up_amount ?? 0;
+      const hasInstallment =
+        lead.preferred_payout === "installment" && topUpAmount >= 300;
+      const installmentEstimate = hasInstallment
+        ? ` (3-month installment: ~S$${Math.ceil(topUpAmount / 3)}/month)`
+        : "";
+      tradeUpLine = `Trade-up: ${formatDeviceLabel(lead.source_device_name)} S$${lead.source_price_quoted ?? "?"} → ${formatDeviceLabel(lead.target_device_name)} S$${lead.target_price_quoted ?? "?"} (Top-up S$${topUpAmount}${installmentEstimate})`;
+    }
+
     return [
       "Trade-In Context Summary:",
-      isTradeUp
-        ? `Trade-up: ${formatDeviceLabel(lead.source_device_name)} S$${lead.source_price_quoted ?? "?"} → ${formatDeviceLabel(lead.target_device_name)} S$${lead.target_price_quoted ?? "?"} (Top-up S$${lead.top_up_amount ?? "?"})`
-        : null,
+      tradeUpLine,
       tradeInPriceLine,
       device ? `Device: ${device}` : null,
       lead.condition ? `Condition: ${lead.condition}` : null,
@@ -4923,12 +4987,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
 
       // Always auto-save extracted trade-in clues when a lead is active,
-      // even if the current message isn’t explicitly tagged as trade-in intent.
+      // even if current message isn't explicitly tagged as trade-in intent.
       if (tradeInLeadId) {
         autoExtractedClues = extractTradeInClues(message);
-        // Block auto-setting preferred_payout until contact is present to avoid validation errors
+        // Block auto-setting preferred_payout for cash trade-ins until contact is present (validation requirement)
+        // BUT allow it for trade-ups (installment) since payout isn't required for trade-ups
+        // Use tradeUpPairIntent flag which is already calculated from message intent
         if (
           autoExtractedClues?.preferred_payout &&
+          !tradeUpPairIntent &&
           (!tradeInLeadDetail ||
             !tradeInLeadDetail.contact_email ||
             !tradeInLeadDetail.contact_phone ||
