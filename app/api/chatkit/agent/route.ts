@@ -2922,33 +2922,39 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       return null;
     }
 
-    // SAFETY CHECK: Re-fetch lead from database to verify data was actually saved
+    // SAFETY CHECK: Re-fetch lead from database to verify critical data was actually saved
+    // Only block on: email, phone, name, device (contact info so we can reach customer)
+    // Payout is optional (like photos) - staff can follow up if missing
     try {
       const freshDetail = await getTradeInLeadDetail(params.leadId);
-      const missingFields: string[] = [];
+      const missingCritical: string[] = [];
       
-      if (!freshDetail.contact_email) missingFields.push("email");
-      if (!freshDetail.contact_phone) missingFields.push("phone");
-      if (!freshDetail.contact_name) missingFields.push("name");
-      if (!freshDetail.model && !freshDetail.source_device_name) missingFields.push("device");
-      if (!isTradeUp && !freshDetail.preferred_payout) missingFields.push("payout");
+      if (!freshDetail.contact_email) missingCritical.push("email");
+      if (!freshDetail.contact_phone) missingCritical.push("phone");
+      if (!freshDetail.contact_name) missingCritical.push("name");
+      if (!freshDetail.model && !freshDetail.source_device_name) missingCritical.push("device");
       
-      if (missingFields.length > 0) {
-        console.error("[ChatKit] SAFETY CHECK FAILED - Data not saved to database:", {
+      if (missingCritical.length > 0) {
+        console.error("[ChatKit] SAFETY CHECK FAILED - Critical data not saved to database:", {
           leadId: params.leadId,
-          missingFields,
+          missingCritical,
           freshDetail: {
             email: freshDetail.contact_email,
             phone: freshDetail.contact_phone,
             name: freshDetail.contact_name,
             device: freshDetail.model || freshDetail.source_device_name,
-            payout: freshDetail.preferred_payout,
+            payout: freshDetail.preferred_payout || "(optional)",
           }
         });
         return null;
       }
       
-      console.log("[ChatKit] Safety check passed - all required data in database");
+      // Log if payout missing but don't block (staff can follow up)
+      if (!isTradeUp && !freshDetail.preferred_payout) {
+        console.warn("[ChatKit] Payout preference missing but proceeding - staff can follow up");
+      }
+      
+      console.log("[ChatKit] Safety check passed - all critical data in database");
     } catch (safetyError) {
       console.error("[ChatKit] Safety check failed:", safetyError);
       return null;
