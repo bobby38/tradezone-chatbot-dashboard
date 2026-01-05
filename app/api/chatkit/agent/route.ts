@@ -5086,11 +5086,24 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             hasContactPhone &&
             hasContactEmail &&
             payoutSet;
+
+          // Check if assistant already asked for confirmation in last turn
+          const lastAssistantText =
+            history
+              ?.slice()
+              .reverse()
+              .find((m: any) => m.role === "assistant")?.content || "";
+          const alreadyAskedConfirm =
+            /is this correct|reply yes to submit|shall i proceed|confirm.*before submission/i.test(
+              lastAssistantText,
+            );
+
           if (readyForRecap) {
             const summary = buildTradeInUserSummary(tradeInLeadDetail);
             tradeInReadyForRecap = true;
             tradeInRecap = summary;
-            if (summary) {
+            // Only add recap prompt if we haven't already asked for confirmation
+            if (summary && !alreadyAskedConfirm) {
               messages.push({
                 role: "system",
                 content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
@@ -5140,7 +5153,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             const summary = buildTradeInUserSummary(tradeInLeadDetail);
             tradeInReadyForRecap = true;
             tradeInRecap = summary;
-            if (summary) {
+            // Only add recap prompt if we haven't already asked for confirmation (checked above)
+            if (summary && !alreadyAskedConfirm) {
               messages.push({
                 role: "system",
                 content: `${summary}\nConfirm with a single yes/no before submitting. Do not re-ask these fields unless the user changes them.`,
