@@ -5189,10 +5189,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
           // Trade-in conversational discipline: one question at a time, full checklist, recap before submit
           if (tradeInIntent || tradeUpPairIntent) {
+            const isTradeUpFlow = tradeUpPairIntent || Boolean(tradeInLeadDetail?.source_device_name && tradeInLeadDetail?.target_device_name);
+            const payoutInstruction = isTradeUpFlow 
+              ? "Skip payout preference for trade-ups (customer pays us the top-up)."
+              : "After collecting name, ask: 'How would you like to receive payment—Cash, PayNow, or Bank Transfer?' and save the response.";
+            
             messages.push({
               role: "system",
               content:
-                "Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone, name, payout preference (skip payout for trade-ups). Ask for photos ONCE after accessories and BEFORE contact; if declined, note 'Photos: Not provided — final quote on inspection.' Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout (if cash), contact, photos line, and ask for confirmation. Do NOT submit until contact (email/phone/name) is filled. Avoid repeating already captured fields; acknowledge user when they ask to go slowly.",
+                `Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone, name, payout preference. Collection order: (1) device/condition/accessories, (2) photos (optional, ask ONCE after accessories), (3) contact info (email/phone/name), (4) payout preference. ${payoutInstruction} Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout method (if not trade-up), contact, photos line, and ask for confirmation. Do NOT submit until all required fields are filled. Avoid repeating already captured fields.`,
             });
           }
 
