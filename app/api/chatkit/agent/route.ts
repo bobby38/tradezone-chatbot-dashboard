@@ -6691,11 +6691,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 ].join("\n");
 
                 // Set support offer state for next turn
-                supportOfferState = {
-                  pending: true,
-                  reason: `Product inquiry: ${searchTerm}`,
-                  context: `User searched for: ${searchTerm}`,
-                };
+                setSupportOfferState(
+                  sessionId,
+                  `Product inquiry: ${searchTerm}`,
+                );
               } else {
                 finalResponse = fallback;
               }
