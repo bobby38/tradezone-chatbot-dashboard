@@ -5741,7 +5741,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       messages.push({
         role: "system",
         content:
-          "Variant/condition safety: If storage/capacity or new vs preowned is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB? New or preowned?'). If multiple plausible prices exist, show BOTH clearly labelled (e.g., 'New S$500; Preowned S$350') and ask which to use before finalizing the top-up/quote. Do not guess or list products.",
+          "Variant/condition safety: If storage/capacity is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB?'). For trade-ins, default to preowned/used pricing unless user explicitly says brand new. Do not ask 'new or preowned' - assume preowned for trade-ins. Do not guess or list products.",
       });
 
       messages.push({
