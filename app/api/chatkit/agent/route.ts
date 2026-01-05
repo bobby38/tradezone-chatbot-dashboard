@@ -4593,11 +4593,11 @@ export async function POST(request: NextRequest) {
           }
           case "email": {
             if (!supportState.email) {
-              // Fallback: accept any reasonable response as email if extraction failed
-              if (trimmed.includes('@') || (trimmed.length > 5 && /[a-z0-9]/i.test(trimmed))) {
+              // Fallback: accept response with @ sign as email (be lenient on format)
+              if (trimmed.includes('@') && trimmed.length > 5) {
                 supportState.email = trimmed.toLowerCase().replace(/\s+/g, '');
               } else {
-                finalResponse = promptForStep("email", supportState);
+                finalResponse = "Please provide a valid email address (must include @).";
                 setSupportFlowState(sessionId, supportState);
                 break;
               }
