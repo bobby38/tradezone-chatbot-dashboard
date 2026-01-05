@@ -2922,6 +2922,38 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       return null;
     }
 
+    // SAFETY CHECK: Re-fetch lead from database to verify data was actually saved
+    try {
+      const freshDetail = await getTradeInLeadDetail(params.leadId);
+      const missingFields: string[] = [];
+      
+      if (!freshDetail.contact_email) missingFields.push("email");
+      if (!freshDetail.contact_phone) missingFields.push("phone");
+      if (!freshDetail.contact_name) missingFields.push("name");
+      if (!freshDetail.model && !freshDetail.source_device_name) missingFields.push("device");
+      if (!isTradeUp && !freshDetail.preferred_payout) missingFields.push("payout");
+      
+      if (missingFields.length > 0) {
+        console.error("[ChatKit] SAFETY CHECK FAILED - Data not saved to database:", {
+          leadId: params.leadId,
+          missingFields,
+          freshDetail: {
+            email: freshDetail.contact_email,
+            phone: freshDetail.contact_phone,
+            name: freshDetail.contact_name,
+            device: freshDetail.model || freshDetail.source_device_name,
+            payout: freshDetail.preferred_payout,
+          }
+        });
+        return null;
+      }
+      
+      console.log("[ChatKit] Safety check passed - all required data in database");
+    } catch (safetyError) {
+      console.error("[ChatKit] Safety check failed:", safetyError);
+      return null;
+    }
+
     const lastUserText =
       params.history
         ?.slice()
@@ -5042,15 +5074,19 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         autoExtractedClues = extractTradeInClues(message);
         // Block auto-setting preferred_payout for cash trade-ins until contact is present (validation requirement)
         // BUT allow it for trade-ups (installment) since payout isn't required for trade-ups
-        // Use tradeUpPairIntent flag which is already calculated from message intent
+        // Check if contact is present in EITHER the database OR the current extraction
         if (
           autoExtractedClues?.preferred_payout &&
           !tradeUpPairIntent &&
           (!tradeInLeadDetail ||
             !tradeInLeadDetail.contact_email ||
             !tradeInLeadDetail.contact_phone ||
-            !tradeInLeadDetail.contact_name)
+            !tradeInLeadDetail.contact_name) &&
+          (!autoExtractedClues.contact_email ||
+            !autoExtractedClues.contact_phone ||
+            !autoExtractedClues.contact_name)
         ) {
+          console.log("[ChatKit] Blocking payout save - contact info not yet collected");
           delete autoExtractedClues.preferred_payout;
         }
         if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
