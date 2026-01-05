@@ -5099,24 +5099,6 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           extracted: autoExtractedClues,
           leadId: tradeInLeadId
         });
-        
-        // Block auto-setting preferred_payout for cash trade-ins until contact is present (validation requirement)
-        // BUT allow it for trade-ups (installment) since payout isn't required for trade-ups
-        // Check if contact is present in EITHER the database OR the current extraction
-        if (
-          autoExtractedClues?.preferred_payout &&
-          !tradeUpPairIntent &&
-          (!tradeInLeadDetail ||
-            !tradeInLeadDetail.contact_email ||
-            !tradeInLeadDetail.contact_phone ||
-            !tradeInLeadDetail.contact_name) &&
-          (!autoExtractedClues.contact_email ||
-            !autoExtractedClues.contact_phone ||
-            !autoExtractedClues.contact_name)
-        ) {
-          console.log("[ChatKit] Blocking payout save - contact info not yet collected");
-          delete autoExtractedClues.preferred_payout;
-        }
         if (autoExtractedClues && Object.keys(autoExtractedClues).length > 0) {
           if (!tradeDeviceQuery) {
             const clueQuery = buildTradeDeviceQuery(null, autoExtractedClues);
