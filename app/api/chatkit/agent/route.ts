@@ -4971,9 +4971,31 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             }
           } else if (isCompleted) {
             console.log(
-              `[ChatKit] Ignoring completed trade-in lead ${existingLead.id} (status: ${existingLead.status})`,
+              `[ChatKit] Completed/cancelled lead ${existingLead.id} (status: ${existingLead.status}) - creating new lead for fresh trade-in`,
             );
-            // Don't load completed trade-in context
+            // Create new lead if user continues with trade-in intent after cancellation
+            if (tradeInIntent) {
+              const ensureResult = await ensureTradeInLead({
+                sessionId,
+                channel: "chat",
+                initialMessage: message,
+                source: "chatkit.agent.restart",
+                forceNew: true,
+              });
+              tradeInLeadId = ensureResult.leadId;
+              tradeInLeadStatus = ensureResult.status;
+
+              const tradeInSummary = await buildTradeInSummary(
+                ensureResult.leadId,
+                truncatedHistory,
+              );
+              if (tradeInSummary) {
+                messages.splice(2, 0, {
+                  role: "system",
+                  content: tradeInSummary,
+                });
+              }
+            }
           }
         } else if (tradeInIntent) {
           // Create new lead only if trade-in intent detected and no existing lead
