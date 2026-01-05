@@ -2961,7 +2961,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     }
 
     // SAFETY CHECK: Re-fetch lead from database to verify critical data was actually saved
-    // Only block on: email, phone, name, device (contact info so we can reach customer)
+    // Only block on: email, phone, device (contact info so we can reach customer)
     // Payout is optional (like photos) - staff can follow up if missing
     try {
       const freshDetail = await getTradeInLeadDetail(params.leadId);
@@ -2969,7 +2969,6 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       
       if (!freshDetail.contact_email) missingCritical.push("email");
       if (!freshDetail.contact_phone) missingCritical.push("phone");
-      if (!freshDetail.contact_name) missingCritical.push("name");
       
       // For trade-ups: require source + target devices and top-up amount
       // For regular trade-ins: require device (model or source_device_name)
@@ -3030,12 +3029,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       return null;
     }
 
-    if (!hasContactName) {
-      console.warn(
-        "[ChatKit] Auto-submit proceeding without confirmed contact name",
-        { leadId: params.leadId },
-      );
-    } else {
+    if (hasContactName) {
       // If name is only one token but we have a fuller name in recent history, upgrade it
       const tokens = (detail.contact_name || "").trim().split(/\s+/);
       if (tokens.length === 1) {
@@ -3527,19 +3521,13 @@ function buildTradeInUserSummary(detail: any): string | null {
     tradeInPriceLine,
     detail.condition ? `• Condition: ${detail.condition}` : null,
     accessories ? `• Accessories: ${accessories}` : null,
-    // Only show payout for non-trade-ups (cash trade-ins)
-    !isTradeUp && detail.preferred_payout
-      ? `• Payout: ${detail.preferred_payout}`
+    // Only show payout for non-trade-ups (cash trade-ins). Keep visible even if missing.
+    !isTradeUp
+      ? `• Payout: ${detail.preferred_payout || "—"}`
       : null,
-    detail.contact_name || detail.contact_phone || detail.contact_email
-      ? `• Contact: ${[
-          detail.contact_name,
-          detail.contact_phone,
-          detail.contact_email,
-        ]
-          .filter(Boolean)
-          .join(" · ")}`
-      : null,
+    `• Name: ${detail.contact_name || "—"}`,
+    `• Email: ${detail.contact_email || "—"}`,
+    `• Phone: ${detail.contact_phone || "—"}`,
     `• Photos: ${photosProvided}`,
   ].filter(Boolean);
 
@@ -3607,10 +3595,8 @@ function buildMissingTradeInFieldPrompt(
   const accessoriesCaptured = Array.isArray(detail.accessories)
     ? detail.accessories.length > 0
     : Boolean(detail.accessories);
-  const hasContactName = Boolean(detail.contact_name);
   const hasContactPhone = Boolean(detail.contact_phone);
   const hasContactEmail = Boolean(detail.contact_email);
-  const hasPayout = isTradeUp ? true : Boolean(detail.preferred_payout);
   const photoAcknowledged = isPhotoStepAcknowledged(detail);
 
   const storageLikelyFixed = (() => {
@@ -3658,15 +3644,6 @@ function buildMissingTradeInFieldPrompt(
       missing: !hasContactPhone,
       message:
         'Ask: "Best phone number?" Repeat the digits back once to confirm, then save contact_phone.',
-    },
-    {
-      missing: !hasContactName,
-      message: 'Ask: "What name should I note down?" and save contact_name.',
-    },
-    {
-      missing: !hasPayout,
-      message:
-        'Ask: "Cash, PayNow, or bank transfer?" and save preferred payout unless the user already said they want installments. If they asked for installments, set preferred_payout=installment and skip this question.',
     },
   ];
 
@@ -4312,6 +4289,7 @@ export async function POST(request: NextRequest) {
   let tradeInReadyForRecap = false;
   let tradeInRecap: string | null = null;
   let tradeInPhotoAcknowledged = false;
+  let tradeInSubmissionSucceeded = false;
   let proceedConfirmed = false;
   let proceedDeclined = false;
   let finalConfirm = false;
@@ -5294,12 +5272,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             const isTradeUpFlow = tradeUpPairIntent || Boolean(tradeInLeadDetail?.source_device_name && tradeInLeadDetail?.target_device_name);
             const payoutInstruction = isTradeUpFlow 
               ? "Skip payout preference for trade-ups (customer pays us the top-up)."
-              : "After collecting name, ask: 'How would you like to receive payment—Cash, PayNow, or Bank Transfer?' and save the response.";
+              : "Ask payout preference once after you have email + phone, but do NOT block submission if they skip it.";
             
             messages.push({
               role: "system",
               content:
-                `Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone, name, payout preference. Collection order: (1) device/condition/accessories, (2) photos (optional, ask ONCE after accessories), (3) contact info (email/phone/name), (4) payout preference. ${payoutInstruction} Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout method (if not trade-up), contact, photos line, and ask for confirmation. Do NOT submit until all required fields are filled. Avoid repeating already captured fields.`,
+                `Trade-in flow: ask ONE question at a time. Required fields before submit: device brand/model/storage, condition, accessories, email, phone. Optional fields (do not block): name, payout preference, photos. Collection order: (1) device/condition/accessories, (2) photos (optional, ask ONCE after accessories), (3) contact info (email/phone), (4) optional: name + payout preference. ${payoutInstruction} Before ending, present a concise 'Trade-In Summary' with device, condition, accessories, payout line (show — if missing, unless trade-up), name/email/phone lines, photos line, and ask for confirmation. Avoid repeating already captured fields.`,
             });
           }
 
@@ -5374,7 +5352,6 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             deviceCaptured &&
             hasCondition &&
             accessoriesCaptured &&
-            hasContactName &&
             hasContactPhone &&
             hasContactEmail;
           const needsPayoutPrompt = readyForPayoutPrompt && !payoutSet;
@@ -5397,10 +5374,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             deviceCaptured &&
             hasCondition &&
             accessoriesCaptured &&
-            hasContactName &&
             hasContactPhone &&
-            hasContactEmail &&
-            payoutSet;
+            hasContactEmail;
 
           const lastAssistantConfirmText =
             truncatedHistory
@@ -5459,10 +5434,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             deviceCaptured &&
             hasCondition &&
             accessoriesCaptured &&
-            hasContactName &&
             hasContactPhone &&
-            hasContactEmail &&
-            payoutSet;
+            hasContactEmail;
 
           const lastAssistantConfirmText2 =
             truncatedHistory
@@ -6343,13 +6316,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   ) {
                     missing.push("accessories");
                   }
-                  if (!latest.contact_name) missing.push("contact name");
                   if (!latest.contact_phone) missing.push("contact phone");
                   if (!latest.contact_email) missing.push("contact email");
-                  // For trade-ups, payout is not applicable (it's a top-up payment, not a payout)
-                  if (!isTradeUp && !latest.preferred_payout) {
-                    missing.push("payout method");
-                  }
 
                   if (missing.length) {
                     toolResult =
@@ -6457,6 +6425,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   status: submitArgs.status,
                   emailContext: "initial",
                 });
+
+                tradeInSubmissionSucceeded = true;
 
                 toolResult = emailSent
                   ? "Trade-in lead submitted and email notification sent."
@@ -7219,6 +7189,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       });
       if (autoSubmitResult?.status) {
         tradeInLeadStatus = autoSubmitResult.status;
+        tradeInSubmissionSucceeded = true;
       }
     }
 
@@ -7433,6 +7404,38 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         finalResponse =
           "Got any photos of your device? They help with the quote!";
       }
+    }
+
+    // Prevent premature recap: if the model tries to recap/confirm before we're ready, force the missing-field prompt.
+    if (
+      tradeInLeadDetail &&
+      !tradeInReadyForRecap &&
+      /is this correct|reply yes to submit/i.test(finalResponse)
+    ) {
+      const missingPrompt = buildMissingTradeInFieldPrompt(
+        tradeInLeadDetail,
+        tradeUpContext,
+      );
+      if (missingPrompt) {
+        finalResponse = missingPrompt;
+      }
+    }
+
+    // Stop false success: never claim submission unless we actually submitted in this request.
+    if (
+      tradeInLeadId &&
+      !tradeInSubmissionSucceeded &&
+      /trade[- ]?in\s+submitted|submitted\s+for\s+your|lead\s+submitted/i.test(
+        finalResponse,
+      )
+    ) {
+      const fallbackPrompt = tradeInLeadDetail
+        ? buildMissingTradeInFieldPrompt(tradeInLeadDetail, tradeUpContext)
+        : null;
+      finalResponse =
+        tradeInRecap ||
+        fallbackPrompt ||
+        'I haven\'t submitted this yet. Please reply "yes" after the summary, or share any missing details.';
     }
 
     // Only apply Xbox hints if NOT in trade-up mode (deterministic override takes precedence)

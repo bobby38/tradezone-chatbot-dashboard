@@ -883,10 +883,8 @@ export async function submitTradeInLead(
     brand: "device brand",
     model: "device model",
     condition: "device condition",
-    contact_name: "contact name",
     contact_phone: "contact phone number (at least 8 digits)",
     contact_email: "contact email (valid format)",
-    preferred_payout: "preferred payout method",
   };
 
   if (!lead.brand?.trim()) {
@@ -898,24 +896,15 @@ export async function submitTradeInLead(
   if (!lead.condition?.trim()) {
     missingFields.push("condition");
   }
-  if (!hasMeaningfulValue(lead.contact_name)) {
-    missingFields.push("contact_name");
-  }
   if (!isValidPhone(lead.contact_phone)) {
     missingFields.push("contact_phone");
   }
   if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
-  // Trade-ups do not require payout preference (top-up is paid separately).
-  // Auto-submit resends also allow payout to be missing.
-  if (
-    !input.allowMissingPayout &&
-    !isTradeUpLead &&
-    !lead.preferred_payout?.trim()
-  ) {
-    missingFields.push("preferred_payout");
-  }
+
+  // Payout preference is optional for trade-ins (staff can follow up if missing).
+  // Trade-ups also do not require payout preference (top-up is paid separately).
 
   if (missingFields.length > 0) {
     const missingList = missingFields
