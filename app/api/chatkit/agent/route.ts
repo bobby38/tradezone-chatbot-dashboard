@@ -2344,17 +2344,53 @@ const DEVICE_PATTERNS: Array<{
   brand: string;
   model: string;
 }> = [
+  // Order matters: specific variants first, then general fallbacks
+  { regex: /legion go 2/i, brand: "Lenovo", model: "Legion Go Gen 2" },
   { regex: /legion go/i, brand: "Lenovo", model: "Legion Go Gen 1" },
+  { regex: /rog ally x xbox/i, brand: "Asus", model: "ROG Ally X Xbox" },
+  { regex: /rog ally x/i, brand: "Asus", model: "ROG Ally X" },
   { regex: /rog ally/i, brand: "Asus", model: "ROG Ally" },
   { regex: /steam deck oled/i, brand: "Valve", model: "Steam Deck OLED" },
+  { regex: /steam deck lcd/i, brand: "Valve", model: "Steam Deck LCD" },
   { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
+  { regex: /switch 2/i, brand: "Nintendo", model: "Switch 2" },
+  { regex: /switch lite/i, brand: "Nintendo", model: "Switch Lite" },
   { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
   { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
-  // Order matters: specific variants first, then general fallbacks
   {
     regex: /ps5\s*pro|playstation 5\s*pro/i,
     brand: "Sony",
     model: "PlayStation 5 Pro",
+  },
+  {
+    regex: /ps5\s*slim.*digital|playstation 5\s*slim.*digital/i,
+    brand: "Sony",
+    model: "PlayStation 5 Slim Digital",
+  },
+  {
+    regex: /ps5\s*slim.*disc|playstation 5\s*slim.*disc/i,
+    brand: "Sony",
+    model: "PlayStation 5 Slim Disc",
+  },
+  {
+    regex: /ps5\s*slim|playstation 5\s*slim/i,
+    brand: "Sony",
+    model: "PlayStation 5 Slim",
+  },
+  {
+    regex: /ps5\s*fat.*digital|playstation 5\s*fat.*digital/i,
+    brand: "Sony",
+    model: "PlayStation 5 Fat Digital",
+  },
+  {
+    regex: /ps5\s*fat.*disc|playstation 5\s*fat.*disc/i,
+    brand: "Sony",
+    model: "PlayStation 5 Fat Disc",
+  },
+  {
+    regex: /ps5\s*fat|playstation 5\s*fat/i,
+    brand: "Sony",
+    model: "PlayStation 5 Fat",
   },
   {
     regex: /ps5\s*digital|playstation 5\s*digital/i,
@@ -2377,6 +2413,11 @@ const DEVICE_PATTERNS: Array<{
     brand: "Sony",
     model: "PlayStation 4 Slim",
   },
+  {
+    regex: /ps4\s*fat|playstation 4\s*fat/i,
+    brand: "Sony",
+    model: "PlayStation 4 Fat",
+  },
   { regex: /ps4|playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
   {
     regex: /xbox series x|\bxsx\b/i,
@@ -2388,18 +2429,50 @@ const DEVICE_PATTERNS: Array<{
     brand: "Microsoft",
     model: "Xbox Series S",
   },
+  {
+    regex: /xbox series x digital/i,
+    brand: "Microsoft",
+    model: "Xbox Series X Digital",
+  },
   { regex: /xbox one/i, brand: "Microsoft", model: "Xbox One" },
+  { regex: /msi claw 8ai\+/i, brand: "MSI", model: "Claw 8AI+" },
+  { regex: /msi claw a8/i, brand: "MSI", model: "Claw A8" },
   { regex: /msi claw/i, brand: "MSI", model: "Claw" },
+  {
+    regex: /ps portal midnight black/i,
+    brand: "Sony",
+    model: "Portal Midnight Black",
+  },
+  { regex: /ps portal|portal white/i, brand: "Sony", model: "Portal White" },
+  {
+    regex: /playstation vr 2|psvr2|ps vr2/i,
+    brand: "Sony",
+    model: "PlayStation VR 2",
+  },
+  { regex: /meta quest 3s/i, brand: "Meta", model: "Quest 3S" },
+  { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
+  { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
+  { regex: /meta quest/i, brand: "Meta", model: "Quest" },
+  { regex: /pico 4 ultra/i, brand: "Pico", model: "Pico 4 Ultra" },
+  { regex: /pico 4/i, brand: "Pico", model: "Pico 4" },
+  { regex: /legion go s/i, brand: "Lenovo", model: "Legion GO S Z1 Ext" },
+  {
+    regex: /dji osmo pocket 3 creator/i,
+    brand: "DJI",
+    model: "Osmo Pocket 3 Creator Combo",
+  },
+  {
+    regex: /dji osmo pocket 3/i,
+    brand: "DJI",
+    model: "Osmo Pocket 3 Handheld",
+  },
+  { regex: /dji osmo/i, brand: "DJI", model: "Osmo" },
   {
     regex: /iphone\s*(\d+\s*(pro\s*max|pro)?)?/i,
     brand: "Apple",
     model: "iPhone",
   },
   { regex: /ipad/i, brand: "Apple", model: "iPad" },
-  { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
-  { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
-  { regex: /meta quest/i, brand: "Meta", model: "Quest" },
-  { regex: /dji osmo/i, brand: "DJI", model: "Osmo" },
 ];
 
 function extractTradeInClues(message: string): TradeInUpdateInput {
