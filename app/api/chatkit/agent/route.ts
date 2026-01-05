@@ -2932,17 +2932,30 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       if (!freshDetail.contact_email) missingCritical.push("email");
       if (!freshDetail.contact_phone) missingCritical.push("phone");
       if (!freshDetail.contact_name) missingCritical.push("name");
-      if (!freshDetail.model && !freshDetail.source_device_name) missingCritical.push("device");
+      
+      // For trade-ups: require source + target devices and top-up amount
+      // For regular trade-ins: require device (model or source_device_name)
+      if (isTradeUp) {
+        if (!freshDetail.source_device_name) missingCritical.push("source device");
+        if (!freshDetail.target_device_name) missingCritical.push("target device");
+        if (freshDetail.top_up_amount == null) missingCritical.push("top-up amount");
+      } else {
+        if (!freshDetail.model && !freshDetail.source_device_name) missingCritical.push("device");
+      }
       
       if (missingCritical.length > 0) {
         console.error("[ChatKit] SAFETY CHECK FAILED - Critical data not saved to database:", {
           leadId: params.leadId,
+          isTradeUp,
           missingCritical,
           freshDetail: {
             email: freshDetail.contact_email,
             phone: freshDetail.contact_phone,
             name: freshDetail.contact_name,
             device: freshDetail.model || freshDetail.source_device_name,
+            sourceDevice: freshDetail.source_device_name,
+            targetDevice: freshDetail.target_device_name,
+            topUp: freshDetail.top_up_amount,
             payout: freshDetail.preferred_payout || "(optional)",
           }
         });
