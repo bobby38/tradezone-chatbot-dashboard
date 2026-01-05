@@ -5092,6 +5092,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       // even if current message isn't explicitly tagged as trade-in intent.
       if (tradeInLeadId) {
         autoExtractedClues = extractTradeInClues(message);
+        
+        console.log("[DATA-FLOW] Step 1 - Extraction from message:", {
+          message: message.substring(0, 100),
+          extracted: autoExtractedClues,
+          leadId: tradeInLeadId
+        });
+        
         // Block auto-setting preferred_payout for cash trade-ins until contact is present (validation requirement)
         // BUT allow it for trade-ups (installment) since payout isn't required for trade-ups
         // Check if contact is present in EITHER the database OR the current extraction
@@ -5117,11 +5124,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             }
           }
           try {
+            console.log("[DATA-FLOW] Step 2 - Calling updateTradeInLead with:", autoExtractedClues);
+            
             const { lead } = await updateTradeInLead(
               tradeInLeadId,
               autoExtractedClues,
             );
             tradeInLeadStatus = lead.status;
+            
+            console.log("[DATA-FLOW] Step 3 - Database updated, lead now contains:", {
+              email: lead.contact_email,
+              phone: lead.contact_phone,
+              name: lead.contact_name,
+              payout: lead.preferred_payout,
+              status: lead.status
+            });
 
             await logToolRun({
               request_id: requestId,
