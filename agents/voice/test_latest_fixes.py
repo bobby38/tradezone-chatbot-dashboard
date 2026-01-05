@@ -15,7 +15,8 @@ Run with:
 """
 
 import pytest
-from auto_save import TradeInChecklistState, extract_data_from_message
+from agent import TradeInChecklistState
+from auto_save import extract_data_from_message
 
 
 class TestPS4DevicePatterns:
