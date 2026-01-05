@@ -2628,6 +2628,19 @@ function extractFullNameFromHistory(
     if (!msg || msg.role !== "user" || typeof msg.content !== "string") {
       continue;
     }
+    
+    const lower = msg.content.toLowerCase();
+    
+    // Skip messages that are clearly about devices, not names
+    const isDeviceMessage = /\b(trade|sell|buy|quote|rog|ally|legion|steam|deck|ps5|ps4|playstation|xbox|switch|iphone|samsung|galaxy|ipad|console|handheld)\b/i.test(msg.content);
+    const isAccessoryMessage = /\b(box|cables?|charger|controller|accessories?|included|everything)\b/i.test(msg.content);
+    const isConditionMessage = /\b(mint|good|fair|faulty|excellent|condition|perfect)\b/i.test(msg.content);
+    
+    // Skip if message is clearly not a name response
+    if ((isDeviceMessage || isAccessoryMessage || isConditionMessage) && msg.content.length < 50) {
+      continue;
+    }
+    
     const emailMatch = msg.content.match(
       /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
     );
@@ -2639,13 +2652,18 @@ function extractFullNameFromHistory(
       .replace(/\s+/g, " ")
       .trim();
     if (!cleaned) continue;
+    
     const tokens = cleaned
       .split(/\s+/)
       .map((t) => t.trim())
       .filter((t) => /^[A-Za-z][A-Za-z'\-]{1,}$/.test(t))
       .filter((t) => !PLACEHOLDER_NAME_TOKENS.has(t.toLowerCase()));
+    
+    // Require at least 2 valid name tokens
     if (tokens.length >= 2) {
-      return tokens.slice(0, 3).join(" ");
+      const candidateName = tokens.slice(0, 3).join(" ");
+      console.log(`[ExtractName] Candidate from history: "${candidateName}" from message: "${msg.content}"`);
+      return candidateName;
     }
   }
   return null;
