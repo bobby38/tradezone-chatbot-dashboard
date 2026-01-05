@@ -4953,10 +4953,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           .maybeSingle();
 
         if (existingLead) {
-          const productInfoIntent = productInfoIntentRaw;
-          const ignoreExistingTradeIn =
-            tradeInNegated || (!tradeInIntent && productInfoIntent);
-          // Only resume trade-in if it's not completed/submitted AND user shows trade-in intent
+          // Only resume trade-in if it's not completed/submitted
           const completedStatuses = [
             "submitted",
             "completed",
@@ -4968,18 +4965,22 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             existingLead.status || "",
           );
 
-          if (ignoreExistingTradeIn && !isCompleted) {
+          // NEVER auto-cancel leads during data collection
+          // Only cancel if user explicitly says "cancel", "stop", "nevermind"
+          const explicitCancel = /\b(cancel|stop|nevermind|never\s*mind|forget\s*it)\b/i.test(message);
+          
+          if (explicitCancel && !isCompleted) {
             await supabase
               .from("trade_in_leads")
               .update({ status: "cancelled" })
               .eq("id", existingLead.id);
             console.log(
-              `[ChatKit] Cancelled trade-in lead ${existingLead.id} due to product/negation intent`,
+              `[ChatKit] User explicitly cancelled trade-in lead ${existingLead.id}`,
             );
             tradeInLeadId = null;
             tradeInLeadStatus = null;
             tradeInLeadDetail = null;
-          } else if (!isCompleted && tradeInIntent) {
+          } else if (!isCompleted) {
             // For voice, start fresh if existing lead is stale or already populated
             let reuse = true;
             if (mode === "voice") {
