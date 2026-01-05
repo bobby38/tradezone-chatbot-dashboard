@@ -2587,6 +2587,8 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.preferred_payout = "paynow";
   } else if (/bank/i.test(lower)) {
     patch.preferred_payout = "bank";
+  } else if (/installment|instalment/i.test(lower) || /payment\s+plan/i.test(lower)) {
+    patch.preferred_payout = "installment";
   }
 
   const emailMatch = message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -6499,6 +6501,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                     content: toolResult,
                   });
                   continue; // Continue to next tool call instead of break
+                }
+
+                // Force-append installment estimate if applicable (ensures email/dashboard has it)
+                if (
+                  tradeInLeadDetail?.preferred_payout === "installment" &&
+                  tradeInLeadDetail.top_up_amount &&
+                  tradeInLeadDetail.top_up_amount >= 300
+                ) {
+                  const monthly = Math.ceil(
+                    (tradeInLeadDetail.top_up_amount * 1.05) / 3,
+                  );
+                  const installLine = `\n(Installment estimate: 3 months @ ~S$${monthly}/month incl. 5% fee)`;
+                  if (!submitArgs.summary?.includes("Installment estimate")) {
+                    submitArgs.summary = (submitArgs.summary || "") + installLine;
+                  }
                 }
 
                 const { emailSent } = await submitTradeInLead({
