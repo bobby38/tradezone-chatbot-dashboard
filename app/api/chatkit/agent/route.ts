@@ -3082,6 +3082,7 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       notify: true,
       status: newStatus,
       emailContext: "initial",
+      allowMissingPayout: true, // Payout is optional - staff can follow up
     });
 
     await logToolRun({
