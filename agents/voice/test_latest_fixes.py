@@ -242,9 +242,9 @@ class TestOneQuestionRule:
 
     def test_instructions_enforce_one_question(self):
         """Verify instructions contain ONE question rule"""
-        from agent import VoiceAssistant
+        from agent import TradeZoneAgent
 
-        assistant = VoiceAssistant()
+        assistant = TradeZoneAgent()
         instructions = assistant.instructions
 
         # Check for ONE question enforcement
@@ -264,9 +264,9 @@ class TestDeterministicFlow:
 
     def test_flow_order_in_instructions(self):
         """Verify deterministic flow order is documented"""
-        from agent import VoiceAssistant
+        from agent import TradeZoneAgent
 
-        assistant = VoiceAssistant()
+        assistant = TradeZoneAgent()
         instructions = assistant.instructions
 
         # Check flow is documented
