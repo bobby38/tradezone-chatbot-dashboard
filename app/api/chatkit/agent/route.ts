@@ -2613,64 +2613,9 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.notes = "Photos: Not provided — customer has none on hand.";
   }
 
-  const scrubbed = message
-    .replace(emailMatch ? emailMatch[0] : "", " ")
-    .replace(phoneMatch ? phoneMatch[0] : "", " ")
-    .replace(/all accessories?/gi, " ")
-    .replace(/yes|yeah|yep|sure|okay|ok/gi, " ")
-    .replace(/cash|paynow|bank transfer?/gi, " ")
-    .replace(/[,.;:]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!patch.contact_name && scrubbed.length >= 2) {
-    const scrubbedLower = scrubbed.toLowerCase();
-    const hasExplicitNameCue =
-      /\b(my name is|name is|i am|i'm|this is|call me|name:)\b/i.test(
-        scrubbedLower,
-      );
-    
-    // Block extraction if message contains common trade-in / sell phrasing without an explicit name cue
-    const isSellIntent = /\b(want to|id like to|i would like to)?\s*(sell|trade|trade[- ]?in|quote)\b/i.test(scrubbedLower);
-    const hasConditionWords = /\b(condition|mint|good|fair|faulty|excellent|perfect|everything|included)\b/i.test(scrubbedLower);
-    
-    const isDeviceOnlyMessage = 
-      scrubbed.length < 40 && 
-      (isSellIntent || hasConditionWords) &&
-      /\b(ps5|ps4|playstation|xbox|switch|pokemon|nba|fifa|rog|ally|steam|deck|iphone|samsung|galaxy|ipad|console|game|phone|tablet)\b/i.test(scrubbedLower);
-    
-    if (!hasExplicitNameCue && isDeviceOnlyMessage) {
-      return patch;
-    }
-    
-    const candidateTokens = scrubbed
-      .split(/\s+/)
-      .map((token) => token.trim())
-      .filter((token) => {
-        if (!token) return false;
-        // Names must start with a letter and have at least 2 chars
-        if (!/^[A-Za-z][A-Za-z'\-]{1,}$/.test(token)) return false;
-        // Filter out placeholder tokens and common trade-in verbs/nouns
-        return !PLACEHOLDER_NAME_TOKENS.has(token.toLowerCase());
-      });
-
-    if (candidateTokens.length > 0) {
-      const candidateName = candidateTokens.slice(0, 3).join(" ");
-      if (!isPlaceholderName(candidateName)) {
-        patch.contact_name = candidateName;
-        console.log(
-          `[AutoExtract] Extracted name: "${candidateName}" from: "${scrubbed}"`,
-        );
-      } else {
-        console.log(
-          `[AutoExtract] Rejected placeholder name: "${candidateName}"`,
-        );
-      }
-    } else {
-      console.log(`[AutoExtract] No valid name tokens from: "${scrubbed}"`);
-    }
-  }
-
+  // Note: Name extraction removed from here to prevent contamination from device names and intent phrases.
+  // Name should only be extracted via extractFullNameFromHistory which looks at individual clean messages.
+  
   return patch;
 }
 
@@ -2849,20 +2794,33 @@ async function autoSubmitTradeInLeadIfComplete(params: {
       (!hasDevice || !hasStorage || !hasContactName || !hasContactPhone || !hasEmail) &&
       params.history
     ) {
-      const recentUserConcat = params.history
-        .filter((m) => m.role === "user")
-        .slice(-6)
-        .map((m) => m.content)
-        .join(" ");
-      const clues = extractTradeInClues(recentUserConcat);
       const patch: TradeInUpdateInput = {};
-      if (!detail.model && clues.model) patch.model = clues.model;
-      if (!detail.brand && clues.brand) patch.brand = clues.brand;
-      if (!detail.storage && clues.storage) patch.storage = clues.storage;
-      if (!hasContactName && clues.contact_name) patch.contact_name = clues.contact_name;
-      if (!hasContactPhone && clues.contact_phone)
-        patch.contact_phone = clues.contact_phone;
-      if (!hasEmail && clues.contact_email) patch.contact_email = clues.contact_email;
+      
+      // For device/storage/email/phone: extract from concatenated text (clear patterns)
+      if (!hasDevice || !hasStorage || !hasContactPhone || !hasEmail) {
+        const recentUserConcat = params.history
+          .filter((m) => m.role === "user")
+          .slice(-6)
+          .map((m) => m.content)
+          .join(" ");
+        const clues = extractTradeInClues(recentUserConcat);
+        if (!detail.model && clues.model) patch.model = clues.model;
+        if (!detail.brand && clues.brand) patch.brand = clues.brand;
+        if (!detail.storage && clues.storage) patch.storage = clues.storage;
+        if (!hasContactPhone && clues.contact_phone)
+          patch.contact_phone = clues.contact_phone;
+        if (!hasEmail && clues.contact_email) patch.contact_email = clues.contact_email;
+      }
+      
+      // For name: extract from individual clean messages only (avoid device/intent contamination)
+      if (!hasContactName) {
+        const nameFromHistory = extractFullNameFromHistory(params.history);
+        if (nameFromHistory && !isPlaceholderName(nameFromHistory)) {
+          patch.contact_name = nameFromHistory;
+          console.log(`[ChatKit] Backfilled name from history: "${nameFromHistory}"`);
+        }
+      }
+      
       if (Object.keys(patch).length > 0) {
         try {
           await updateTradeInLead(params.leadId, patch);
