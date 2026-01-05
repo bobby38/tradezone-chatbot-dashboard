@@ -3523,7 +3523,7 @@ function buildTradeInUserSummary(detail: any): string | null {
       : null,
     isTradeUp && detail.top_up_amount
       ? detail.preferred_payout === "installment" && detail.top_up_amount >= 300
-        ? `• Top-up: S$${detail.top_up_amount} (3-month installment: ~S$${Math.ceil((detail.top_up_amount * 1.05) / 3)}/month)`
+        ? `• Top-up: S$${detail.top_up_amount}\n• Installment: ~S$${Math.ceil((detail.top_up_amount * 1.05) / 3)}/month (3 months, incl. fee)`
         : `• Top-up: S$${detail.top_up_amount}`
       : null,
     tradeInPriceLine,
