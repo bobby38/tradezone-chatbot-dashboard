@@ -345,6 +345,7 @@ export async function searchWooProducts(
   const franchiseFocus = getFranchiseFocus(normalized);
   const isGameQuery = /\b(game|games)\b/i.test(query);
   const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
+  const wantsBrandNew = /\b(brand\s*new|new)\b/i.test(query);
 
   if (isGameQuery && /\bps4\b|\bplaystation\s*4\b/i.test(query)) {
     const slugList = wantsPreOwned
@@ -497,9 +498,18 @@ export async function searchWooProducts(
   const scored = products
     .map((product) => {
       const name = (product.name || "").toLowerCase();
+      // DEBUG: Trace specific product
+
       const productCategories = (product.categories || [])
         .map((c) => c.slug.toLowerCase())
         .join(" ");
+
+      // Initial Filter: Remove "test" products
+      if (name === "test" || name.includes("test product")) {
+        return { product, score: 0 };
+      }
+
+      // Base score
       let score = 0;
 
       if (
@@ -516,7 +526,6 @@ export async function searchWooProducts(
           /brand-new-games|pre-owned-games|pre-order-games/i.test(
             productCategories,
           );
-
         if (!isInGameCategory) {
           return { product, score: 0 }; // Exclude non-game products (controllers, warranties, etc.)
         }
@@ -537,7 +546,11 @@ export async function searchWooProducts(
         );
 
         if (!wantsPreOwned && isPreOwned) {
-          return { product, score: 0 }; // Skip pre-owned unless specifically requested
+          if (wantsBrandNew) {
+            return { product, score: 0 }; // Strictly enforce 'new' if requested
+          }
+          // If user didn't specify 'new', allow pre-owned but maybe penalize slightly
+          score *= 0.8;
         }
 
         // Boost brand new games when user doesn't specify condition
@@ -550,7 +563,7 @@ export async function searchWooProducts(
       if (categoryFilter === "phone" || categoryFilter === "tablet") {
         // Check if product is in the correct WooCommerce category
         const productCategories = (product.categories || [])
-          .map((c) => c.name.toLowerCase())
+          .map((c) => c.slug.toLowerCase())
           .join(" ");
 
         // For phone searches, require "Handphone" category AND exclude tablet-only products
@@ -815,17 +828,17 @@ export async function searchWooProducts(
   if (results.length === 0 && isGameQuery) {
     const gameSlugs = wantsPreOwned
       ? [
-          "pre-owned-games",
-          "pre-owned-games-playstation-4",
-          "pre-owned-games-nintendo",
-        ]
+        "pre-owned-games",
+        "pre-owned-games-playstation-4",
+        "pre-owned-games-nintendo",
+      ]
       : [
-          "brand-new-games",
-          "brand-new-games-playstation-4",
-          "brand-new-games-nintendo",
-          "pre-order-games",
-          "pre-order-games-ps5",
-        ];
+        "brand-new-games",
+        "brand-new-games-playstation-4",
+        "brand-new-games-nintendo",
+        "pre-order-games",
+        "pre-order-games-ps5",
+      ];
     const fallbackGames = await getWooProductsByCategory(
       gameSlugs,
       Math.max(limit, 120),

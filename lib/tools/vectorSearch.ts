@@ -22,7 +22,7 @@ import {
 } from "@/lib/graphiti-search-enhancer";
 import { logFailedSearch } from "@/lib/graphiti-learning-loop";
 
-type VectorStoreLabel = "catalog" | "trade_in";
+type VectorStoreLabel = "catalog" | "trade_in" | "product_catalog";
 
 const QUERY_STOP_WORDS = new Set([
   "any",
@@ -675,16 +675,11 @@ export async function handleVectorSearch(
   const queryTokens = extractQueryTokens(effectiveQuery); // Use enhanced query for tokenization
   const filteringTokens = selectFilteringTokens(queryTokens);
   let detectedCategory = extractProductCategory(query);
-  // Hard override to avoid mis-detection for critical categories
-  if (/\btablet\b/i.test(query)) detectedCategory = "tablet";
-  if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query))
-    detectedCategory = "phone";
-  // Hard override to avoid mis-detection
   if (/\btablet\b/i.test(query)) {
-    detectedCategory = "tablet" as any;
+    detectedCategory = "tablet";
   }
   if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query)) {
-    detectedCategory = "phone" as any;
+    detectedCategory = "phone";
   }
   const tradeQueryOverride = context?.tradeDeviceQuery?.trim();
   let priceListMatch = tradeQueryOverride
@@ -706,7 +701,7 @@ export async function handleVectorSearch(
   const wantsFullList = /\b(any|all|everything|list|show\s+me\s+all)\b/i.test(
     query,
   );
-  const wooLimit = wantsFullList ? 20 : 12;
+  const wooLimit = wantsFullList ? 30 : 20;
   const isTradeIntentContext =
     resolvedStore.label === "trade_in" ||
     (context?.intent && context.intent.toLowerCase() === "trade_in") ||
@@ -831,19 +826,19 @@ export async function handleVectorSearch(
     regex: RegExp;
     predicate: (name: string) => boolean;
   }> = [
-    {
-      regex: /spider-?man|spidey/i,
-      predicate: (name) => /spider-?man/i.test(name),
-    },
-    {
-      regex: /final\s+fantasy/i,
-      predicate: (name) => /final\s+fantasy/i.test(name),
-    },
-    {
-      regex: /diablo\b/i,
-      predicate: (name) => /diablo\b/i.test(name),
-    },
-  ];
+      {
+        regex: /spider-?man|spidey/i,
+        predicate: (name) => /spider-?man/i.test(name),
+      },
+      {
+        regex: /final\s+fantasy/i,
+        predicate: (name) => /final\s+fantasy/i.test(name),
+      },
+      {
+        regex: /diablo\b/i,
+        predicate: (name) => /diablo\b/i.test(name),
+      },
+    ];
 
   const prioritizeByTokens = <
     T extends { name?: string | null; permalink?: string | null },
@@ -946,6 +941,22 @@ export async function handleVectorSearch(
       // Hardware: gpu → graphic card, console → playstation, gamepad → controller
       let searchQuery = query;
       const lowerQuery = query.toLowerCase();
+
+      // 🎯 GRAPHITI ENHANCEMENT: Use Graph RAG to expand query (synonyms/redirects)
+      // This handles "horror" -> "resident evil silent hill...", "basketball" -> "NBA 2K", etc.
+      try {
+        if (shouldEnhanceQuery(query)) {
+          const enhancement = await enhanceSearchQuery(query);
+          if (enhancement.enhancedQuery && enhancement.enhancedQuery !== query) {
+            console.log(
+              `[VectorSearch] ⚡️ Graphiti enhanced query: "${enhancement.enhancedQuery}" (source: ${enhancement.source})`,
+            );
+            searchQuery = enhancement.enhancedQuery;
+          }
+        }
+      } catch (err) {
+        console.warn("[VectorSearch] Graphiti enhancement failed:", err);
+      }
 
       // Live-sale / latest intent: bypass catalog and fetch fresh via Perplexity first
       const saleIntent =
@@ -1131,8 +1142,10 @@ export async function handleVectorSearch(
         !wooProducts.length
       ) {
         return {
-          text: `Sorry, I couldn't find any products matching "${query}".`,
-          store: "product_catalog",
+          text: prependTradeSnippet(
+            `I checked our catalog and don't see that in stock right now. Use [search](https://tradezone.sg/?s=${encodeURIComponent(query)}) to check other models.`,
+          ),
+          store: resolvedStore.label,
           matches: [],
           wooProducts: [],
         };
@@ -1274,33 +1287,51 @@ export async function handleVectorSearch(
         const platformFiltered = wooProducts.filter((p) => {
           const name = (p.name || "").toLowerCase();
           const cats = (p.categories || [])
-            .map((c) => `${c.name || ""} ${c.slug || ""}`)
+            .map((c: any) => `${c.name || ""} ${c.slug || ""}`)
             .join(" ")
             .toLowerCase();
+
+          // Check if QUERY mentions multiple platforms
+          const queryHasPS = /ps[45]|playstation/i.test(lowerQuery);
+          const queryHasXbox = /xbox|series\s*[xs]/i.test(lowerQuery);
+          const queryHasSwitch = /switch|nintendo/i.test(lowerQuery);
+
+          const multiPlatformQuery = (queryHasPS && (queryHasXbox || queryHasSwitch)) ||
+            (queryHasXbox && queryHasSwitch);
+          const shouldBeStrict = !multiPlatformQuery;
+
           switch (platformIntent) {
             case "ps5":
-              // Allow PS5 games, including cross-platform titles (PS5/PS4, PS5/Xbox, etc.)
-              return (
-                /ps5|playstation\s*5/.test(name) ||
-                /playstation\s*5|playstation-5|ps5/.test(cats)
-              );
+              const isPS5 = /ps5|playstation\s*5/.test(name) || /playstation\s*5|playstation-5|ps5/.test(cats);
+              if (!isPS5) return false;
+              if (shouldBeStrict) {
+                // Exclude Switch/Xbox mentions in a PS5 search
+                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name)) return false;
+              }
+              return true;
             case "ps4":
-              // Allow PS4 games, including cross-platform titles (PS4/PS5, PS4/Switch, etc.)
-              // Only exclude if it's ONLY for other platforms (has Xbox/Switch but NO PS4 mention)
-              return (
-                /ps4|playstation\s*4/.test(name) ||
-                /playstation\s*4|playstation-4|ps4/.test(cats)
-              );
+              const isPS4 = /ps4|playstation\s*4/.test(name) || /playstation\s*4|playstation-4|ps4/.test(cats);
+              if (!isPS4) return false;
+              if (shouldBeStrict) {
+                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name)) return false;
+              }
+              return true;
             case "switch":
-              // Allow Switch games, including cross-platform titles
-              return (
-                /switch|nintendo/.test(name) || /switch|nintendo/.test(cats)
-              );
+              const isSwitch = /switch|nintendo/.test(name) || /switch|nintendo/.test(cats);
+              if (!isSwitch) return false;
+              if (shouldBeStrict) {
+                // Exclude PS/Xbox mentions in a Switch search
+                if (/(ps5|ps4|playstation|xbox|series\s*[xs])/.test(name)) return false;
+              }
+              return true;
             case "xbox":
-              // Allow Xbox games, including cross-platform titles
-              return (
-                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats)
-              );
+              const isXbox = /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats);
+              if (!isXbox) return false;
+              if (shouldBeStrict) {
+                // Exclude PS/Switch mentions in an Xbox search
+                if (/(ps5|ps4|playstation|switch|nintendo)/.test(name)) return false;
+              }
+              return true;
             case "pc":
               return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
             default:
@@ -1414,7 +1445,7 @@ export async function handleVectorSearch(
             ) {
               return {
                 text: perplexityResult,
-                store: label,
+                store: resolvedStore.label,
                 matches: [],
                 wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
               };
@@ -1462,21 +1493,56 @@ export async function handleVectorSearch(
 
       if (sportTokens.length > 0 && wooProducts.length > 0) {
         console.log(
-          `[VectorSearch] Sport query detected, prioritizing canonical titles:`,
+          `[VectorSearch] Sport query detected, filtering for canonical titles:`,
           sportTokens,
         );
         const prioritized = wooProducts.filter((product) => {
           const hay = (product.name || "").toLowerCase();
           return sportTokens.some((token) => hay.includes(token));
         });
+
+        // Strict filter: DROP the remainder
         if (prioritized.length > 0) {
-          const remainder = wooProducts.filter(
-            (product) => !prioritized.includes(product),
-          );
-          wooProducts = [...prioritized, ...remainder];
+          wooProducts = prioritized;
           console.log(
-            `[VectorSearch] ✅ Re-ordered ${wooProducts.length} products, ${prioritized.length} canonical titles first`,
+            `[VectorSearch] ✅ Filtered to ${wooProducts.length} canonical sport titles`,
           );
+        } else {
+          // If strict filter found nothing, clear the list so we don't show unrelated items
+          wooProducts = [];
+          console.log(`[VectorSearch] ❌ Sport filter removed all items`);
+        }
+      }
+
+      // Horror genre filter (Jan 2026)
+      if (/\b(horror|scary|zombie|resident\s*evil|silent\s*hill|until\s*dawn|alan\s*wake|last\s*of\s*us)\b/i.test(searchQuery) && wooProducts.length > 0) {
+        const horrorTokens = [
+          "horror",
+          "resident evil",
+          "silent hill",
+          "dead space",
+          "dying light",
+          "last of us",
+          "evil within",
+          "alien",
+          "zombie",
+          "until dawn",
+          "alan wake",
+          "friday",
+          "13th",
+          "slasher"
+        ];
+        const horrorFiltered = wooProducts.filter(p => {
+          const hay = (p.name || "").toLowerCase();
+          return horrorTokens.some(t => hay.includes(t));
+        });
+
+        if (horrorFiltered.length > 0) {
+          wooProducts = horrorFiltered;
+          console.log(`[VectorSearch] ✅ Filtered to ${wooProducts.length} horror titles`);
+        } else {
+          wooProducts = [];
+          console.log(`[VectorSearch] ❌ Horror filter removed all items`);
         }
       }
 
@@ -1627,10 +1693,10 @@ export async function handleVectorSearch(
           `[VectorSearch] ✅ WooCommerce found ${wooProducts.length} products - continuing to enrichment layers`,
         );
         budgetContext = createBudgetContext(query, wooProducts);
-        if (budgetContext.maxBudget != null) {
+        if (budgetContext?.maxBudget != null) {
           const within = wooProducts.filter((product) => {
             const price = getProductPrice(product);
-            return price != null && price <= budgetContext.maxBudget!;
+            return price != null && price <= budgetContext!.maxBudget!;
           });
           const above = wooProducts.filter(
             (product) => !within.includes(product),
@@ -1659,16 +1725,15 @@ export async function handleVectorSearch(
           const maxCount = Math.max(...Object.values(baseNameCounts));
           const isSeries = maxCount >= 3;
 
-          const displayLimit = isSeries ? 5 : 8;
+          const displayLimit = Math.min(wooProducts.length, 20);
           const productsToShow = wooProducts.slice(0, displayLimit);
           const hasMore = wooProducts.length > displayLimit;
 
           const listText = productsToShow
             .map((product, idx) => {
-              const price = formatPriceWithBudget(
-                product.price_sgd,
-                budgetContext!,
-              );
+              const price = budgetContext
+                ? formatPriceWithBudget(product.price_sgd, budgetContext)
+                : formatSGDPrice(product.price_sgd);
               const url = product.permalink || `https://tradezone.sg`;
               const imageStr =
                 idx === 0 && product.image
@@ -1798,7 +1863,7 @@ export async function handleVectorSearch(
 
           return {
             text: responseText,
-            store: "product_catalog",
+            store: resolvedStore.label,
             matches: [],
             wooProducts: wooPayload,
           };
@@ -1817,14 +1882,63 @@ export async function handleVectorSearch(
             `[VectorSearch] ✅ Simple list query with ${wooProducts.length} WooCommerce results - returning WITHOUT vector enrichment (fast path)`,
           );
 
-          // Show more products if total is small (≤15), otherwise limit to 8
+          // Show all products if total is small (≤20), otherwise limit to 10
           const displayLimit =
-            wooProducts.length <= 15 ? wooProducts.length : 8;
+            wooProducts.length <= 20 ? wooProducts.length : 20;
           const productsToShow = wooProducts.slice(0, displayLimit);
 
           const listText = productsToShow
             .map((product, idx) => {
-              const price = formatSGDPrice(product.price_sgd);
+              const price = budgetContext
+                ? formatPriceWithBudget(product.price_sgd, budgetContext)
+                : formatSGDPrice(product.price_sgd);
+              const url = product.permalink || `https://tradezone.sg`;
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
+              return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
+            })
+            .join("\n\n");
+
+          const moreText = buildMoreResultsText(
+            displayLimit,
+            wooProducts.length,
+            detectedCategory,
+            query,
+          );
+
+          const budgetSummaryLine = buildBudgetSummaryLine(
+            budgetContext!,
+            buildCategoryLabel(detectedCategory),
+          );
+          const summaryPrefix = budgetSummaryLine ? `${budgetSummaryLine}\n\n` : "";
+          const intro = `Here's what we have (${wooProducts.length} results):\n\n`;
+          const deterministicResponse = `${summaryPrefix}${intro}${listText}${moreText}`;
+          return {
+            text: `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`,
+            store: resolvedStore.label,
+            matches: [],
+            wooProducts: wooProducts,
+          };
+        }
+
+        console.log(
+          `[VectorSearch] Specific query or few results (${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
+        );
+        if (wooProducts.length > 0) {
+          const fallbackBudgetContext =
+            budgetContext || createBudgetContext(query, wooProducts);
+          // Show all products if total is small (≤20), otherwise limit to 20
+          const displayLimit = wooProducts.length <= 20 ? wooProducts.length : 20;
+          const productsToShow = wooProducts.slice(0, displayLimit);
+
+          const listText = productsToShow
+            .map((product, idx) => {
+              const price = formatPriceWithBudget(
+                product.price_sgd,
+                fallbackBudgetContext,
+              );
               const url = product.permalink || `https://tradezone.sg`;
               // Include image for first product only to keep format consistent
               const imageStr =
@@ -1842,72 +1956,28 @@ export async function handleVectorSearch(
             query,
           );
 
+          const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
+          const budgetSummaryLine = buildBudgetSummaryLine(
+            fallbackBudgetContext,
+            budgetCategoryLabel,
+          );
+          const summaryPrefix = budgetSummaryLine
+            ? `${budgetSummaryLine}\n\n`
+            : "";
+
           // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
-          const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
-          const deterministicResponse = intro + listText + moreText;
-          const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
+          const intro = `Here's what we have (${wooProducts.length} results):\n\n`;
+          const deterministicResponse =
+            summaryPrefix + intro + listText + moreText;
+          const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
           return {
-            text: wrappedResponse,
-            store: "product_catalog",
+            text: responseText,
+            store: resolvedStore.label,
             matches: [],
-            wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
+            wooProducts: wooProducts,
           };
         }
-
-        console.log(
-          `[VectorSearch] Specific query or few results (${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
-        );
-        const fallbackBudgetContext =
-          budgetContext || createBudgetContext(query, wooProducts);
-        // Show all products if total is small (≤15), otherwise limit to 8
-        const displayLimit = wooProducts.length <= 15 ? wooProducts.length : 8;
-        const productsToShow = wooProducts.slice(0, displayLimit);
-
-        const listText = productsToShow
-          .map((product, idx) => {
-            const price = formatPriceWithBudget(
-              product.price_sgd,
-              fallbackBudgetContext,
-            );
-            const url = product.permalink || `https://tradezone.sg`;
-            // Include image for first product only to keep format consistent
-            const imageStr =
-              idx === 0 && product.image
-                ? `\n   ![${product.name}](${product.image})`
-                : "";
-            return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
-          })
-          .join("\n\n");
-
-        const moreText = buildMoreResultsText(
-          displayLimit,
-          wooProducts.length,
-          detectedCategory,
-          query,
-        );
-
-        const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
-        const budgetSummaryLine = buildBudgetSummaryLine(
-          fallbackBudgetContext,
-          budgetCategoryLabel,
-        );
-        const summaryPrefix = budgetSummaryLine
-          ? `${budgetSummaryLine}\n\n`
-          : "";
-
-        // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
-        const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
-        const deterministicResponse =
-          summaryPrefix + intro + listText + moreText;
-        const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
-
-        return {
-          text: responseText,
-          store: "product_catalog",
-          matches: [],
-          wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
-        };
       } else {
         // For specific categories (phone/tablet/laptop), don't fall back to vector - prevent hallucination
         const detectedCategory = extractProductCategory(query);
@@ -2105,7 +2175,7 @@ export async function handleVectorSearch(
                         "\n\nThese are the ONLY " +
                         detectedCategory +
                         " products currently available. For more options, visit https://tradezone.sg",
-                      store: label,
+                      store: resolvedStore.label,
                       matches: [],
                       wooProducts: wooResults,
                     };
@@ -2144,7 +2214,7 @@ export async function handleVectorSearch(
                   );
                   return {
                     text: perplexityResult,
-                    store: label,
+                    store: resolvedStore.label,
                     matches: [],
                     wooProducts:
                       wooProducts.length > 0 ? wooProducts : undefined,
@@ -2160,7 +2230,7 @@ export async function handleVectorSearch(
               // Ultimate fallback message
               return {
                 text: `I don't have ${detectedCategory === "phone" ? "phones" : detectedCategory === "laptop" ? "laptops" : detectedCategory + "s"} in my current product database. Please check our website at https://tradezone.sg for our latest ${detectedCategory} inventory, or I can help you with gaming consoles and accessories instead.`,
-                store: label,
+                store: resolvedStore.label,
                 matches: [],
                 wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
               };
@@ -2200,7 +2270,7 @@ export async function handleVectorSearch(
         const details: string[] = [];
         const flagshipPrice =
           match.flagshipCondition?.basePrice !== undefined &&
-          match.flagshipCondition?.basePrice !== null
+            match.flagshipCondition?.basePrice !== null
             ? `${formatCurrency(match.flagshipCondition?.basePrice)} (${match.flagshipCondition?.label})`
             : match.price
               ? "S$" + match.price
@@ -2237,9 +2307,9 @@ export async function handleVectorSearch(
         if (bnplPlans.length) {
           const prioritizedPlans = mentionAtome
             ? [
-                ...bnplPlans.filter((plan) => plan.providerId === "atome"),
-                ...bnplPlans.filter((plan) => plan.providerId !== "atome"),
-              ]
+              ...bnplPlans.filter((plan) => plan.providerId === "atome"),
+              ...bnplPlans.filter((plan) => plan.providerId !== "atome"),
+            ]
             : bnplPlans;
           const bnplPreview = prioritizedPlans
             .slice(0, mentionBnpl ? 3 : 2)
@@ -2414,8 +2484,8 @@ export async function handleVectorSearch(
             : lowerQuery.match(/wrestling|wwe|cena/i)
               ? "wrestling"
               : lowerQuery.match(
-                    /\bcar\s+games?|\bracing\s+games?|gran turismo|forza|need\s+for\s+speed/i,
-                  )
+                /\bcar\s+games?|\bracing\s+games?|gran turismo|forza|need\s+for\s+speed/i,
+              )
                 ? "racing/car"
                 : "sports";
 
@@ -2434,10 +2504,10 @@ export async function handleVectorSearch(
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
       );
-      // Show all products if total is small (≤15) or user wants full list, otherwise limit to 8
+      // Show all products if total is small (≤20) or user wants full list, otherwise limit to 10
       const displayLimit = Math.min(
         wooProducts.length,
-        wantsFullList || wooProducts.length <= 15 ? wooProducts.length : 8,
+        wantsFullList || wooProducts.length <= 20 ? wooProducts.length : 10,
       );
       const wooSection = wooProducts
         .slice(0, displayLimit)
