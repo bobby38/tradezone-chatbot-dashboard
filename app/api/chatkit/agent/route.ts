@@ -5000,7 +5000,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           // NEVER auto-cancel leads during data collection
           // Only cancel if user explicitly says "cancel", "stop", "nevermind"
           const explicitCancel = /\b(cancel|stop|nevermind|never\s*mind|forget\s*it)\b/i.test(message);
-          const newTradeIntent = /\b(want|wish|like)\b.*?\b(trade|sell)\b.*?\b(my|this)\b/i.test(message);
+          // Relaxed intent check: matches "i want to trade", "trade my device", "sell this", "swap to"
+          const newTradeIntent = /(?:^|\b)(?:want\s+to\s+)?(?:trade|sell|swap|upgrade)\s+(?:my|this|a|an|the)\b/i.test(message);
 
           if ((explicitCancel || newTradeIntent) && !isCompleted) {
             await supabase
