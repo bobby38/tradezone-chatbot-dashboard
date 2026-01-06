@@ -83,6 +83,8 @@ const STATIC_SYNONYMS: Record<string, string> = {
   "wireless controller": "DualSense Xbox controller",
   "roblox": "Minecraft",
   "fortnite": "Fortnite Apex Legends Overwatch Minecraft",
+  "gopro": "DJI Osmo Insta360",
+  "action camera": "DJI Osmo Insta360",
 };
 
 const HARDCODED_SYNONYMS: Record<string, string> = {
