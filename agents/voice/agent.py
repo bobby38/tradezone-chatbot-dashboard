@@ -591,17 +591,6 @@ def _maybe_force_reply(message: str) -> Optional[str]:
         return None
     lower = message.lower()
 
-    if (
-        "basketball" in lower
-        and "nba" not in lower
-        and "2k" not in lower
-        and "video game" not in lower
-    ):
-        return (
-            "We focus on gaming and electronics. "
-            "Do you mean basketball video games like NBA 2K?"
-        )
-
     if any(token in lower for token in ["crypto", "bitcoin", "ethereum", "usdt"]):
         return (
             "Sorry, we don't handle crypto. "
