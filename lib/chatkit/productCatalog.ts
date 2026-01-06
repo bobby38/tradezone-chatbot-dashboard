@@ -537,6 +537,7 @@ export async function findCatalogMatches(
     const enhancement = await enhanceSearchQuery(query);
     if (enhancement.redirect) {
       effectiveQuery = enhancement.redirect;
+      query = enhancement.redirect; // Update query so domain filters (wantsGame, etc.) see the resolved name
       console.log("[CatalogSearch] 🔍 Graph RAG enhanced query", {
         original: query,
         enhanced: effectiveQuery,
@@ -637,9 +638,9 @@ export async function findCatalogMatches(
       model,
       score: aliasCandidates
         ? 250 +
-          (selectFlagshipCondition(model.conditions, intent.preferCondition)
-            ?.basePrice ?? 0) /
-            1000
+        (selectFlagshipCondition(model.conditions, intent.preferCondition)
+          ?.basePrice ?? 0) /
+        1000
         : scoreModel(model, normalizedQuery, queryTokens, intent),
     }))
     .filter(({ score, model }) => {
