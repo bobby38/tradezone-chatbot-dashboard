@@ -81,6 +81,8 @@ const STATIC_SYNONYMS: Record<string, string> = {
   "best handheld": "Steam Deck ROG Ally",
   "vr headset": "PlayStation VR2 Meta Quest",
   "wireless controller": "DualSense Xbox controller",
+  "roblox": "Minecraft",
+  "fortnite": "Fortnite Apex Legends Overwatch Minecraft",
 };
 
 const HARDCODED_SYNONYMS: Record<string, string> = {
