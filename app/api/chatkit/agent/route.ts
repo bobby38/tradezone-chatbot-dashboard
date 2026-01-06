@@ -5003,7 +5003,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           if ((explicitCancel || newTradeIntent) && !isCompleted) {
             await supabase
               .from("trade_in_leads")
-              .update({ status: "abandoned" })
+              .update({ status: "cancelled" })
               .eq("id", existingLead.id);
             console.log(
               `[ChatKit] User reset/cancelled trade-in lead ${existingLead.id} (intent: ${newTradeIntent ? "new_trade" : "cancel"})`,

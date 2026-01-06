@@ -14,7 +14,7 @@
 - **Name Capture Fix**: Added negative lookahead/guard to prevent "pas de photo" and declined photo responses from being captured as names.
 - **Photo Loop Fix**: Suppressed photo prompt if `tradeInPhotoAcknowledged` is true (handles "no" response correctly).
 - **Payout Prompt**: Added explicit `needsPayoutPrompt` logic to ensure "Cash/PayNow/Bank" is asked for sell flows before recap.
-- **Submission Guard**: Added `tradeInSubmissionSucceeded` check to stop the agent from asking further checklist questions after a successful submit.
+- **Session Reset**: Added logic to detect "I want to trade..." intents and forcefully reset any existing, incomplete trade-in leads (marking them as cancelled). This prevents stale data from previous sessions (e.g., spam names, old device info) from contaminating new requests.
 - **Installment Logic**: Updated formula to include 5% processing fee (`(amount * 1.05) / 3`) and force-append this estimate to the summary for email/dashboard visibility.
 
 ### Spam & False Positive Name Protection (Jan 6, 2026) ✅
