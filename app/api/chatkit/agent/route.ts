@@ -2590,6 +2590,8 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     patch.preferred_payout = "bank";
   } else if (/installment|instalment/i.test(lower) || /payment\s+plan/i.test(lower)) {
     patch.preferred_payout = "installment";
+  } else if (/top\s*up|trade\s*up/i.test(lower)) {
+    patch.preferred_payout = "top_up";
   }
 
   const emailMatch = message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
