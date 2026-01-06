@@ -5384,8 +5384,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             accessoriesCaptured &&
             hasContactPhone &&
             hasContactEmail;
+          // If we have a contact name but it looks like a sentence (e.g. "i can help seo"), force a prompt
+          const isSuspiciousName =
+            hasContactName &&
+            (tradeInLeadDetail.contact_name.split(" ").length > 3 ||
+              /\b(can|help|want|need|have)\b/i.test(
+                tradeInLeadDetail.contact_name,
+              ));
+
           const needsNamePrompt =
-            !hasContactName && readyForNamePrompt && !nameAlreadyAsked;
+            (!hasContactName || isSuspiciousName) &&
+            readyForNamePrompt &&
+            !nameAlreadyAsked;
           const payoutAlreadyAsked = truncatedHistory?.some(
             (m: any) =>
               m.role === "assistant" &&
