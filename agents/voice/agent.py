@@ -3087,11 +3087,7 @@ async def entrypoint(ctx: JobContext):
                     conversation_buffer["forced_reply_override"] = None
                 content = _normalize_voice_currency(content)
                 last_user_lower = (last_user or "").lower()
-                if "basketball" in last_user_lower and "nba" not in last_user_lower:
-                    content = (
-                        "We focus on gaming and electronics. "
-                        "Do you mean basketball video games like NBA 2K?"
-                    )
+                # 🚨 REMOVED: Basketball check logic removed to allow synonym expansion to "NBA 2K"
                 if "gpu" in last_user_lower and any(
                     token in last_user_lower
                     for token in ["llm", "ai", "chatbot", "training"]
