@@ -134,13 +134,13 @@ export async function enhanceSearchQuery(
   }
 
   // Fallback to hardcoded synonyms
+  // 1. Check for exact match first (fastest)
   const hardcodedMatch = HARDCODED_SYNONYMS[normalized];
   if (hardcodedMatch) {
-    console.log("[GraphitiSearchEnhancer] Using hardcoded synonym", {
+    console.log("[GraphitiSearchEnhancer] Using hardcoded synonym (exact)", {
       query,
       redirect: hardcodedMatch,
     });
-
     return {
       originalQuery: query,
       enhancedQuery: hardcodedMatch,
@@ -148,6 +148,33 @@ export async function enhanceSearchQuery(
       confidence: 1.0,
       source: "hardcoded",
     };
+  }
+
+  // 2. Check for partial matches (e.g. "fishing game" inside "do you have a fishing game")
+  // Sort keys by length descending to match specific phrases before generic words
+  const keys = Object.keys(HARDCODED_SYNONYMS).sort((a, b) => b.length - a.length);
+
+  for (const key of keys) {
+    // Escaping regex special chars in key not needed for simple alphanumeric keys, but safe practice
+    const info = HARDCODED_SYNONYMS[key];
+    const regex = new RegExp(`\\b${key}\\b`, 'i');
+
+    if (regex.test(normalized)) {
+      const enhanced = normalized.replace(regex, info);
+      console.log("[GraphitiSearchEnhancer] Using hardcoded synonym (partial)", {
+        query,
+        keyMatched: key,
+        enhanced,
+      });
+
+      return {
+        originalQuery: query,
+        enhancedQuery: enhanced,
+        redirect: info,
+        confidence: 0.9,
+        source: "hardcoded",
+      };
+    }
   }
 
   // No enhancement needed

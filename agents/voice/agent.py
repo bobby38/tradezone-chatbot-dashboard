@@ -1661,6 +1661,9 @@ async def _tradein_update_lead_impl(
         return ready_after_payload or field_name in state.collected_data
 
     if contact_name and not _contact_allowed("name"):
+        blocked_contact_fields.append("name")
+        state.pending_contact["name"] = contact_name
+        contact_name = None
     if contact_phone and not _contact_allowed("phone"):
         blocked_contact_fields.append("phone")
         state.pending_contact["phone"] = contact_phone
@@ -2336,6 +2339,9 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
   2. Do NOT modify product names or prices
   3. Do NOT suggest products not in the tool response - they do NOT exist
   4. Example: If tool returns "iPhone 13 mini — S$429", say "We have the iPhone 13 mini for S$429" (not "iPhone SE for S$599")
+- 🔴 **CRITICAL - EXACT PRICES & RANGES**: When citing prices, read the EXACT number from the tool result. Do not hallucinate.
+  - If asked for "most expensive" or "cheapest", scan the ENTIRE list provided by the tool carefully for the highest/lowest numeric S$ value.
+  - If summarizing a range, ensure the min and max actually match the lowest and highest prices in the list (e.g., if list has S$6 and S$80, do NOT say "40 to 90").
 - 🔴 **CRITICAL - MANDATORY TOOL CALLING**: For ANY product-related question (availability, price, stock, recommendations, "do you have X"), you MUST call searchProducts tool IMMEDIATELY and SILENTLY before responding. DO NOT say "let me check" or "hold on" - just call the tool and respond with results. NEVER answer from memory or training data. If you answer without calling the tool, you WILL hallucinate products that don't exist (404 errors). If searchProducts returns NO results, say "I checked our catalog and don't have that in stock right now" - do NOT suggest similar products from memory.
 - 🔴 **RE-TRIGGER VISUALS**: If the user asks to "show me", "see details", or "what does it look like" for a product you just mentioned, you MUST call `searchProducts` AGAIN with the specific product name. This ensures the visual product card is sent to their screen. Do NOT just say "Here it is" without calling the tool.
 - When the caller already mentions a product or category (e.g., "tablet", "iPad", "Galaxy Tab"), skip clarification and immediately read out what we actually have in stock (name + short price). Offer "Want details on any of these?" after sharing the list.
