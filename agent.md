@@ -17,6 +17,13 @@
 - **Submission Guard**: Added `tradeInSubmissionSucceeded` check to stop the agent from asking further checklist questions after a successful submit.
 - **Installment Logic**: Updated formula to include 5% processing fee (`(amount * 1.05) / 3`) and force-append this estimate to the summary for email/dashboard visibility.
 
+### Spam & False Positive Name Protection (Jan 6, 2026) ✅
+**Goal**: Prevent spam messages (e.g. SEO offers) or conversational phrases from being wrongly captured as contact names.
+**Changes** (Commits `ce506063`, `f669a9eb`, `9d07e4a6`):
+- **Expanded Blocklist**: Added SEO terms ("seo", "backlink", "website") and conversational fillers ("help", "can", "proceed", "month") to `PLACEHOLDER_NAME_TOKENS`.
+- **Contact Keyword Suppression**: Name extraction is now skipped if the message contains keywords like "email", "phone", "contact", or "whatsapp".
+- **Suspicious Name Prompt**: If an auto-extracted name is >3 words or contains common verbs ("can", "help", "need"), the agent treats the name as missing and re-prompts the user to confirm.
+
 ### Trade-In Lead Reuse & Name Capture (Jan 5, 2026) ✅
 **Goal**: Stabilize lead reuse to prevent duplicates and improve name capture.
 **Changes** (Commit `a1254957`):
