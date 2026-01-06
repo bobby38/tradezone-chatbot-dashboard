@@ -4998,14 +4998,15 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           // NEVER auto-cancel leads during data collection
           // Only cancel if user explicitly says "cancel", "stop", "nevermind"
           const explicitCancel = /\b(cancel|stop|nevermind|never\s*mind|forget\s*it)\b/i.test(message);
+          const newTradeIntent = /\b(want|wish|like)\b.*?\b(trade|sell)\b.*?\b(my|this)\b/i.test(message);
 
-          if (explicitCancel && !isCompleted) {
+          if ((explicitCancel || newTradeIntent) && !isCompleted) {
             await supabase
               .from("trade_in_leads")
-              .update({ status: "cancelled" })
+              .update({ status: "abandoned" })
               .eq("id", existingLead.id);
             console.log(
-              `[ChatKit] User explicitly cancelled trade-in lead ${existingLead.id}`,
+              `[ChatKit] User reset/cancelled trade-in lead ${existingLead.id} (intent: ${newTradeIntent ? "new_trade" : "cancel"})`,
             );
             tradeInLeadId = null;
             tradeInLeadStatus = null;
