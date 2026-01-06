@@ -11,7 +11,7 @@ async function test() {
         },
         body: JSON.stringify({
             sessionId: `test-debug-${Date.now()}`,
-            message: "football game have",
+            message: "mmo",
             history: [],
         }),
     });
