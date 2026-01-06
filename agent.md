@@ -12,12 +12,15 @@
 ### Search Efficiency & Genre Accuracy (Jan 6, 2026) ✅
 **Goal**: Ensure accurate search results for specific genres (Horror, Sports) and prevent unrelated products from appearing in "any X game" queries.
 
-**Fixes** (Commit `4f3a7986`):
+
+**Fixes** (Commit `4f3a7986`, `766451e0`):
 - **Strict Genre Filtering**: Fixed category slug matching logic to correctly identify game products. Previously, category names with spaces caused mismatches.
 - **Pre-Owned Visibility**: Relaxed score penalty for pre-owned games (from -10 to -20%) to ensure they remain visible in short queries (e.g., "FIFA") while still favoring brand new items.
 - **Graphiti Search Enhancer**: Integrated `enhanceSearchQuery` early in vector search.
-  - **Static Synonyms**: Added comprehensive expansions for "Horror" (Resident Evil, Silent Hill, etc.) and "Sports" (FIFA, NBA 2K).
-  - Queries like "any horror game" now automatically expand to specific franchise titles for accurate retrieval.
+  - **Static Synonyms**: Added comprehensive expansions for:
+    - **Horror**: Resident Evil, Silent Hill, etc.
+    - **Sports**: FIFA, NBA 2K, MLB The Show, UFC, Tony Hawk, Bass Pro Shops, F1, etc.
+  - Queries like "any horror game" or "skateboard" now automatically expand to specific franchise titles for accurate retrieval.
 - **Result Stability**: Fixed bug where empty strict filters prevented fallback to broader vector search.
 
 ## Change Log — Jan 5, 2026 (Trade-In Reliability & Flexibility)
