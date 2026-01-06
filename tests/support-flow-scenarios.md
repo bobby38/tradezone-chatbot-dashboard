@@ -61,7 +61,7 @@
 
 ---
 
-## Test 2: Trade-In for Cash (Product X)
+## Test 2: Trade-In for Cash (Steam Deck OLED 1TB) ✅
 
 **Goal:** Complete trade-in flow for single device with cash payout.
 
@@ -74,17 +74,17 @@
 
 | Step | User Input | Expected Agent Response | Status | Notes |
 |------|-----------|------------------------|--------|-------|
-| 1 | "I want to trade in my Steam Deck OLED 1TB" | Agent provides trade-in price: "~S$500" (subject to inspection) + "Proceed?" | ☐ Pass ☐ Fail | Price from preowned list |
-| 2 | "yes" | "Storage size?" OR "Condition? (mint, good, fair, faulty)" | ☐ Pass ☐ Fail | Begins qualification |
-| 3 | "1TB" | "Condition? (mint, good, fair, faulty)" | ☐ Pass ☐ Fail | Storage saved |
-| 4 | "good condition" | "Box or accessories included?" | ☐ Pass ☐ Fail | Condition saved |
-| 5 | "box et accessories yes" | "Photos to speed inspection? (yes/no)" | ☐ Pass ☐ Fail | Accessories saved |
-| 6 | "pas de photo" (no photos) | "Email for the quote?" | ☐ Pass ☐ Fail | Photo declined, moves to contact |
-| 7 | "bone@email.com" | "Phone number?" | ☐ Pass ☐ Fail | Email saved |
-| 8 | "+65 8939 8963" | "Name to note?" | ☐ Pass ☐ Fail | Phone saved |
-| 9 | "berta bone" | "Payout method: cash, PayNow, or bank transfer?" | ☐ Pass ☐ Fail | Name saved |
-| 10 | "cash" | Recap showing all details + "Is this correct? Reply yes to submit." | ☐ Pass ☐ Fail | Full summary displayed |
-| 11 | "yes" | "Trade-in submitted! Staff will contact you at bone@email.com or +65 8939 8963." | ☐ Pass ☐ Fail | Submission confirmed |
+| 1 | "I want to trade in my Steam Deck OLED 1TB" | Agent provides trade-in price: "~S$500" (subject to inspection) + "Proceed?" | ✅ Pass ☐ Fail | Price from preowned list |
+| 2 | "yes" | "Storage size?" OR "Condition? (mint, good, fair, faulty)" | ✅ Pass ☐ Fail | Begins qualification |
+| 3 | "1TB" | "Condition? (mint, good, fair, faulty)" | ✅ Pass ☐ Fail | Storage saved |
+| 4 | "good condition" | "Box or accessories included?" | ✅ Pass ☐ Fail | Condition saved |
+| 5 | "box et accessories yes" | "Photos to speed inspection? (yes/no)" | ✅ Pass ☐ Fail | Accessories saved |
+| 6 | "pas de photo" (no photos) | "Email for the quote?" | ✅ Pass ☐ Fail | Photo declined, moves to contact |
+| 7 | "bone@email.com" | "Phone number?" | ✅ Pass ☐ Fail | Email saved |
+| 8 | "+65 8939 8963" | "Name to note?" | ✅ Pass ☐ Fail | Phone saved |
+| 9 | "berta bone" | "Payout method: cash, PayNow, or bank transfer?" | ✅ Pass ☐ Fail | Name saved |
+| 10 | "cash" | Recap showing all details + "Is this correct? Reply yes to submit." | ✅ Pass ☐ Fail | Full summary displayed |
+| 11 | "yes" | "Trade-in submitted! Staff will contact you at bone@email.com or +65 8939 8963." | ✅ Pass ☐ Fail | Submission confirmed |
 
 ### Expected Recap Format (Step 10)
 ```
