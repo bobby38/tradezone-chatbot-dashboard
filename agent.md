@@ -6,6 +6,20 @@
 - Inputs: catalog changes, search demand, stock status, price shifts, and trusted release/news sources.
 - Guardrails: cite sources, never promote out‑of‑stock items, keep SG context.
 
+
+## Change Log — Jan 6, 2026 (Search Efficiency & Genre Accuracy)
+
+### Search Efficiency & Genre Accuracy (Jan 6, 2026) ✅
+**Goal**: Ensure accurate search results for specific genres (Horror, Sports) and prevent unrelated products from appearing in "any X game" queries.
+
+**Fixes** (Commit `4f3a7986`):
+- **Strict Genre Filtering**: Fixed category slug matching logic to correctly identify game products. Previously, category names with spaces caused mismatches.
+- **Pre-Owned Visibility**: Relaxed score penalty for pre-owned games (from -10 to -20%) to ensure they remain visible in short queries (e.g., "FIFA") while still favoring brand new items.
+- **Graphiti Search Enhancer**: Integrated `enhanceSearchQuery` early in vector search.
+  - **Static Synonyms**: Added comprehensive expansions for "Horror" (Resident Evil, Silent Hill, etc.) and "Sports" (FIFA, NBA 2K).
+  - Queries like "any horror game" now automatically expand to specific franchise titles for accurate retrieval.
+- **Result Stability**: Fixed bug where empty strict filters prevented fallback to broader vector search.
+
 ## Change Log — Jan 5, 2026 (Trade-In Reliability & Flexibility)
 
 ### Trade-In Flow Hardening (Jan 5, 2026) ✅
