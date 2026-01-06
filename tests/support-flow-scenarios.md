@@ -124,7 +124,7 @@ Is this correct? Reply yes to submit.
 
 ---
 
-## Test 3: Trade-Up with Installment (X → Y)
+## Test 3: Trade-Up with Installment (X → Y) ✅
 
 **Goal:** Trade one device for another with installment payment plan.
 
@@ -136,16 +136,16 @@ Is this correct? Reply yes to submit.
 
 | Step | User Input | Expected Agent Response | Status | Notes |
 |------|-----------|------------------------|--------|-------|
-| 1 | "trade my ROG Ally X 1TB to Legion Go 2 1TB" | "ROG Ally X 1TB ~S$550. Legion Go 2 1TB S$1300. Top-up ≈S$750 (subject to inspection/stock)." | ☐ Pass ☐ Fail | Trade-up pricing shown |
-| 2 | "yes I want to proceed with 3 month installment" | "Storage size?" OR "Condition? (mint, good, fair, faulty)" | ☐ Pass ☐ Fail | Installment noted, proceeds |
-| 3 | "good condition" | "Box or accessories included?" | ☐ Pass ☐ Fail | Condition saved |
-| 4 | "box et accessories yes" | "Photos to speed inspection? (yes/no)" | ☐ Pass ☐ Fail | Accessories saved |
-| 5 | "pas de photo" | "Email for the quote?" | ☐ Pass ☐ Fail | Photo declined |
-| 6 | "kone@email.com" | "Phone number?" | ☐ Pass ☐ Fail | Email saved |
-| 7 | "+65 8937 8963" | "Name to note?" | ☐ Pass ☐ Fail | Phone saved |
-| 8 | "kerta bone" | Recap (NO payout question for trade-up) | ☐ Pass ☐ Fail | Payout skipped |
-| 9 | User sees recap | "Is this correct? Reply yes to submit." | ☐ Pass ☐ Fail | Recap displayed |
-| 10 | "yes" | "Trade-up submitted! Staff will contact you..." | ☐ Pass ☐ Fail | Success |
+| 1 | "trade my ROG Ally X 1TB to Legion Go 2 1TB" | "ROG Ally X 1TB ~S$550. Legion Go 2 1TB S$1300. Top-up ≈S$750 (subject to inspection/stock)." | ✅ Pass ☐ Fail | Trade-up pricing shown |
+| 2 | "yes I want to proceed with 3 month installment" | "Storage size?" OR "Condition? (mint, good, fair, faulty)" | ✅ Pass ☐ Fail | Installment noted, proceeds |
+| 3 | "good condition" | "Box or accessories included?" | ✅ Pass ☐ Fail | Condition saved |
+| 4 | "box et accessories yes" | "Photos to speed inspection? (yes/no)" | ✅ Pass ☐ Fail | Accessories saved |
+| 5 | "pas de photo" | "Email for the quote?" | ✅ Pass ☐ Fail | Photo declined |
+| 6 | "kone@email.com" | "Phone number?" | ✅ Pass ☐ Fail | Email saved |
+| 7 | "+65 8937 8963" | "Name to note?" | ✅ Pass ☐ Fail | Phone saved |
+| 8 | "kerta bone" | Recap (NO payout question for trade-up) | ✅ Pass ☐ Fail | Payout skipped |
+| 9 | User sees recap | "Is this correct? Reply yes to submit." | ✅ Pass ☐ Fail | Recap displayed |
+| 10 | "yes" | "Trade-up submitted! Staff will contact you..." | ✅ Pass ☐ Fail | Success |
 
 ### Expected Recap Format (Step 9)
 ```
