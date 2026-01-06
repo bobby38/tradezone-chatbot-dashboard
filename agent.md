@@ -18,7 +18,8 @@
 **Fixes** (Commit `0310ad62`, `1c604f9d`, `5cab0a47`):
 - **Out-of-Stock Protocol**: 
   - **Behavior**: If user asks for X and we find Y (e.g., GoPro -> DJI Osmo), agent **must** say: "We don't have X, but we have Y."
-  - **Waitlist Offer**: If user insists on the missing item, agent offers to take Name/Phone for a waitlist (`sendemail` with reason "Waitlist Request").
+  - **Personality & Pivot**: For missing games/consoles, inject a **short, punchy** gamer joke (e.g., "Loot goblins snatched that one") and IMMEDIATELY pivot to promos or popular category items.
+  - **Waitlist Offer**: Only if user insists on the missing item, agent offers to take Name/Phone for a waitlist (`sendemail` with reason "Waitlist Request").
 - **Search Intent Fixes**:
   - **Roblox**: Mapped `roblox` -> `Minecraft` in synonyms. **Critical Fix**: Updated `findCatalogMatches` to use the *redirected* term for domain filtering. Now "Roblox" correctly triggers "Game" mode (via Minecraft association) instead of failing as a non-electronic item.
   - **Basketball**: Removed hardcoded "basketball" intent blocker in `agent.py`. Queries like "basketball game" now properly hit the search tool and map to `NBA 2K`.
