@@ -9,6 +9,14 @@
 
 ## Change Log — Jan 6, 2026 (Search Efficiency & Genre Accuracy)
 
+
+### Voice Agent Stabilization (Jan 7, 2026) ✅
+**Goal**: Address data loss during contact collection and ensure visual cards appear reliable.
+
+**Fixes** (Commit `1bf76b5e`, `05c020b9`):
+- **Contact Save Failure (400 Error)**: Relaxed strict state enforcement in `tradein_update_lead`. Now, if a user provides contact info but the "Photos" step wasn't explicitly marked (e.g., user said "sent" and agent moved on), the system auto-resolves the photo step instead of blocking the save.
+- **Phantom Visuals**: Updated system prompt to MANDATE calling `searchProducts` again if the user asks to "show details" or "see it". This ensures the `product_results` data packet is actually sent to the UI, fixing cases where the agent said "Showing details" but nothing appeared.
+
 ### Search Efficiency & Genre Accuracy (Jan 6, 2026) ✅
 **Goal**: Ensure accurate search results for specific genres (Horror, Sports) and prevent unrelated products from appearing in "any X game" queries.
 
