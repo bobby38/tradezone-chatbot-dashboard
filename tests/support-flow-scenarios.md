@@ -213,7 +213,7 @@ Is this correct? Reply yes to submit.
 
 ---
 
-## Test 5: No Product Found → Auto-Offer Support
+## Test 5: No Product Found → Auto-Offer Support ✅
 
 **Goal:** Verify auto-offer triggers when product search fails.
 
@@ -221,10 +221,10 @@ Is this correct? Reply yes to submit.
 
 | Step | User Input | Expected Agent Response | Status | Notes |
 |------|-----------|------------------------|--------|-------|
-| 1 | "do you have unicorn gaming console" | "I couldn't find 'unicorn gaming console' in our catalog. Would you like me to connect you with our team? They can check stock or help with special orders." | ☐ Pass ☐ Fail | Auto-offer triggered |
-| 2 | "yes" | "Are you in Singapore?" | ☐ Pass ☐ Fail | Support flow starts |
-| 3 | "yes" | "What do you need help with?" | ☐ Pass ☐ Fail | Purpose step |
-| 4 | Continue flow... | Normal support escalation | ☐ Pass ☐ Fail | Completes normally |
+| 1 | "do you have unicorn gaming console" | "I couldn't find 'unicorn gaming console' in our catalog. Would you like me to connect you with our team? They can check stock or help with special orders." | ✅ Pass ☐ Fail | Auto-offer triggered |
+| 2 | "yes" | "Are you in Singapore?" | ✅ Pass ☐ Fail | Support flow starts |
+| 3 | "yes" | "What do you need help with?" | ✅ Pass ☐ Fail | Purpose step |
+| 4 | Continue flow... | Normal support escalation | ✅ Pass ☐ Fail | Completes normally |
 
 ### Pass Criteria
 - ✅ Product search returns no results
