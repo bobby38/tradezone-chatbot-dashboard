@@ -1632,6 +1632,22 @@ async def _tradein_update_lead_impl(
     will_have_photos = photos_in_payload or "photos" in state.collected_data
 
     # NEW FLOW: contact comes after storage + condition + accessories + photos.
+    # 🚨 RELAXATION: If contact info is being provided, but photos weren't explicitly marked (e.g. agent skipped tool call),
+    # assume photos are done/skipped to prevent blocking the entire save.
+    if (contact_name or contact_phone or contact_email) and not (photos_in_payload or "photos" in state.collected_data):
+        logger.warning("[tradein_update_lead] 📸 Contact info provided without photo step. Auto-resolving photos as acknowledged.")
+        photos_acknowledged = True
+        photos_in_payload = True
+
+    will_have_storage = (
+        storage_in_payload or "storage" in state.collected_data or state.skip_storage
+    )
+    will_have_condition = condition_in_payload or "condition" in state.collected_data
+    will_have_accessories = (
+        accessories_in_payload or "accessories" in state.collected_data
+    )
+    will_have_photos = photos_in_payload or "photos" in state.collected_data
+
     ready_after_payload = (
         will_have_storage
         and will_have_condition
@@ -1645,9 +1661,6 @@ async def _tradein_update_lead_impl(
         return ready_after_payload or field_name in state.collected_data
 
     if contact_name and not _contact_allowed("name"):
-        blocked_contact_fields.append("name")
-        state.pending_contact["name"] = contact_name
-        contact_name = None
     if contact_phone and not _contact_allowed("phone"):
         blocked_contact_fields.append("phone")
         state.pending_contact["phone"] = contact_phone
