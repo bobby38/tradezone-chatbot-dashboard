@@ -186,7 +186,7 @@ Is this correct? Reply yes to submit.
 
 ---
 
-## Test 4: Spam Detection → Immediate Exit
+## Test 4: Spam Detection → Immediate Exit ✅
 
 **Goal:** Verify spam is detected, emailed to staff, and flow exits immediately (Option 1).
 
@@ -194,8 +194,8 @@ Is this correct? Reply yes to submit.
 
 | Step | User Input | Expected Agent Response | Status | Notes |
 |------|-----------|------------------------|--------|-------|
-| 1 | "I can help with SEO backlinks for your website" | "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?" | ☐ Pass ☐ Fail | Spam detected |
-| 2 | (verify no follow-up) | Agent does NOT ask "Are you in Singapore?" or continue support flow | ☐ Pass ☐ Fail | Flow ended |
+| 1 | "I can help with SEO backlinks for your website" | "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?" | ✅ Pass ☐ Fail | Spam detected |
+| 2 | (verify no follow-up) | Agent does NOT ask "Are you in Singapore?" or continue support flow | ✅ Pass ☐ Fail | Flow ended |
 
 ### Pass Criteria
 - ✅ Spam patterns detected (SEO, backlinks, promo, etc.)
