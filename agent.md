@@ -10,6 +10,20 @@
 ## Change Log — Jan 6, 2026 (Search Efficiency & Genre Accuracy)
 
 
+## Change Log — Jan 7, 2026 (Refinement: Voice Fallbacks & Game Intent)
+
+### Voice Agent Fallback & Search Logic (Jan 7, 2026) ✅
+**Goal**: Improve handling of requests for out-of-stock items (GoPro, Roblox) effectively and unblock specific game genres.
+
+**Fixes** (Commit `0310ad62`, `1c604f9d`, `5cab0a47`):
+- **Out-of-Stock Protocol**: 
+  - **Behavior**: If user asks for X and we find Y (e.g., GoPro -> DJI Osmo), agent **must** say: "We don't have X, but we have Y."
+  - **Waitlist Offer**: If user insists on the missing item, agent offers to take Name/Phone for a waitlist (`sendemail` with reason "Waitlist Request").
+- **Search Intent Fixes**:
+  - **Roblox**: Mapped `roblox` -> `Minecraft` in synonyms. **Critical Fix**: Updated `findCatalogMatches` to use the *redirected* term for domain filtering. Now "Roblox" correctly triggers "Game" mode (via Minecraft association) instead of failing as a non-electronic item.
+  - **Basketball**: Removed hardcoded "basketball" intent blocker in `agent.py`. Queries like "basketball game" now properly hit the search tool and map to `NBA 2K`.
+  - **GoPro**: Mapped `gopro` -> `DJI Osmo Insta360` to ensure relevant alternatives appear immediately.
+
 ### Voice Agent Stabilization (Jan 7, 2026) ✅
 **Goal**: Address data loss during contact collection and ensure visual cards appear reliable.
 
