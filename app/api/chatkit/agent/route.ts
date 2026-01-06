@@ -2677,8 +2677,9 @@ function extractTradeInClues(message: string): TradeInUpdateInput {
     const hasDeviceKeywords = /\b(trade|sell|buy|quote|rog|ally|legion|steam|deck|ps5|ps4|playstation|xbox|switch|iphone|samsung|galaxy|ipad|console|handheld)\b/i.test(scrubbed);
     const hasAccessoryKeywords = /\b(box|cables?|charger|controller|accessories?|included|everything)\b/i.test(scrubbed);
     const hasConditionKeywords = /\b(mint|good|fair|faulty|excellent|condition|perfect)\b/i.test(scrubbed);
+    const hasContactKeywords = /\b(email|phone|number|contact|address|reach|call|whatsapp|telegram)\b/i.test(scrubbed);
 
-    if (!hasDeviceKeywords && !hasAccessoryKeywords && !hasConditionKeywords) {
+    if (!hasDeviceKeywords && !hasAccessoryKeywords && !hasConditionKeywords && !hasContactKeywords) {
       const tokens = scrubbed
         .split(/\s+/)
         .map((t) => t.trim())
