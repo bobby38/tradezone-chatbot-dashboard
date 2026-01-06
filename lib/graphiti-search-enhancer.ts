@@ -22,6 +22,7 @@ const STATIC_SYNONYMS: Record<string, string> = {
   "any basketball": "NBA 2K",
   "any basketball game": "NBA 2K",
   football: "FIFA EA Sports FC",
+  "football game": "FIFA EA Sports FC",
   soccer: "FIFA EA Sports FC",
   "any football": "FIFA EA Sports FC",
   "any soccer": "FIFA EA Sports FC",
