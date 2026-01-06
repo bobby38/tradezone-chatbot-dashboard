@@ -1082,7 +1082,8 @@ async def searchProducts(context: RunContext, query: str) -> str:
                         and _name_matches_tokens(product.get("name", ""), tokens)
                     ]
                     if not filtered_products:
-                        return "I couldn't find that game in our catalog. Want me to check the website?"
+                        # Return explicit "not found" to trigger Out-of-Stock Protocol (Suggest Alt/Waitlist)
+                        return "I checked our catalog but couldn't find that game in stock right now."
 
                 if products_data and budget_query:
                     budget_products = [
