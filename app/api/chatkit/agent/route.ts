@@ -5416,9 +5416,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             accessoriesCaptured &&
             hasContactPhone &&
             hasContactEmail;
-          // Payout is needed if not set, not trade-up (context), not gathered, and not already asked
+          // Payout is needed if not set, not gathered, and not already asked.
+          // For trade-ups, we only ask if there is a top-up amount > 0 (to pay US).
+          const isTopUpScenario =
+            tradeUpContext &&
+            tradeInLeadDetail?.top_up_amount != null &&
+            tradeInLeadDetail.top_up_amount > 0;
+          const payoutRequired = !tradeUpContext || isTopUpScenario;
+
           const needsPayoutPrompt =
             readyForPayoutPrompt &&
+            payoutRequired &&
             !payoutSet &&
             !tradeInSubmissionSucceeded &&
             !payoutAlreadyAsked;
@@ -5475,10 +5483,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                 "Ask for the customer's name once (e.g., \"What's your name?\"). Keep it short; do not proceed to recap until they answer or decline.",
             });
           } else if (needsPayoutPrompt) {
+            const hasInstallmentIntent =
+              tradeInLeadDetail.preferred_payout === "installment";
+            const promptContent = hasInstallmentIntent
+              ? "The user requested installments. Ask: 'Okay, for installments, do you prefer 3, 6, or 12 months?'"
+              : isTopUpScenario
+                ? "Ask: How would you like to pay the top-up? (Cash, PayNow, or Installment?)"
+                : "Which payout suits you best: cash, PayNow, or bank transfer?";
+
             messages.push({
               role: "system",
-              content:
-                "Which payout suits you best: cash, PayNow, or bank transfer? If you'd prefer to split the top-up into installments (subject to approval), just say installment and I'll note it.",
+              content: promptContent,
             });
           } else if (readyForRecap) {
             const summary = buildTradeInUserSummary(tradeInLeadDetail);
