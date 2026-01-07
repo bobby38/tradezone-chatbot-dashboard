@@ -123,5 +123,17 @@ Below are the detailed test scenarios (1-7) validated against the current produc
 - [ ] **Weekly Trend Pulse**: Begin implementation of weekly internal report (Backlog item).
 
 ---
-**Last Updated:** Jan 7, 2026
-**Verified By:** AI Assistant (Antigravity)
+## 5. Log Evidence (Jan 6-7, 2026)
+
+Key interaction logs indicating successful system behavior:
+
+| Log ID | Source | Query | Response/Action | Validation |
+| :--- | :--- | :--- | :--- | :--- |
+| **4883** | **Text** | "do you accept trade in for PC console?" | "Trade-in: In (S$350)... Target: PC Console? (S$129)..." | **PASS** - Trade-in price lookup active. |
+| **4881** | **Text** | "Give me your cheapest laptop" | "Cheapest laptops currently start at S$750... Here's what we have (5 products)..." | **PASS** - Budget search & sorting working. |
+| **4878** | **Text** | "go pro" | "Here's what we have... DJI Osmo Nano... DJI Osmo Pocket 3" | **PASS** - Synonym redirect (GoPro -> DJI) successful. |
+| **4876** | **Text** | "toblox or minecraft" | "Here's what we have (5 results): 1. Minecraft - S$29.90..." | **PASS** - Search successful for valid game titles. |
+| **4875** | **Text** | "Any Playstation 4" | "Here's what we have... PS4 (Pre-Owned) - S$189..." | **PASS** - Console search specific & priced correctly. |
+| **4860** | **Voice** | "buy a good GPU for a large language model" | (Voice) Conversation about RTX 5080/4090/VRAM. | **PASS** - Complex intent handling & conversation flow. |
+
+**Note**: Logs confirm clear separation between `chatkit` (text) and `livekit-voice` (voice) sessions.
