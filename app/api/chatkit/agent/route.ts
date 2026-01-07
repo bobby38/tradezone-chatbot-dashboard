@@ -5864,7 +5864,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         messages.push({
           role: "system",
           content:
-            "CRITICAL: If the user wants to trade in a 'PC', 'Desktop', 'Computer', 'Rig', or 'Custom Build', DO NOT call any pricing tool. These require custom quotes. Say: 'Custom/Desktop PCs need a managed quote. I'll connect you to staff.' Then ask for name/email/phone to escalate.",
+            "CRITICAL: If the user wants to trade in a 'PC', 'Desktop', 'Computer', 'Rig', or 'Custom Build', DO NOT call pricing tools. Instead, say: 'We do trade PCs, but since parts vary (CPUs, GPUs), we need to check the details manually.' Then ask them to list their system specs (CPU, GPU, RAM, storage) so you can send it to the support team for a quote. Collect their specs + name/email/phone, then call sendemail(info_request).",
         });
 
         messages.push({
