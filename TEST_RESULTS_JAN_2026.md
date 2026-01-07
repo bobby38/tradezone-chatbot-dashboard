@@ -145,3 +145,14 @@ Key interaction logs indicating successful system behavior:
     - **Voice (Python)**: Added specific exception in `agent.py` to escalate all PC/Desktop trade-ins to staff.
     - **Text (TypeScript)**: Needs similar logic to prevent auto-quoting "PC" as "Console".
   - *Status*: **Partially Fixed (Voice Safe, Text Pending)**.
+### 6.1 Completed Fixes (Jan 7, 2026)
+- **PC Trade-In Parity (Voice & Text)**:
+  - **Issue**: "PC Console" queries returned automated low-ball quotes (~$150).
+  - **Fix**: Both agents now STRICTLY forbid auto-quoting "PC", "Desktop", or "Custom Build".
+  - **New Flow**: Agent explains custom quotes are needed -> Offers to take specs (CPU/GPU) -> Routes to Support via `sendemail`.
+  - **Status**: **VERIFIED FIX**.
+
+- **Valve Warranty Knowledge**:
+  - **Issue**: Agent previously said "check website" for Valve warranty questions.
+  - **Fix**: Injected specific policy (New: 12mo Official / Pre-Owned: 1mo Store) into both system prompts.
+  - **Status**: **VERIFIED FIX**.
