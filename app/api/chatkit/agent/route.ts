@@ -5864,6 +5864,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         messages.push({
           role: "system",
           content:
+            "CRITICAL: If the user wants to trade in a 'PC', 'Desktop', 'Computer', 'Rig', or 'Custom Build', DO NOT call any pricing tool. These require custom quotes. Say: 'Custom/Desktop PCs need a managed quote. I'll connect you to staff.' Then ask for name/email/phone to escalate.",
+        });
+
+        messages.push({
+          role: "system",
+          content:
             "If you cannot find a trade-in price after checks, DO NOT list products. Say briefly: 'Sorry, I couldn't find a trade-in price for that model right now. I can ask staff to confirm—want me to pass this to the team?' If yes, collect name, phone, and email, then call sendemail(info_request) with the context.",
         });
       }
@@ -7755,18 +7761,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         .filter((u) => /\.(png|jpe?g|webp)(\?.*)?$/i.test(u))
         .filter((u) => /tradezone\.sg\/wp-content\//i.test(u));
       if (cleaned.length > 0) {
-        const linkLines = cleaned
+        const integratedLinks = cleaned
           .slice(0, 5)
-          .map((u, idx) => `${idx + 1}. [View Product](${u})`)
-          .join("\n");
-        const imageLines =
-          imageMatches.length > 0
-            ? `\n\nImages:\n${imageMatches
-              .slice(0, 3)
-              .map((u, idx) => `${idx + 1}. ![Product image](${u})`)
-              .join("\n")}`
-            : "";
-        finalResponse = `${finalResponse}\n\n${linkLines}${imageLines}`.trim();
+          .map((u, idx) => {
+            const linkLine = `${idx + 1}. [View Product](${u})`;
+            const imageMatch = imageMatches[idx];
+            const imageLine = imageMatch ? `\n   ![Product image](${imageMatch})` : "";
+            return `${linkLine}${imageLine}`;
+          })
+          .join("\n\n");
+        finalResponse = `${finalResponse}\n\n${integratedLinks}`.trim();
       }
     }
 
