@@ -555,12 +555,16 @@ export async function findCatalogMatches(
 
   // Domain filters to cut noise (tablets, games, coolers, etc.)
   // Use effectiveQuery (enhanced) for filter detection
-  const wantsTablet = /\b(tab|tablet)\b/i.test(effectiveQuery);
+  const wantsTablet = /\b(tab|tablet|ipad)\b/i.test(effectiveQuery);
   const wantsSamsung = /\bgalaxy|samsung\b/i.test(effectiveQuery);
   const wantsGame =
     /(ps[45]|playstation|xbox|switch|nintendo|game)\b/i.test(effectiveQuery) ||
     /aladdin|aladin/i.test(effectiveQuery);
   const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(effectiveQuery);
+  const wantsGPU = /\b(gpu|graphics\s*card|rtx|gtx|radeon|video\s*card)\b/i.test(effectiveQuery);
+  const wantsLaptop = /\b(laptop|notebook|macbook)\b/i.test(effectiveQuery);
+  const wantsConsole = /\b(console|ps5|ps4|xbox|switch)\b/i.test(effectiveQuery) && !wantsGame; // Distinct from "game" query
+  const wantsChair = /\b(chair|seatzone)\b/i.test(effectiveQuery);
 
   const filteredModels = models.filter((model) => {
     const categories = (model.categories || []).map((c) => c.toLowerCase());
@@ -572,8 +576,15 @@ export async function findCatalogMatches(
     }
 
     if (wantsGame) {
-      const isGame = categories.some((c) => c.includes("game"));
-      if (!isGame) return false;
+      // If user asks for "game console", let it pass through to be handled by wantsConsole logic or generic
+      if (wantsConsole && /console/i.test(effectiveQuery)) {
+        // loose check
+      } else {
+        const isGame = categories.some((c) => c.includes("game"));
+        // Allow consoles if query explicitly mentions console context, otherwise strict
+        if (!isGame && !wantsConsole) return false;
+      }
+
       // platform hints
       if (/switch|nintendo/i.test(query))
         return categories.some((c) => c.includes("switch"));
@@ -590,6 +601,19 @@ export async function findCatalogMatches(
         !categories.some((c) => c.includes("cooler") || c.includes("thermal"))
       )
         return false;
+    }
+
+    if (wantsGPU) {
+      // Strict GPU filter
+      if (!categories.some((c) => c.includes("gpu") || c.includes("card") || c.includes("component"))) return false;
+    }
+
+    if (wantsLaptop) {
+      if (!categories.some(c => c.includes("laptop") || c.includes("computer"))) return false;
+    }
+
+    if (wantsChair) {
+      if (!categories.some(c => c.includes("chair"))) return false;
     }
 
     return true;
