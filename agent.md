@@ -1,5 +1,303 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## 📐 Complete System Architecture
+
+### **System Overview**
+TradeZone is a multi-agent AI chatbot platform with 4 main components working together:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         TRADEZONE ECOSYSTEM                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+1️⃣  NEXT.JS DASHBOARD (TypeScript)
+    └─ Location: /Users/bobbymini/Documents/tradezone-chatbot-dashboard/
+       ├─ /app/                      - Next.js 14 App Router
+       ├─ /lib/                      - Business logic & utilities
+       ├─ /components/               - React UI components
+       └─ /public/widget/            - Embeddable chat widget
+       
+       Purpose: Admin dashboard, analytics, management UI
+
+2️⃣  CHATKIT TEXT AGENT (TypeScript - runs in Next.js)
+    └─ Entry: /app/api/chatkit/agent/route.ts
+       ├─ /lib/chatkit/defaultPrompt.ts      - System instructions
+       ├─ /lib/chatkit/productCatalog.ts     - Product search engine
+       ├─ /lib/chatkit/tradeInPrompts.ts     - Trade-in workflows
+       └─ /lib/tools/vectorSearch.ts         - Hybrid search (Woo + Vector + Graphiti)
+       
+       Purpose: Text-based chat on website (GPT-4 + Gemini 3 Flash)
+
+3️⃣  VOICE AGENT (Python)
+    └─ Location: /agents/voice/agent.py
+       ├─ AssemblyAI STT                     - Speech-to-text
+       ├─ GPT-4.1-mini                       - Conversation engine
+       ├─ Cartesia Sonic 3 TTS               - Text-to-speech
+       └─ LiveKit SDK                        - WebRTC voice infrastructure
+       
+       Purpose: Real-time voice chat (3x faster latency than OpenAI Realtime)
+
+4️⃣  LIVEKIT SERVER (External SaaS)
+    └─ URL: wss://tradezone-9kwy60jr.livekit.cloud
+       Purpose: WebRTC infrastructure for voice/video sessions
+```
+
+---
+
+### **Data Layer & Knowledge Systems**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          DATA ARCHITECTURE                           │
+└─────────────────────────────────────────────────────────────────────┘
+
+🗄️  SUPABASE (PostgreSQL)
+    └─ Shared database for all agents
+       ├─ chat_logs                  - All text & voice messages
+       ├─ chat_sessions              - Session metadata (Guest-XX IDs from n8n)
+       ├─ chat_usage_metrics         - Token usage & costs
+       ├─ chat_security_events       - Rate limits, auth failures
+       ├─ trade_in_leads             - Trade-in submissions
+       ├─ gsc_daily_summary          - Search Console metrics
+       ├─ gsc_performance            - SEO data
+       └─ profiles, organizations    - User management
+
+🧠 GRAPHITI (Knowledge Graph - Railway)
+    └─ URL: https://graphiti-production-334e.up.railway.app
+       ├─ Product catalog facts      - 1,024+ synced catalog entries
+       ├─ Trade-in pricing           - 94 trade grid entries
+       ├─ Search synonyms            - Auto-learned mappings
+       └─ Conversation memory        - User preferences & history
+       
+       Purpose: Graph RAG for smart search enhancement
+       - "basketball" → "NBA 2K"
+       - "horror game" → "Silent Hill, Resident Evil"
+       - Self-learning from failed searches
+
+📊 VECTOR DATABASES (OpenAI)
+    └─ Product Catalog Vector Store
+       └─ ID: vs_68e89cf979e88191bb8b4882caadbc0d
+       Purpose: Semantic product search
+
+🛒 WOOCOMMERCE (External)
+    └─ Live product data source
+       ├─ Product catalog JSON       - https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+       ├─ Real-time pricing          - Source of truth for prices
+       └─ Stock availability         - Live inventory status
+
+🚀 UPSTASH REDIS (Serverless)
+    └─ Purpose: Distributed rate limiting & high-performance session caching
+```
+
+---
+
+### **Agent Communication Flow**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    HOW AGENTS WORK TOGETHER                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+USER ON WEBSITE
+    │
+    ├─── [TEXT CHAT] ──────────────────────────────────────────┐
+    │                                                            │
+    │    Widget → /api/chatkit/agent                            │
+    │             ↓                                              │
+    │    1. Security Layer (rate limit, API key, budget)        │
+    │    2. Session Management (Guest-XX from n8n)              │
+    │    3. Graphiti Context (load conversation history)        │
+    │    4. Hybrid Search Flow:                                 │
+    │       a) WooCommerce (source of truth)                    │
+    │       b) Vector Search (semantic matching)                │
+    │       c) Graphiti Graph RAG (synonym expansion)           │
+    │       d) Perplexity (web fallback)                        │
+    │    5. LLM Processing (GPT-4 or Gemini 3 Flash)            │
+    │    6. Save to Supabase                                    │
+    │    7. Update Graphiti Memory                              │
+    │             ↓                                              │
+    │    Response to user                                        │
+    │                                                            │
+    └─── [VOICE CHAT] ──────────────────────────────────────────┘
+                                                                 │
+         Widget → /api/livekit/token                            │
+                  ↓                                              │
+         LiveKit Server (WebRTC)                                │
+                  ↓                                              │
+         Python Voice Agent (agents/voice/agent.py)             │
+                  ↓                                              │
+         1. AssemblyAI STT (user speech → text)                 │
+         2. GPT-4.1-mini (conversation logic)                   │
+         3. Tools call Next.js APIs:                            │
+            - /api/tradein/update                               │
+            - /api/tradein/submit                               │
+            - /api/chatkit/agent (product search)               │
+         4. Cartesia TTS (text → speech)                        │
+         5. Save to Supabase (same tables as text)              │
+                  ↓                                              │
+         Voice response to user                                 │
+```
+
+---
+
+### **Search Intelligence Hierarchy**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SEARCH FLOW (RANKED BY PRIORITY)                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+Query: "basketball game for PS5"
+
+STEP 1: Graphiti Search Enhancer
+    └─ Input: "basketball game for PS5"
+    └─ Graphiti Graph RAG finds: "basketball" → "NBA 2K"
+    └─ Enhanced Query: "NBA 2K PS5"
+
+STEP 2: WooCommerce Product Search (Source of Truth)
+    └─ Search JSON catalog: tradezone-WooCommerce-Products.json
+    └─ Filter by: category, platform, stock status
+    └─ Sort by: price (if "cheap"/"best" in query)
+    └─ Returns: Live pricing + availability
+
+STEP 3: Vector Search (Semantic Enhancement)
+    └─ OpenAI Vector Store semantic search
+    └─ Enriches WooCommerce results with specs/details
+
+STEP 4: Catalog Master (Metadata Layer)
+    └─ /data/catalog/products_master.json
+    └─ Adds: trade-in values, warranty info, aliases
+
+STEP 5: Perplexity Search (Fallback)
+    └─ Only if WooCommerce + Vector return nothing
+    └─ Live web search: "NBA 2K PS5 site:tradezone.sg"
+
+RESULT: Deterministic product list with:
+    - Accurate pricing (WooCommerce)
+    - Smart matching (Graphiti + Vector)
+    - Complete details (Catalog Master)
+    - Live availability (WooCommerce stock status)
+```
+
+---
+
+### **Environment Variables Reference**
+
+```bash
+# === SUPABASE (Core Database) ===
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# === GRAPHITI (Knowledge Graph) ===
+GRAPHTI_BASE_URL=https://graphiti-production-334e.up.railway.app
+GRAPHTI_API_KEY=your-graphiti-api-key
+GRAPHTI_DEFAULT_GROUP_ID=tradezone-main
+
+# === LIVEKIT (Voice Infrastructure) ===
+LIVEKIT_URL=wss://tradezone-9kwy60jr.livekit.cloud
+LIVEKIT_API_KEY=APIexoxxNQJkjoW
+LIVEKIT_API_SECRET=6ZtxzOricfKDesvfnf2BfV3hoLMGJ7s8tnfz9ezHnQ4U
+
+# === AI PROVIDERS ===
+OPENAI_API_KEY=your-openai-key
+NEXT_PUBLIC_OPENROUTER_API_KEY=your-openrouter-key (optional)
+OPENAI_VECTOR_STORE_ID=vs_68e89cf979e88191bb8b4882caadbc0d
+OPENAI_VECTOR_STORE_ID_TRADEIN=vs_tradein_id (optional)
+
+# === WOOCOMMERCE ===
+WC_SITE=https://tradezone.sg
+WC_KEY=your-consumer-key
+WC_SECRET=your-consumer-secret
+WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+
+# === GOOGLE SERVICES ===
+GA_PROPERTY=your-ga4-property-id
+SC_SITE=sc-domain:tradezone.sg
+GOOGLE_SERVICE_ACCOUNT_KEY=your-service-account-json
+
+# === SMTP (Email) ===
+SMTP_HOST=smtp.smtp2go.com
+SMTP_PORT=2525
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-pass
+SMTP_FROM_EMAIL=contactus@tradezone.sg
+SMTP_FROM_NAME=TradeZone
+
+# === CHATKIT SECURITY ===
+CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+NEXT_PUBLIC_DEFAULT_ORG_ID=your-org-id
+
+# === UPSTASH REDIS ===
+UPSTASH_REDIS_URL=your-upstash-url
+UPSTASH_REDIS_TOKEN=your-upstash-token
+```
+
+---
+
+### **Key File Locations**
+
+```
+📂 TYPESCRIPT (Next.js Dashboard + Text Agent)
+   ├─ app/api/chatkit/agent/route.ts         - Main text agent endpoint
+   ├─ lib/chatkit/defaultPrompt.ts           - System instructions
+   ├─ lib/chatkit/productCatalog.ts          - Product search engine
+   ├─ lib/tools/vectorSearch.ts              - Hybrid search logic
+   ├─ lib/graphiti.ts                        - Graphiti client
+   ├─ lib/graphiti-search-enhancer.ts        - Graph RAG query enhancement
+   ├─ lib/graphiti-learning-loop.ts          - Self-learning system
+   ├─ lib/trade-in/service.ts                - Trade-in business logic
+   └─ lib/email-service.ts                   - SMTP email sender
+
+📂 PYTHON (Voice Agent)
+   ├─ agents/voice/agent.py                  - Main voice agent
+   ├─ agents/voice/auto_save.py              - Contact auto-extraction
+   └─ agents/voice/requirements.txt          - Python dependencies
+
+📂 DATA (Catalogs & Pricing)
+   ├─ data/catalog/products_master.json      - Master product catalog
+   ├─ data/catalog/alias_index.json          - Product name aliases
+   ├─ data/catalog/search_synonyms.jsonl     - Search mappings
+   ├─ data/trade_in_prices_2025.json         - Trade-in pricing
+   └─ data/tradezone_price_grid.jsonl        - Price grid format
+
+📂 SCRIPTS (Automation)
+   ├─ scripts/sync-graphiti-graph.ts         - Sync catalog to Graphiti
+   ├─ scripts/run-learning-loop.ts           - Weekly learning job
+   └─ scripts/refresh-product-catalog.mjs    - Update WooCommerce snapshot
+```
+
+---
+
+### **Deployment Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        PRODUCTION DEPLOYMENT                         │
+└─────────────────────────────────────────────────────────────────────┘
+
+🌐 FRONTEND (Coolify)
+   └─ trade.rezult.co (Next.js dashboard + text agent)
+      - Port: 3001/3003
+      - Auto-deploy from: main branch
+
+🎙️ VOICE AGENT (Coolify)
+   └─ Python container (feature/livekit-voice-agent)
+      - Connects to: LiveKit cloud
+      - Calls back to: trade.rezult.co/api/*
+
+☁️  EXTERNAL SERVICES
+   ├─ LiveKit Cloud         - wss://tradezone-9kwy60jr.livekit.cloud
+   ├─ Graphiti (Railway)    - https://graphiti-production-334e.up.railway.app
+   ├─ Supabase              - Managed PostgreSQL
+   └─ WooCommerce           - tradezone.sg (WordPress)
+
+📧 EMAIL FLOW
+   └─ SMTP2GO → contactus@tradezone.sg (BCC: info@rezult.co)
+```
+
+---
+
 ## Planned Phase — Weekly Trend Pulse & Content (Backlog)
 - Add a weekly “market pulse” that summarizes electronics/games trends, ties to current catalog, and outputs short advisory + draft content.
 - Scope: internal report first (not public). Later: blog outline + 2–3 social post drafts.
@@ -10,7 +308,21 @@
 ## Change Log — Jan 6, 2026 (Search Efficiency & Genre Accuracy)
 
 
-## Change Log — Jan 7, 2026 (Refinement: Voice Fallbacks & Game Intent)
+## Change Log — Jan 7, 2026 (Trade-In Flow Precision & Session Isolation)
+
+### Trade-In Flow Precision (Jan 7, 2026) ✅
+**Goal**: Resolve session data leakage and improve clarity for payment/payout prompts.
+
+**Fixes** (Commit `b7ccde95`, `f5c1313b`, `0b4836ce`):
+- **Robust Session Reset**: Relaxed the "New Trade Intent" regex to `/(?:^|\b)(?:want\s+to\s+)?(?:trade|sell|swap|upgrade)\s+(?:my|this|a|an|the)\b/i`. This ensures that starting a message with "Trade my ROG Ally..." or "Sell this phone..." forcefully resets any stale session data (like old names/emails from previous users).
+- **Context-Aware Payout Prompts**: 
+  - **Trade-Up**: Agent now asks *"How would you like to pay the top-up? (Cash, PayNow, or Installment?)"* instead of a generic payout question.
+  - **Trade-In**: Continues to ask *"Which payout suits you best: cash, PayNow, or bank transfer?"*
+- **Persistent Installment Intent**: If a user mentions "installment" early in the flow, the agent now acknowledges it correctly by asking for terms (3, 6, or 12 months) instead of resetting to a generic payment menu.
+- **Trade-Up Payout Detection**: Fixed logic to correctly set `preferred_payout` to `"top_up"` internally when trade-up intent is detected, ensuring clear documentation in the dashboard.
+
+### Promo & Flash Sale Integration ✅
+- **Flash Sale Protocol**: Integrated the `TZSALE` promo code logic. Queries containing "sale", "promo", or "deals" now trigger an immediate response: *"Flash sale unlocked ⚡ 5% off with code “TZSALE”"*.
 
 ### Voice Agent Fallback & Search Logic (Jan 7, 2026) ✅
 **Goal**: Improve handling of requests for out-of-stock items (GoPro, Roblox) effectively and unblock specific game genres.

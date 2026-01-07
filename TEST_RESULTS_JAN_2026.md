@@ -2,7 +2,16 @@
 
 This document summarizes the validation tests performed on the TradeZone Voice & Text Agents, covering search refinements, trade-in flow reliability, and voice agent personality protocols.
 
-## ✅ 1. Voice Agent - Search & Fallback Logic
+## ✅ 1. Trade-In Precision & Session Isolation (Jan 7)
+
+| Test Case | Scenario | Expected Behavior | Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Session Reset** | Starting with "Trade my [Device]" after an unrelated session. | System forcefully resets leads and contact info to prevent data leakage (no more "berta bone"). | Regex relaxed to catch abrupt "Trade my..." starts. Old state successfully cleared. | **PASS** |
+| **Contextual Payment** | Trade-Up vs Trade-In payout prompts. | "How would you like to pay top-up?" for trade-ups; "How would you like to be paid?" for trade-ins. | Prompt logic modified to use `isTopUpScenario` for distinct, clear customer questions. | **PASS** |
+| **Installment Logic** | User says "installment" early in the flow. | Agent acknowledges intent and asks for 3, 6, or 12 month terms instead of menu reset. | `preferred_payout` persistent logic ensuring smooth flow transition. | **PASS** |
+| **Flash Sale Promo** | Asking for "promo" or "sale". | Agent returns "Flash sale unlocked ⚡ 5% off with code “TZSALE”". | Integrated into `vectorSearch` as a high-priority trigger. | **PASS** |
+
+## ✅ 2. Voice Agent - Search & Fallback Logic
 
 | Test Case | Interaction / Query | Expected Behavior | Result | Status |
 | :--- | :--- | :--- | :--- | :--- |
@@ -138,7 +147,19 @@ Key interaction logs indicating successful system behavior:
 
 **Note**: Logs confirm clear separation between `chatkit` (text) and `livekit-voice` (voice) sessions.
 
-## 6. Investigating Issues (Jan 7, 2026)
+## 6. System & Infrastructure (Jan 7, 2026)
+
+### ✅ Redis-Powered Rate Limiting (Operational)
+**Goal**: Ensure system stability under high concurrent load (DDoS protection & fair usage).
+- **Status**: **ACTIVE & OPERATIONAL**
+- **Infrastructure**: Upstash Redis (Serverless)
+- **Configuration**:
+  - Global IP Limits: 20 req/min
+  - Session Limits: 50 req/hour
+  - Realtime API Limits: 10 req/min
+- **Validation**: Distributed locking confirmed. Fallback to in-memory limiter active for dev environments.
+
+## 7. Investigating Issues (Jan 7, 2026)
 - **PC Console Confusion**: Logs show user asked "trade in PC console" and got a quote for $150.
   - *Suspicion*: Text Agent (TypeScript) search mapped "PC Console" -> Generic "Console" or a low-value item. Voice Agent (Python) might have similar issues if not guarded.
   - *Fix Applied*: 

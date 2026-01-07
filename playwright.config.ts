@@ -9,6 +9,8 @@ export default defineConfig({
     baseURL: process.env.API_BASE_URL || "http://127.0.0.1:3000",
   },
   testDir: "tests",
+  testIgnore: "**/*.test.ts", // Ignore Jest unit tests (using .test.ts)
+  testMatch: "**/*.spec.ts", // Only run Playwright spec files
   // Run tests sequentially to avoid rate limiting
   workers: 1,
   // Retry failed tests once (in case of transient rate limit issues)

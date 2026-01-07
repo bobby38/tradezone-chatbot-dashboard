@@ -93,10 +93,10 @@ const ALLOWED_ORIGINS = [
   "https://www.sabaisensations.com",
   ...(process.env.NODE_ENV === "development"
     ? [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3003",
-      ]
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3003",
+    ]
     : []),
 ];
 
@@ -509,9 +509,9 @@ function isPreferredGridEntry(
 function getCorsHeaders(origin: string | null): HeadersInit {
   const allowedOrigin =
     origin &&
-    ALLOWED_ORIGINS.some((allowed) =>
-      origin.includes(allowed.replace("https://", "").replace("http://", "")),
-    )
+      ALLOWED_ORIGINS.some((allowed) =>
+        origin.includes(allowed.replace("https://", "").replace("http://", "")),
+      )
       ? origin
       : ALLOWED_ORIGINS[0];
 
@@ -560,10 +560,10 @@ function renderCatalogMatches(
       : match.name;
     const flagship =
       match.flagshipCondition?.basePrice !== null &&
-      match.flagshipCondition?.basePrice !== undefined
+        match.flagshipCondition?.basePrice !== undefined
         ? " — S$" +
-          match.flagshipCondition.basePrice.toFixed(0) +
-          ` (${match.flagshipCondition.label})`
+        match.flagshipCondition.basePrice.toFixed(0) +
+        ` (${match.flagshipCondition.label})`
         : match.price
           ? " — S$" + match.price
           : "";
@@ -663,9 +663,9 @@ function summarizeMatchesByModifier(
       return { match, price };
     })
     .filter(({ price }) => typeof price === "number") as Array<{
-    match: CatalogMatch;
-    price: number;
-  }>;
+      match: CatalogMatch;
+      price: number;
+    }>;
 
   if (!pricedMatches.length) return null;
 
@@ -2280,13 +2280,13 @@ const TRADE_IN_PRICE_OVERRIDES: Array<{
   range: string;
   header: string;
 }> = [
-  {
-    patterns: [/osmo pocket 3/i, /creator combo/i],
-    range: "S$350 – S$400",
-    header:
-      "Approximate trade-in value for the DJI Osmo Pocket 3 Creator Combo: S$350 – S$400 (subject to inspection).",
-  },
-];
+    {
+      patterns: [/osmo pocket 3/i, /creator combo/i],
+      range: "S$350 – S$400",
+      header:
+        "Approximate trade-in value for the DJI Osmo Pocket 3 Creator Combo: S$350 – S$400 (subject to inspection).",
+    },
+  ];
 
 function applyTradeInPriceOverrides(
   text: string,
@@ -2338,9 +2338,9 @@ function enforceTradeInResponseOverrides(response: string): string {
         return match.includes("subject to inspection")
           ? match
           : match.replace(
-              desiredRange,
-              `${desiredRange} (subject to inspection)`,
-            );
+            desiredRange,
+            `${desiredRange} (subject to inspection)`,
+          );
       }
       return match.replace(
         /S\$[0-9][0-9,]*(?:\s*[–-]\s*S\$[0-9][0-9,]*)?/g,
@@ -2508,126 +2508,126 @@ const DEVICE_PATTERNS: Array<{
   brand: string;
   model: string;
 }> = [
-  // Order matters: specific variants first, then general fallbacks
-  { regex: /legion go 2/i, brand: "Lenovo", model: "Legion Go Gen 2" },
-  { regex: /legion go/i, brand: "Lenovo", model: "Legion Go Gen 1" },
-  { regex: /rog ally x xbox/i, brand: "Asus", model: "ROG Ally X Xbox" },
-  { regex: /rog ally x/i, brand: "Asus", model: "ROG Ally X" },
-  { regex: /rog ally/i, brand: "Asus", model: "ROG Ally" },
-  { regex: /steam deck oled/i, brand: "Valve", model: "Steam Deck OLED" },
-  { regex: /steam deck lcd/i, brand: "Valve", model: "Steam Deck LCD" },
-  { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
-  { regex: /switch 2/i, brand: "Nintendo", model: "Switch 2" },
-  { regex: /switch lite/i, brand: "Nintendo", model: "Switch Lite" },
-  { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
-  { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
-  {
-    regex: /ps5\s*pro|playstation 5\s*pro/i,
-    brand: "Sony",
-    model: "PlayStation 5 Pro",
-  },
-  {
-    regex: /ps5\s*slim.*digital|playstation 5\s*slim.*digital/i,
-    brand: "Sony",
-    model: "PlayStation 5 Slim Digital",
-  },
-  {
-    regex: /ps5\s*slim.*disc|playstation 5\s*slim.*disc/i,
-    brand: "Sony",
-    model: "PlayStation 5 Slim Disc",
-  },
-  {
-    regex: /ps5\s*slim|playstation 5\s*slim/i,
-    brand: "Sony",
-    model: "PlayStation 5 Slim",
-  },
-  {
-    regex: /ps5\s*fat.*digital|playstation 5\s*fat.*digital/i,
-    brand: "Sony",
-    model: "PlayStation 5 Fat Digital",
-  },
-  {
-    regex: /ps5\s*fat.*disc|playstation 5\s*fat.*disc/i,
-    brand: "Sony",
-    model: "PlayStation 5 Fat Disc",
-  },
-  {
-    regex: /ps5\s*fat|playstation 5\s*fat/i,
-    brand: "Sony",
-    model: "PlayStation 5 Fat",
-  },
-  {
-    regex: /ps5\s*digital|playstation 5\s*digital/i,
-    brand: "Sony",
-    model: "PlayStation 5 Digital",
-  },
-  {
-    regex: /ps5\s*disc|playstation 5\s*disc/i,
-    brand: "Sony",
-    model: "PlayStation 5 Disc",
-  },
-  { regex: /ps5|playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
-  {
-    regex: /ps4\s*pro|playstation 4\s*pro/i,
-    brand: "Sony",
-    model: "PlayStation 4 Pro",
-  },
-  {
-    regex: /ps4\s*slim|playstation 4\s*slim/i,
-    brand: "Sony",
-    model: "PlayStation 4 Slim",
-  },
-  {
-    regex: /ps4\s*fat|playstation 4\s*fat/i,
-    brand: "Sony",
-    model: "PlayStation 4 Fat",
-  },
-  { regex: /ps4|playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
-  {
-    regex: /xbox series x|\bxsx\b/i,
-    brand: "Microsoft",
-    model: "Xbox Series X",
-  },
-  {
-    regex: /xbox series s|\bxss\b/i,
-    brand: "Microsoft",
-    model: "Xbox Series S",
-  },
-  {
-    regex: /xbox series x digital/i,
-    brand: "Microsoft",
-    model: "Xbox Series X Digital",
-  },
-  { regex: /xbox one/i, brand: "Microsoft", model: "Xbox One" },
-  { regex: /msi claw 8ai\+/i, brand: "MSI", model: "Claw 8AI+" },
-  { regex: /msi claw a8/i, brand: "MSI", model: "Claw A8" },
-  { regex: /msi claw/i, brand: "MSI", model: "Claw" },
-  {
-    regex: /ps portal midnight black/i,
-    brand: "Sony",
-    model: "Portal Midnight Black",
-  },
-  { regex: /ps portal|portal white/i, brand: "Sony", model: "Portal White" },
-  {
-    regex: /playstation vr 2|psvr2|ps vr2/i,
-    brand: "Sony",
-    model: "PlayStation VR 2",
-  },
-  { regex: /meta quest 3s/i, brand: "Meta", model: "Quest 3S" },
-  { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
-  { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
-  { regex: /meta quest/i, brand: "Meta", model: "Quest" },
-  { regex: /pico 4 ultra/i, brand: "Pico", model: "Pico 4 Ultra" },
-  { regex: /pico 4/i, brand: "Pico", model: "Pico 4" },
-  { regex: /legion go s/i, brand: "Lenovo", model: "Legion GO S Z1 Ext" },
-  {
-    regex: /dji osmo pocket 3 creator/i,
-    brand: "DJI",
-    model: "Osmo Pocket 3 Creator",
-  },
-  { regex: /dji osmo pocket 3/i, brand: "DJI", model: "Osmo Pocket 3" },
-  { regex: /ipad/i, brand: "Apple", model: "iPad" },
-];
+    // Order matters: specific variants first, then general fallbacks
+    { regex: /legion go 2/i, brand: "Lenovo", model: "Legion Go Gen 2" },
+    { regex: /legion go/i, brand: "Lenovo", model: "Legion Go Gen 1" },
+    { regex: /rog ally x xbox/i, brand: "Asus", model: "ROG Ally X Xbox" },
+    { regex: /rog ally x/i, brand: "Asus", model: "ROG Ally X" },
+    { regex: /rog ally/i, brand: "Asus", model: "ROG Ally" },
+    { regex: /steam deck oled/i, brand: "Valve", model: "Steam Deck OLED" },
+    { regex: /steam deck lcd/i, brand: "Valve", model: "Steam Deck LCD" },
+    { regex: /steam deck/i, brand: "Valve", model: "Steam Deck" },
+    { regex: /switch 2/i, brand: "Nintendo", model: "Switch 2" },
+    { regex: /switch lite/i, brand: "Nintendo", model: "Switch Lite" },
+    { regex: /switch oled/i, brand: "Nintendo", model: "Switch OLED" },
+    { regex: /nintendo switch/i, brand: "Nintendo", model: "Switch" },
+    {
+      regex: /ps5\s*pro|playstation 5\s*pro/i,
+      brand: "Sony",
+      model: "PlayStation 5 Pro",
+    },
+    {
+      regex: /ps5\s*slim.*digital|playstation 5\s*slim.*digital/i,
+      brand: "Sony",
+      model: "PlayStation 5 Slim Digital",
+    },
+    {
+      regex: /ps5\s*slim.*disc|playstation 5\s*slim.*disc/i,
+      brand: "Sony",
+      model: "PlayStation 5 Slim Disc",
+    },
+    {
+      regex: /ps5\s*slim|playstation 5\s*slim/i,
+      brand: "Sony",
+      model: "PlayStation 5 Slim",
+    },
+    {
+      regex: /ps5\s*fat.*digital|playstation 5\s*fat.*digital/i,
+      brand: "Sony",
+      model: "PlayStation 5 Fat Digital",
+    },
+    {
+      regex: /ps5\s*fat.*disc|playstation 5\s*fat.*disc/i,
+      brand: "Sony",
+      model: "PlayStation 5 Fat Disc",
+    },
+    {
+      regex: /ps5\s*fat|playstation 5\s*fat/i,
+      brand: "Sony",
+      model: "PlayStation 5 Fat",
+    },
+    {
+      regex: /ps5\s*digital|playstation 5\s*digital/i,
+      brand: "Sony",
+      model: "PlayStation 5 Digital",
+    },
+    {
+      regex: /ps5\s*disc|playstation 5\s*disc/i,
+      brand: "Sony",
+      model: "PlayStation 5 Disc",
+    },
+    { regex: /ps5|playstation 5|ps ?5/i, brand: "Sony", model: "PlayStation 5" },
+    {
+      regex: /ps4\s*pro|playstation 4\s*pro/i,
+      brand: "Sony",
+      model: "PlayStation 4 Pro",
+    },
+    {
+      regex: /ps4\s*slim|playstation 4\s*slim/i,
+      brand: "Sony",
+      model: "PlayStation 4 Slim",
+    },
+    {
+      regex: /ps4\s*fat|playstation 4\s*fat/i,
+      brand: "Sony",
+      model: "PlayStation 4 Fat",
+    },
+    { regex: /ps4|playstation 4|ps ?4/i, brand: "Sony", model: "PlayStation 4" },
+    {
+      regex: /xbox series x|\bxsx\b/i,
+      brand: "Microsoft",
+      model: "Xbox Series X",
+    },
+    {
+      regex: /xbox series s|\bxss\b/i,
+      brand: "Microsoft",
+      model: "Xbox Series S",
+    },
+    {
+      regex: /xbox series x digital/i,
+      brand: "Microsoft",
+      model: "Xbox Series X Digital",
+    },
+    { regex: /xbox one/i, brand: "Microsoft", model: "Xbox One" },
+    { regex: /msi claw 8ai\+/i, brand: "MSI", model: "Claw 8AI+" },
+    { regex: /msi claw a8/i, brand: "MSI", model: "Claw A8" },
+    { regex: /msi claw/i, brand: "MSI", model: "Claw" },
+    {
+      regex: /ps portal midnight black/i,
+      brand: "Sony",
+      model: "Portal Midnight Black",
+    },
+    { regex: /ps portal|portal white/i, brand: "Sony", model: "Portal White" },
+    {
+      regex: /playstation vr 2|psvr2|ps vr2/i,
+      brand: "Sony",
+      model: "PlayStation VR 2",
+    },
+    { regex: /meta quest 3s/i, brand: "Meta", model: "Quest 3S" },
+    { regex: /meta quest 3/i, brand: "Meta", model: "Quest 3" },
+    { regex: /meta quest 2/i, brand: "Meta", model: "Quest 2" },
+    { regex: /meta quest/i, brand: "Meta", model: "Quest" },
+    { regex: /pico 4 ultra/i, brand: "Pico", model: "Pico 4 Ultra" },
+    { regex: /pico 4/i, brand: "Pico", model: "Pico 4" },
+    { regex: /legion go s/i, brand: "Lenovo", model: "Legion GO S Z1 Ext" },
+    {
+      regex: /dji osmo pocket 3 creator/i,
+      brand: "DJI",
+      model: "Osmo Pocket 3 Creator",
+    },
+    { regex: /dji osmo pocket 3/i, brand: "DJI", model: "Osmo Pocket 3" },
+    { regex: /ipad/i, brand: "Apple", model: "iPad" },
+  ];
 
 function extractTradeInClues(message: string): TradeInUpdateInput {
   const trimmed = message.trim();
@@ -3002,8 +3002,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
 
     const alreadyNotified = Array.isArray(detail.trade_in_actions)
       ? detail.trade_in_actions.some(
-          (action: any) => action.action_type === "email_sent",
-        )
+        (action: any) => action.action_type === "email_sent",
+      )
       : false;
 
     // In-store flow: accept model-only capture (brand can be missing). Trade-up can also rely on source device name.
@@ -3011,8 +3011,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     // Storage is optional, and is often embedded in model text (e.g., "ROG Ally X 1TB")
     const hasStorage = Boolean(
       detail.storage ||
-        (typeof detail.model === "string" &&
-          /\b\d+\s*(gb|tb)\b/i.test(detail.model)),
+      (typeof detail.model === "string" &&
+        /\b\d+\s*(gb|tb)\b/i.test(detail.model)),
     );
     let hasContactPhone = Boolean(detail.contact_phone);
     let hasEmail = Boolean(detail.contact_email);
@@ -3022,8 +3022,8 @@ async function autoSubmitTradeInLeadIfComplete(params: {
     const isTradeUp = Boolean(
       (params.tradeUpPricingSummary?.source &&
         params.tradeUpPricingSummary?.target) ||
-        (detail.source_device_name && detail.target_device_name) ||
-        detail.top_up_amount,
+      (detail.source_device_name && detail.target_device_name) ||
+      detail.top_up_amount,
     );
 
     console.log("[ChatKit] Trade-up detection:", {
@@ -3620,8 +3620,8 @@ async function buildTradeInSummary(
 
     const isTradeUp = Boolean(
       lead.source_device_name &&
-        lead.target_device_name &&
-        lead.top_up_amount != null,
+      lead.target_device_name &&
+      lead.top_up_amount != null,
     );
 
     // Build trade-up line with installment estimate if applicable
@@ -3648,11 +3648,11 @@ async function buildTradeInSummary(
         : null,
       lead.contact_name || lead.contact_email || lead.contact_phone
         ? [
-            "Contact:",
-            `  Name: ${lead.contact_name || "—"}`,
-            `  Email: ${lead.contact_email || "—"}`,
-            `  Phone: ${lead.contact_phone || "—"}`,
-          ].join("\n")
+          "Contact:",
+          `  Name: ${lead.contact_name || "—"}`,
+          `  Email: ${lead.contact_email || "—"}`,
+          `  Phone: ${lead.contact_phone || "—"}`,
+        ].join("\n")
         : null,
       `Photos: ${photosProvided}`,
       lead.notes ? `Latest Notes: ${lead.notes}` : null,
@@ -4488,8 +4488,12 @@ export async function POST(request: NextRequest) {
   let tradeUpPricingSummary: TradeUpPricingSummary | null = null;
   let forcedTradeInReply: string | null = null;
   let supportFlowHandled = false;
-  let assistantMessage: { content?: string | null; tool_calls?: any[] } | null =
-    null;
+  let saleIntent = false;
+  let assistantMessage: {
+    role: "assistant";
+    content?: string | null;
+    tool_calls?: any[];
+  } | null = null;
   let truncatedHistory: any[] = [];
 
   try {
@@ -4508,7 +4512,7 @@ export async function POST(request: NextRequest) {
       setSupportFlowState(sessionId, supportState);
       finalResponse = "Are you in Singapore?";
       supportFlowHandled = true;
-      assistantMessage = { content: finalResponse };
+      assistantMessage = { role: "assistant", content: finalResponse };
     }
 
     // Early spam detection - catch before any flow starts
@@ -4532,7 +4536,7 @@ export async function POST(request: NextRequest) {
       finalResponse =
         "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?";
       supportFlowHandled = true;
-      assistantMessage = { content: finalResponse };
+      assistantMessage = { role: "assistant", content: finalResponse };
     }
 
     const existingSupportState = getSupportFlowState(sessionId);
@@ -4561,11 +4565,11 @@ export async function POST(request: NextRequest) {
         purpose: supportKind === "warranty" ? "Warranty check" : undefined,
         issue:
           initialIssue.length > 6 &&
-          !isAffirmativeReply(initialIssue) &&
-          !isNegativeReply(initialIssue) &&
-          !genericSupportOnly &&
-          issueIsSpecific &&
-          supportKind === "warranty"
+            !isAffirmativeReply(initialIssue) &&
+            !isNegativeReply(initialIssue) &&
+            !genericSupportOnly &&
+            issueIsSpecific &&
+            supportKind === "warranty"
             ? initialIssue
             : undefined,
         purchaseTiming: initialIssueTiming || undefined,
@@ -4575,7 +4579,7 @@ export async function POST(request: NextRequest) {
       // Immediately ask for location verification - don't process the initial message
       finalResponse = "I can help you with that. Are you in Singapore?";
       supportFlowHandled = true;
-      assistantMessage = { content: finalResponse };
+      assistantMessage = { role: "assistant", content: finalResponse };
     }
 
     // Only process support flow messages if this isn't the initial support request
@@ -5450,7 +5454,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             tradeUpPairIntent ||
             Boolean(
               tradeInLeadDetail?.source_device_name &&
-                tradeInLeadDetail?.target_device_name,
+              tradeInLeadDetail?.target_device_name,
             );
           const hasCondition = Boolean(tradeInLeadDetail?.condition);
           const accessoriesCaptured = Array.isArray(
@@ -5489,7 +5493,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               tradeUpPairIntent ||
               Boolean(
                 tradeInLeadDetail?.source_device_name &&
-                  tradeInLeadDetail?.target_device_name,
+                tradeInLeadDetail?.target_device_name,
               );
             const payoutInstruction = isTradeUpFlow
               ? "Skip payout preference for trade-ups (customer pays us the top-up)."
@@ -5899,9 +5903,9 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         (tradeInLeadId && TRADE_IN_DEVICE_HINTS.test(message.toLowerCase()));
       const leadHasPrice = Boolean(
         tradeInLeadDetail?.price_hint ||
-          tradeInLeadDetail?.range_min ||
-          tradeInLeadDetail?.range_max ||
-          tradeInLeadDetail?.source_price_quoted,
+        tradeInLeadDetail?.range_min ||
+        tradeInLeadDetail?.range_max ||
+        tradeInLeadDetail?.source_price_quoted,
       );
       const quoteAlreadyGiven =
         tradeInLeadDetail?.initial_quote_given === true &&
@@ -5921,7 +5925,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       }
 
       // Note: isSaleContext was removed; treat as false by default.
-      const saleIntent =
+      saleIntent =
         !deliveryIntent &&
         /\b(black\s*friday|cyber\s*monday|bf\s*deal|sale|deals?|promo|promotion|discount|latest|new\s+arrival)\b/i.test(
           message,
@@ -6819,7 +6823,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   : "";
               const slotParam =
                 functionArgs.slot === "trade_in" ||
-                functionArgs.slot === "target"
+                  functionArgs.slot === "target"
                   ? functionArgs.slot
                   : "target";
               if (!rawQuery) {
@@ -6854,12 +6858,12 @@ Only after user says yes/proceed, start collecting details (condition, accessori
                   : "";
               const priceType =
                 functionArgs.priceType === "retail" ||
-                functionArgs.priceType === "trade_in"
+                  functionArgs.priceType === "trade_in"
                   ? functionArgs.priceType
                   : "trade_in";
               const subject =
                 functionArgs.subject === "target" ||
-                functionArgs.subject === "trade_in"
+                  functionArgs.subject === "trade_in"
                   ? functionArgs.subject
                   : priceType === "trade_in"
                     ? "trade_in"
@@ -7437,8 +7441,8 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
     const pendingToolCalls = Boolean(
       assistantMessage &&
-        assistantMessage.tool_calls &&
-        assistantMessage.tool_calls.length > 0,
+      assistantMessage.tool_calls &&
+      assistantMessage.tool_calls.length > 0,
     );
     // Auto-submit whenever there's an active trade-in lead
     // (even if the model just called a tool such as searchProducts).
@@ -7946,6 +7950,18 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         `${finalResponse}\n\n[View Product](${productUrl})`.trim();
     }
 
+    // SURFCE PROMO CODE: If user mentioned sale/promo and code is missing, append it
+    if (
+      saleIntent &&
+      !finalResponse.includes("TZSALE") &&
+      !tradeInLeadId &&
+      !tradeUpContext
+    ) {
+      const promoSuffix =
+        "\n\nFlash sale unlocked ⚡ 5% off with code “TZSALE”. Use it at checkout on [tradezone.sg](https://tradezone.sg).";
+      finalResponse = `${finalResponse}${promoSuffix}`.trim();
+    }
+
     // If the response contains numbered bullets with product names but no links, append links for voice/text parity
     if (
       !/https?:\/\//i.test(finalResponse) &&
@@ -7971,10 +7987,20 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const integratedLinks = cleaned
           .slice(0, 5)
           .map((u, idx) => {
-            const linkLine = `${idx + 1}. [View Product](${u})`;
+            // Attempt to extract the product title from the search result string
+            // Search result format is usually: "1. **Title** — Price [View Product](URL)"
+            const escapedUrl = u.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const titleRegex = new RegExp(
+              `\\*\\*(.*?)\\*\\*[\\s\\S]*?${escapedUrl}`,
+              "i",
+            );
+            const titleMatch = lastSearchProductsResult.match(titleRegex);
+            const title = titleMatch ? titleMatch[1].trim() : "Product";
+
+            const linkLine = `${idx + 1}. **${title}** — [View Product](${u})`;
             const imageMatch = imageMatches[idx];
             const imageLine = imageMatch
-              ? `\n   ![Product image](${imageMatch})`
+              ? `\n   ![${title}](${imageMatch})`
               : "";
             return `${linkLine}${imageLine}`;
           })
@@ -8087,8 +8113,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         session_name: sessionDisplayName,
       });
       console.log(
-        `[ChatKit] Logged chat turn to chat_logs (source=${
-          mode === "voice" ? "chatkit_voice" : "chatkit"
+        `[ChatKit] Logged chat turn to chat_logs (source=${mode === "voice" ? "chatkit_voice" : "chatkit"
         }, sessionId=${sessionId}, turn=${turnIndex})`,
       );
     } catch (logError) {

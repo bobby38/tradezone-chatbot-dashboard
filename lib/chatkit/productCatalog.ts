@@ -557,13 +557,18 @@ export async function findCatalogMatches(
   // Use effectiveQuery (enhanced) for filter detection
   const wantsTablet = /\b(tab|tablet|ipad)\b/i.test(effectiveQuery);
   const wantsSamsung = /\bgalaxy|samsung\b/i.test(effectiveQuery);
+
+  // FIX: "wantsGame" should ONLY trigger if user explicitly says "game" or specific game genres.
+  // Previously it triggered on "PS5"/"Xbox" which filtered out consoles (category != "game").
   const wantsGame =
-    /(ps[45]|playstation|xbox|switch|nintendo|game)\b/i.test(effectiveQuery) ||
+    /\b(game|games|videogame|rpg|fps|cartridge|disc)\b/i.test(effectiveQuery) ||
     /aladdin|aladin/i.test(effectiveQuery);
+
   const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(effectiveQuery);
   const wantsGPU = /\b(gpu|graphics\s*card|rtx|gtx|radeon|video\s*card)\b/i.test(effectiveQuery);
   const wantsLaptop = /\b(laptop|notebook|macbook)\b/i.test(effectiveQuery);
-  const wantsConsole = /\b(console|ps5|ps4|xbox|switch)\b/i.test(effectiveQuery) && !wantsGame; // Distinct from "game" query
+  // wantsConsole catch-all for explicit console searches if not game
+  const wantsConsole = /\b(console|system|device)\b/i.test(effectiveQuery) && !wantsGame;
   const wantsChair = /\b(chair|seatzone)\b/i.test(effectiveQuery);
 
   const filteredModels = models.filter((model) => {
