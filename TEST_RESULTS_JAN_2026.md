@@ -137,3 +137,9 @@ Key interaction logs indicating successful system behavior:
 | **4860** | **Voice** | "buy a good GPU for a large language model" | (Voice) Conversation about RTX 5080/4090/VRAM. | **PASS** - Complex intent handling & conversation flow. |
 
 **Note**: Logs confirm clear separation between `chatkit` (text) and `livekit-voice` (voice) sessions.
+
+## 6. Investigating Issues (Jan 7, 2026)
+- **PC Console Confusion**: Logs show user asked "trade in PC console" and got a quote for $150 (likely matching a generic console or handheld).
+  - *Suspicion*: Search mapped "PC Console" -> Generic "Console" or a low-value item. User likely meant "Desktop PC" which requires custom valuation.
+  - *Mitigation*: Agent should flag "PC" trade-ins for manual staff review/custom quote rather than auto-quoting $150.
+  - *Status*: **Flagged for Future Improvement**.
