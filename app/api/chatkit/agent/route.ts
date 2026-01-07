@@ -5883,7 +5883,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
       messages.push({
         role: "system",
         content:
-          "Variant/condition safety: If storage/capacity is unclear, ask ONE concise clarification (e.g., 'Is that the 1TB or 2TB?'). For trade-ins, default to preowned/used pricing unless user explicitly says brand new. Do not ask 'new or preowned' - assume preowned for trade-ins. Do not guess or list products.",
+          "Valve Warranty Policy (Steam Deck): Brand New units come with 12-month official Valve warranty (claims must go to Valve directly). Pre-Owned units come with 1-month TradeZone store warranty only. Do not mix this up.",
       });
 
       messages.push({
