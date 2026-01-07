@@ -139,7 +139,9 @@ Key interaction logs indicating successful system behavior:
 **Note**: Logs confirm clear separation between `chatkit` (text) and `livekit-voice` (voice) sessions.
 
 ## 6. Investigating Issues (Jan 7, 2026)
-- **PC Console Confusion**: Logs show user asked "trade in PC console" and got a quote for $150 (likely matching a generic console or handheld).
-  - *Suspicion*: Search mapped "PC Console" -> Generic "Console" or a low-value item. User likely meant "Desktop PC" which requires custom valuation.
-  - *Mitigation*: Agent should flag "PC" trade-ins for manual staff review/custom quote rather than auto-quoting $150.
-  - *Status*: **Flagged for Future Improvement**.
+- **PC Console Confusion**: Logs show user asked "trade in PC console" and got a quote for $150.
+  - *Suspicion*: Text Agent (TypeScript) search mapped "PC Console" -> Generic "Console" or a low-value item. Voice Agent (Python) might have similar issues if not guarded.
+  - *Fix Applied*: 
+    - **Voice (Python)**: Added specific exception in `agent.py` to escalate all PC/Desktop trade-ins to staff.
+    - **Text (TypeScript)**: Needs similar logic to prevent auto-quoting "PC" as "Console".
+  - *Status*: **Partially Fixed (Voice Safe, Text Pending)**.
