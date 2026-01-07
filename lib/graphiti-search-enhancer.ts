@@ -93,6 +93,14 @@ const STATIC_SYNONYMS: Record<string, string> = {
   "fortnite": "Fortnite Apex Legends Overwatch Minecraft",
   "gopro": "DJI Osmo Insta360",
   "action camera": "DJI Osmo Insta360",
+  "laptop for school": "affordable laptop",
+  "laptop for student": "affordable laptop",
+  "student laptop": "affordable laptop",
+  "school laptop": "affordable laptop",
+  "new product": "new arrivals",
+  "new products": "new arrivals",
+  "latest products": "new arrivals",
+  "what is new": "new arrivals",
 };
 
 const HARDCODED_SYNONYMS: Record<string, string> = {
@@ -214,7 +222,7 @@ export function shouldEnhanceQuery(query: string): boolean {
     /\b(basketball|football|soccer)\b/i,
     /\b(horror|scary|spooky)\s+(game|games)\b/i,
     /\b(car|racing)\s+(game|games)\b/i,
-    /\b(cheap|affordable|budget)\s+(tablet|phone|console)\b/i,
+    /\b(cheap|affordable|budget)\s+(tablet|phone|console|laptop)\b/i,
     /\b(best|top)\s+(handheld|vr|headset)\b/i,
     /\bany\s+(game|games|horror|adventure|rpg)\b/i,
   ];
