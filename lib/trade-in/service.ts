@@ -401,7 +401,10 @@ export async function ensureTradeInLead(
       }
     }
   } catch (reuseContactError) {
-    console.warn("[TradeIn] Failed to reuse contact info for new lead", reuseContactError);
+    console.warn(
+      "[TradeIn] Failed to reuse contact info for new lead",
+      reuseContactError,
+    );
   }
 
   const { data: createdLead, error: insertError } = await supabaseAdmin
@@ -1159,6 +1162,30 @@ export async function listTradeInLeads(
 }
 
 export async function getTradeInLeadDetail(leadId: string) {
+  // First check if the lead exists and if there are duplicates
+  const { data: checkData, error: checkError } = await supabaseAdmin
+    .from("trade_in_leads")
+    .select("id")
+    .eq("id", leadId);
+
+  if (checkError) {
+    console.error("[TradeIn] Error checking lead existence:", checkError);
+    throw new Error(`Failed to check lead: ${checkError.message}`);
+  }
+
+  if (!checkData || checkData.length === 0) {
+    throw new Error(`Lead not found with ID: ${leadId}`);
+  }
+
+  if (checkData.length > 1) {
+    console.error(
+      `[TradeIn] CRITICAL: Found ${checkData.length} leads with same ID: ${leadId}`,
+    );
+    throw new Error(
+      `Database integrity error: duplicate leads found for ID ${leadId}`,
+    );
+  }
+
   const { data, error } = await supabaseAdmin
     .from("trade_in_leads")
     .select(
@@ -1170,6 +1197,7 @@ export async function getTradeInLeadDetail(leadId: string) {
     .single();
 
   if (error || !data) {
+    console.error("[TradeIn] Error fetching lead detail:", error);
     throw new Error(`Lead not found: ${error?.message ?? "unknown"}`);
   }
 

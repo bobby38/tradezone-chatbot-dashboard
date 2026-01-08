@@ -237,7 +237,15 @@ export default function TradeInDashboardPage() {
       if (search.trim().length > 0) {
         params.set("search", search.trim());
       }
-      const response = await fetch(`/api/tradein/leads?${params.toString()}`);
+      // Add cache-busting timestamp to ensure fresh data
+      params.set("_t", Date.now().toString());
+      const response = await fetch(`/api/tradein/leads?${params.toString()}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      });
       if (!response.ok) {
         throw new Error("Failed to load trade-in leads");
       }
@@ -770,17 +778,19 @@ export default function TradeInDashboardPage() {
           <TabsTrigger value="leads">Latest Leads</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            {STATUS_ORDER.slice(0, 3).map((status) => (
-              <Card key={status}>
-                <CardHeader className="pb-2">
-                  <CardDescription>{STATUS_LABELS[status]}</CardDescription>
-                  <CardTitle className="text-3xl font-bold">
-                    {(statusCounts[status] || 0).toLocaleString()}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            ))}
+          <div className="grid gap-4 md:grid-cols-4">
+            {STATUS_ORDER.filter((status) => statusCounts[status] > 0).map(
+              (status) => (
+                <Card key={status}>
+                  <CardHeader className="pb-2">
+                    <CardDescription>{STATUS_LABELS[status]}</CardDescription>
+                    <CardTitle className="text-3xl font-bold">
+                      {(statusCounts[status] || 0).toLocaleString()}
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+              ),
+            )}
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Total Leads</CardDescription>

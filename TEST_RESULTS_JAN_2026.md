@@ -177,3 +177,4 @@ Key interaction logs indicating successful system behavior:
   - **Issue**: Agent previously said "check website" for Valve warranty questions.
   - **Fix**: Injected specific policy (New: 12mo Official / Pre-Owned: 1mo Store) into both system prompts.
   - **Status**: **VERIFIED FIX**.
+ 
