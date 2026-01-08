@@ -336,42 +336,46 @@ export default function ChatLogsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <CardTitle>Conversation History</CardTitle>
-              <CardDescription>
-                {viewMode === "grouped"
-                  ? `${totalCount} unique conversations`
-                  : `${totalCount} total messages`}
-              </CardDescription>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              {/* View mode toggle */}
-              <div className="flex gap-1 border rounded-md p-1">
-                <Button
-                  size="sm"
-                  variant={viewMode === "grouped" ? "default" : "ghost"}
-                  onClick={() => {
-                    setViewMode("grouped");
-                    setCurrentPage(1);
-                  }}
-                  className="text-xs h-8"
-                >
-                  Grouped
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === "detailed" ? "default" : "ghost"}
-                  onClick={() => {
-                    setViewMode("detailed");
-                    setCurrentPage(1);
-                  }}
-                  className="text-xs h-8"
-                >
-                  Detailed
-                </Button>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div>
+                  <CardTitle>Conversation History</CardTitle>
+                  <CardDescription>
+                    {viewMode === "grouped"
+                      ? `${totalCount} unique conversations`
+                      : `${totalCount} total messages`}
+                  </CardDescription>
+                </div>
+                {/* View mode toggle */}
+                <div className="flex gap-1 border rounded-md p-1">
+                  <Button
+                    size="sm"
+                    variant={viewMode === "grouped" ? "default" : "ghost"}
+                    onClick={() => {
+                      setViewMode("grouped");
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs h-8"
+                  >
+                    Grouped
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewMode === "detailed" ? "default" : "ghost"}
+                    onClick={() => {
+                      setViewMode("detailed");
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs h-8"
+                  >
+                    Detailed
+                  </Button>
+                </div>
               </div>
+            </div>
 
+            <div className="flex flex-wrap gap-2">
               {/* Status filter */}
               <Select
                 value={statusFilter}
