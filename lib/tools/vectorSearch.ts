@@ -1218,6 +1218,38 @@ export async function handleVectorSearch(
           console.log(
             `[VectorSearch] Phone filter applied: kept ${phoneFiltered.length} items`,
           );
+
+          // 🎯 IPHONE-SPECIFIC FILTERING & SORTING
+          const wantsIPhone = /\biphone\b/i.test(query);
+          const wantsSamsung = /\b(samsung|galaxy)\b/i.test(query);
+
+          if (wantsIPhone) {
+            // Filter to ONLY iPhones when user specifically asks
+            const iPhones = wooProducts.filter((p) => {
+              const name = (p.name || "").toLowerCase();
+              return /\biphone\b/i.test(name);
+            });
+
+            if (iPhones.length > 0) {
+              wooProducts = iPhones;
+              console.log(
+                `[VectorSearch] ✅ iPhone-only filter: kept ${iPhones.length} iPhones, excluded ${phoneFiltered.length - iPhones.length} non-iPhones`,
+              );
+            }
+          } else if (wantsSamsung) {
+            // Filter to Samsung/Galaxy when specified
+            const samsungPhones = wooProducts.filter((p) => {
+              const name = (p.name || "").toLowerCase();
+              return /\b(samsung|galaxy)\b/i.test(name);
+            });
+
+            if (samsungPhones.length > 0) {
+              wooProducts = samsungPhones;
+              console.log(
+                `[VectorSearch] ✅ Samsung-only filter: kept ${samsungPhones.length} Samsung phones`,
+              );
+            }
+          }
         } else {
           return {
             text: "Browse phones here: https://tradezone.sg/product-category/handphone-tablet/handphone/",
