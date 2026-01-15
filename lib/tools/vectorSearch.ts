@@ -1219,34 +1219,33 @@ export async function handleVectorSearch(
             `[VectorSearch] Phone filter applied: kept ${phoneFiltered.length} items`,
           );
 
-          // 🎯 IPHONE-SPECIFIC FILTERING & SORTING
+          // 🎯 BRAND-SPECIFIC SORTING (show all phones but prioritize requested brand)
           const wantsIPhone = /\biphone\b/i.test(query);
           const wantsSamsung = /\b(samsung|galaxy)\b/i.test(query);
 
-          if (wantsIPhone) {
-            // Filter to ONLY iPhones when user specifically asks
-            const iPhones = wooProducts.filter((p) => {
+          if (wantsIPhone || wantsSamsung) {
+            const requestedBrand = wantsIPhone ? "iphone" : "samsung|galaxy";
+            const brandRegex = new RegExp(`\\b(${requestedBrand})\\b`, "i");
+
+            // Separate into requested brand and others
+            const brandMatches: typeof wooProducts = [];
+            const otherPhones: typeof wooProducts = [];
+
+            wooProducts.forEach((p) => {
               const name = (p.name || "").toLowerCase();
-              return /\biphone\b/i.test(name);
+              if (brandRegex.test(name)) {
+                brandMatches.push(p);
+              } else {
+                otherPhones.push(p);
+              }
             });
 
-            if (iPhones.length > 0) {
-              wooProducts = iPhones;
+            // Put requested brand first, others at the end
+            if (brandMatches.length > 0) {
+              wooProducts = [...brandMatches, ...otherPhones];
+              const brandName = wantsIPhone ? "iPhone" : "Samsung";
               console.log(
-                `[VectorSearch] ✅ iPhone-only filter: kept ${iPhones.length} iPhones, excluded ${phoneFiltered.length - iPhones.length} non-iPhones`,
-              );
-            }
-          } else if (wantsSamsung) {
-            // Filter to Samsung/Galaxy when specified
-            const samsungPhones = wooProducts.filter((p) => {
-              const name = (p.name || "").toLowerCase();
-              return /\b(samsung|galaxy)\b/i.test(name);
-            });
-
-            if (samsungPhones.length > 0) {
-              wooProducts = samsungPhones;
-              console.log(
-                `[VectorSearch] ✅ Samsung-only filter: kept ${samsungPhones.length} Samsung phones`,
+                `[VectorSearch] ✅ ${brandName} priority sort: ${brandMatches.length} ${brandName}s first, ${otherPhones.length} others at end`,
               );
             }
           }
