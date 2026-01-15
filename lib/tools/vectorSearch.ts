@@ -714,11 +714,28 @@ export async function handleVectorSearch(
 
   if (detectedCategory && DIRECT_CATEGORY_SET.has(detectedCategory)) {
     const slugs = CATEGORY_SLUG_MAP[detectedCategory] || [];
-    const directResults = await getWooProductsByCategory(
-      slugs,
-      wooLimit,
-      "asc",
-    );
+    let directResults = await getWooProductsByCategory(slugs, wooLimit, "asc");
+
+    // 🎯 FILTER SD CARDS for storage category when searching for NVMe/SSD
+    if (detectedCategory === "storage" && directResults.length > 0) {
+      const wantsNVMe = /\b(nvme|m\.?2|pcie)\b/i.test(query);
+      const wantsSSD = /\b(ssd|solid\s*state)\b/i.test(query);
+
+      if (wantsNVMe || wantsSSD) {
+        const beforeFilter = directResults.length;
+        directResults = directResults.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          const isSDCard = /\b(sd\s*card|microsd|micro\s*sd|tf\s*card)\b/i.test(
+            name,
+          );
+          return !isSDCard; // Exclude SD cards for NVMe/SSD queries
+        });
+        console.log(
+          `[VectorSearch] 🔍 Storage filter: excluded ${beforeFilter - directResults.length} SD cards, kept ${directResults.length} NVMe/SSDs`,
+        );
+      }
+    }
+
     if (directResults.length) {
       console.log(
         `[VectorSearch] Direct ${detectedCategory} category load: ${directResults.length} items`,
