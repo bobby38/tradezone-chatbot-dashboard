@@ -5941,7 +5941,10 @@ Only after user says yes/proceed, start collecting details (condition, accessori
 
       // Single-device trade-in: fetch price server-side and block catalog listing
       let forcedTradeInPrice: number | null = null;
-      if (tradeInIntent && !tradeUpPairIntent && !quoteAlreadyGiven) {
+      // 🔴 PC/Desktop Exception: Cannot auto-quote custom PCs/Desktops
+      const isPcTradeIn = tradeInIntent && /\b(pc|desktop|computer|rig|custom\s*build|custom\s*pc|gaming\s*pc|gaming\s*rig)\b/i.test(message);
+
+      if (tradeInIntent && !tradeUpPairIntent && !quoteAlreadyGiven && !isPcTradeIn) {
         const tradeQuery =
           tradeDeviceQuery || `trade-in ${normalizeProductName(message)}`;
         const tradeResult = await fetchApproxPrice(tradeQuery, "trade_in");
@@ -5977,6 +5980,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             )}" S$${forcedTradeInPrice} (subject to inspection). Do NOT list products. Reply in two short lines (price line + Proceed?), light markdown for key numbers. Continue the checklist after the user confirms: condition, accessories, photos (reuse if on file), email, phone, name, payout. No catalog links.`,
           });
         }
+      }
+
+      // 🔴 PC Trade-In Support Flow: Route to manual quote
+      if (isPcTradeIn) {
+        console.log("[ChatKit] PC/Desktop trade-in detected - routing to support flow");
+        messages.push({
+          role: "system",
+          content: `PC/DESKTOP TRADE-IN DETECTED. Do NOT call any pricing tools. Respond with: "We do trade PCs, but custom builds need a manual quote since specs vary. What's your CPU, GPU, RAM, and storage? I'll send it to the team for a quote." Then collect specs (if they provide them) + name/email/phone, and call sendemail(info_request) with all details. Keep your first response under 2 sentences.`,
+        });
+        toolChoice = "auto" as const; // Allow sendemail tool
       }
 
       const hasMixedIntent =
