@@ -826,19 +826,19 @@ export async function handleVectorSearch(
     regex: RegExp;
     predicate: (name: string) => boolean;
   }> = [
-      {
-        regex: /spider-?man|spidey/i,
-        predicate: (name) => /spider-?man/i.test(name),
-      },
-      {
-        regex: /final\s+fantasy/i,
-        predicate: (name) => /final\s+fantasy/i.test(name),
-      },
-      {
-        regex: /diablo\b/i,
-        predicate: (name) => /diablo\b/i.test(name),
-      },
-    ];
+    {
+      regex: /spider-?man|spidey/i,
+      predicate: (name) => /spider-?man/i.test(name),
+    },
+    {
+      regex: /final\s+fantasy/i,
+      predicate: (name) => /final\s+fantasy/i.test(name),
+    },
+    {
+      regex: /diablo\b/i,
+      predicate: (name) => /diablo\b/i.test(name),
+    },
+  ];
 
   const prioritizeByTokens = <
     T extends { name?: string | null; permalink?: string | null },
@@ -947,7 +947,10 @@ export async function handleVectorSearch(
       try {
         if (shouldEnhanceQuery(query)) {
           const enhancement = await enhanceSearchQuery(query);
-          if (enhancement.enhancedQuery && enhancement.enhancedQuery !== query) {
+          if (
+            enhancement.enhancedQuery &&
+            enhancement.enhancedQuery !== query
+          ) {
             console.log(
               `[VectorSearch] ⚡️ Graphiti enhanced query: "${enhancement.enhancedQuery}" (source: ${enhancement.source})`,
             );
@@ -1296,40 +1299,51 @@ export async function handleVectorSearch(
           const queryHasXbox = /xbox|series\s*[xs]/i.test(lowerQuery);
           const queryHasSwitch = /switch|nintendo/i.test(lowerQuery);
 
-          const multiPlatformQuery = (queryHasPS && (queryHasXbox || queryHasSwitch)) ||
+          const multiPlatformQuery =
+            (queryHasPS && (queryHasXbox || queryHasSwitch)) ||
             (queryHasXbox && queryHasSwitch);
           const shouldBeStrict = !multiPlatformQuery;
 
           switch (platformIntent) {
             case "ps5":
-              const isPS5 = /ps5|playstation\s*5/.test(name) || /playstation\s*5|playstation-5|ps5/.test(cats);
+              const isPS5 =
+                /ps5|playstation\s*5/.test(name) ||
+                /playstation\s*5|playstation-5|ps5/.test(cats);
               if (!isPS5) return false;
               if (shouldBeStrict) {
                 // Exclude Switch/Xbox mentions in a PS5 search
-                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name)) return false;
+                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name))
+                  return false;
               }
               return true;
             case "ps4":
-              const isPS4 = /ps4|playstation\s*4/.test(name) || /playstation\s*4|playstation-4|ps4/.test(cats);
+              const isPS4 =
+                /ps4|playstation\s*4/.test(name) ||
+                /playstation\s*4|playstation-4|ps4/.test(cats);
               if (!isPS4) return false;
               if (shouldBeStrict) {
-                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name)) return false;
+                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name))
+                  return false;
               }
               return true;
             case "switch":
-              const isSwitch = /switch|nintendo/.test(name) || /switch|nintendo/.test(cats);
+              const isSwitch =
+                /switch|nintendo/.test(name) || /switch|nintendo/.test(cats);
               if (!isSwitch) return false;
               if (shouldBeStrict) {
                 // Exclude PS/Xbox mentions in a Switch search
-                if (/(ps5|ps4|playstation|xbox|series\s*[xs])/.test(name)) return false;
+                if (/(ps5|ps4|playstation|xbox|series\s*[xs])/.test(name))
+                  return false;
               }
               return true;
             case "xbox":
-              const isXbox = /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats);
+              const isXbox =
+                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats);
               if (!isXbox) return false;
               if (shouldBeStrict) {
                 // Exclude PS/Switch mentions in an Xbox search
-                if (/(ps5|ps4|playstation|switch|nintendo)/.test(name)) return false;
+                if (/(ps5|ps4|playstation|switch|nintendo)/.test(name))
+                  return false;
               }
               return true;
             case "pc":
@@ -1515,7 +1529,12 @@ export async function handleVectorSearch(
       }
 
       // Horror genre filter (Jan 2026)
-      if (/\b(horror|scary|zombie|resident\s*evil|silent\s*hill|until\s*dawn|alan\s*wake|last\s*of\s*us)\b/i.test(searchQuery) && wooProducts.length > 0) {
+      if (
+        /\b(horror|scary|zombie|resident\s*evil|silent\s*hill|until\s*dawn|alan\s*wake|last\s*of\s*us)\b/i.test(
+          searchQuery,
+        ) &&
+        wooProducts.length > 0
+      ) {
         const horrorTokens = [
           "horror",
           "resident evil",
@@ -1530,16 +1549,18 @@ export async function handleVectorSearch(
           "alan wake",
           "friday",
           "13th",
-          "slasher"
+          "slasher",
         ];
-        const horrorFiltered = wooProducts.filter(p => {
+        const horrorFiltered = wooProducts.filter((p) => {
           const hay = (p.name || "").toLowerCase();
-          return horrorTokens.some(t => hay.includes(t));
+          return horrorTokens.some((t) => hay.includes(t));
         });
 
         if (horrorFiltered.length > 0) {
           wooProducts = horrorFiltered;
-          console.log(`[VectorSearch] ✅ Filtered to ${wooProducts.length} horror titles`);
+          console.log(
+            `[VectorSearch] ✅ Filtered to ${wooProducts.length} horror titles`,
+          );
         } else {
           wooProducts = [];
           console.log(`[VectorSearch] ❌ Horror filter removed all items`);
@@ -1685,6 +1706,68 @@ export async function handleVectorSearch(
         console.log(
           `[VectorSearch] 🎮 GPU filter - ${beforeFilter} found, ${beforeFilter - wooProducts.length} full PCs excluded, ${wooProducts.length} graphic cards kept`,
         );
+      }
+
+      // 🎯 AVAILABILITY QUESTION DETECTION + ACCESSORY FILTERING
+      // Detect if user is asking "is X available?" or "do you have X?"
+      const isAvailabilityQuestion =
+        /\b(available|in stock|still have|do you have|got|have you got)\b/i.test(
+          query,
+        );
+
+      if (isAvailabilityQuestion && wooProducts.length > 0) {
+        console.log(`[VectorSearch] 🔍 Availability question detected`);
+
+        // Filter out accessories (screen protectors, cases, cables, etc.) to show only main product
+        const accessoryKeywords = [
+          /screen\s*protector/i,
+          /protective\s*case/i,
+          /\bcase\b/i,
+          /\bcover\b/i,
+          /\bcable\b/i,
+          /charger/i,
+          /adapter/i,
+          /stand/i,
+          /mount/i,
+          /\bgrip\b/i,
+          /\bskin\b/i,
+          /decal/i,
+          /sticker/i,
+        ];
+
+        const mainProducts = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          // Keep product if it doesn't match any accessory keywords
+          return !accessoryKeywords.some((keyword) => keyword.test(name));
+        });
+
+        if (
+          mainProducts.length > 0 &&
+          mainProducts.length < wooProducts.length
+        ) {
+          wooProducts = mainProducts;
+          console.log(
+            `[VectorSearch] ✅ Filtered accessories: ${wooProducts.length} main products (removed ${wooProducts.length - mainProducts.length} accessories)`,
+          );
+        }
+
+        // If exactly 1 product found, give YES + price + link (concise availability answer)
+        if (wooProducts.length === 1) {
+          const product = wooProducts[0];
+          const price = formatSGDPrice(product.price_sgd);
+          const url = product.permalink || `https://tradezone.sg`;
+          const stockStatus =
+            product.stock_status === "instock" ? "Yes" : "Out of stock";
+
+          const simpleResponse = `${stockStatus}, ${price} — [View Product](${url})`;
+
+          return {
+            text: `<<<DETERMINISTIC_START>>>${simpleResponse}<<<DETERMINISTIC_END>>>`,
+            store: resolvedStore.label,
+            matches: [],
+            wooProducts: [product],
+          };
+        }
       }
 
       let budgetContext: BudgetContext | null = null;
@@ -1912,7 +1995,9 @@ export async function handleVectorSearch(
             budgetContext!,
             buildCategoryLabel(detectedCategory),
           );
-          const summaryPrefix = budgetSummaryLine ? `${budgetSummaryLine}\n\n` : "";
+          const summaryPrefix = budgetSummaryLine
+            ? `${budgetSummaryLine}\n\n`
+            : "";
           const intro = `Here's what we have (${wooProducts.length} results):\n\n`;
           const deterministicResponse = `${summaryPrefix}${intro}${listText}${moreText}`;
           return {
@@ -1930,7 +2015,8 @@ export async function handleVectorSearch(
           const fallbackBudgetContext =
             budgetContext || createBudgetContext(query, wooProducts);
           // Show all products if total is small (≤20), otherwise limit to 20
-          const displayLimit = wooProducts.length <= 20 ? wooProducts.length : 20;
+          const displayLimit =
+            wooProducts.length <= 20 ? wooProducts.length : 20;
           const productsToShow = wooProducts.slice(0, displayLimit);
 
           const listText = productsToShow
@@ -2270,7 +2356,7 @@ export async function handleVectorSearch(
         const details: string[] = [];
         const flagshipPrice =
           match.flagshipCondition?.basePrice !== undefined &&
-            match.flagshipCondition?.basePrice !== null
+          match.flagshipCondition?.basePrice !== null
             ? `${formatCurrency(match.flagshipCondition?.basePrice)} (${match.flagshipCondition?.label})`
             : match.price
               ? "S$" + match.price
@@ -2307,9 +2393,9 @@ export async function handleVectorSearch(
         if (bnplPlans.length) {
           const prioritizedPlans = mentionAtome
             ? [
-              ...bnplPlans.filter((plan) => plan.providerId === "atome"),
-              ...bnplPlans.filter((plan) => plan.providerId !== "atome"),
-            ]
+                ...bnplPlans.filter((plan) => plan.providerId === "atome"),
+                ...bnplPlans.filter((plan) => plan.providerId !== "atome"),
+              ]
             : bnplPlans;
           const bnplPreview = prioritizedPlans
             .slice(0, mentionBnpl ? 3 : 2)
@@ -2484,8 +2570,8 @@ export async function handleVectorSearch(
             : lowerQuery.match(/wrestling|wwe|cena/i)
               ? "wrestling"
               : lowerQuery.match(
-                /\bcar\s+games?|\bracing\s+games?|gran turismo|forza|need\s+for\s+speed/i,
-              )
+                    /\bcar\s+games?|\bracing\s+games?|gran turismo|forza|need\s+for\s+speed/i,
+                  )
                 ? "racing/car"
                 : "sports";
 
