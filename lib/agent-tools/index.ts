@@ -33,6 +33,7 @@ export const DIRECT_CATEGORY_KEYS = [
   "tablet",
   "chair",
   "cpu_cooler",
+  "storage",
 ] as const;
 
 export const DIRECT_CATEGORY_SET = new Set<string>(DIRECT_CATEGORY_KEYS);
@@ -828,17 +829,17 @@ export async function searchWooProducts(
   if (results.length === 0 && isGameQuery) {
     const gameSlugs = wantsPreOwned
       ? [
-        "pre-owned-games",
-        "pre-owned-games-playstation-4",
-        "pre-owned-games-nintendo",
-      ]
+          "pre-owned-games",
+          "pre-owned-games-playstation-4",
+          "pre-owned-games-nintendo",
+        ]
       : [
-        "brand-new-games",
-        "brand-new-games-playstation-4",
-        "brand-new-games-nintendo",
-        "pre-order-games",
-        "pre-order-games-ps5",
-      ];
+          "brand-new-games",
+          "brand-new-games-playstation-4",
+          "brand-new-games-nintendo",
+          "pre-order-games",
+          "pre-order-games-ps5",
+        ];
     const fallbackGames = await getWooProductsByCategory(
       gameSlugs,
       Math.max(limit, 120),
