@@ -1362,6 +1362,11 @@ export async function handleVectorSearch(
 
       // Storage intent: prefer storage categories and drop non-storage if possible
       if (detectedCategory === "storage" && wooProducts.length > 0) {
+        // Detect specific storage type from query
+        const wantsNVMe = /\b(nvme|m\.?2|pcie)\b/i.test(query);
+        const wantsSSD = /\b(ssd|solid\s*state)\b/i.test(query);
+        const wantsHDD = /\b(hdd|hard\s*drive|harddrive)\b/i.test(query);
+
         let storageFiltered = wooProducts.filter((p) => {
           const cats = (p as any).categories || [];
           const name = (p.name || "").toLowerCase();
@@ -1372,6 +1377,15 @@ export async function handleVectorSearch(
             /\b(laptop|notebook|desktop|pc)\b/i.test(c),
           );
           const isSSDName = /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
+
+          // Exclude SD cards, microSD cards when searching for SSD/NVMe
+          const isSDCard = /\b(sd\s*card|microsd|micro\s*sd|tf\s*card)\b/i.test(
+            name,
+          );
+          if ((wantsNVMe || wantsSSD) && isSDCard) {
+            return false; // Skip SD cards for NVMe/SSD queries
+          }
+
           // Exclude accessories, cases, games, and consoles that contain "storage" in name
           const isAccessory =
             /case|bag|controller|fan|game|mouse|pad|cover|housing|expansion card|drive.*console|portal|switch|playstation|xbox|ally/i.test(
