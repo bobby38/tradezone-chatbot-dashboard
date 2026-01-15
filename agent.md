@@ -6172,3 +6172,148 @@ After deployment, test:
 - **Problem**: The voice agent was successfully collecting all trade-in details (name, phone, condition, etc.) during a conversation but failed to save them to the database. The trade-in lead was created empty, often only containing a photo if one was uploaded.
 - **Root Cause**: The `tradein_update_lead` tool in `agents/voice/agent.py` contained overly strict validation guards. It was designed to only accept one piece of information at a time, in a rigid order. When the LLM tried to efficiently send a batch of collected data (e.g., name, phone, and email together), the validation would fail, and the data was never sent to the backend API.
 - **Fix**: The restrictive step-by-step validation guards have been removed from the `tradein_update_lead` tool. The function now correctly accepts and processes all provided data at once, ensuring that all collected lead details are reliably persisted to the database.
+
+---
+
+## 📅 Latest Updates - January 15, 2026
+
+### Search & Response Quality Improvements
+
+#### Issue: Product Search Too Narrow
+**Problem:** "nvme ssd" query returned only 1 product despite having 5+ in stock
+- Search only looked at product titles, ignored tags/categories
+- Products like "Lexar NQ790 4TB" had "nvme" and "ssd" in tags but not in title
+
+**Fix Applied:**
+- Added "storage" to `DIRECT_CATEGORY_KEYS` in `lib/agent-tools/index.ts`
+- Now uses category-based lookup instead of strict token matching
+- Result: "nvme ssd" now returns 5+ products correctly
+
+**Commit:** `44d04577`
+
+---
+
+#### Issue: Availability Questions Showing Product Lists
+**Problem:** User asks "is the limited edition oled 2tb still available?" but gets:
+- 3-item list including screen protector and protective case (irrelevant accessories)
+- No direct yes/no answer
+
+**Fix Applied:**
+- Added availability question detection in `lib/tools/vectorSearch.ts`
+- Detects keywords: "available", "in stock", "still have", "do you have", "got"
+- Filters out accessories: cases, screen protectors, cables, chargers, adapters
+- Returns concise answer for single product: "Yes, S$549 — [View Product](link)"
+
+**Commit:** `89b5ecc6`
+
+**Example:**
+```
+Before:
+User: "is the limited edition oled 2tb still available"
+Bot: Shows 3 items (Steam Deck + Screen Protector + Case)
+
+After:
+User: "is the limited edition oled 2tb still available"
+Bot: "Yes, S$549 — [View Product](link)"
+```
+
+---
+
+### Product Catalog Sync
+
+**Updated:** January 15, 2026
+- **762 products** synced from WooCommerce (up from stale December data)
+- **718 models** indexed across 11 product families
+- **812 records** synced to Graphiti knowledge graph
+- **Automated sync:** Every 3 days via Coolify scheduled task (`0 2 */3 * *`)
+
+**Sync Commands:**
+```bash
+npm run refresh:catalog       # Fetch from WooCommerce
+npm run catalog:build         # Rebuild products_master.json
+npm run catalog:sync-graphiti # Sync to knowledge graph
+```
+
+---
+
+### Known Limitations & Future Improvements
+
+See `SEARCH_FIX_PLAN.md` for detailed analysis and roadmap:
+
+1. **Broken "Product — View Product" links** (when no results found)
+   - Shows placeholder links with no actual product data
+   - Fix: Don't render links when search returns empty
+
+2. **Search token indexing** 
+   - Currently only indexes title + aliases
+   - Should include: categories, tags, descriptions, storage keywords
+
+3. **"No results" response quality**
+   - Currently: "Want me to connect you with team?" (gives up too fast)
+   - Better: Show alternatives, category links, broader search suggestions
+
+**Priority:** Medium (current workarounds functional)
+
+---
+
+### Search Flow Architecture
+
+```
+User Query: "nvme ssd"
+    ↓
+1. Detect category: "storage" ✅
+    ↓
+2. Check DIRECT_CATEGORY_SET ✅ (storage now included)
+    ↓
+3. Load products by category slug: ["storage"]
+    ↓
+4. Filter by tags: nvme, ssd ✅
+    ↓
+5. Return 5+ products ✅
+
+User Query: "is steam deck oled available?"
+    ↓
+1. Detect availability question: "is...available" ✅
+    ↓
+2. Search for "steam deck oled"
+    ↓
+3. Filter accessories (case, protector) ✅
+    ↓
+4. Return single product with YES/NO answer ✅
+```
+
+---
+
+### Testing Queries
+
+**Storage Products:**
+- ✅ "nvme ssd" → Shows Samsung 990 EVO, Lexar NQ790, WD Black, etc. (5+ products)
+- ✅ "m2 ssd 4tb" → Shows 4TB M.2 drives or suggests 2TB alternatives
+- ✅ "any ssd" → Shows full storage category
+
+**Availability Questions:**
+- ✅ "is the limited edition oled 2tb still available" → "Yes, S$549 — [link]"
+- ✅ "do you have steam deck" → "Yes, S$549 — [link]" (no accessories)
+- ✅ "got ps5 digital" → Direct answer with price + link
+
+**Category Searches:**
+- ✅ "cheap laptops" → Shows laptop category with prices
+- ✅ "gaming headset" → Shows audio category
+- ✅ "ps5 games" → Shows game list with platform filter
+
+---
+
+### Maintenance Schedule
+
+**Automated Tasks (Coolify):**
+- Product catalog refresh: Every 3 days at 2 AM (`0 2 */3 * *`)
+- Search Console sync: Weekly Sunday 2 AM
+- Database backups: Daily
+
+**Manual Tasks:**
+- Review chat logs weekly for failed searches
+- Update SEARCH_FIX_PLAN.md with new edge cases
+- Monitor Graphiti learning loop for synonym improvements
+
+---
+
