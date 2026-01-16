@@ -1628,8 +1628,12 @@ async def _tradein_update_lead_impl(
     # NEW FLOW: contact comes after storage + condition + accessories + photos.
     # 🚨 RELAXATION: If contact info is being provided, but photos weren't explicitly marked (e.g. agent skipped tool call),
     # assume photos are done/skipped to prevent blocking the entire save.
-    if (contact_name or contact_phone or contact_email) and not (photos_in_payload or "photos" in state.collected_data):
-        logger.warning("[tradein_update_lead] 📸 Contact info provided without photo step. Auto-resolving photos as acknowledged.")
+    if (contact_name or contact_phone or contact_email) and not (
+        photos_in_payload or "photos" in state.collected_data
+    ):
+        logger.warning(
+            "[tradein_update_lead] 📸 Contact info provided without photo step. Auto-resolving photos as acknowledged."
+        )
         photos_acknowledged = True
         photos_in_payload = True
 
@@ -2377,7 +2381,7 @@ If you cannot find a satisfactory answer OR customer requests staff contact OR w
 
 **🔴 OUT OF STOCK / NOT FOUND Protocol (MANDATORY):**
 1. **Suggest Alternatives**: If search tool returns similar items (e.g. asked for GoPro, found DJI Osmo), say: "We don't have [X], but we have [Y]..."
-2. **Game/Console Not Found**: 
+2. **Game/Console Not Found**:
    - **Inject Personality**: Keep it SHORT & PUNCHY (e.g. "Loot goblins snatched that one" or "Sold out faster than a speedrun").
    - **Pivot Immediately**: "...but we've got killer deals on [Platform] right now. Want to see?"
    - **Offer Waitlist (Last Resort)**: Only if they stick to the missing item.
@@ -2805,7 +2809,11 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
-    asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
+    # REMOVED: Auto trade-in lead creation at session start (Jan 16, 2026)
+    # This was causing trade-in prompts ("Got the box?") to appear during
+    # simple product inquiries. Lead is now created only when user expresses
+    # actual trade-in intent (via tradein_update_lead tool call).
+    # asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
 
     # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
     if VOICE_STACK == "realtime":
