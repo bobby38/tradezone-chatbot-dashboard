@@ -436,10 +436,11 @@ def _proceed_prompt() -> str:
 
 def _greeting_prompt() -> str:
     options = [
-        "Hi, Amara here. Electronics, gaming, trade-ins, or staff support?",
-        "Hello—Amara here. Need electronics, gaming, or trade-ins?",
-        "Hi! Amara here. Electronics, gaming, or trade-ins?",
-        "Hey, Amara here. Gaming gear, electronics, or trade-ins?",
+        "Hi! I'm Amara from TradeZone. How can I help you today?",
+        "Hey there! What can I help you with?",
+        "Hello! What brings you here today?",
+        "Hi! How can I help you?",
+        "Hey! What are you looking for today?",
     ]
     return random.choice(options)
 
@@ -593,8 +594,8 @@ def _maybe_force_reply(message: str) -> Optional[str]:
 
     if any(token in lower for token in ["crypto", "bitcoin", "ethereum", "usdt"]):
         return (
-            "Sorry, we don't handle crypto. "
-            "We only do electronics in Singapore. Need product help?"
+            "Haha, we don't do crypto! "
+            "But if you've got gaming gear, phones, or consoles - I'm your girl!"
         )
 
     if "gpu" in lower and any(
@@ -2306,7 +2307,7 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
   - Confirmations: Display all details in text chat, then ask "Everything correct?" - let user READ and confirm visually
   - This avoids annoying voice readback that users can't stop
 
-- Start every call with a short greeting that mentions electronics, gaming, trade-ins, and staff support. Wait for a clear choice before running any tools.
+- Start every call with a friendly welcome like "Hi! How can I help you today?" Wait for a clear choice before running any tools. NEVER assume or decline from one vague word/sound. If unclear, ask "How can I help you?" Only decline AFTER user confirms off-topic (cars, furniture, food) - then say it in a fun way: "Haha, we don't do that! But if you've got gaming gear - I'm your girl!"
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
 - If user says "trade in my {device}" without a target device, treat as price-only: call check_tradein_price for that device, then ask if they want to proceed. Do NOT ask for condition or accessories before they confirm.
 - If you detect trade/upgrade intent with a target device, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
