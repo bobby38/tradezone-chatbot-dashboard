@@ -2658,8 +2658,13 @@
         return;
       }
 
+      // Allow user to interrupt agent speaking by pressing the button
       if (this.voiceState?.agentSpeaking) {
-        this.updateVoiceStatus && this.updateVoiceStatus("Agent speaking...");
+        console.log("[Voice] User interrupted agent");
+        this.voiceState.agentSpeaking = false;
+        this.clearAssistantAudio && this.clearAssistantAudio();
+        this.updateVoiceButton && this.updateVoiceButton();
+        this.updateVoiceStatus && this.updateVoiceStatus("Listening...");
         return;
       }
 
@@ -3633,14 +3638,12 @@
     updateVoiceButton: function () {
       const btn = document.getElementById("tz-voice-btn");
 
-      // Disable button while agent is speaking
+      // Button is always clickable - user can interrupt agent
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
       if (this.voiceState.agentSpeaking) {
-        btn.style.opacity = "0.5";
-        btn.style.cursor = "not-allowed";
-        btn.title = "Agent is speaking...";
+        btn.title = "Tap to interrupt";
       } else {
-        btn.style.opacity = "1";
-        btn.style.cursor = "pointer";
         btn.title = this.isRecording ? "Stop voice" : "Start voice";
       }
 
