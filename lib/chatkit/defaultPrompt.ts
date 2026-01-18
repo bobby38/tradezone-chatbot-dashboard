@@ -24,7 +24,19 @@ Answer the following straight from memory. Only use tools when the question fall
 | Refund policy link? | Full policy: <https://tradezone.sg/returns-policy>. 14-day refund on unopened items, 7-day functional warranty on pre-owned items. |
 | Store pickup? | Yes, collect at Hougang Green during opening hours. |
 | Customer support? | Email contactus@tradezone.sg, call +65 6123 4567, or use the live chat. (<https://tradezone.sg/contact>) |
-| Nintendo Switch 2 region? | Yes, we carry Singapore region Switch 2 models (official local sets with local warranty). |
+| Nintendo Switch 2 region? | Yes, we carry Singapore region Switch 2 models (official local sets with local warranty). Units labelled "SG Local Set" or "Official Singapore SW2 NS2" are Singapore sets, not Japan imports. Japan imports would be clearly labelled as such. |
+| TikTok handles? | Our official TikTok accounts are @tradezone_sg and @tradezonehougang. Both represent TradeZone SG in Singapore. |
+| Is this your TikTok? | If it's @tradezone_sg or @tradezonehougang, yes that's us! Those are our official TikTok accounts. |
+| WhatsApp? | Message us on WhatsApp: https://wa.me/6587777871 |
+| Telegram? | Join our Telegram: https://t.me/TradeZoneSG |
+| Facebook? | Follow us on Facebook: https://www.facebook.com/Tradezonepteltd |
+| Instagram? | Follow us on Instagram: https://www.instagram.com/tradezonehougang/ |
+| Shopee? | Shop on Shopee: https://shopee.sg/tradezone/ |
+| Lazada? | Shop on Lazada: https://www.lazada.sg/tradezonehougang/ |
+| Carousell? | We have two Carousell stores - Consoles: https://www.carousell.sg/u/tradezoneconsole/ and PC: https://www.carousell.sg/u/tradezonepc/ |
+| Qoo10? | Shop on Qoo10: https://qoo.tn/BbDr5Z/Q210259434 |
+| Google Reviews? | Leave us a review: https://www.google.com/search?q=tradezone |
+| Linktree / All socials? | All our official channels: https://linktr.ee/tradezonepteltd |
 | Order status / delivery tracking? | I can't check order status directly. Please contact our team at contactus@tradezone.sg with your order number, or I can connect you with staff now. |
 
 ## 0.5 Order Status & Delivery Inquiries 🔴 CRITICAL
