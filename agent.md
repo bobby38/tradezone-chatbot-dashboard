@@ -713,6 +713,54 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 - Make stopping voice intentional: require a quick second tap (“tap again to stop”).
 - Surface LiveKit local mic silence detection with a clear status message (mic permission / device selection).
 
+## Change Log — Jan 24, 2026 (Text Agent - Critical Trade-In & Support Flow Fixes)
+
+### Trade-In Only Triggers on Explicit Intent (Jan 23-24, 2026)
+**Problem**: Agent was pushing trade-in options on every request, even when user just asked about products or warranty.
+
+**Root Causes**:
+1. `TRADE_IN_SYSTEM_CONTEXT` was injected into ALL conversations, not just trade-in queries
+2. Trade-in variant prompts (Switch OLED/Lite prices) were added unconditionally
+3. Steam Deck 1-month warranty was overriding general 7-day warranty for ALL queries
+
+**Fixes Applied**:
+1. **Removed TRADE_IN_SYSTEM_CONTEXT from default messages** (`route.ts:~5056`): Trade-in context only added when `tradeInIntent` detected
+2. **Wrapped variant prompts in if(tradeInIntent)** (`route.ts:~6207`): Price variant prompts only shown for trade-in queries
+3. **Steam Deck warranty scoped** (`route.ts:~6246`): 1-month warranty only mentioned when query contains "steam deck"
+4. **Added CRITICAL RULE #4** (`defaultPrompt.ts`): "NEVER PROACTIVELY OFFER TRADE-IN" at top of system prompt
+
+### Singapore Location Question Loop Fix (Jan 23, 2026)
+**Problem**: "Are you in Singapore?" asked 5+ times in same session.
+
+**Root Cause**: `locationConfirmed` only stored in `supportFlowState` Map which gets cleared between support flows.
+
+**Fix Applied**:
+- Added session-level `sessionLocationConfirmed` Map with 1-hour TTL
+- Once user confirms Singapore, NEVER ask again in the same session
+- Session check runs BEFORE support flow state check
+
+### Warranty Policy Not Triggering Support Flow (Jan 23, 2026)
+**Problem**: Questions like "is your warranty 1 year or 1 month" incorrectly triggered support flow instead of direct answer.
+
+**Root Cause**: Word "check" in `supportHints` array was too generic - "check your warranty policy" ≠ "check my warranty claim"
+
+**Fix Applied**:
+- Removed "check" from `supportHints`
+- Added more specific hints: "my warranty", "under warranty", "claim", "status"
+- Added `issueHints` for problem-related keywords
+
+### Test Results (All Passing ✅)
+```
+📊 Results: 4 passed, 0 failed out of 4 tests
+
+✅ Game trade-in (ps5 games): S$5-S$40 (not console prices)
+✅ Warranty policy question: 7-day warranty (no Singapore question)
+✅ PS5 console trade-in: S$250-S$700 with model question
+✅ Product search (switch games): Shows products, no trade-in push
+```
+
+---
+
 ## Change Log — Dec 15, 2025 (Voice Agent - Critical Bug Fixes)
 
 ### Contact Info Saving as Boolean Bug (Dec 15, 2025)
