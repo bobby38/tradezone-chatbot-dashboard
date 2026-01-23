@@ -6240,11 +6240,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           "You handle consumer electronics/gaming: consoles, handhelds, phones, tablets, laptops, cameras, drones, GoPro/Osmo. NEVER assume or decline from one vague message. If unclear, welcome them and ask 'How can I help you?' Only AFTER user confirms they want something off-topic (cars, bikes, food, furniture, paintings), decline in a fun way: 'Haha, we don't do that! But if you've got gaming gear, phones, or consoles - I'm your girl!' Always be welcoming first.",
       });
 
-      messages.push({
-        role: "system",
-        content:
-          "Valve Warranty Policy (Steam Deck): Brand New units come with 12-month official Valve warranty (claims must go to Valve directly). Pre-Owned units come with 1-month TradeZone store warranty only. Do not mix this up.",
-      });
+      // 🔴 Only add Steam Deck-specific warranty info when query mentions Steam Deck
+      // General pre-owned warranty is 7-day (see defaultPrompt.ts instant answers)
+      // Steam Deck has special 1-month warranty - don't let this override general warranty questions
+      const isSteamDeckQuery = /steam\s*deck/i.test(userMessage);
+      if (isSteamDeckQuery) {
+        messages.push({
+          role: "system",
+          content:
+            "Valve Warranty Policy (Steam Deck): Brand New units come with 12-month official Valve warranty (claims must go to Valve directly). Pre-Owned units come with 1-month TradeZone store warranty only. Do not mix this up.",
+        });
+      }
 
       // 🔴 CRITICAL: These trade-in specific prompts should ONLY be added when user has trade-in intent
       // Otherwise, questions like "is your switch japan set?" will incorrectly get trade-in price responses
