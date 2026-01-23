@@ -1619,6 +1619,22 @@ function isWarrantySupportQuery(query: string): boolean {
   const normalized = normalizeIntentQuery(query).trim();
   if (!normalized) return false;
   if (!/\bwarr?anty/.test(normalized)) return false;
+
+  // Exclude warranty POLICY questions - these should be answered from instant answers
+  // e.g., "is your warranty 1 year or 1 month", "how long is warranty for preowned"
+  const policyQuestionPatterns = [
+    /\b(how\s+long|how\s+many|duration|length|period)\b/i,
+    /\b(1|one|7|seven)\s*(year|month|day|week)/i,
+    /\b(year|month|day|week)\s*(warranty|long)/i,
+    /\byour\s+warranty\b/i, // "is your warranty..."
+    /\bwarranty\s+(for|on)\s+(preowned|pre-owned|used|new|second)/i,
+    /\b(preowned|pre-owned|used|secondhand|second-hand)\s+.*(warranty|warr)/i,
+    /\bwhat('s| is)\s+(the\s+)?warranty\b/i,
+  ];
+  if (policyQuestionPatterns.some((pattern) => pattern.test(normalized))) {
+    return false; // This is a policy question, not a support request
+  }
+
   const supportHints = [
     "check",
     "verify",
@@ -1832,10 +1848,24 @@ function cleanTradeInLabel(message: string): string {
 }
 
 function isGenericPs5Query(normalizedQuery: string): boolean {
-  return (
-    /\bps5\b|\bplaystation\s*5\b/.test(normalizedQuery) &&
-    !/\b(slim|pro|digital|disc|fat|825|1tb|2tb)\b/.test(normalizedQuery)
+  // Must mention PS5/PlayStation 5
+  if (!/\bps5\b|\bplaystation\s*5\b/.test(normalizedQuery)) return false;
+  // Must NOT have a specific model variant
+  if (/\b(slim|pro|digital|disc|fat|825|1tb|2tb)\b/.test(normalizedQuery))
+    return false;
+  // Must NOT be asking about games - "ps5 games" is about game discs, not the console
+  if (/\bgames?\b/.test(normalizedQuery)) return false;
+  return true;
+}
+
+function isGameTradeInQuery(normalizedQuery: string): boolean {
+  // Detects queries about trading in games (not consoles)
+  // e.g., "trade in ps5 games", "sell my switch games", "can i sell games here"
+  const hasGameKeyword = /\bgames?\b/.test(normalizedQuery);
+  const hasTradeIntent = /\b(trade|sell|trade-in|tradein|trade in)\b/.test(
+    normalizedQuery,
   );
+  return hasGameKeyword && hasTradeIntent;
 }
 
 function isRogAllyXQuery(normalizedQuery: string): boolean {
@@ -4555,8 +4585,17 @@ export async function POST(request: NextRequest) {
       assistantMessage = { role: "assistant", content: finalResponse };
     }
 
+    // Check for existing support flow FIRST - before greeting handler
+    // This prevents "yes"/"no" answers from being treated as greetings
+    const existingSupportState = getSupportFlowState(sessionId);
+
     // Handle simple greetings (hi, hello, hey, hhi, etc.) or vague short messages with a proper welcome
-    if (!supportFlowHandled && isSimpleGreetingOrVague(message)) {
+    // BUT only if there's no active support flow waiting for a response
+    if (
+      !supportFlowHandled &&
+      !existingSupportState &&
+      isSimpleGreetingOrVague(message)
+    ) {
       const greetings = [
         "Hi! I'm Amara from TradeZone. How can I help you today?",
         "Hey there! What can I help you with?",
@@ -4568,8 +4607,6 @@ export async function POST(request: NextRequest) {
       supportFlowHandled = true;
       assistantMessage = { role: "assistant", content: finalResponse };
     }
-
-    const existingSupportState = getSupportFlowState(sessionId);
     const tradeIntentForSupport = detectTradeInIntent(message);
     const supportStartIntent =
       !tradeIntentForSupport &&
@@ -5977,7 +6014,17 @@ Only after user says yes/proceed, start collecting details (condition, accessori
         const tradeResult = await fetchApproxPrice(tradeQuery, "trade_in");
         forcedTradeInPrice = tradeResult.amount ?? null;
         const normalizedQuery = normalizeText(message);
-        if (isGenericPs5Query(normalizedQuery)) {
+
+        // Handle game trade-in queries FIRST (before console-specific checks)
+        // Games are evaluated case-by-case - give estimate and offer staff connection
+        if (isGameTradeInQuery(normalizedQuery)) {
+          forcedTradeInReply = `Yes, we buy games! Typical range: **S$5–S$40** per game depending on title and condition.\nWant me to connect you with staff for a quote?`;
+          tradeInPriceShared = true;
+          // Don't set forcedTradeInPrice - games need staff evaluation
+          forcedTradeInPrice = null;
+          // Set up support offer so "yes" triggers staff connection
+          setSupportOfferState(sessionId, "Game trade-in inquiry");
+        } else if (isGenericPs5Query(normalizedQuery)) {
           const range = await lookupTradeInRangeFromGrid("ps5");
           if (range.min != null && range.max != null) {
             forcedTradeInReply = `Yes, you can trade in. **PS5** trade-in range: **S$${range.min}–S$${range.max}** (subject to inspection). Which model and edition is yours (Fat/Slim/Pro, Digital/Disc)?`;

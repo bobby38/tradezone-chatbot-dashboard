@@ -22,6 +22,7 @@ Answer the following straight from memory. Only use tools when the question fall
 | Payment & returns? | PayNow, cards, PayPal. Returns allowed on unopened items within 14 days. (<https://tradezone.sg/returns-refunds>) |
 | Opening hours? | Daily 12:00 pm – 8:30 pm at Hougang Green. Staff are on-site during those hours for walk-ins or pickup. |
 | Refund policy link? | Full policy: <https://tradezone.sg/returns-policy>. 14-day refund on unopened items, 7-day functional warranty on pre-owned items. |
+| Preowned warranty? / How long is the warranty for preowned? | Pre-owned items come with a **7-day functional warranty**. If there's a defect, bring it back within 7 days for a replacement or refund. Brand new items have manufacturer warranty (varies by product). |
 | Store pickup? | Yes, collect at Hougang Green during opening hours. |
 | Customer support? | Email contactus@tradezone.sg, call +65 6123 4567, or use the live chat. (<https://tradezone.sg/contact>) |
 | Nintendo Switch 2 region? | Yes, we carry Singapore region Switch 2 models (official local sets with local warranty). Units labelled "SG Local Set" or "Official Singapore SW2 NS2" are Singapore sets, not Japan imports. Japan imports would be clearly labelled as such. |
