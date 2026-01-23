@@ -186,6 +186,28 @@ type SupportOfferState = {
 const SUPPORT_OFFER_TTL_MS = 15 * 60 * 1000;
 const supportOfferState = new Map<string, SupportOfferState>();
 
+// 🔴 Session-level Singapore confirmation - persists across support flows
+// Once user confirms Singapore, NEVER ask again in the same session
+const SESSION_LOCATION_TTL_MS = 60 * 60 * 1000; // 1 hour
+const sessionLocationConfirmed = new Map<
+  string,
+  { confirmed: boolean; timestamp: number }
+>();
+
+function isLocationConfirmedForSession(sessionId: string): boolean {
+  const entry = sessionLocationConfirmed.get(sessionId);
+  if (!entry) return false;
+  if (Date.now() - entry.timestamp > SESSION_LOCATION_TTL_MS) {
+    sessionLocationConfirmed.delete(sessionId);
+    return false;
+  }
+  return entry.confirmed;
+}
+
+function setLocationConfirmedForSession(sessionId: string, confirmed: boolean) {
+  sessionLocationConfirmed.set(sessionId, { confirmed, timestamp: Date.now() });
+}
+
 function setSupportOfferState(sessionId: string, reason: string) {
   const now = Date.now();
   supportOfferState.set(sessionId, {
@@ -1393,6 +1415,20 @@ function detectTradeInIntent(query: string): boolean {
     return false; // Explicit negation overrides trade-in detection
   }
 
+  // 🔴 CRITICAL: Exclude product info continuation phrases
+  // "what about switch 2", "how about ps5", "got any xbox" are product questions, NOT trade-in
+  const productContinuationPhrases = [
+    /^(what|how)\s+(about|much\s+is|much\s+for)\s+/i,
+    /^(got|have|any|show|tell)\s+/i,
+    /^(is|are|do)\s+(the|your|you)\s+/i, // "is the switch 2 available", "are your switches japan set"
+  ];
+  if (productContinuationPhrases.some((pattern) => pattern.test(normalized))) {
+    // Only allow if it also has explicit trade keywords like "trade", "sell"
+    if (!TRADE_IN_ACTION_HINTS.test(normalized)) {
+      return false;
+    }
+  }
+
   if (TRADE_IN_KEYWORD_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return true;
   }
@@ -1635,22 +1671,27 @@ function isWarrantySupportQuery(query: string): boolean {
     return false; // This is a policy question, not a support request
   }
 
+  // These hints indicate user wants to CHECK THEIR SPECIFIC WARRANTY STATUS (support needed)
+  // NOT just asking about warranty policy (can be answered directly)
+  // 🔴 REMOVED "check" - too generic, "check your warranty policy" ≠ "check my warranty claim"
   const supportHints = [
-    "check",
     "verify",
     "confirm",
-    "still",
-    "ok",
-    "okay",
-    "valid",
+    "still valid",
+    "still ok",
+    "still okay",
     "status",
     "coverage",
     "covered",
-    "issue",
-    "problem",
+    "claim",
+    "my warranty", // "is my warranty still valid" = support
     "under warranty",
   ];
-  return supportHints.some((hint) => normalized.includes(hint));
+  // Also check for issue-related keywords that indicate a problem
+  const issueHints = ["issue", "problem", "broken", "defect", "not working"];
+  const hasIssue = issueHints.some((hint) => normalized.includes(hint));
+  const hasSupport = supportHints.some((hint) => normalized.includes(hint));
+  return hasSupport || hasIssue;
 }
 
 // Detects explicit two-device trade/upgrade phrasing ("trade X for Y", "upgrade X to Y")
@@ -4641,12 +4682,25 @@ export async function POST(request: NextRequest) {
             : undefined,
         purchaseTiming: initialIssueTiming || undefined,
       };
+      // 🔴 Check session-level location FIRST - if already confirmed, skip location step
+      if (isLocationConfirmedForSession(sessionId)) {
+        supportState.locationConfirmed = true;
+        // Skip to next step based on kind
+        if (supportState.kind === "warranty") {
+          supportState.step = "issue";
+        } else {
+          supportState.step = "purpose";
+        }
+      }
+
       setSupportFlowState(sessionId, supportState);
 
-      // Immediately ask for location verification - don't process the initial message
-      finalResponse = "I can help you with that. Are you in Singapore?";
-      supportFlowHandled = true;
-      assistantMessage = { role: "assistant", content: finalResponse };
+      // Only ask for location if NOT already confirmed in this session
+      if (!isLocationConfirmedForSession(sessionId)) {
+        finalResponse = "I can help you with that. Are you in Singapore?";
+        supportFlowHandled = true;
+        assistantMessage = { role: "assistant", content: finalResponse };
+      }
     }
 
     // Only process support flow messages if this isn't the initial support request
@@ -4758,6 +4812,8 @@ export async function POST(request: NextRequest) {
               /\b(singapore|sg)\b/i.test(trimmed)
             ) {
               supportState.locationConfirmed = true;
+              // 🔴 Store at session level - NEVER ask again in this session
+              setLocationConfirmedForSession(sessionId, true);
               if (supportState.kind === "warranty") {
                 if (!supportState.issue) {
                   supportState.step = "issue";
@@ -5038,8 +5094,9 @@ export async function POST(request: NextRequest) {
 
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
-        // Always include trade-in context so agent knows to use tools throughout conversation
-        { role: "system", content: TRADE_IN_SYSTEM_CONTEXT },
+        // 🔴 REMOVED: TRADE_IN_SYSTEM_CONTEXT was being added to EVERY conversation
+        // This caused the LLM to talk about trade-in prices even for simple product questions
+        // Trade-in context is now added ONLY when tradeInIntent is detected (see below)
         {
           role: "system",
           content:
@@ -5267,6 +5324,16 @@ Only after user says yes/proceed, start collecting details (condition, accessori
               message,
             );
 
+          // Check if current message has explicit trade-in intent
+          const currentMessageHasTradeIntent = detectTradeInIntent(message);
+
+          // Detect if this looks like a product info continuation (not trade-in)
+          // e.g., "what about switch 2", "how about ps5", "got any xbox"
+          const looksLikeProductContinuation =
+            /^(what|how)\s+(about|much)\s+/i.test(message.trim()) ||
+            /^(got|have|any)\s+/i.test(message.trim()) ||
+            /^(show|tell)\s+(me|us)\s+/i.test(message.trim());
+
           if ((explicitCancel || newTradeIntent) && !isCompleted) {
             await supabase
               .from("trade_in_leads")
@@ -5278,7 +5345,13 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             tradeInLeadId = null;
             tradeInLeadStatus = null;
             tradeInLeadDetail = null;
-          } else if (!isCompleted) {
+          } else if (
+            !isCompleted &&
+            currentMessageHasTradeIntent &&
+            !looksLikeProductContinuation
+          ) {
+            // 🔴 CRITICAL FIX: Only resume trade-in lead if current message has trade intent
+            // "what about switch 2" should NOT resume trade-in - it's a product info question
             // For voice, start fresh if existing lead is stale or already populated
             let reuse = true;
             if (mode === "voice") {
@@ -6173,17 +6246,21 @@ Only after user says yes/proceed, start collecting details (condition, accessori
           "Valve Warranty Policy (Steam Deck): Brand New units come with 12-month official Valve warranty (claims must go to Valve directly). Pre-Owned units come with 1-month TradeZone store warranty only. Do not mix this up.",
       });
 
-      messages.push({
-        role: "system",
-        content:
-          "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in S$100'; 'Switch 2 trade-in S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
-      });
+      // 🔴 CRITICAL: These trade-in specific prompts should ONLY be added when user has trade-in intent
+      // Otherwise, questions like "is your switch japan set?" will incorrectly get trade-in price responses
+      if (tradeInIntent) {
+        messages.push({
+          role: "system",
+          content:
+            "If the model name could map to multiple variants (e.g., Switch Lite / Gen1/Gen2 / OLED / Switch 2), present up to THREE short price options, each on its own line with a label (e.g., 'Switch OLED trade-in S$100'; 'Switch 2 trade-in S$350'). Then ask 'Which one is yours?' before proceeding. Do NOT show product links or images.",
+        });
 
-      messages.push({
-        role: "system",
-        content:
-          "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) email; 5) phone; 6) name; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
-      });
+        messages.push({
+          role: "system",
+          content:
+            "After pricing is set, follow THIS exact order with no detours: 1) condition; 2) accessories/box; 3) photos (reuse if on file, else ask once); 4) email; 5) phone; 6) name; 7) payout method; 8) recap all fields; 9) confirm submission; 10) submit lead. Do not show product lists or new prices during this checklist.",
+        });
+      }
 
       console.log("[ChatKit] Tool choice:", {
         isTradeInPricingQuery,
