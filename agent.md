@@ -713,6 +713,35 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 - Make stopping voice intentional: require a quick second tap (“tap again to stop”).
 - Surface LiveKit local mic silence detection with a clear status message (mic permission / device selection).
 
+## Change Log — Jan 24, 2026 (Console Filtering + Trade-In & Support Flow Fixes)
+
+### Console Filtering Fix (Jan 24, 2026) ✅
+**Problem**: "do you have ps5/switch/xbox" queries showed games, controllers, accessories instead of just console units.
+
+**Examples from Production**:
+- "do you have ps5" → Showed Uncharted, Ghost of Yotei, Silent Hill (games)
+- "do you have switch" → Showed 18 results including Pro Controller
+- "do you have xbox" → Showed Seagate Storage Expansion Card
+
+**Root Cause**: 
+1. Duplicate 100-line filter blocks existed in `vectorSearch.ts`
+2. Filter logic wasn't catching all non-console items
+3. "Pro Controller" passed through because "pro" matched console unit pattern
+
+**Fix Applied** (`lib/tools/vectorSearch.ts`):
+1. **Unified `filterConsoleResults()` function** - Single reusable function replacing duplicate code blocks
+2. **Strict exclusion patterns** - Controllers, storage cards, warranties, games always excluded
+3. **Smart game detection** - Games only allowed if they have console indicators (slim/pro/digital/disc/oled)
+4. **Applied to all console paths** - Direct category load + WooCommerce search results
+
+**Test Results**:
+- ✅ PS5: 3 results (consoles only - no games)
+- ✅ Switch: 1 result (Nintendo Switch Lite - no Pro Controller)
+- ✅ Xbox: 2 results (Series X/S only - no Seagate storage)
+- ✅ All 3 Product Family Filtering tests pass
+
+---
+
 ## Change Log — Jan 24, 2026 (Text Agent - Critical Trade-In & Support Flow Fixes)
 
 ### Trade-In Only Triggers on Explicit Intent (Jan 23-24, 2026)
