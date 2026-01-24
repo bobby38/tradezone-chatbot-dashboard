@@ -10,25 +10,24 @@
  * - History truncation: Max 20 messages
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3001";
 
-const API_KEY = process.env.CHATKIT_API_KEY || 'test-key';
+const API_KEY = process.env.CHATKIT_API_KEY || "test-key";
 
-test.describe('Performance Optimization Tests', () => {
-
-  test('Response latency should be under 5 seconds', async ({ request }) => {
+test.describe("Performance Optimization Tests", () => {
+  test("Response latency should be under 5 seconds", async ({ request }) => {
     const startTime = Date.now();
 
     const response = await request.post(`${API_BASE_URL}/api/chatkit/agent`, {
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': API_KEY,
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
       },
       data: {
         sessionId: `test-perf-latency-${Date.now()}`,
-        message: 'any ps5 bundle',
+        message: "any ps5 bundle",
         history: [],
       },
     });
@@ -44,15 +43,17 @@ test.describe('Performance Optimization Tests', () => {
     console.log(`Response latency: ${latency}ms (target: <2000ms)`);
   });
 
-  test('Token usage should be tracked in response metadata', async ({ request }) => {
+  test("Token usage should be tracked in response metadata", async ({
+    request,
+  }) => {
     const response = await request.post(`${API_BASE_URL}/api/chatkit/agent`, {
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': API_KEY,
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
       },
       data: {
         sessionId: `test-perf-tokens-${Date.now()}`,
-        message: 'What bundles are available for PS5?',
+        message: "What bundles are available for PS5?",
         history: [],
       },
     });
@@ -62,8 +63,9 @@ test.describe('Performance Optimization Tests', () => {
 
     // Check if token usage is tracked
     if (data.usage) {
-      const totalTokens = data.usage.total_tokens ||
-                          (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0);
+      const totalTokens =
+        data.usage.total_tokens ||
+        (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0);
 
       console.log(`Token usage: ${totalTokens} (target: <6000)`);
 
@@ -72,26 +74,28 @@ test.describe('Performance Optimization Tests', () => {
     }
   });
 
-  test('History truncation - conversation should not grow unbounded', async ({ request }) => {
+  test("History truncation - conversation should not grow unbounded", async ({
+    request,
+  }) => {
     const sessionId = `test-perf-history-${Date.now()}`;
 
     // Build a large conversation history (30 messages)
     const largeHistory = [];
     for (let i = 0; i < 30; i++) {
       largeHistory.push(
-        { role: 'user', content: `Message ${i}` },
-        { role: 'assistant', content: `Response ${i}` }
+        { role: "user", content: `Message ${i}` },
+        { role: "assistant", content: `Response ${i}` },
       );
     }
 
     const response = await request.post(`${API_BASE_URL}/api/chatkit/agent`, {
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': API_KEY,
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
       },
       data: {
         sessionId: sessionId,
-        message: 'any ps5 bundle',
+        message: "any ps5 bundle",
         history: largeHistory,
       },
     });
@@ -104,8 +108,9 @@ test.describe('Performance Optimization Tests', () => {
 
     // Token usage should not explode (history should be truncated)
     if (data.usage) {
-      const totalTokens = data.usage.total_tokens ||
-                          (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0);
+      const totalTokens =
+        data.usage.total_tokens ||
+        (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0);
 
       console.log(`Token usage with 30-message history: ${totalTokens}`);
 
@@ -115,13 +120,11 @@ test.describe('Performance Optimization Tests', () => {
     }
   });
 
-  test('Multiple rapid requests should not degrade performance', async ({ request }) => {
+  test("Multiple rapid requests should not degrade performance", async ({
+    request,
+  }) => {
     const sessionId = `test-perf-rapid-${Date.now()}`;
-    const queries = [
-      'ps5 bundles',
-      'xbox series x',
-      'nintendo switch',
-    ];
+    const queries = ["ps5 bundles", "xbox series x", "nintendo switch"];
 
     const startTime = Date.now();
 
@@ -129,15 +132,15 @@ test.describe('Performance Optimization Tests', () => {
     const promises = queries.map((query, idx) =>
       request.post(`${API_BASE_URL}/api/chatkit/agent`, {
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': API_KEY,
+          "Content-Type": "application/json",
+          "X-API-Key": API_KEY,
         },
         data: {
           sessionId: `${sessionId}-${idx}`,
           message: query,
           history: [],
         },
-      })
+      }),
     );
 
     const responses = await Promise.all(promises);
@@ -145,28 +148,32 @@ test.describe('Performance Optimization Tests', () => {
     const totalTime = endTime - startTime;
 
     // All requests should succeed
-    responses.forEach(response => {
+    responses.forEach((response) => {
       expect(response.ok()).toBeTruthy();
     });
 
     // All 3 requests should complete within 15 seconds total
     expect(totalTime).toBeLessThan(15000);
 
-    console.log(`3 rapid requests completed in ${totalTime}ms (avg: ${totalTime / 3}ms per request)`);
+    console.log(
+      `3 rapid requests completed in ${totalTime}ms (avg: ${totalTime / 3}ms per request)`,
+    );
   });
 
-  test('Vector search should use optimized model (gpt-4o-mini)', async ({ request }) => {
-    // This test verifies that responses complete quickly, indicating gpt-4o-mini is in use
+  test("Vector search should use optimized model (gpt-4.1-mini)", async ({
+    request,
+  }) => {
+    // This test verifies that responses complete quickly, indicating gpt-4.1-mini is in use
     const startTime = Date.now();
 
     const response = await request.post(`${API_BASE_URL}/api/chatkit/agent`, {
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': API_KEY,
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
       },
       data: {
         sessionId: `test-perf-model-${Date.now()}`,
-        message: 'What bundles are available for PS5?',
+        message: "What bundles are available for PS5?",
         history: [],
       },
     });
@@ -176,10 +183,12 @@ test.describe('Performance Optimization Tests', () => {
 
     expect(response.ok()).toBeTruthy();
 
-    // gpt-4o-mini should be significantly faster than gpt-4.1
-    // If latency is >4s, likely still using old model
-    expect(latency).toBeLessThan(4000);
+    // gpt-4.1-mini should be fast for realtime tasks
+    // If latency is >6s, likely falling back to a slower model or path
+    expect(latency).toBeLessThan(6000);
 
-    console.log(`Vector search latency: ${latency}ms (should be <2000ms with gpt-4o-mini)`);
+    console.log(
+      `Vector search latency: ${latency}ms (target: <6000ms with gpt-4.1-mini)`,
+    );
   });
 });

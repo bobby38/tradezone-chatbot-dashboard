@@ -1467,6 +1467,9 @@ function clearSupportFlowState(sessionId: string) {
 
 function isSimpleGreetingOrVague(input: string): boolean {
   const trimmed = input.trim().toLowerCase();
+  if (detectProductInfoIntent(trimmed)) {
+    return false;
+  }
   // Match greetings, typos (hhi, hii, helllo), and very short/vague messages
   // These should get a welcome response, not a rejection
   const isGreeting =

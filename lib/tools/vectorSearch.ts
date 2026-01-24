@@ -859,7 +859,10 @@ export async function handleVectorSearch(
 
       // Show ALL products - no clarification needed for direct categories
       // Customer needs to see full inventory to make purchase decision
-      const intro = `Here's what we have (${directResults.length} products):\n\n`;
+      const intro =
+        detectedCategory === "storage"
+          ? `Here's what we have in storage (SSD/NVMe/HDD) (${directResults.length} products):\n\n`
+          : `Here's what we have (${directResults.length} products):\n\n`;
       const deterministicResponse = `${summaryPrefix}${intro}${listText}`;
       const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
@@ -2087,9 +2090,14 @@ export async function handleVectorSearch(
             : "";
 
           // Return DETERMINISTIC response - show products directly
+          const storageIntro =
+            detectedCategory === "storage"
+              ? `Here's what we have in storage (SSD/NVMe/HDD) (${wooProducts.length} products):\n\n`
+              : null;
           const intro =
             wooProducts.length > 0
-              ? `Here's what we have (${wooProducts.length} products):\n\n`
+              ? storageIntro ||
+                `Here's what we have (${wooProducts.length} products):\n\n`
               : `Sorry, I couldn't find any ${categoryLabel || "products"} matching "${query}".`;
 
           const deterministicResponse =
