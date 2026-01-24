@@ -1,6 +1,8 @@
 """
 TradeZone Voice Agent - LiveKit Integration
 Calls existing Next.js APIs to keep logic in sync with text chat
+
+REBUILD: 2026-01-24-v2 - Force container rebuild for VOICE_REALTIME_MODEL fix
 """
 
 import asyncio
@@ -53,6 +55,10 @@ if os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true":
         noise_cancellation = None
 
 logger = logging.getLogger("agent-amara")
+
+# Log agent version on module load
+AGENT_VERSION = "2026-01-24-v2"
+logger.info(f"[Voice Agent] Loading version: {AGENT_VERSION}")
 
 _last_user_utterance: Dict[str, str] = {}
 _awaiting_recap_confirmation: Dict[str, bool] = {}
