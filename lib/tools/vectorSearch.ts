@@ -599,6 +599,84 @@ function filterWooResultsByTokens<T extends { name?: string }>(
 }
 
 /**
+ * Filter console results to show only the specific console UNIT user asked for
+ * "do you have ps5" → PS5 consoles only (not games/accessories)
+ * "do you have switch" → Switch consoles only
+ * "do you have ps5 games" → PS5 games (user explicitly asked)
+ */
+function filterConsoleResults<T extends { name?: string }>(
+  items: T[],
+  query: string,
+): T[] {
+  // Detect console type from query
+  const consoleType = /\b(ps5|playstation\s*5)\b/i.test(query)
+    ? "ps5"
+    : /\b(ps4|playstation\s*4)\b/i.test(query)
+      ? "ps4"
+      : /\b(xbox)\b/i.test(query)
+        ? "xbox"
+        : /\b(switch\s*2|ns2|sw2)\b/i.test(query)
+          ? "switch2"
+          : /\b(switch|nintendo)\b/i.test(query)
+            ? "switch"
+            : null;
+
+  if (!consoleType) return items;
+
+  // User explicitly wants games/controllers/accessories? Let them through
+  const wantsGame = /\bgames?\b/i.test(query);
+  const wantsController = /\bcontroller\b/i.test(query);
+  const wantsAccessory = /\b(storage|card|seagate|charger|stand)\b/i.test(
+    query,
+  );
+  if (wantsGame || wantsController || wantsAccessory) return items;
+
+  // ALWAYS exclude these - they're never console units
+  const alwaysExclude =
+    /\b(controller|joy-?con|dualsense|seagate|storage\s*expansion|card|charger|stand|case|skin|headset|cable|adapter|warranty|extension|wheel|microsd)\b/i;
+
+  // Game titles and game-related words
+  const gameWords =
+    /\b(game|uncharted|ghost\s*of|yotei|silent\s*hill|collection|legacy|thieves|sports|sifu|zelda|pokemon|mario|nba|fifa|crash|emblem|atelier|taiko)\b/i;
+
+  return items.filter((item) => {
+    const name = (item.name || "").toLowerCase();
+
+    // Brand must match
+    const brandMatch =
+      consoleType === "ps5"
+        ? /\b(ps5|playstation\s*5|playstation\s*portal)\b/i.test(name)
+        : consoleType === "ps4"
+          ? /\b(ps4|playstation\s*4)\b/i.test(name)
+          : consoleType === "xbox"
+            ? /\b(xbox)\b/i.test(name)
+            : consoleType === "switch2"
+              ? /\b(switch\s*2)\b/i.test(name)
+              : consoleType === "switch"
+                ? /\b(switch|nintendo)\b/i.test(name) &&
+                  !/switch\s*2/i.test(name)
+                : false;
+
+    if (!brandMatch) return false;
+
+    // Always exclude accessories/controllers/storage
+    if (alwaysExclude.test(name)) return false;
+
+    // Exclude games (unless it's actually a console bundle with "edition" in the name that also has console indicators)
+    if (gameWords.test(name)) {
+      // Allow if it's clearly a console (has slim/pro/digital/disc/oled/lite/series)
+      const hasConsoleIndicator =
+        /\b(slim|digital|disc|oled|lite|series\s*[xs]|1tb|2tb|512gb)\b/i.test(
+          name,
+        );
+      if (!hasConsoleIndicator) return false;
+    }
+
+    return true;
+  });
+}
+
+/**
  * Sort products by price based on user intent
  * "best/premium/expensive" → most expensive first
  * "cheap/affordable/budget" → cheapest first
@@ -736,109 +814,14 @@ export async function handleVectorSearch(
       }
     }
 
-    // 🎯 FILTER CONSOLES by specific brand/model when user asks for a specific console
-    // "do you have ps5" should only show PS5 consoles, not Switch, Xbox, accessories, warranties
+    // 🎯 FILTER CONSOLES: Use unified filterConsoleResults function
     if (
       (detectedCategory === "console" || detectedCategory === "handheld") &&
       directResults.length > 0
     ) {
-      const lowerQuery = query.toLowerCase();
-
-      // Detect specific console brand/model in query
-      const wantsPS5 = /\b(ps5|playstation\s*5)\b/i.test(query);
-      const wantsPS4 = /\b(ps4|playstation\s*4)\b/i.test(query);
-      const wantsXbox = /\b(xbox)\b/i.test(query);
-      const wantsSwitch =
-        /\b(switch|nintendo)\b/i.test(query) && !/switch\s*2/i.test(query);
-      const wantsSwitch2 = /\b(switch\s*2|ns2|sw2)\b/i.test(query);
-      const wantsSteamDeck = /\b(steam\s*deck)\b/i.test(query);
-      const wantsROGAlly = /\b(rog\s*ally|ally\s*x)\b/i.test(query);
-      const wantsLegionGo = /\b(legion\s*go)\b/i.test(query);
-
-      // Only filter if user asked for a SPECIFIC console
-      const hasSpecificConsole =
-        wantsPS5 ||
-        wantsPS4 ||
-        wantsXbox ||
-        wantsSwitch ||
-        wantsSwitch2 ||
-        wantsSteamDeck ||
-        wantsROGAlly ||
-        wantsLegionGo;
-
-      if (hasSpecificConsole) {
-        const beforeFilter = directResults.length;
-
-        // Check if user is explicitly asking for warranty/accessories
-        const wantsWarranty = /\b(warranty|extension)\b/i.test(query);
-        const wantsController = /\b(controller|dualsense|dual\s*sense)\b/i.test(
-          query,
-        );
-
-        directResults = directResults.filter((product) => {
-          const name = (product.name || "").toLowerCase();
-
-          // Exclude warranties unless user asks for warranty
-          const isWarranty = /\b(warranty|extension)\b/i.test(name);
-          if (isWarranty && !wantsWarranty) {
-            return false;
-          }
-
-          // Exclude controllers unless user asks for controller
-          const isController = /\b(controller|dual\s*sense|dualsense)\b/i.test(
-            name,
-          );
-          if (isController && !wantsController) {
-            return false;
-          }
-
-          // Exclude other accessories
-          const isAccessory =
-            /\b(charging|stand|cover|case|skin|headset|cable|adapter)\b/i.test(
-              name,
-            );
-          if (isAccessory) {
-            return false;
-          }
-
-          const isGame =
-            /\b(game|edition|bundle)\b/i.test(name) &&
-            !/console|slim|pro|digital|disc/i.test(name);
-
-          // Match specific console
-          if (wantsPS5) {
-            return (
-              /\b(ps5|playstation\s*5|playstation\s*portal)\b/i.test(name) &&
-              !isGame
-            );
-          }
-          if (wantsPS4) {
-            return /\b(ps4|playstation\s*4)\b/i.test(name) && !isGame;
-          }
-          if (wantsXbox) {
-            return /\b(xbox)\b/i.test(name) && !isGame;
-          }
-          if (wantsSwitch2) {
-            return /\b(switch\s*2|ns2|sw2)\b/i.test(name);
-          }
-          if (wantsSwitch) {
-            return (
-              /\b(switch|nintendo)\b/i.test(name) && !/switch\s*2/i.test(name)
-            );
-          }
-          if (wantsSteamDeck) {
-            return /\b(steam\s*deck)\b/i.test(name);
-          }
-          if (wantsROGAlly) {
-            return /\b(rog\s*ally|ally\s*x)\b/i.test(name);
-          }
-          if (wantsLegionGo) {
-            return /\b(legion\s*go)\b/i.test(name);
-          }
-
-          return true;
-        });
-
+      const beforeFilter = directResults.length;
+      directResults = filterConsoleResults(directResults, query);
+      if (directResults.length !== beforeFilter) {
         console.log(
           `[VectorSearch] 🎮 Console filter: ${beforeFilter} → ${directResults.length} items for "${query}"`,
         );
@@ -2132,14 +2115,17 @@ export async function handleVectorSearch(
         const hasEnoughResults = wooProducts.length >= 3;
 
         if (!isDetailQuery && hasEnoughResults) {
+          // 🎮 Filter console results if user asked for specific console
+          const filteredWooProducts = filterConsoleResults(wooProducts, query);
+
           console.log(
-            `[VectorSearch] ✅ Simple list query with ${wooProducts.length} WooCommerce results - returning WITHOUT vector enrichment (fast path)`,
+            `[VectorSearch] ✅ Simple list query with ${filteredWooProducts.length} WooCommerce results (filtered from ${wooProducts.length}) - returning WITHOUT vector enrichment (fast path)`,
           );
 
           // Show all products if total is small (≤20), otherwise limit to 10
           const displayLimit =
-            wooProducts.length <= 20 ? wooProducts.length : 20;
-          const productsToShow = wooProducts.slice(0, displayLimit);
+            filteredWooProducts.length <= 20 ? filteredWooProducts.length : 20;
+          const productsToShow = filteredWooProducts.slice(0, displayLimit);
 
           const listText = productsToShow
             .map((product, idx) => {
@@ -2157,7 +2143,7 @@ export async function handleVectorSearch(
 
           const moreText = buildMoreResultsText(
             displayLimit,
-            wooProducts.length,
+            filteredWooProducts.length,
             detectedCategory,
             query,
           );
@@ -2169,26 +2155,31 @@ export async function handleVectorSearch(
           const summaryPrefix = budgetSummaryLine
             ? `${budgetSummaryLine}\n\n`
             : "";
-          const intro = `Here's what we have (${wooProducts.length} results):\n\n`;
+          const intro = `Here's what we have (${filteredWooProducts.length} results):\n\n`;
           const deterministicResponse = `${summaryPrefix}${intro}${listText}${moreText}`;
           return {
             text: `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`,
             store: resolvedStore.label,
             matches: [],
-            wooProducts: wooProducts,
+            wooProducts: filteredWooProducts,
           };
         }
 
+        // 🎮 Filter console results if user asked for specific console
+        const filteredWooProducts2 = filterConsoleResults(wooProducts, query);
+
         console.log(
-          `[VectorSearch] Specific query or few results (${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
+          `[VectorSearch] Specific query or few results (${filteredWooProducts2.length} filtered from ${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
         );
-        if (wooProducts.length > 0) {
+        if (filteredWooProducts2.length > 0) {
           const fallbackBudgetContext =
-            budgetContext || createBudgetContext(query, wooProducts);
+            budgetContext || createBudgetContext(query, filteredWooProducts2);
           // Show all products if total is small (≤20), otherwise limit to 20
           const displayLimit =
-            wooProducts.length <= 20 ? wooProducts.length : 20;
-          const productsToShow = wooProducts.slice(0, displayLimit);
+            filteredWooProducts2.length <= 20
+              ? filteredWooProducts2.length
+              : 20;
+          const productsToShow = filteredWooProducts2.slice(0, displayLimit);
 
           const listText = productsToShow
             .map((product, idx) => {
@@ -2208,7 +2199,7 @@ export async function handleVectorSearch(
 
           const moreText = buildMoreResultsText(
             displayLimit,
-            wooProducts.length,
+            filteredWooProducts2.length,
             detectedCategory,
             query,
           );
@@ -2223,7 +2214,7 @@ export async function handleVectorSearch(
             : "";
 
           // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
-          const intro = `Here's what we have (${wooProducts.length} results):\n\n`;
+          const intro = `Here's what we have (${filteredWooProducts2.length} results):\n\n`;
           const deterministicResponse =
             summaryPrefix + intro + listText + moreText;
           const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
@@ -2232,7 +2223,7 @@ export async function handleVectorSearch(
             text: responseText,
             store: resolvedStore.label,
             matches: [],
-            wooProducts: wooProducts,
+            wooProducts: filteredWooProducts2,
           };
         }
       } else {

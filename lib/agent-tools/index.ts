@@ -26,8 +26,14 @@ export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   chair: ["chair"],
   cpu_cooler: ["cpu-cooler"],
   storage: ["storage"],
-  console: ["consoles", "console"],
-  handheld: ["handheld", "handhelds"],
+  console: [
+    "consoles",
+    "console",
+    "console-nintendo",
+    "console-playstation-4",
+    "gadgets",
+  ],
+  handheld: ["handheld", "handhelds", "consoles", "gadgets"],
 };
 
 export const DIRECT_CATEGORY_KEYS = [
