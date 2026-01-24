@@ -120,6 +120,11 @@ def lookup_price(device_name: str, price_type: str = "preowned") -> Optional[flo
         return None
 
     device_lower = device_name.lower()
+    
+    # PS4 Pro doesn't have Disc/Digital variants - strip them
+    # User might say "PS4 Pro 1TB Disc" but grid has "PS4 Pro 1TB"
+    if "ps4 pro" in device_lower:
+        device_lower = device_lower.replace(" disc", "").replace(" digital", "")
 
     # Search all categories
     for category_data in grid.get("categories", {}).values():

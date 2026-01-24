@@ -27,6 +27,8 @@ from auto_save import (
     force_save_to_db,
 )
 from dotenv import load_dotenv
+from pydantic import Field
+
 from livekit import rtc
 from livekit.agents import (
     Agent,
@@ -44,7 +46,6 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, silero
 from livekit.plugins.openai import realtime
-from pydantic import Field
 
 noise_cancellation = None
 if os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true":
@@ -58,28 +59,36 @@ if os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true":
 logger = logging.getLogger("agent-amara")
 
 # Log agent version on module load - UNIQUE IDENTIFIER FOR THIS BUILD
-AGENT_VERSION = "2026-01-24-v3-DIAGNOSTIC"
-BUILD_TIMESTAMP = "2026-01-24T09:00:00Z"
+AGENT_VERSION = "2026-01-24-v4-PRINT"
+BUILD_TIMESTAMP = "2026-01-24T09:15:00Z"
 
 # ========== CRITICAL STARTUP DIAGNOSTICS ==========
-# This block prints EXACTLY what env vars are loaded so we can verify deployment
-logger.info("=" * 60)
-logger.info(f"[DIAGNOSTIC] 🚀 AGENT STARTING - VERSION: {AGENT_VERSION}")
-logger.info(f"[DIAGNOSTIC] 🕐 BUILD TIMESTAMP: {BUILD_TIMESTAMP}")
-logger.info("=" * 60)
-logger.info(f"[DIAGNOSTIC] ENV VARS AT STARTUP:")
-logger.info(f"[DIAGNOSTIC]   VOICE_STACK = '{os.getenv('VOICE_STACK', 'NOT SET')}'")
-logger.info(
-    f"[DIAGNOSTIC]   VOICE_LLM_MODEL = '{os.getenv('VOICE_LLM_MODEL', 'NOT SET')}'"
+# Using print() instead of logger.info() because logger may not be configured yet at import time
+print("=" * 60, flush=True)
+print(f"[DIAGNOSTIC] AGENT VERSION: {AGENT_VERSION}", flush=True)
+print(f"[DIAGNOSTIC] BUILD TIMESTAMP: {BUILD_TIMESTAMP}", flush=True)
+print("=" * 60, flush=True)
+print(f"[DIAGNOSTIC] ENV VARS AT STARTUP:", flush=True)
+print(
+    f"[DIAGNOSTIC]   VOICE_STACK = '{os.getenv('VOICE_STACK', 'NOT SET')}'", flush=True
 )
-logger.info(
-    f"[DIAGNOSTIC]   VOICE_REALTIME_MODEL = '{os.getenv('VOICE_REALTIME_MODEL', 'NOT SET')}'"
+print(
+    f"[DIAGNOSTIC]   VOICE_LLM_MODEL = '{os.getenv('VOICE_LLM_MODEL', 'NOT SET')}'",
+    flush=True,
 )
-logger.info(f"[DIAGNOSTIC]   LIVEKIT_URL = '{os.getenv('LIVEKIT_URL', 'NOT SET')}'")
-logger.info(
-    f"[DIAGNOSTIC]   LIVEKIT_API_KEY = '{os.getenv('LIVEKIT_API_KEY', 'NOT SET')[:8] if os.getenv('LIVEKIT_API_KEY') else 'NOT SET'}...'"
+print(
+    f"[DIAGNOSTIC]   VOICE_REALTIME_MODEL = '{os.getenv('VOICE_REALTIME_MODEL', 'NOT SET')}'",
+    flush=True,
 )
-logger.info("=" * 60)
+print(
+    f"[DIAGNOSTIC]   LIVEKIT_URL = '{os.getenv('LIVEKIT_URL', 'NOT SET')}'", flush=True
+)
+_lk_key = os.getenv("LIVEKIT_API_KEY", "")
+print(
+    f"[DIAGNOSTIC]   LIVEKIT_API_KEY = '{_lk_key[:8] if _lk_key else 'NOT SET'}...'",
+    flush=True,
+)
+print("=" * 60, flush=True)
 
 _last_user_utterance: Dict[str, str] = {}
 _awaiting_recap_confirmation: Dict[str, bool] = {}
