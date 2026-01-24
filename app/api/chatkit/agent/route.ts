@@ -4705,378 +4705,423 @@ export async function POST(request: NextRequest) {
 
     // Only process support flow messages if this isn't the initial support request
     if (supportState && !supportFlowHandled) {
-      if (!supportState.kind) {
-        supportState.kind = isWarrantySupportQuery(message)
-          ? "warranty"
-          : "general";
-      }
-      if (!supportState.locationConfirmed) {
-        supportState.step = "location";
-      }
       const trimmed = message.trim();
-      const promptForStep = (
-        step: SupportFlowStep,
-        state: SupportFlowState,
-      ) => {
-        switch (step) {
-          case "location":
-            return "Are you in Singapore?";
-          case "purpose":
-            return "What do you need help with?";
-          case "relevance":
-            return "Is it about a product we sell (console, game, phone, PC parts)?";
-          case "issue":
-            return "What's the issue?";
-          case "purchase":
-            return "Roughly when did you buy it?";
-          case "device":
-            return "What is it for (console, game, camera, PC, phone)? Brand if you know.";
-          case "name":
-            return "Your name?";
-          case "phone":
-            return "Phone number?";
-          case "email":
-            return "Email address?";
-          case "confirm_email":
-            return `So that's ${state.email ?? "your email"}, correct?`;
-          default:
-            return "Can you share a bit more?";
-        }
-      };
 
-      const nextContactStep = (state: SupportFlowState): SupportFlowStep => {
-        if (!state.name) return "name";
-        if (!state.phone) return "phone";
-        if (!state.email) return "email";
-        return "confirm_email";
-      };
+      // 🔴 CRITICAL: Detect when user wants to EXIT or CANCEL the support flow
+      // Keywords: "nevermind", "never mind", "forget it", "cancel", "stop", "no thanks", "actually no"
+      // Also detect topic change: user asks about products instead of continuing support
+      const exitKeywords =
+        /\b(nevermind|never\s*mind|forget\s*it|cancel|stop|no\s*thanks|actually\s*no|don'?t\s*worry|skip|nah|nvm)\b/i;
+      const isExitRequest = exitKeywords.test(trimmed);
 
-      if (looksLikeSupportSpam(trimmed)) {
-        // Option 1: Spam detected → refuse + send to staff + end flow
-        const emailPayload = {
-          emailType: "info_request" as const,
-          name: supportState.name || "Anonymous",
-          email: supportState.email || "no-reply@unknown.com",
-          phone: supportState.phone || "Not provided",
-          message: `[SPAM DETECTED - STAFF REVIEW NEEDED]\n\nOriginal message: ${trimmed}\n\nSupport context:\n${buildSupportEmailMessage(supportState)}`,
-        };
+      // Detect topic change: user asks about products/prices while in support flow
+      const isProductQuery =
+        detectProductInfoIntent(trimmed) || detectTradeInIntent(trimmed);
+      const isNewQuestion =
+        /\b(do you have|any|looking for|price of|how much|where can i|can i buy)\b/i.test(
+          trimmed,
+        );
+      const isTopicChange =
+        isProductQuery || (isNewQuestion && trimmed.length > 10);
 
-        try {
-          await handleEmailSend(emailPayload);
-          console.log("[ChatKit] Spam support request sent to staff", {
-            sessionId,
-            message: trimmed.substring(0, 100),
-          });
-        } catch (sendError) {
-          console.error(
-            "[ChatKit] Failed to send spam support email",
-            sendError,
-          );
-        }
-
-        // Clear state and exit flow
+      if (isExitRequest || isTopicChange) {
+        // Clear support flow and let the conversation continue naturally
         clearSupportFlowState(sessionId);
+        supportState = null;
+        console.log("[ChatKit] Support flow cancelled by user", {
+          sessionId,
+          reason: isExitRequest ? "exit_keyword" : "topic_change",
+          message: trimmed.substring(0, 50),
+        });
 
-        finalResponse =
-          "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?";
-        supportFlowHandled = true;
-        assistantMessage = {
-          content: finalResponse,
-        };
-      } else {
-        const extractedEmail = extractEmail(trimmed);
-        if (extractedEmail) supportState.email = extractedEmail;
-        const extractedPhone = extractPhone(trimmed);
-        if (extractedPhone) supportState.phone = extractedPhone;
-        if (!supportState.name) {
-          const hasNameCue = /(my name is|i am|i'm)/i.test(trimmed);
-          if (supportState.step === "name" || hasNameCue) {
-            const extractedName = extractNameCandidate(trimmed);
-            if (extractedName) supportState.name = extractedName;
-          }
+        if (isExitRequest) {
+          // User explicitly cancelled - acknowledge and offer help
+          finalResponse =
+            "No problem! Is there anything else I can help you with?";
+          supportFlowHandled = true;
+          assistantMessage = { role: "assistant", content: finalResponse };
         }
+        // If topic change, don't set supportFlowHandled - let the query be processed normally below
+      }
 
-        switch (supportState.step) {
-          case "location": {
-            if (
-              isNegativeReply(trimmed) ||
-              /\b(malaysia|indonesia|overseas|outside|not in sg)\b/i.test(
-                trimmed,
-              )
-            ) {
-              clearSupportFlowState(sessionId);
-              finalResponse =
-                "Sorry, we only support Singapore customers. If you're in Singapore, let me know.";
-            } else if (
-              isAffirmativeReply(trimmed) ||
-              /\b(singapore|sg)\b/i.test(trimmed)
-            ) {
-              supportState.locationConfirmed = true;
-              // 🔴 Store at session level - NEVER ask again in this session
-              setLocationConfirmedForSession(sessionId, true);
-              if (supportState.kind === "warranty") {
-                if (!supportState.issue) {
-                  supportState.step = "issue";
-                  finalResponse = promptForStep("issue", supportState);
-                } else if (!supportState.purchaseTiming) {
-                  supportState.step = "purchase";
-                  finalResponse = promptForStep("purchase", supportState);
-                } else {
-                  supportState.step = "device";
-                  finalResponse = promptForStep("device", supportState);
-                }
-              } else {
-                supportState.step = "purpose";
-                finalResponse = promptForStep("purpose", supportState);
-              }
-              setSupportFlowState(sessionId, supportState);
-            } else {
-              finalResponse = promptForStep("location", supportState);
-              setSupportFlowState(sessionId, supportState);
-            }
-            break;
+      if (supportState && !supportFlowHandled) {
+        if (!supportState.kind) {
+          supportState.kind = isWarrantySupportQuery(message)
+            ? "warranty"
+            : "general";
+        }
+        if (!supportState.locationConfirmed) {
+          supportState.step = "location";
+        }
+        const promptForStep = (
+          step: SupportFlowStep,
+          state: SupportFlowState,
+        ) => {
+          switch (step) {
+            case "location":
+              return "Are you in Singapore?";
+            case "purpose":
+              return "What do you need help with?";
+            case "relevance":
+              return "Is it about a product we sell (console, game, phone, PC parts)?";
+            case "issue":
+              return "What's the issue?";
+            case "purchase":
+              return "Roughly when did you buy it?";
+            case "device":
+              return "What is it for (console, game, camera, PC, phone)? Brand if you know.";
+            case "name":
+              return "Your name?";
+            case "phone":
+              return "Phone number?";
+            case "email":
+              return "Email address?";
+            case "confirm_email":
+              return `So that's ${state.email ?? "your email"}, correct?`;
+            default:
+              return "Can you share a bit more?";
           }
-          case "purpose": {
-            if (trimmed.length < 3) {
-              finalResponse = promptForStep("purpose", supportState);
+        };
+
+        const nextContactStep = (state: SupportFlowState): SupportFlowStep => {
+          if (!state.name) return "name";
+          if (!state.phone) return "phone";
+          if (!state.email) return "email";
+          return "confirm_email";
+        };
+
+        if (looksLikeSupportSpam(trimmed)) {
+          // Option 1: Spam detected → refuse + send to staff + end flow
+          const emailPayload = {
+            emailType: "info_request" as const,
+            name: supportState.name || "Anonymous",
+            email: supportState.email || "no-reply@unknown.com",
+            phone: supportState.phone || "Not provided",
+            message: `[SPAM DETECTED - STAFF REVIEW NEEDED]\n\nOriginal message: ${trimmed}\n\nSupport context:\n${buildSupportEmailMessage(supportState)}`,
+          };
+
+          try {
+            await handleEmailSend(emailPayload);
+            console.log("[ChatKit] Spam support request sent to staff", {
+              sessionId,
+              message: trimmed.substring(0, 100),
+            });
+          } catch (sendError) {
+            console.error(
+              "[ChatKit] Failed to send spam support email",
+              sendError,
+            );
+          }
+
+          // Clear state and exit flow
+          clearSupportFlowState(sessionId);
+
+          finalResponse =
+            "I can only help with TradeZone products. I've flagged this for staff review. Is there anything else I can help with?";
+          supportFlowHandled = true;
+          assistantMessage = {
+            content: finalResponse,
+          };
+        } else {
+          const extractedEmail = extractEmail(trimmed);
+          if (extractedEmail) supportState.email = extractedEmail;
+          const extractedPhone = extractPhone(trimmed);
+          if (extractedPhone) supportState.phone = extractedPhone;
+          if (!supportState.name) {
+            const hasNameCue = /(my name is|i am|i'm)/i.test(trimmed);
+            if (supportState.step === "name" || hasNameCue) {
+              const extractedName = extractNameCandidate(trimmed);
+              if (extractedName) supportState.name = extractedName;
+            }
+          }
+
+          switch (supportState.step) {
+            case "location": {
+              if (
+                isNegativeReply(trimmed) ||
+                /\b(malaysia|indonesia|overseas|outside|not in sg)\b/i.test(
+                  trimmed,
+                )
+              ) {
+                clearSupportFlowState(sessionId);
+                finalResponse =
+                  "Sorry, we only support Singapore customers. If you're in Singapore, let me know.";
+              } else if (
+                isAffirmativeReply(trimmed) ||
+                /\b(singapore|sg)\b/i.test(trimmed)
+              ) {
+                supportState.locationConfirmed = true;
+                // 🔴 Store at session level - NEVER ask again in this session
+                setLocationConfirmedForSession(sessionId, true);
+                if (supportState.kind === "warranty") {
+                  if (!supportState.issue) {
+                    supportState.step = "issue";
+                    finalResponse = promptForStep("issue", supportState);
+                  } else if (!supportState.purchaseTiming) {
+                    supportState.step = "purchase";
+                    finalResponse = promptForStep("purchase", supportState);
+                  } else {
+                    supportState.step = "device";
+                    finalResponse = promptForStep("device", supportState);
+                  }
+                } else {
+                  supportState.step = "purpose";
+                  finalResponse = promptForStep("purpose", supportState);
+                }
+                setSupportFlowState(sessionId, supportState);
+              } else {
+                finalResponse = promptForStep("location", supportState);
+                setSupportFlowState(sessionId, supportState);
+              }
+              break;
+            }
+            case "purpose": {
+              if (trimmed.length < 3) {
+                finalResponse = promptForStep("purpose", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
+              supportState.purpose = trimmed;
+              if (isWarrantySupportQuery(trimmed)) {
+                supportState.kind = "warranty";
+                supportState.step = "issue";
+                finalResponse = promptForStep("issue", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
+              const productRelated =
+                detectProductInfoIntent(trimmed) ||
+                /\b(console|game|camera|pc|laptop|desktop|phone|tablet|gpu|cpu|headset|controller|accessor(y|ies)|monitor|playstation|xbox|switch|nintendo)\b/i.test(
+                  trimmed,
+                );
+              if (!productRelated) {
+                supportState.step = "relevance";
+                finalResponse = promptForStep("relevance", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
+              supportState.step = "device";
+              finalResponse = promptForStep("device", supportState);
               setSupportFlowState(sessionId, supportState);
               break;
             }
-            supportState.purpose = trimmed;
-            if (isWarrantySupportQuery(trimmed)) {
-              supportState.kind = "warranty";
-              supportState.step = "issue";
-              finalResponse = promptForStep("issue", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
-            const productRelated =
-              detectProductInfoIntent(trimmed) ||
-              /\b(console|game|camera|pc|laptop|desktop|phone|tablet|gpu|cpu|headset|controller|accessor(y|ies)|monitor|playstation|xbox|switch|nintendo)\b/i.test(
-                trimmed,
-              );
-            if (!productRelated) {
-              supportState.step = "relevance";
+            case "relevance": {
+              if (isNegativeReply(trimmed)) {
+                clearSupportFlowState(sessionId);
+                finalResponse =
+                  "We only support electronics and gaming products we sell. If that's what you need, let me know.";
+                break;
+              }
+              if (isAffirmativeReply(trimmed)) {
+                supportState.step = "device";
+                finalResponse = promptForStep("device", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
               finalResponse = promptForStep("relevance", supportState);
               setSupportFlowState(sessionId, supportState);
               break;
             }
-            supportState.step = "device";
-            finalResponse = promptForStep("device", supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "relevance": {
-            if (isNegativeReply(trimmed)) {
-              clearSupportFlowState(sessionId);
-              finalResponse =
-                "We only support electronics and gaming products we sell. If that's what you need, let me know.";
-              break;
-            }
-            if (isAffirmativeReply(trimmed)) {
-              supportState.step = "device";
-              finalResponse = promptForStep("device", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
-            finalResponse = promptForStep("relevance", supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "issue": {
-            if (trimmed.length < 3) {
-              finalResponse = promptForStep("issue", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
-            const timing = extractPurchaseTiming(trimmed);
-            // If user only provided timing info, extract it but ask for actual issue
-            if (
-              timing &&
-              trimmed.length < 20 &&
-              /^(about|around|roughly|approximately)?\s*\d+\s*(year|month|week|day)s?\s*ago$/i.test(
-                trimmed,
-              )
-            ) {
-              supportState.purchaseTiming = timing;
-              finalResponse = "Got it. What's the issue with it?";
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
-            // Accept ANY response as the issue description, not just keyword matches
-            if (!supportState.issue) {
-              supportState.issue = trimmed;
-            }
-            if (timing) supportState.purchaseTiming = timing;
-            if (!supportState.purchaseTiming) {
-              supportState.step = "purchase";
-              finalResponse = promptForStep("purchase", supportState);
-            } else {
-              supportState.step = "device";
-              finalResponse = promptForStep("device", supportState);
-            }
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "purchase": {
-            if (trimmed.length < 2) {
-              finalResponse = promptForStep("purchase", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
-            supportState.purchaseTiming =
-              supportState.purchaseTiming || trimmed;
-            supportState.step = "device";
-            finalResponse = promptForStep("device", supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "device": {
-            if (trimmed.length < 2) {
-              finalResponse = promptForStep("device", supportState);
-              setSupportFlowState(sessionId, supportState);
-              break;
-            }
-            supportState.deviceDetails = trimmed;
-            supportState.step = nextContactStep(supportState);
-            finalResponse = promptForStep(supportState.step, supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "name": {
-            if (!supportState.name) {
-              // Fallback: accept any reasonable response as name if extraction failed
-              if (trimmed.length > 2 && !/^(yes|no|ok|okay)$/i.test(trimmed)) {
-                supportState.name = trimmed;
-              } else {
-                finalResponse = promptForStep("name", supportState);
+            case "issue": {
+              if (trimmed.length < 3) {
+                finalResponse = promptForStep("issue", supportState);
                 setSupportFlowState(sessionId, supportState);
                 break;
               }
-            }
-            supportState.step = nextContactStep(supportState);
-            finalResponse = promptForStep(supportState.step, supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "phone": {
-            if (!supportState.phone) {
-              // Fallback: accept any reasonable response as phone if extraction failed
-              if (trimmed.length >= 8 && /\d/.test(trimmed)) {
-                supportState.phone = trimmed.replace(/\D/g, "");
-              } else {
-                finalResponse = promptForStep("phone", supportState);
-                setSupportFlowState(sessionId, supportState);
-                break;
-              }
-            }
-            supportState.step = nextContactStep(supportState);
-            finalResponse = promptForStep(supportState.step, supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "email": {
-            if (!supportState.email) {
-              // Smart email correction: detect common mistakes and suggest fixes
-              if (trimmed.includes("@") && trimmed.length > 5) {
-                supportState.email = trimmed.toLowerCase().replace(/\s+/g, "");
-              } else if (trimmed.length > 5 && /[a-z0-9]/i.test(trimmed)) {
-                // Missing @ sign - try to suggest correction
-                const hasDomain = /\.(com|net|org|sg|co|io|edu|gov)$/i.test(
+              const timing = extractPurchaseTiming(trimmed);
+              // If user only provided timing info, extract it but ask for actual issue
+              if (
+                timing &&
+                trimmed.length < 20 &&
+                /^(about|around|roughly|approximately)?\s*\d+\s*(year|month|week|day)s?\s*ago$/i.test(
                   trimmed,
-                );
-                if (hasDomain) {
-                  // Looks like email domain, suggest adding @
-                  const parts = trimmed.split(/[.\s]+/);
-                  if (parts.length >= 2) {
-                    const suggested = `${parts[0]}@${parts.slice(1).join(".")}`;
-                    supportState.email = suggested.toLowerCase();
-                    finalResponse = `I think you meant ${suggested}. Is that correct?`;
-                    supportState.step = "confirm_email";
-                    setSupportFlowState(sessionId, supportState);
-                    break;
-                  }
-                }
-                finalResponse =
-                  "Please provide a valid email address (must include @). For example: yourname@email.com";
-                setSupportFlowState(sessionId, supportState);
-                break;
-              } else {
-                finalResponse =
-                  "Please provide a valid email address (must include @).";
+                )
+              ) {
+                supportState.purchaseTiming = timing;
+                finalResponse = "Got it. What's the issue with it?";
                 setSupportFlowState(sessionId, supportState);
                 break;
               }
-            }
-            supportState.step = "confirm_email";
-            finalResponse = promptForStep("confirm_email", supportState);
-            setSupportFlowState(sessionId, supportState);
-            break;
-          }
-          case "confirm_email": {
-            if (!supportState.email) {
-              supportState.step = "email";
-              finalResponse = promptForStep("email", supportState);
+              // Accept ANY response as the issue description, not just keyword matches
+              if (!supportState.issue) {
+                supportState.issue = trimmed;
+              }
+              if (timing) supportState.purchaseTiming = timing;
+              if (!supportState.purchaseTiming) {
+                supportState.step = "purchase";
+                finalResponse = promptForStep("purchase", supportState);
+              } else {
+                supportState.step = "device";
+                finalResponse = promptForStep("device", supportState);
+              }
               setSupportFlowState(sessionId, supportState);
               break;
             }
-            // Accept affirmative reply OR any non-negative response to prevent infinite loop
-            if (
-              isAffirmativeReply(trimmed) ||
-              (!isNegativeReply(trimmed) && trimmed.length > 0)
-            ) {
-              const emailPayload = {
-                emailType: "info_request" as const,
-                name: supportState.name || "Customer",
-                email: supportState.email,
-                phone: supportState.phone,
-                message: buildSupportEmailMessage(supportState),
-              };
-              try {
-                const toolStart = Date.now();
-                const toolResult = await handleEmailSend(emailPayload);
-                toolSummaries.push({
-                  name: "sendemail",
-                  args: emailPayload,
-                  resultPreview: toolResult.slice(0, 200),
-                });
-                await logToolRun({
-                  request_id: requestId,
-                  session_id: sessionId,
-                  tool_name: "sendemail",
-                  args: emailPayload,
-                  result_preview: toolResult.slice(0, 280),
-                  success: true,
-                  latency_ms: Date.now() - toolStart,
-                });
-              } catch (sendError) {
-                console.error(
-                  "[ChatKit] Support email send failed:",
-                  sendError,
-                );
+            case "purchase": {
+              if (trimmed.length < 2) {
+                finalResponse = promptForStep("purchase", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
               }
-              clearSupportFlowState(sessionId);
-              finalResponse =
-                "Got it - I've sent this to the team. They'll get back to you soon. Anything else I can help with?";
-            } else if (isNegativeReply(trimmed)) {
-              supportState.email = undefined;
-              supportState.step = "email";
-              finalResponse = "Okay, what's the correct email?";
+              supportState.purchaseTiming =
+                supportState.purchaseTiming || trimmed;
+              supportState.step = "device";
+              finalResponse = promptForStep("device", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            case "device": {
+              if (trimmed.length < 2) {
+                finalResponse = promptForStep("device", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
+              supportState.deviceDetails = trimmed;
+              supportState.step = nextContactStep(supportState);
+              finalResponse = promptForStep(supportState.step, supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            case "name": {
+              if (!supportState.name) {
+                // Fallback: accept any reasonable response as name if extraction failed
+                if (
+                  trimmed.length > 2 &&
+                  !/^(yes|no|ok|okay)$/i.test(trimmed)
+                ) {
+                  supportState.name = trimmed;
+                } else {
+                  finalResponse = promptForStep("name", supportState);
+                  setSupportFlowState(sessionId, supportState);
+                  break;
+                }
+              }
+              supportState.step = nextContactStep(supportState);
+              finalResponse = promptForStep(supportState.step, supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            case "phone": {
+              if (!supportState.phone) {
+                // Fallback: accept any reasonable response as phone if extraction failed
+                if (trimmed.length >= 8 && /\d/.test(trimmed)) {
+                  supportState.phone = trimmed.replace(/\D/g, "");
+                } else {
+                  finalResponse = promptForStep("phone", supportState);
+                  setSupportFlowState(sessionId, supportState);
+                  break;
+                }
+              }
+              supportState.step = nextContactStep(supportState);
+              finalResponse = promptForStep(supportState.step, supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            case "email": {
+              if (!supportState.email) {
+                // Smart email correction: detect common mistakes and suggest fixes
+                if (trimmed.includes("@") && trimmed.length > 5) {
+                  supportState.email = trimmed
+                    .toLowerCase()
+                    .replace(/\s+/g, "");
+                } else if (trimmed.length > 5 && /[a-z0-9]/i.test(trimmed)) {
+                  // Missing @ sign - try to suggest correction
+                  const hasDomain = /\.(com|net|org|sg|co|io|edu|gov)$/i.test(
+                    trimmed,
+                  );
+                  if (hasDomain) {
+                    // Looks like email domain, suggest adding @
+                    const parts = trimmed.split(/[.\s]+/);
+                    if (parts.length >= 2) {
+                      const suggested = `${parts[0]}@${parts.slice(1).join(".")}`;
+                      supportState.email = suggested.toLowerCase();
+                      finalResponse = `I think you meant ${suggested}. Is that correct?`;
+                      supportState.step = "confirm_email";
+                      setSupportFlowState(sessionId, supportState);
+                      break;
+                    }
+                  }
+                  finalResponse =
+                    "Please provide a valid email address (must include @). For example: yourname@email.com";
+                  setSupportFlowState(sessionId, supportState);
+                  break;
+                } else {
+                  finalResponse =
+                    "Please provide a valid email address (must include @).";
+                  setSupportFlowState(sessionId, supportState);
+                  break;
+                }
+              }
+              supportState.step = "confirm_email";
+              finalResponse = promptForStep("confirm_email", supportState);
+              setSupportFlowState(sessionId, supportState);
+              break;
+            }
+            case "confirm_email": {
+              if (!supportState.email) {
+                supportState.step = "email";
+                finalResponse = promptForStep("email", supportState);
+                setSupportFlowState(sessionId, supportState);
+                break;
+              }
+              // Accept affirmative reply OR any non-negative response to prevent infinite loop
+              if (
+                isAffirmativeReply(trimmed) ||
+                (!isNegativeReply(trimmed) && trimmed.length > 0)
+              ) {
+                const emailPayload = {
+                  emailType: "info_request" as const,
+                  name: supportState.name || "Customer",
+                  email: supportState.email,
+                  phone: supportState.phone,
+                  message: buildSupportEmailMessage(supportState),
+                };
+                try {
+                  const toolStart = Date.now();
+                  const toolResult = await handleEmailSend(emailPayload);
+                  toolSummaries.push({
+                    name: "sendemail",
+                    args: emailPayload,
+                    resultPreview: toolResult.slice(0, 200),
+                  });
+                  await logToolRun({
+                    request_id: requestId,
+                    session_id: sessionId,
+                    tool_name: "sendemail",
+                    args: emailPayload,
+                    result_preview: toolResult.slice(0, 280),
+                    success: true,
+                    latency_ms: Date.now() - toolStart,
+                  });
+                } catch (sendError) {
+                  console.error(
+                    "[ChatKit] Support email send failed:",
+                    sendError,
+                  );
+                }
+                clearSupportFlowState(sessionId);
+                finalResponse =
+                  "Got it - I've sent this to the team. They'll get back to you soon. Anything else I can help with?";
+              } else if (isNegativeReply(trimmed)) {
+                supportState.email = undefined;
+                supportState.step = "email";
+                finalResponse = "Okay, what's the correct email?";
+                setSupportFlowState(sessionId, supportState);
+              }
+              break;
+            }
+            default: {
+              finalResponse = promptForStep("issue", supportState);
+              supportState.step = "issue";
               setSupportFlowState(sessionId, supportState);
             }
-            break;
           }
-          default: {
-            finalResponse = promptForStep("issue", supportState);
-            supportState.step = "issue";
-            setSupportFlowState(sessionId, supportState);
-          }
-        }
 
-        supportFlowHandled = true;
-        assistantMessage = {
-          content: finalResponse,
-        };
+          supportFlowHandled = true;
+          assistantMessage = {
+            content: finalResponse,
+          };
+        }
       }
     }
 
