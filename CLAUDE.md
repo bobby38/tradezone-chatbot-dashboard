@@ -12,6 +12,8 @@
 - ✅ **Dashboard Navigation** - Clean UI with proper routing
 - ✅ **Authentication System** - Supabase auth working
 - ✅ **Dev Server** - Runs on port 3001/3003
+- ✅ **Voice Agent (LiveKit)** - OpenAI Realtime API working (FIXED 2026-01-24)
+- ✅ **Product Search** - PC case category properly routes to desktop cases (FIXED 2026-01-24)
 
 ### Session Management (Production Working ✅)
 Based on the dashboard screenshot, the session system is working correctly:
@@ -119,6 +121,17 @@ GA_PROPERTY=your-ga4-property-id
 WC_SITE=https://your-store.com
 WC_KEY=your-consumer-key
 WC_SECRET=your-consumer-secret
+
+# Voice Agent (LiveKit) - Set in Coolify for voice agent service
+VOICE_STACK=realtime                              # Use OpenAI Realtime API
+VOICE_REALTIME_MODEL=gpt-4o-realtime-preview-2024-12-17  # OpenAI model for voice
+VOICE_LLM_MODEL=google/gemini-flash-2.5           # Gemini for text chat only
+LIVEKIT_URL=wss://livekit.rezult.co               # Self-hosted LiveKit
+LIVEKIT_API_KEY=your-api-key
+LIVEKIT_API_SECRET=your-api-secret
+
+# Dashboard Admin Auth
+CHATKIT_ADMIN_REQUIRE_KEY=false                   # Allow origin-based auth for dashboard
 ```
 
 ## Key Success Indicators ✅
@@ -129,6 +142,36 @@ WC_SECRET=your-consumer-secret
 4. **Database Stable** - All tables exist with proper RLS policies
 
 ## Recent Improvements (Latest Commits)
+
+### 2026-01-24: Voice Agent & Search Fixes
+- **Voice Agent OpenAI Realtime Fix** ✅
+  - **Problem**: Voice agent error "Model google/gemini-flash-2.5 is not supported in realtime mode"
+  - **Root Cause**: Code used `VOICE_LLM_MODEL` (Gemini) for OpenAI Realtime API which only supports OpenAI models
+  - **Fix**: Added separate `VOICE_REALTIME_MODEL` env var for realtime mode
+  - **Default**: `gpt-4o-realtime-preview-2024-12-17`
+  - **File**: `agents/voice/agent.py` lines 2771-2788
+  - **Diagnostic logging**: Version `2026-01-24-v4-PRINT` with startup diagnostics
+  
+- **PC Case Search Category Fix** ✅
+  - **Problem**: Searching "PC case" returned ROG Ally handheld cases instead of desktop PC cases (MONTECH, Deepcool)
+  - **Root Cause**: No category pattern for "PC case" - search matched generic "casing" keyword
+  - **Fix**: Added `pc_case` category with proper slugs and detection pattern
+  - **File**: `lib/agent-tools/index.ts` lines 37, 48, 453-466
+  - **Category slugs**: `["cases", "pc-case", "pc-cases"]`
+  
+- **Search Console Dashboard Auth Fix** ✅
+  - **Problem**: Dashboard showing 401 Unauthorized for GSC data
+  - **Root Cause**: `CHATKIT_ADMIN_REQUIRE_KEY=true` blocked browser requests
+  - **Fix**: Set to `false` in Coolify to allow origin-based auth
+
+### Deployment Structure (3 Services in Coolify)
+```
+main branch              → Dashboard (TypeScript/Next.js) at /
+feature/livekit-voice-agent → Voice Agent (Python) at /agents/voice  
+feature/livekit-self-hosted → LiveKit Server at /livekit
+```
+
+**Important**: Voice agent code changes must go to `feature/livekit-voice-agent` branch, not `main`.
 
 ### 2025-01-20: Trade-In Email & Agent Improvements (FINAL FIX)
 - **CRITICAL FIX - Email System Fully Working** ✅
@@ -163,8 +206,8 @@ WC_SECRET=your-consumer-secret
 - Improved caching and cache-busting logic
 - Fixed online vs local data handling
 
-## Next Steps (Optional Enhancements)
-1. **Add Request Logging** - Monitor n8n payload structure without changing logic
+## Known Issues / Future Improvements
+1. **Voice Agent "Storage size?" Question** - Agent sometimes asks about storage randomly when not in trade-in flow (needs investigation)
 2. **Session Analytics** - Track session effectiveness and duration
 3. **Enhanced Error Handling** - Better fallbacks for edge cases
 4. **Performance Monitoring** - Add metrics for session management
@@ -197,6 +240,12 @@ WC_SECRET=your-consumer-secret
 - Check weekly sync scripts for Search Console data
 - Validate environment variables are set correctly
 
+### Voice Agent Issues
+- **"Model not supported in realtime mode"**: Check `VOICE_REALTIME_MODEL` env var is set to an OpenAI model (not Gemini)
+- **Connection fails**: Verify LiveKit URL and API credentials
+- **Deployment not updating**: Ensure changes pushed to `feature/livekit-voice-agent` branch (not `main`)
+- **Diagnostic logs**: Look for `[DIAGNOSTIC] AGENT VERSION:` in Coolify logs to confirm deployment
+
 ---
 
 **System Status: ✅ PRODUCTION READY**
@@ -204,3 +253,5 @@ WC_SECRET=your-consumer-secret
 - Data pipelines: Active and populated
 - Dashboard: Fully functional with real data
 - Architecture: Stable and performant
+- Voice agent: OpenAI Realtime API working
+- Product search: PC cases routing correctly
