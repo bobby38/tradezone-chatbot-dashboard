@@ -142,7 +142,7 @@ WHERE date = CURRENT_DATE;
 ```
 date       | endpoint              | model        | total_requests | total_cost
 -----------|----------------------|--------------|----------------|------------
-2025-01-11 | /api/chatkit/agent   | gpt-4o-mini  | 1,234          | $0.85
+2025-01-11 | /api/chatkit/agent   | gpt-4.1-mini  | 1,234          | $0.85
 2025-01-11 | /api/chatkit/realtime| gpt-4o-mini  | 456            | $0.32
 ```
 

@@ -211,7 +211,7 @@ Auth: ChatKit API Key (tzck_mfuWZAo1...)
 VOICE_LLM_MODEL=google/gemini-exp-1206
 
 # To test OpenAI GPT-4o Mini:
-VOICE_LLM_MODEL=openai/gpt-4o-mini
+VOICE_LLM_MODEL=openai/gpt-4.1-mini
 
 # To use OpenAI Realtime (end-to-end voice):
 VOICE_STACK=realtime

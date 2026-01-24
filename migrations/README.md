@@ -159,7 +159,7 @@ INSERT INTO chat_usage_metrics (
   prompt_tokens, completion_tokens, total_tokens,
   estimated_cost, latency_ms, client_ip
 ) VALUES (
-  'test-123', 'session-test', '/api/test', 'gpt-4o-mini',
+  'test-123', 'session-test', '/api/test', 'gpt-4.1-mini',
   100, 200, 300,
   0.0001, 1500, '127.0.0.1'
 );

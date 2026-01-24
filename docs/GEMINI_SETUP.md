@@ -1,7 +1,7 @@
 # Gemini 2.0 Flash Integration
 
 ## Overview
-The chatbot now supports **Google Gemini 2.0 Flash** as an alternative to OpenAI GPT-4o-mini for text chat. Gemini offers:
+The chatbot now supports **Google Gemini 2.0 Flash** as an alternative to OpenAI GPT-4.1-mini for text chat. Gemini offers:
 - ⚡ **Faster responses** - Lower latency
 - 💰 **Lower cost** - More affordable per token
 - 🔄 **Easy switching** - Change via dashboard settings
@@ -52,15 +52,15 @@ That's it! The chatbot will now use Gemini 2.5 Flash for text chat.
 - 🔬 Best for complex reasoning, analysis
 
 ### OpenAI Models (Default)
-- `gpt-4o-mini` - Default, balanced
-- `gpt-4.1-mini-2025-04-14` - Latest mini
+- `gpt-4.1-mini` - Default, balanced
+- `gpt-4.1-mini-2025-04-14` - Latest mini snapshot
 - `gpt-4o` - Most capable, expensive
 
 ## Switching Back to OpenAI
 
 **Method 1: Dashboard**
 1. Go to **Dashboard → Settings → ChatKit**
-2. Change "Text Model" to: `gpt-4o-mini`
+2. Change "Text Model" to: `gpt-4.1-mini`
 3. Click **Save**
 
 **Method 2: Remove API Key**
@@ -73,7 +73,7 @@ That's it! The chatbot will now use Gemini 2.5 Flash for text chat.
 If Gemini fails for any reason, the system automatically falls back to OpenAI:
 ```
 1. Try Gemini (if model name includes "gemini" AND GEMINI_API_KEY exists)
-2. If Gemini fails → Log error + use OpenAI GPT-4o-mini
+2. If Gemini fails → Log error + use OpenAI GPT-4.1-mini
 3. If no GEMINI_API_KEY → Use OpenAI directly
 ```
 
@@ -109,11 +109,11 @@ The system auto-detects which provider to use based on model name:
 | **Gemini 2.5 Flash** ⭐ | $0.075 | $0.30 | ~$0.19 |
 | **Gemini 2.5 Pro** | $1.25 | $5.00 | ~$3.13 |
 | Gemini 2.0 Flash | $0.075 | $0.30 | ~$0.19 |
-| **GPT-4o-mini** | $0.15 | $0.60 | ~$0.38 |
+| **GPT-4.1-mini** | $0.40 | $1.60 | ~$1.00 |
 | GPT-4o | $2.50 | $10.00 | ~$6.25 |
 
-**Gemini 2.5 Flash vs GPT-4o-mini:**
-- 💰 **~50% cost savings**
+**Gemini 2.5 Flash vs GPT-4.1-mini:**
+- 💰 **~80% cost savings**
 - ⚡ **Similar or better speed**
 - 🎯 **Comparable quality for e-commerce**
 
@@ -176,7 +176,7 @@ Check which model is being used:
 - Advanced analytics
 - Low-volume, high-accuracy tasks
 
-**GPT-4o-mini** - Fallback if:
+**GPT-4.1-mini** - Fallback if:
 - Gemini response quality doesn't meet needs
 - Specific OpenAI features required
 - Testing/comparison needed

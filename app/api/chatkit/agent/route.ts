@@ -7268,7 +7268,7 @@ Only after user says yes/proceed, start collecting details (condition, accessori
             } else {
               // No product found + no suggestion → auto-offer support
               setSupportOfferState(sessionId, "no_product_found");
-              finalResponse = `I couldn't find \"${rawQuery}\" in our catalog. Would you like me to connect you with our team? They can check stock or help with special orders.`;
+              finalResponse = `I couldn't find \"${rawQuery}\" in our catalog (can't find it right now). Would you like me to connect you with our team? They can check stock or help with special orders.`;
               await logToolRun({
                 request_id: requestId,
                 session_id: sessionId,

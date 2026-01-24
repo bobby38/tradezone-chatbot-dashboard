@@ -12,7 +12,7 @@ let textModel = "gemini-3-flash-preview"; // Gemini 3 Flash (Dec 2025) - frontie
 
 **Confirmation:** YES, the system is using Gemini 3 Flash as specified.
 
-### Fallback Model: GPT-4o-mini
+### Fallback Model: GPT-4.1-mini
 Used in specific scenarios:
 - Graphiti graph queries (line 3457, 4338)
 - Gemini API failures (line 5377-5380)

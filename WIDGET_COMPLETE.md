@@ -259,7 +259,7 @@ Client can override any widget style via the control panel:
 ## 📊 Features Summary
 
 ### Text Chat
-- ✅ GPT-4o-mini powered
+- ✅ GPT-4.1-mini powered
 - ✅ Product search (vector store)
 - ✅ Web search (Perplexity)
 - ✅ Email tool

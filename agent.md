@@ -1,5 +1,12 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Recent Updates (2026-01-24)
+- Voice agent now enforces short replies (≤10 words) and confirms intent.
+- Deterministic voice routing mirrors text chat: Product → Trade → Support.
+- Price-only trade-in is gated, clarifies variants, and exits cleanly on “no”.
+- Support flow is short, Singapore-first, and collects issue/contact once.
+- Voice avoids long product lists; links remain in chat.
+
 ## 📐 Complete System Architecture
 
 ### **System Overview**
@@ -1719,7 +1726,7 @@ Three main tools available to the AI agent:
 ```javascript
 {
   chatkit: {
-    textModel: "gpt-4o-mini",  // or gpt-4o, gpt-4.1-mini, etc.
+    textModel: "gpt-4.1-mini",  // or gpt-4o, gpt-4.1-mini, etc.
     systemPrompt: "..."        // Full Izacc prompt
   }
 }
@@ -1742,7 +1749,7 @@ Three main tools available to the AI agent:
 {
   "response": "Let me check our inventory for you...",
   "sessionId": "Guest-1234",
-  "model": "gpt-4o-mini"
+  "model": "gpt-4.1-mini"
 }
 ```
 
@@ -1824,7 +1831,7 @@ Admins can configure via Supabase `organizations.settings` JSONB field:
 ```json
 {
   "chatkit": {
-    "textModel": "gpt-4o-mini",
+    "textModel": "gpt-4.1-mini",
     "voiceModel": "gpt-realtime-mini",
     "voice": "alloy",
     "systemPrompt": "IMPORTANT: Do NOT include [USER_INPUT...]..."
@@ -2659,7 +2666,7 @@ User Query → searchtool called
     voiceModel: "gpt-4o-realtime-preview",
     voice: "alloy",
     systemPrompt: "Custom instructions...",
-    textModel: "gpt-4o-mini",
+    textModel: "gpt-4.1-mini",
     temperature: 0.7
   }
 }
@@ -3674,7 +3681,7 @@ Every request logged to `chat_usage_metrics`:
   request_id: UUID,
   session_id: string,
   endpoint: string,
-  model: "gpt-4o-mini",
+  model: "gpt-4.1-mini",
   prompt_tokens: 1108,
   completion_tokens: 19,
   total_tokens: 1127,
@@ -3686,7 +3693,7 @@ Every request logged to `chat_usage_metrics`:
 }
 ```
 
-**Cost Calculation** (GPT-4o-mini):
+**Cost Calculation** (GPT-4.1-mini):
 - Input: $0.15 per 1M tokens
 - Output: $0.60 per 1M tokens
 - Example: 1,127 tokens ≈ $0.00028
@@ -4633,7 +4640,7 @@ Agent: (THEN asks condition)
 **Problem:** 4.3s vector search latency, 12,490 tokens per query
 
 **Fixes:**
-- Vector search: `gpt-4.1` → `gpt-4o-mini` (5x faster, 60% cheaper)
+- Vector search: `gpt-4.1` → `gpt-4.1-mini` (5x faster, 60% cheaper)
 - History truncation: Limited to last 20 messages (prevents unbounded growth)
 - Created `PERFORMANCE_OPTIMIZATION_PLAN.md` for ongoing work
 
@@ -4721,7 +4728,7 @@ Query: "What bundles are available for PS5?"
    - See Coolify Configuration → Webhooks section
 
 2. **Vector Search Performance** - Target <1s, currently optimized
-   - Model switched to gpt-4o-mini
+   - Model switched to gpt-4.1-mini
    - Monitor for regression
 
 3. **Token Usage** - Target <3K per query
@@ -4775,7 +4782,7 @@ openssl enc -aes-256-cbc -salt -in .env.local -out env_backup_$(date +%Y%m%d).en
 **Status:** All optimizations committed and ready for deployment
 
 **Performance Improvements:**
-1. **Vector Search Speed:** Switched from `gpt-4.1` → `gpt-4o-mini` (lib/tools/vectorSearch.ts)
+1. **Vector Search Speed:** Switched from `gpt-4.1` → `gpt-4.1-mini` (lib/tools/vectorSearch.ts)
    - Expected latency: 4.3s → <1s (5x faster)
    - Cost reduction: 60% cheaper per query
 

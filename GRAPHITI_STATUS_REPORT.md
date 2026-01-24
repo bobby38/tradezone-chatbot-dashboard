@@ -163,7 +163,7 @@ responseTimeHistogram.record(Date.now() - startTime, {
   endpoint: '/api/chatkit/agent',
   status: 200 
 });
-tokenUsageHistogram.record(totalTokens, { model: 'gpt-4o-mini' });
+tokenUsageHistogram.record(totalTokens, { model: 'gpt-4.1-mini' });
 ```
 
 **Grafana Configuration:**

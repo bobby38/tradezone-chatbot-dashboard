@@ -100,6 +100,6 @@ Add to your CI pipeline:
 
 ## Notes
 
-- Tests use GPT-4o-mini for LLM judgments (cost-effective)
+- Tests use GPT-4.1-mini for LLM judgments (cost-effective)
 - Text-based testing validates behavior without audio pipeline
 - For full audio E2E tests, integrate with Hamming or Coval after these pass

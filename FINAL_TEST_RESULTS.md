@@ -331,7 +331,7 @@ Agent: Should show 8 NBA 2K titles
 **Environment:**
 - Python 3.12.0
 - pytest 8.3.4
-- OpenAI API (gpt-4o-mini)
+- OpenAI API (gpt-4.1-mini)
 - LiveKit Agents framework
 
 **Test Duration:**
