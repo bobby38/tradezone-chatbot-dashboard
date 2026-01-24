@@ -2,7 +2,8 @@
 TradeZone Voice Agent - LiveKit Integration
 Calls existing Next.js APIs to keep logic in sync with text chat
 
-REBUILD: 2026-01-24-v2 - Force container rebuild for VOICE_REALTIME_MODEL fix
+REBUILD: 2026-01-24-v3-DIAGNOSTIC - Added explicit startup logging to verify deployment
+Look for "[DIAGNOSTIC]" in logs to confirm this version is running
 """
 
 import asyncio
@@ -56,9 +57,29 @@ if os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true":
 
 logger = logging.getLogger("agent-amara")
 
-# Log agent version on module load
-AGENT_VERSION = "2026-01-24-v2"
-logger.info(f"[Voice Agent] Loading version: {AGENT_VERSION}")
+# Log agent version on module load - UNIQUE IDENTIFIER FOR THIS BUILD
+AGENT_VERSION = "2026-01-24-v3-DIAGNOSTIC"
+BUILD_TIMESTAMP = "2026-01-24T09:00:00Z"
+
+# ========== CRITICAL STARTUP DIAGNOSTICS ==========
+# This block prints EXACTLY what env vars are loaded so we can verify deployment
+logger.info("=" * 60)
+logger.info(f"[DIAGNOSTIC] 🚀 AGENT STARTING - VERSION: {AGENT_VERSION}")
+logger.info(f"[DIAGNOSTIC] 🕐 BUILD TIMESTAMP: {BUILD_TIMESTAMP}")
+logger.info("=" * 60)
+logger.info(f"[DIAGNOSTIC] ENV VARS AT STARTUP:")
+logger.info(f"[DIAGNOSTIC]   VOICE_STACK = '{os.getenv('VOICE_STACK', 'NOT SET')}'")
+logger.info(
+    f"[DIAGNOSTIC]   VOICE_LLM_MODEL = '{os.getenv('VOICE_LLM_MODEL', 'NOT SET')}'"
+)
+logger.info(
+    f"[DIAGNOSTIC]   VOICE_REALTIME_MODEL = '{os.getenv('VOICE_REALTIME_MODEL', 'NOT SET')}'"
+)
+logger.info(f"[DIAGNOSTIC]   LIVEKIT_URL = '{os.getenv('LIVEKIT_URL', 'NOT SET')}'")
+logger.info(
+    f"[DIAGNOSTIC]   LIVEKIT_API_KEY = '{os.getenv('LIVEKIT_API_KEY', 'NOT SET')[:8] if os.getenv('LIVEKIT_API_KEY') else 'NOT SET'}...'"
+)
+logger.info("=" * 60)
 
 _last_user_utterance: Dict[str, str] = {}
 _awaiting_recap_confirmation: Dict[str, bool] = {}
@@ -2735,6 +2756,7 @@ async def entrypoint(ctx: JobContext):
     asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
 
     # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
+    logger.info(f"[DIAGNOSTIC] 🎯 ENTRYPOINT: VOICE_STACK='{VOICE_STACK}'")
     if VOICE_STACK == "realtime":
         # IMPORTANT: OpenAI Realtime API only supports OpenAI models (gpt-4o-realtime-preview, etc.)
         # Use VOICE_REALTIME_MODEL for realtime mode, NOT VOICE_LLM_MODEL (which may be Gemini/other)
@@ -2742,7 +2764,16 @@ async def entrypoint(ctx: JobContext):
             "VOICE_REALTIME_MODEL",
             "gpt-4o-realtime-preview-2024-12-17",
         )
-        logger.info(f"[Voice Agent] Using realtime model: {realtime_model}")
+        logger.info("=" * 60)
+        logger.info(f"[DIAGNOSTIC] ✅ REALTIME MODE SELECTED")
+        logger.info(f"[DIAGNOSTIC] 🎤 realtime_model = '{realtime_model}'")
+        logger.info(
+            f"[DIAGNOSTIC] 📍 VOICE_REALTIME_MODEL env = '{os.getenv('VOICE_REALTIME_MODEL', 'NOT SET')}'"
+        )
+        logger.info(
+            f"[DIAGNOSTIC] 📍 VOICE_LLM_MODEL env = '{os.getenv('VOICE_LLM_MODEL', 'NOT SET')}' (NOT USED in realtime)"
+        )
+        logger.info("=" * 60)
         session = AgentSession(
             llm=realtime.RealtimeModel(
                 model=realtime_model,
