@@ -736,6 +736,115 @@ export async function handleVectorSearch(
       }
     }
 
+    // 🎯 FILTER CONSOLES by specific brand/model when user asks for a specific console
+    // "do you have ps5" should only show PS5 consoles, not Switch, Xbox, accessories, warranties
+    if (
+      (detectedCategory === "console" || detectedCategory === "handheld") &&
+      directResults.length > 0
+    ) {
+      const lowerQuery = query.toLowerCase();
+
+      // Detect specific console brand/model in query
+      const wantsPS5 = /\b(ps5|playstation\s*5)\b/i.test(query);
+      const wantsPS4 = /\b(ps4|playstation\s*4)\b/i.test(query);
+      const wantsXbox = /\b(xbox)\b/i.test(query);
+      const wantsSwitch =
+        /\b(switch|nintendo)\b/i.test(query) && !/switch\s*2/i.test(query);
+      const wantsSwitch2 = /\b(switch\s*2|ns2|sw2)\b/i.test(query);
+      const wantsSteamDeck = /\b(steam\s*deck)\b/i.test(query);
+      const wantsROGAlly = /\b(rog\s*ally|ally\s*x)\b/i.test(query);
+      const wantsLegionGo = /\b(legion\s*go)\b/i.test(query);
+
+      // Only filter if user asked for a SPECIFIC console
+      const hasSpecificConsole =
+        wantsPS5 ||
+        wantsPS4 ||
+        wantsXbox ||
+        wantsSwitch ||
+        wantsSwitch2 ||
+        wantsSteamDeck ||
+        wantsROGAlly ||
+        wantsLegionGo;
+
+      if (hasSpecificConsole) {
+        const beforeFilter = directResults.length;
+
+        // Check if user is explicitly asking for warranty/accessories
+        const wantsWarranty = /\b(warranty|extension)\b/i.test(query);
+        const wantsController = /\b(controller|dualsense|dual\s*sense)\b/i.test(
+          query,
+        );
+
+        directResults = directResults.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+
+          // Exclude warranties unless user asks for warranty
+          const isWarranty = /\b(warranty|extension)\b/i.test(name);
+          if (isWarranty && !wantsWarranty) {
+            return false;
+          }
+
+          // Exclude controllers unless user asks for controller
+          const isController = /\b(controller|dual\s*sense|dualsense)\b/i.test(
+            name,
+          );
+          if (isController && !wantsController) {
+            return false;
+          }
+
+          // Exclude other accessories
+          const isAccessory =
+            /\b(charging|stand|cover|case|skin|headset|cable|adapter)\b/i.test(
+              name,
+            );
+          if (isAccessory) {
+            return false;
+          }
+
+          const isGame =
+            /\b(game|edition|bundle)\b/i.test(name) &&
+            !/console|slim|pro|digital|disc/i.test(name);
+
+          // Match specific console
+          if (wantsPS5) {
+            return (
+              /\b(ps5|playstation\s*5|playstation\s*portal)\b/i.test(name) &&
+              !isGame
+            );
+          }
+          if (wantsPS4) {
+            return /\b(ps4|playstation\s*4)\b/i.test(name) && !isGame;
+          }
+          if (wantsXbox) {
+            return /\b(xbox)\b/i.test(name) && !isGame;
+          }
+          if (wantsSwitch2) {
+            return /\b(switch\s*2|ns2|sw2)\b/i.test(name);
+          }
+          if (wantsSwitch) {
+            return (
+              /\b(switch|nintendo)\b/i.test(name) && !/switch\s*2/i.test(name)
+            );
+          }
+          if (wantsSteamDeck) {
+            return /\b(steam\s*deck)\b/i.test(name);
+          }
+          if (wantsROGAlly) {
+            return /\b(rog\s*ally|ally\s*x)\b/i.test(name);
+          }
+          if (wantsLegionGo) {
+            return /\b(legion\s*go)\b/i.test(name);
+          }
+
+          return true;
+        });
+
+        console.log(
+          `[VectorSearch] 🎮 Console filter: ${beforeFilter} → ${directResults.length} items for "${query}"`,
+        );
+      }
+    }
+
     if (directResults.length) {
       console.log(
         `[VectorSearch] Direct ${detectedCategory} category load: ${directResults.length} items`,

@@ -26,6 +26,8 @@ export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   chair: ["chair"],
   cpu_cooler: ["cpu-cooler"],
   storage: ["storage"],
+  console: ["consoles", "console"],
+  handheld: ["handheld", "handhelds"],
 };
 
 export const DIRECT_CATEGORY_KEYS = [
@@ -34,6 +36,8 @@ export const DIRECT_CATEGORY_KEYS = [
   "chair",
   "cpu_cooler",
   "storage",
+  "console",
+  "handheld",
 ] as const;
 
 export const DIRECT_CATEGORY_SET = new Set<string>(DIRECT_CATEGORY_KEYS);
