@@ -34,6 +34,7 @@ export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
     "gadgets",
   ],
   handheld: ["handheld", "handhelds", "consoles", "gadgets"],
+  pc_case: ["cases", "pc-case", "pc-cases"],
 };
 
 export const DIRECT_CATEGORY_KEYS = [
@@ -44,6 +45,7 @@ export const DIRECT_CATEGORY_KEYS = [
   "storage",
   "console",
   "handheld",
+  "pc_case",
 ] as const;
 
 export const DIRECT_CATEGORY_SET = new Set<string>(DIRECT_CATEGORY_KEYS);
@@ -447,6 +449,21 @@ export async function searchWooProducts(
         /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state)\b/i,
       keywords: ["ssd", "nvme", "m.2", "hard drive", "storage"],
       category: "storage",
+    },
+    // PC cases - desktop/tower cases for building PCs (NOT handheld device cases)
+    {
+      pattern:
+        /\b(pc\s*cas(e|ing)|desktop\s*cas(e|ing)|tower\s*cas(e|ing)|atx\s*cas(e|ing)|matx\s*cas(e|ing)|itx\s*cas(e|ing)|gaming\s*cas(e|ing)|computer\s*cas(e|ing)|build.*cas(e|ing))\b/i,
+      keywords: [
+        "pc case",
+        "atx",
+        "matx",
+        "itx",
+        "tower",
+        "montech",
+        "deepcool",
+      ],
+      category: "pc_case",
     },
   ];
 
