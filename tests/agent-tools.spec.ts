@@ -91,9 +91,9 @@ test.describe("Prompt configuration", () => {
     const prompt = readFileSync(promptPath, "utf-8");
 
     // Verify photo guidance exists and treats photos as optional
-    expect(prompt).toContain("Ask for photos BEFORE submission");
+    expect(prompt).toContain("photos (optional nudge AFTER payout)");
     expect(prompt).toContain("Photos: {Provided | Not provided");
-    expect(prompt).toContain("If user says no/later:");
+    expect(prompt).toContain("If they decline");
     expect(prompt).toContain("Always respond in English");
   });
 
@@ -109,6 +109,6 @@ test.describe("Prompt configuration", () => {
     // Verify English enforcement and core trade-in flow
     expect(tradeInPrompt).toContain("Always respond in ENGLISH ONLY");
     expect(tradeInPrompt).toContain("SAVE DATA IMMEDIATELY");
-    expect(tradeInPrompt).toContain("Step-by-Step");
+    expect(tradeInPrompt).toContain("Step 1: PRICE CHECK");
   });
 });

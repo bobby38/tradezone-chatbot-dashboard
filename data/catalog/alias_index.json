@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-11-22T12:16:13.312Z",
+  "generated_at": "2026-01-15T04:32:26.026Z",
   "entries": [
     {
       "alias": "+1 year store warranty extension ()",
@@ -52,6 +52,11 @@
       "familyId": "xbox_series"
     },
     {
+      "alias": "| wayfarer / headliner / skyler / smart ai glasses option",
+      "modelId": "vr_wearables-rayban_oakley_meta_wayfarer_headliner_skyler_smart_ai_glasses_option",
+      "familyId": "vr_wearables"
+    },
+    {
       "alias": "0 ps5 digital fat  sg",
       "modelId": "playstation_5-0_ps5_digital_fat_825gb_sg",
       "familyId": "playstation_5"
@@ -62,19 +67,9 @@
       "familyId": "playstation_5"
     },
     {
-      "alias": "1-2-switch",
-      "modelId": "games_switch-1_2_switch",
-      "familyId": "games_switch"
-    },
-    {
       "alias": "3 512gb",
       "modelId": "vr_wearables-meta_quest_3_512gb",
       "familyId": "vr_wearables"
-    },
-    {
-      "alias": "3 a1 9 hx370/8840u 512gb/1tb/2tb option",
-      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
-      "familyId": "handheld_pc"
     },
     {
       "alias": "3s 128gb",
@@ -205,16 +200,6 @@
       "alias": "assassin's creed syndicate",
       "modelId": "games_playstation-assassin_s_creed_syndicate",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "assassin's creed the ezio collection",
-      "modelId": "games_multi-assassin_s_creed_the_ezio_collection",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "assassin's creed the rebel collection",
-      "modelId": "games_multi-assassin_s_creed_the_rebel_collection",
-      "familyId": "games_multi"
     },
     {
       "alias": "assassin's creed unity",
@@ -392,44 +377,14 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "avatar frontiers of pandora",
-      "modelId": "games_playstation-avatar_frontiers_of_pandora",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "avatar: frontiers of pandora",
       "modelId": "games_playstation-avatar_frontiers_of_pandora",
       "familyId": "games_playstation"
     },
     {
-      "alias": "avicii invector encore",
-      "modelId": "games_multi-avicii_invector_encore_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "avicii invector encore edition",
-      "modelId": "games_multi-avicii_invector_encore_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ayaneo 3 a1 9 hx370/8840u /1tb/2tb option",
-      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
-      "familyId": "handheld_pc"
-    },
-    {
-      "alias": "ayaneo 3 a1 9 hx370/8840u 512gb/1tb/2tb option",
-      "modelId": "handheld_pc-ayaneo_3_a1_9_hx370_8840u_512gb_1tb_2tb_option",
-      "familyId": "handheld_pc"
-    },
-    {
       "alias": "b850 aorus elite wifi7 motherboard",
       "modelId": "misc-gigabyte_b850_aorus_elite_wifi7_motherboard",
       "familyId": "misc"
-    },
-    {
-      "alias": "bakugan: champions of vestroia",
-      "modelId": "games_multi-bakugan_champions_of_vestroia",
-      "familyId": "games_multi"
     },
     {
       "alias": "balan wonderworld",
@@ -444,11 +399,6 @@
     {
       "alias": "bass pro shops the strike championship edition",
       "modelId": "games_multi-bass_pro_shops_the_strike_championship_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "batman arkham trilogy",
-      "modelId": "games_multi-batman_arkham_trilogy",
       "familyId": "games_multi"
     },
     {
@@ -487,16 +437,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "bayonetta 2",
-      "modelId": "games_multi-bayonetta_2",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "bayonetta 3",
-      "modelId": "games_multi-bayonetta_3",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "bayonetta origins: cereza and the lost demon",
       "modelId": "games_multi-bayonetta_origins_cereza_and_the_lost_demon",
       "familyId": "games_multi"
@@ -505,16 +445,6 @@
       "alias": "be quiet! silent loop 2 360 argb liquid cooler(lga1700/am5)",
       "modelId": "misc-be_quiet_silent_loop_2_360_argb_liquid_cooler_lga1700_am5",
       "familyId": "misc"
-    },
-    {
-      "alias": "ben 10: power trip",
-      "modelId": "games_multi-ben_10_power_trip",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "big brain academy",
-      "modelId": "games_multi-big_brain_academy",
-      "familyId": "games_multi"
     },
     {
       "alias": "black myth: wukong deluxe",
@@ -542,23 +472,8 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "blue reflection: second light",
-      "modelId": "games_multi-blue_reflection_second_light",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "borderlands 3",
       "modelId": "games_playstation-borderlands_3",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "borderlands deluxe",
-      "modelId": "games_playstation-borderlands_deluxe_edition",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "borderlands deluxe edition",
-      "modelId": "games_playstation-borderlands_deluxe_edition",
       "familyId": "games_playstation"
     },
     {
@@ -570,16 +485,6 @@
       "alias": "brothers",
       "modelId": "games_playstation-brothers",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "burgertime party!",
-      "modelId": "games_multi-burgertime_party",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "burnout paradise remastered",
-      "modelId": "games_multi-burnout_paradise_remastered",
-      "familyId": "games_multi"
     },
     {
       "alias": "burnouttm paradise remastered",
@@ -602,11 +507,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "call of duty: black ops 6",
-      "modelId": "games_multi-call_of_duty_black_ops_6",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "call of duty: black ops 7",
       "modelId": "games_playstation-call_of_duty_black_ops_7",
       "familyId": "games_playstation"
@@ -617,11 +517,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "call of duty: vanguard",
-      "modelId": "games_playstation-call_of_duty_vanguard",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "candle: the power of the flame",
       "modelId": "games_multi-candle_the_power_of_the_flame",
       "familyId": "games_multi"
@@ -629,16 +524,6 @@
     {
       "alias": "captain toad: treasure tracker",
       "modelId": "games_multi-captain_toad_treasure_tracker",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "captain tsubasa: rise of new champions",
-      "modelId": "games_multi-captain_tsubasa_rise_of_new_champions",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "cardfight! vanguard dear?days",
-      "modelId": "games_multi-cardfight_vanguard_dear_days",
       "familyId": "games_multi"
     },
     {
@@ -670,6 +555,11 @@
       "alias": "clair obscur: expedition 33",
       "modelId": "games_playstation-clair_obscur_expedition_33",
       "familyId": "games_playstation"
+    },
+    {
+      "alias": "claw 8 ai+ screen protector",
+      "modelId": "handheld_pc-msi_claw_8_ai_screen_protector",
+      "familyId": "handheld_pc"
     },
     {
       "alias": "claw 8 ai+ ut7 1tb sg",
@@ -727,23 +617,28 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "crash bandicoot 4 it's about time",
-      "modelId": "games_multi-crash_bandicoot_4_it_s_about_time",
-      "familyId": "games_multi"
+      "alias": "controller black",
+      "modelId": "xbox_series-xbox_controller_black",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "controller doom: the dark ages limited",
+      "modelId": "xbox_series-xbox_controller_doom_the_dark_ages_limited_edition",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "controller doom: the dark ages limited edition",
+      "modelId": "xbox_series-xbox_controller_doom_the_dark_ages_limited_edition",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "controller white",
+      "modelId": "xbox_series-xbox_controller_white",
+      "familyId": "xbox_series"
     },
     {
       "alias": "crash bandicoot 4: it's about time",
       "modelId": "games_multi-crash_bandicoot_4_it_s_about_time",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "crash bandicoot n sane trilogy",
-      "modelId": "games_multi-crash_bandicoot_n_sane_trilogy",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "crash bandicoot n. sane trilogy",
-      "modelId": "games_multi-crash_bandicoot_n_sane_trilogy",
       "familyId": "games_multi"
     },
     {
@@ -807,24 +702,9 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "dairoku: agents of sakuratani",
-      "modelId": "games_multi-dairoku_agents_of_sakuratani",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "dakar desert rally",
-      "modelId": "games_playstation-dakar_desert_rally",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "dark pictures: house of ashes",
       "modelId": "games_playstation-dark_pictures_house_of_ashes",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "dark souls remastered",
-      "modelId": "games_multi-dark_souls_remastered",
-      "familyId": "games_multi"
     },
     {
       "alias": "darksiders 3",
@@ -835,16 +715,6 @@
       "alias": "darksiders genesis",
       "modelId": "games_playstation-darksiders_genesis",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "dc super hero girls: teen power",
-      "modelId": "games_multi-dc_super_hero_girls_teen_power",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "dead cells action game of the year",
-      "modelId": "games_multi-dead_cells_action_game_of_the_year",
-      "familyId": "games_multi"
     },
     {
       "alias": "dead island 2 day one",
@@ -983,11 +853,6 @@
     },
     {
       "alias": "demon slayer -kimetsu no yaiba- the hinokami chronicles",
-      "modelId": "games_multi-demon_slayer_kimetsu_no_yaiba_the_hinokami_chronicles",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "demon slayer -kimetsu no yaiba- the hinokami chronicles",
       "modelId": "games_playstation-demon_slayer_kimetsu_no_yaiba_the_hinokami_chronicles",
       "familyId": "games_playstation"
     },
@@ -1072,11 +937,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "diablo 4",
-      "modelId": "games_playstation-diablo_4",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "diablo iii: eternal collection",
       "modelId": "games_multi-diablo_iii_eternal_collection",
       "familyId": "games_multi"
@@ -1092,33 +952,8 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "digimon story cyber sleuth: complete",
-      "modelId": "games_multi-digimon_story_cyber_sleuth_complete_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "digimon story cyber sleuth: complete edition",
-      "modelId": "games_multi-digimon_story_cyber_sleuth_complete_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "digimon story: cybersleuth complete",
-      "modelId": "games_multi-digimon_story_cybersleuth_complete_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "digimon story: cybersleuth complete edition",
-      "modelId": "games_multi-digimon_story_cybersleuth_complete_edition",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "digimon survive",
       "modelId": "games_multi-digimon_survive",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "digimon world: next order",
-      "modelId": "games_multi-digimon_world_next_order",
       "familyId": "games_multi"
     },
     {
@@ -1135,11 +970,6 @@
       "alias": "dishonored definitive edition",
       "modelId": "games_playstation-dishonored_definitive_edition",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "disney illusion island",
-      "modelId": "games_multi-disney_illusion_island",
-      "familyId": "games_multi"
     },
     {
       "alias": "disney tsum tsum festival",
@@ -1217,11 +1047,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "doraemon story of seasons",
-      "modelId": "games_multi-doraemon_story_of_seasons",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "dragon age inquisition",
       "modelId": "games_playstation-dragon_age_inquisition",
       "familyId": "games_playstation"
@@ -1233,13 +1058,13 @@
     },
     {
       "alias": "dragon ball fighterz",
-      "modelId": "games_multi-dragon_ball_fighterz",
-      "familyId": "games_multi"
+      "modelId": "games_playstation-dragon_ball_fighterz",
+      "familyId": "games_playstation"
     },
     {
       "alias": "dragon ball fighterz",
-      "modelId": "games_playstation-dragon_ball_fighterz",
-      "familyId": "games_playstation"
+      "modelId": "games_multi-dragon_ball_fighterz",
+      "familyId": "games_multi"
     },
     {
       "alias": "dragon ball z: kakarot",
@@ -1297,28 +1122,8 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "dragon quest xi s: echoes of an elusive age - definitive",
-      "modelId": "games_multi-dragon_quest_xi_s_echoes_of_an_elusive_age_definitive_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "dragon quest xi s: echoes of an elusive age - definitive edition",
-      "modelId": "games_multi-dragon_quest_xi_s_echoes_of_an_elusive_age_definitive_edition",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "dragon treasures",
       "modelId": "games_multi-dragon_quest_treasures",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "dragon xi s: echoes of an elusive age - definitive",
-      "modelId": "games_multi-dragon_quest_xi_s_echoes_of_an_elusive_age_definitive_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "dragon xi s: echoes of an elusive age - definitive edition",
-      "modelId": "games_multi-dragon_quest_xi_s_echoes_of_an_elusive_age_definitive_edition",
       "familyId": "games_multi"
     },
     {
@@ -1347,11 +1152,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "dusk driver",
-      "modelId": "games_multi-dusk_driver",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "dying light platinum",
       "modelId": "games_multi-dying_light_platinum_edition",
       "familyId": "games_multi"
@@ -1370,26 +1170,6 @@
       "alias": "ea sports fc 26 ps5/ps4/switch 2/switch",
       "modelId": "games_playstation-ea_sports_fc_26_ps5_ps4_switch_2_switch",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "ea sports fifa 22 legacy",
-      "modelId": "games_multi-ea_sports_fifa_22_legacy_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ea sports fifa 22 legacy edition",
-      "modelId": "games_multi-ea_sports_fifa_22_legacy_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ea sports fifa 23 legacy",
-      "modelId": "games_multi-ea_sports_fifa_23_legacy_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ea sports fifa 23 legacy edition",
-      "modelId": "games_multi-ea_sports_fifa_23_legacy_edition",
-      "familyId": "games_multi"
     },
     {
       "alias": "eagle flight",
@@ -1422,16 +1202,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "fairy tail",
-      "modelId": "games_multi-fairy_tail",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "fall legion: rise to glory",
-      "modelId": "games_multi-fall_legion_rise_to_glory",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "fallout 4",
       "modelId": "games_playstation-fallout_4",
       "familyId": "games_playstation"
@@ -1459,11 +1229,6 @@
     {
       "alias": "fatal frame: maiden of black water",
       "modelId": "games_multi-fatal_frame_maiden_of_black_water",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "fatal frame: mask of the lunar eclipse",
-      "modelId": "games_multi-fatal_frame_mask_of_the_lunar_eclipse",
       "familyId": "games_multi"
     },
     {
@@ -1552,16 +1317,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "fifa 21 nxt lvl",
-      "modelId": "games_playstation-fifa_21_nxt_lvl_edition",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "fifa 21 nxt lvl edition",
-      "modelId": "games_playstation-fifa_21_nxt_lvl_edition",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "fifa 22",
       "modelId": "games_playstation-fifa_22",
       "familyId": "games_playstation"
@@ -1597,16 +1352,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "final fantasy x | x-2 hd remaster",
-      "modelId": "games_multi-final_fantasy_x_x_2_hd_remaster",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "final fantasy x/x-2 hd remaster",
-      "modelId": "games_multi-final_fantasy_x_x_2_hd_remaster",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "final fantasy xv day one",
       "modelId": "games_playstation-final_fantasy_xv_day_one_edition",
       "familyId": "games_playstation"
@@ -1637,18 +1382,8 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "fire emblem warriors: three houses",
-      "modelId": "games_multi-fire_emblem_warriors_three_houses",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "fire emblem: three houses",
       "modelId": "games_multi-fire_emblem_three_houses",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "fishing star world tour",
-      "modelId": "games_multi-fishing_star_world_tour",
       "familyId": "games_multi"
     },
     {
@@ -1822,11 +1557,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "god eater 3",
-      "modelId": "games_multi-god_eater_3",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "god of war",
       "modelId": "games_playstation-god_of_war",
       "familyId": "games_playstation"
@@ -1948,28 +1678,13 @@
     },
     {
       "alias": "harvest moon: light of hope special",
-      "modelId": "games_multi-harvest_moon_light_of_hope_special_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "harvest moon: light of hope special",
       "modelId": "games_playstation-harvest_moon_light_of_hope_special_edition",
       "familyId": "games_playstation"
     },
     {
       "alias": "harvest moon: light of hope special edition",
-      "modelId": "games_multi-harvest_moon_light_of_hope_special_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "harvest moon: light of hope special edition",
       "modelId": "games_playstation-harvest_moon_light_of_hope_special_edition",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "harvest moon: mad dash",
-      "modelId": "games_multi-harvest_moon_mad_dash",
-      "familyId": "games_multi"
     },
     {
       "alias": "harvestella",
@@ -1998,13 +1713,13 @@
     },
     {
       "alias": "hogwarts legacy",
-      "modelId": "games_multi-hogwarts_legacy",
-      "familyId": "games_multi"
+      "modelId": "games_playstation-hogwarts_legacy",
+      "familyId": "games_playstation"
     },
     {
       "alias": "hogwarts legacy",
-      "modelId": "games_playstation-hogwarts_legacy",
-      "familyId": "games_playstation"
+      "modelId": "games_multi-hogwarts_legacy",
+      "familyId": "games_multi"
     },
     {
       "alias": "homefront: the revolution",
@@ -2042,19 +1757,9 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "house of ashes",
-      "modelId": "games_playstation-house_of_ashes",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "hp thunderbolt dock 280w / 120w / g4 / g2",
       "modelId": "misc-hp_thunderbolt_dock_280w_120w_g4_g2",
       "familyId": "misc"
-    },
-    {
-      "alias": "hstn smart ai glasses option",
-      "modelId": "vr_wearables-oakley_meta_hstn_smart_ai_glasses_option",
-      "familyId": "vr_wearables"
     },
     {
       "alias": "humankind: heritage",
@@ -2084,11 +1789,6 @@
     {
       "alias": "hyrule warriors: age of calmity",
       "modelId": "games_multi-hyrule_warriors_age_of_calmity",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ice age scrat's nutty adventure",
-      "modelId": "games_multi-ice_age_scrat_s_nutty_adventure",
       "familyId": "games_multi"
     },
     {
@@ -2132,11 +1832,6 @@
       "familyId": "misc"
     },
     {
-      "alias": "into the dead 2",
-      "modelId": "games_multi-into_the_dead_2",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "it takes two",
       "modelId": "games_playstation-it_takes_two",
       "familyId": "games_playstation"
@@ -2144,11 +1839,6 @@
     {
       "alias": "it takes two",
       "modelId": "games_multi-it_takes_two",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ittle dew 2 +",
-      "modelId": "games_multi-ittle_dew_2",
       "familyId": "games_multi"
     },
     {
@@ -2212,11 +1902,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "jumanji: the video game",
-      "modelId": "games_playstation-jumanji_the_video_game",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "jurassic world: evolution 2",
       "modelId": "games_playstation-jurassic_world_evolution_2",
       "familyId": "games_playstation"
@@ -2232,28 +1917,13 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "just dance 2020",
-      "modelId": "games_multi-just_dance_2020",
+      "alias": "just dance 2026",
+      "modelId": "games_multi-just_dance_2026_edition",
       "familyId": "games_multi"
     },
     {
-      "alias": "just dance 2021",
-      "modelId": "games_multi-just_dance_2021",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "just dance 2022",
-      "modelId": "games_multi-just_dance_2022",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "just dance 2023",
-      "modelId": "games_multi-just_dance_2023_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "just dance 2023 edition",
-      "modelId": "games_multi-just_dance_2023_edition",
+      "alias": "just dance 2026 edition",
+      "modelId": "games_multi-just_dance_2026_edition",
       "familyId": "games_multi"
     },
     {
@@ -2265,16 +1935,6 @@
       "alias": "kemco rpg omnibus",
       "modelId": "games_multi-kemco_rpg_omnibus",
       "familyId": "games_multi"
-    },
-    {
-      "alias": "kena: bridge of spirit deluxe",
-      "modelId": "games_playstation-kena_bridge_of_spirit_deluxe_edition",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "kena: bridge of spirit deluxe edition",
-      "modelId": "games_playstation-kena_bridge_of_spirit_deluxe_edition",
-      "familyId": "games_playstation"
     },
     {
       "alias": "kill la kill - if",
@@ -2297,29 +1957,9 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "kingdom hearts melody of memory",
-      "modelId": "games_multi-kingdom_hearts_melody_of_memory",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "kingdoms of amalur: re-reckoning",
-      "modelId": "games_multi-kingdoms_of_amalur_re_reckoning",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "kingdoms of amatur re-reckoning",
       "modelId": "games_playstation-kingdoms_of_amatur_re_reckoning",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "kirby and the forgotten land",
-      "modelId": "games_multi-kirby_and_the_forgotten_land",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "kirby star allies",
-      "modelId": "games_multi-kirby_star_allies",
-      "familyId": "games_multi"
     },
     {
       "alias": "kirby's return to dream land deluxe",
@@ -2332,13 +1972,13 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "klevv cras v rgb ddr5 6000 cl28 (2x) 6000 ram black/white",
-      "modelId": "misc-klevv_cras_v_rgb_ddr5_6000_cl28_2x16gb_6000_ram_black_white",
+      "alias": "klevv cras v rgb / rog certified ddr5 7400/7200 mt/s cl34 (2x) ram",
+      "modelId": "misc-klevv_cras_v_rgb_rog_certified_ddr5_7400_7200_mt_s_cl34_2x16gb_ram",
       "familyId": "misc"
     },
     {
-      "alias": "klevv cras v rgb ddr5 6000 cl28 (2x16gb) 6000 ram black/white",
-      "modelId": "misc-klevv_cras_v_rgb_ddr5_6000_cl28_2x16gb_6000_ram_black_white",
+      "alias": "klevv cras v rgb / rog certified ddr5 7400/7200 mt/s cl34 (2x16gb) ram",
+      "modelId": "misc-klevv_cras_v_rgb_rog_certified_ddr5_7400_7200_mt_s_cl34_2x16gb_ram",
       "familyId": "misc"
     },
     {
@@ -2437,18 +2077,8 @@
       "familyId": "handheld_pc"
     },
     {
-      "alias": "lego collection harry potter",
-      "modelId": "games_multi-lego_collection_harry_potter",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "lego dc super-villian",
       "modelId": "games_multi-lego_dc_super_villian",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "lego marvel super heroes 2",
-      "modelId": "games_multi-lego_marvel_super_heroes_2",
       "familyId": "games_multi"
     },
     {
@@ -2457,18 +2087,8 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "lego star wars: the skywalker saga",
-      "modelId": "games_multi-lego_star_wars_the_skywalker_saga",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "lego the incredibles",
       "modelId": "games_multi-lego_the_incredibles",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "lego worlds",
-      "modelId": "games_multi-lego_worlds",
       "familyId": "games_multi"
     },
     {
@@ -2602,11 +2222,6 @@
       "familyId": "misc"
     },
     {
-      "alias": "liberlive c2/c1 stringless smart guitar",
-      "modelId": "misc-liberlive_c2_c1_stringless_smart_guitar",
-      "familyId": "misc"
-    },
-    {
       "alias": "lichdom: battlemage",
       "modelId": "games_playstation-lichdom_battlemage",
       "familyId": "games_playstation"
@@ -2620,11 +2235,6 @@
       "alias": "little big planet 3",
       "modelId": "games_playstation-little_big_planet_3",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "little dragons cafe",
-      "modelId": "games_multi-little_dragons_cafe",
-      "familyId": "games_multi"
     },
     {
       "alias": "little nightmares ii",
@@ -2662,11 +2272,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "luigi's mansion 3",
-      "modelId": "games_multi-luigi_s_mansion_3",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "mad max",
       "modelId": "games_playstation-mad_max",
       "familyId": "games_playstation"
@@ -2682,19 +2287,9 @@
       "familyId": "misc"
     },
     {
-      "alias": "man eater",
-      "modelId": "games_playstation-man_eater",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "maneater",
       "modelId": "games_playstation-maneater",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "mario & sonic at the olympic games tokyo 2020",
-      "modelId": "games_multi-mario_sonic_at_the_olympic_games_tokyo_2020",
-      "familyId": "games_multi"
     },
     {
       "alias": "mario &amp; luigi: brothership",
@@ -2704,11 +2299,6 @@
     {
       "alias": "mario + rabbids kingdom battle",
       "modelId": "games_multi-mario_rabbids_kingdom_battle",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "mario + rabbids sparks of hope",
-      "modelId": "games_multi-mario_rabbids_sparks_of_hope",
       "familyId": "games_multi"
     },
     {
@@ -2722,11 +2312,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "mario kart deluxe 8",
-      "modelId": "games_multi-mario_kart_deluxe_8",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "mario party superstars",
       "modelId": "games_multi-mario_party_superstars",
       "familyId": "games_multi"
@@ -2734,11 +2319,6 @@
     {
       "alias": "mario strikers: battle league",
       "modelId": "games_multi-mario_strikers_battle_league",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "mario tennis aces",
-      "modelId": "games_multi-mario_tennis_aces",
       "familyId": "games_multi"
     },
     {
@@ -2760,11 +2340,6 @@
       "alias": "marvel: spider-man miles morales",
       "modelId": "games_playstation-marvel_spider_man_miles_morales",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "marvel: ultimate alliance 3 the black order",
-      "modelId": "games_multi-marvel_ultimate_alliance_3_the_black_order",
-      "familyId": "games_multi"
     },
     {
       "alias": "marvels: avengers",
@@ -2807,11 +2382,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "mega man 11",
-      "modelId": "games_multi-mega_man_11",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "mega man zero/zx legacy collection",
       "modelId": "games_multi-mega_man_zero_zx_legacy_collection",
       "familyId": "games_multi"
@@ -2852,29 +2422,14 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "metro redux",
-      "modelId": "games_multi-metro_redux",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "metroid dread",
-      "modelId": "games_multi-metroid_dread",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "metroid prime remastered",
-      "modelId": "games_multi-metroid_prime_remastered",
+      "alias": "minecraft",
+      "modelId": "games_multi-minecraft",
       "familyId": "games_multi"
     },
     {
       "alias": "minecraft",
       "modelId": "games_playstation-minecraft",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "minecraft",
-      "modelId": "games_multi-minecraft",
-      "familyId": "games_multi"
     },
     {
       "alias": "minecraft dungeons hero",
@@ -2912,16 +2467,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "monopoly for nintendo switch + monopoly madness",
-      "modelId": "games_switch-monopoly_for_nintendo_switch_monopoly_madness",
-      "familyId": "games_switch"
-    },
-    {
-      "alias": "monopoly for switch + monopoly madness",
-      "modelId": "games_switch-monopoly_for_nintendo_switch_monopoly_madness",
-      "familyId": "games_switch"
-    },
-    {
       "alias": "monster hunter generations ultimate",
       "modelId": "games_multi-monster_hunter_generations_ultimate",
       "familyId": "games_multi"
@@ -2929,11 +2474,6 @@
     {
       "alias": "monster hunter rise",
       "modelId": "games_multi-monster_hunter_rise",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "monster hunter stories 2: wings of run",
-      "modelId": "games_multi-monster_hunter_stories_2_wings_of_run",
       "familyId": "games_multi"
     },
     {
@@ -2952,16 +2492,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "monster jam crush it!",
-      "modelId": "games_multi-monster_jam_crush_it",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "monster truck championship",
-      "modelId": "games_multi-monster_truck_championship",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "monstrum",
       "modelId": "games_multi-monstrum",
       "familyId": "games_multi"
@@ -2970,16 +2500,6 @@
       "alias": "mortal kombat 1",
       "modelId": "games_playstation-mortal_kombat_1",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "mortal kombat 1",
-      "modelId": "games_multi-mortal_kombat_1",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "mortal kombat 11",
-      "modelId": "games_multi-mortal_kombat_11",
-      "familyId": "games_multi"
     },
     {
       "alias": "mortal kombat 11 ultimate",
@@ -2995,11 +2515,6 @@
       "alias": "motogp 25",
       "modelId": "games_playstation-motogp_25",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "moving out",
-      "modelId": "games_multi-moving_out",
-      "familyId": "games_multi"
     },
     {
       "alias": "moving out 2",
@@ -3032,9 +2547,9 @@
       "familyId": "xbox_series"
     },
     {
-      "alias": "mr driller drilland",
-      "modelId": "games_multi-mr_driller_drilland",
-      "familyId": "games_multi"
+      "alias": "msi claw 8 ai+ screen protector",
+      "modelId": "handheld_pc-msi_claw_8_ai_screen_protector",
+      "familyId": "handheld_pc"
     },
     {
       "alias": "msi claw 8 ai+ ut7  (polar tempest)",
@@ -3102,11 +2617,6 @@
       "familyId": "misc"
     },
     {
-      "alias": "my friend pedro",
-      "modelId": "games_multi-my_friend_pedro",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "my hero one's justice 2",
       "modelId": "games_multi-my_hero_one_s_justice_2",
       "familyId": "games_multi"
@@ -3114,11 +2624,6 @@
     {
       "alias": "naruto shippuden ultimate ninja storm 4 road to boruto",
       "modelId": "games_multi-naruto_shippuden_ultimate_ninja_storm_4_road_to_boruto",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "naruto shippuden: ultimate ninja storm 4: road to baruto",
-      "modelId": "games_multi-naruto_shippuden_ultimate_ninja_storm_4_road_to_baruto",
       "familyId": "games_multi"
     },
     {
@@ -3133,53 +2638,13 @@
     },
     {
       "alias": "nba 2k18",
-      "modelId": "games_multi-nba_2k18",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nba 2k18",
       "modelId": "games_playstation-nba_2k18",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "nba 2k19",
-      "modelId": "games_multi-nba_2k19",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nba 2k20",
-      "modelId": "games_multi-nba_2k20",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nba 2k20 legend",
-      "modelId": "games_multi-nba_2k20_legend_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nba 2k20 legend edition",
-      "modelId": "games_multi-nba_2k20_legend_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nba 2k21",
-      "modelId": "games_multi-nba_2k21",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nba 2k23",
-      "modelId": "games_multi-nba_2k23",
-      "familyId": "games_multi"
     },
     {
       "alias": "nba 2k23",
       "modelId": "games_playstation-nba_2k23",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "nba 2k24",
-      "modelId": "games_multi-nba_2k24",
-      "familyId": "games_multi"
     },
     {
       "alias": "nba 2k24",
@@ -3212,11 +2677,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "need for speed hot pursuit remastered",
-      "modelId": "games_multi-need_for_speed_hot_pursuit_remastered",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "neo: the world ends with you",
       "modelId": "games_multi-neo_the_world_ends_with_you",
       "familyId": "games_multi"
@@ -3224,11 +2684,6 @@
     {
       "alias": "neogeo pocket color selection vol 1",
       "modelId": "games_multi-neogeo_pocket_color_selection_vol_1",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "new super mario bros deluxe",
-      "modelId": "games_multi-new_super_mario_bros_deluxe",
       "familyId": "games_multi"
     },
     {
@@ -3252,16 +2707,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "ni no kuni ii: revenant kingdom prince's",
-      "modelId": "games_multi-ni_no_kuni_ii_revenant_kingdom_prince_s_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "ni no kuni ii: revenant kingdom prince's edition",
-      "modelId": "games_multi-ni_no_kuni_ii_revenant_kingdom_prince_s_edition",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "ni no kuni: revenant kingdom prince's",
       "modelId": "games_multi-ni_no_kuni_revenant_kingdom_prince_s_edition",
       "familyId": "games_multi"
@@ -3274,21 +2719,6 @@
     {
       "alias": "ni no kuni: wrath of the white witch",
       "modelId": "games_multi-ni_no_kuni_wrath_of_the_white_witch",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nickelodeon all-star brawl 2",
-      "modelId": "games_multi-nickelodeon_all_star_brawl_2",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nickelodeon kart racers 2: grand prix",
-      "modelId": "games_multi-nickelodeon_kart_racers_2_grand_prix",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "nickolodeon kart racers 2: grand prix",
-      "modelId": "games_multi-nickolodeon_kart_racers_2_grand_prix",
       "familyId": "games_multi"
     },
     {
@@ -3402,11 +2832,6 @@
       "familyId": "games_switch"
     },
     {
-      "alias": "nintendo switch yu-gi-oh! early days collection (asi english)",
-      "modelId": "games_switch-nintendo_switch_yu_gi_oh_early_days_collection_asi_english",
-      "familyId": "games_switch"
-    },
-    {
       "alias": "nioh 2",
       "modelId": "games_playstation-nioh_2",
       "familyId": "games_playstation"
@@ -3425,11 +2850,6 @@
       "alias": "no more heroes 3",
       "modelId": "games_multi-no_more_heroes_3",
       "familyId": "games_multi"
-    },
-    {
-      "alias": "oakley meta hstn smart ai glasses option",
-      "modelId": "vr_wearables-oakley_meta_hstn_smart_ai_glasses_option",
-      "familyId": "vr_wearables"
     },
     {
       "alias": "oasis games vr fun pack",
@@ -3470,16 +2890,6 @@
       "alias": "one piece burning blood",
       "modelId": "games_playstation-one_piece_burning_blood",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "one piece: pirate warriors 3 deluxe",
-      "modelId": "games_multi-one_piece_pirate_warriors_3_deluxe_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "one piece: pirate warriors 3 deluxe edition",
-      "modelId": "games_multi-one_piece_pirate_warriors_3_deluxe_edition",
-      "familyId": "games_multi"
     },
     {
       "alias": "one piece: pirate warriors 4",
@@ -3547,21 +2957,6 @@
       "familyId": "vr_wearables"
     },
     {
-      "alias": "overcooked all you can eat",
-      "modelId": "games_multi-overcooked_all_you_can_eat",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "overcooked special + overcooked 2",
-      "modelId": "games_multi-overcooked_special_edition_overcooked_2",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "overcooked special edition + overcooked 2",
-      "modelId": "games_multi-overcooked_special_edition_overcooked_2",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "overcooked! + overcooked! 2",
       "modelId": "games_playstation-overcooked_overcooked_2",
       "familyId": "games_playstation"
@@ -3619,11 +3014,6 @@
     {
       "alias": "paper mario origami king",
       "modelId": "games_multi-paper_mario_origami_king",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "paper mario: the origami king",
-      "modelId": "games_multi-paper_mario_the_origami_king",
       "familyId": "games_multi"
     },
     {
@@ -3688,13 +3078,13 @@
     },
     {
       "alias": "playstation 4",
-      "modelId": "games_playstation-ea_sports_fc_26_ps5_ps4_switch_2_switch",
-      "familyId": "games_playstation"
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
     },
     {
       "alias": "playstation 5",
-      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
-      "familyId": "playstation_5"
+      "modelId": "vr_wearables-ps5_psvr_2",
+      "familyId": "vr_wearables"
     },
     {
       "alias": "playstation dualsense charging station",
@@ -3762,8 +3152,8 @@
       "familyId": "playstation_5"
     },
     {
-      "alias": "playstation pulse explore",
-      "modelId": "misc-playstation_pulse_explore",
+      "alias": "playstation pulse elite wireless headset",
+      "modelId": "misc-playstation_pulse_elite_wireless_headset",
       "familyId": "misc"
     },
     {
@@ -3782,9 +3172,19 @@
       "familyId": "games_playstation"
     },
     {
+      "alias": "pokemon 3d poster 151 2 x 113 4 pikachu van gogh/squirtle/snorlax/eevee",
+      "modelId": "misc-pokemon_3d_poster_151_2_x_113_4_pikachu_van_gogh_squirtle_snorlax_eevee",
+      "familyId": "misc"
+    },
+    {
       "alias": "pokemon brillant diamond",
       "modelId": "games_multi-pokemon_brillant_diamond",
       "familyId": "games_multi"
+    },
+    {
+      "alias": "pokemon chinese 151 gengar slim box",
+      "modelId": "misc-pokemon_chinese_151_gengar_slim_box",
+      "familyId": "misc"
     },
     {
       "alias": "pokemon legends: arceus",
@@ -3887,11 +3287,6 @@
       "familyId": "handheld_pc"
     },
     {
-      "alias": "prince of persia the lost crown",
-      "modelId": "games_multi-prince_of_persia_the_lost_crown",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "prinny presents nis classics volume 1 deluxe",
       "modelId": "games_multi-prinny_presents_nis_classics_volume_1_deluxe_edition",
       "familyId": "games_multi"
@@ -3913,8 +3308,8 @@
     },
     {
       "alias": "ps4 fat",
-      "modelId": "games_playstation-ea_sports_fc_26_ps5_ps4_switch_2_switch",
-      "familyId": "games_playstation"
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
     },
     {
       "alias": "ps4 fat  (1 week store warranty)",
@@ -3938,8 +3333,8 @@
     },
     {
       "alias": "ps4 pro",
-      "modelId": "games_playstation-ea_sports_fc_26_ps5_ps4_switch_2_switch",
-      "familyId": "games_playstation"
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
     },
     {
       "alias": "ps4 pro  (1 week store warranty)",
@@ -3963,8 +3358,8 @@
     },
     {
       "alias": "ps4 slim",
-      "modelId": "games_playstation-ea_sports_fc_26_ps5_ps4_switch_2_switch",
-      "familyId": "games_playstation"
+      "modelId": "playstation_4-ps4_pro_2tb_1_week_store_warranty",
+      "familyId": "playstation_4"
     },
     {
       "alias": "ps4 slim  (1 week store warranty)",
@@ -4003,8 +3398,8 @@
     },
     {
       "alias": "ps5 digital",
-      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
-      "familyId": "playstation_5"
+      "modelId": "vr_wearables-ps5_psvr_2",
+      "familyId": "vr_wearables"
     },
     {
       "alias": "ps5 digital pro  japan",
@@ -4028,28 +3423,28 @@
     },
     {
       "alias": "ps5 digital slim  japan",
-      "modelId": "playstation_5-ps5_digital_slim_1tb_japan",
+      "modelId": "playstation_5-ps5_digital_slim_825gb_japan",
       "familyId": "playstation_5"
     },
     {
       "alias": "ps5 digital slim  sg",
-      "modelId": "playstation_5-ps5_digital_slim_1tb_sg",
+      "modelId": "playstation_5-ps5_digital_slim_825gb_sg",
       "familyId": "playstation_5"
     },
     {
-      "alias": "ps5 digital slim 1tb japan",
-      "modelId": "playstation_5-ps5_digital_slim_1tb_japan",
+      "alias": "ps5 digital slim 825gb japan",
+      "modelId": "playstation_5-ps5_digital_slim_825gb_japan",
       "familyId": "playstation_5"
     },
     {
-      "alias": "ps5 digital slim 1tb sg",
-      "modelId": "playstation_5-ps5_digital_slim_1tb_sg",
+      "alias": "ps5 digital slim 825gb sg",
+      "modelId": "playstation_5-ps5_digital_slim_825gb_sg",
       "familyId": "playstation_5"
     },
     {
       "alias": "ps5 disc",
-      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
-      "familyId": "playstation_5"
+      "modelId": "vr_wearables-ps5_psvr_2",
+      "familyId": "vr_wearables"
     },
     {
       "alias": "ps5 disc fat  sg",
@@ -4093,7 +3488,7 @@
     },
     {
       "alias": "ps5 disc slim  japan",
-      "modelId": "playstation_5-ps5_disc_slim_1tb_japan",
+      "modelId": "playstation_5-ps5_disc_slim_825gb_japan",
       "familyId": "playstation_5"
     },
     {
@@ -4103,12 +3498,7 @@
     },
     {
       "alias": "ps5 disc slim  sg",
-      "modelId": "playstation_5-ps5_disc_slim_1tb_sg",
-      "familyId": "playstation_5"
-    },
-    {
-      "alias": "ps5 disc slim 1tb japan",
-      "modelId": "playstation_5-ps5_disc_slim_1tb_japan",
+      "modelId": "playstation_5-ps5_disc_slim_825gb_sg",
       "familyId": "playstation_5"
     },
     {
@@ -4122,8 +3512,13 @@
       "familyId": "playstation_5"
     },
     {
-      "alias": "ps5 disc slim 1tb sg",
-      "modelId": "playstation_5-ps5_disc_slim_1tb_sg",
+      "alias": "ps5 disc slim 825gb japan",
+      "modelId": "playstation_5-ps5_disc_slim_825gb_japan",
+      "familyId": "playstation_5"
+    },
+    {
+      "alias": "ps5 disc slim 825gb sg",
+      "modelId": "playstation_5-ps5_disc_slim_825gb_sg",
       "familyId": "playstation_5"
     },
     {
@@ -4133,13 +3528,8 @@
     },
     {
       "alias": "ps5 fat",
-      "modelId": "playstation_5-ps5_disc_pro_2tb_sg_install_from_digital_set_disc_drive",
-      "familyId": "playstation_5"
-    },
-    {
-      "alias": "ps5 fat spiderman",
-      "modelId": "playstation_5-ps5_fat_spiderman",
-      "familyId": "playstation_5"
+      "modelId": "vr_wearables-ps5_psvr_2",
+      "familyId": "vr_wearables"
     },
     {
       "alias": "ps5 ghost of yotei",
@@ -4152,14 +3542,14 @@
       "familyId": "playstation_5"
     },
     {
-      "alias": "ps5 ninja gaiden 4",
-      "modelId": "games_playstation-ps5_ninja_gaiden_4",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "ps5 psvr 2",
       "modelId": "vr_wearables-ps5_psvr_2",
       "familyId": "vr_wearables"
+    },
+    {
+      "alias": "ps5 silent hill f",
+      "modelId": "games_playstation-ps5_silent_hill_f",
+      "familyId": "games_playstation"
     },
     {
       "alias": "ps5 slim digital",
@@ -4212,23 +3602,13 @@
       "familyId": "playstation_5"
     },
     {
-      "alias": "ps5: motogp 24",
-      "modelId": "games_playstation-ps5_motogp_24",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "ps5: taiko no tatsujin rhythm fest game",
       "modelId": "games_playstation-ps5_taiko_no_tatsujin_rhythm_fest_game",
       "familyId": "games_playstation"
     },
     {
-      "alias": "pui pui molcar let's molcar party!",
-      "modelId": "games_multi-pui_pui_molcar_let_s_molcar_party",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "pulse explore",
-      "modelId": "misc-playstation_pulse_explore",
+      "alias": "pulse elite wireless headset",
+      "modelId": "misc-playstation_pulse_elite_wireless_headset",
       "familyId": "misc"
     },
     {
@@ -4257,34 +3637,14 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "rayban meta wayfarer/skyler smart glasses l meta glasses l smart glasses option",
-      "modelId": "vr_wearables-rayban_meta_wayfarer_skyler_smart_glasses_l_meta_glasses_l_smart_glasses_option",
+      "alias": "rayban|oakley meta wayfarer / headliner / skyler / smart ai glasses option",
+      "modelId": "vr_wearables-rayban_oakley_meta_wayfarer_headliner_skyler_smart_ai_glasses_option",
       "familyId": "vr_wearables"
-    },
-    {
-      "alias": "rayman legends definitive",
-      "modelId": "games_multi-rayman_legends_definitive_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "rayman legends definitive edition",
-      "modelId": "games_multi-rayman_legends_definitive_edition",
-      "familyId": "games_multi"
     },
     {
       "alias": "razer orochi v2",
       "modelId": "misc-razer_orochi_v2",
       "familyId": "misc"
-    },
-    {
-      "alias": "record of agarest war",
-      "modelId": "games_multi-record_of_agarest_war",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "red dead redemption",
-      "modelId": "games_multi-red_dead_redemption",
-      "familyId": "games_multi"
     },
     {
       "alias": "red dead redemption ii",
@@ -4295,11 +3655,6 @@
       "alias": "red faction guerrilla remarstered",
       "modelId": "games_playstation-red_faction_guerrilla_remarstered",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "red faction guerrilla remastered",
-      "modelId": "games_multi-red_faction_guerrilla_remastered",
-      "familyId": "games_multi"
     },
     {
       "alias": "red faction remastered guerrilla",
@@ -4322,13 +3677,8 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "resident evil 4 gold",
-      "modelId": "games_playstation-resident_evil_4_gold_edition",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "resident evil 4 gold edition",
-      "modelId": "games_playstation-resident_evil_4_gold_edition",
+      "alias": "resident evil 4",
+      "modelId": "games_playstation-resident_evil_4",
       "familyId": "games_playstation"
     },
     {
@@ -4337,14 +3687,24 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "resident evil origins collection",
-      "modelId": "games_multi-resident_evil_origins_collection",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "resident evil: village",
       "modelId": "games_playstation-resident_evil_village",
       "familyId": "games_playstation"
+    },
+    {
+      "alias": "retroid pocket 5 dual screen / retroid pocket 5 black handheld amoled sd865 android 128gb option",
+      "modelId": "misc-retroid_pocket_5_dual_screen_retroid_pocket_5_black_handheld_amoled_sd865_android_console_128gb_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "retroid pocket 5 dual screen / retroid pocket 5 black handheld amoled sd865 android console  option",
+      "modelId": "misc-retroid_pocket_5_dual_screen_retroid_pocket_5_black_handheld_amoled_sd865_android_console_128gb_option",
+      "familyId": "misc"
+    },
+    {
+      "alias": "retroid pocket 5 dual screen / retroid pocket 5 black handheld amoled sd865 android console 128gb option",
+      "modelId": "misc-retroid_pocket_5_dual_screen_retroid_pocket_5_black_handheld_amoled_sd865_android_console_128gb_option",
+      "familyId": "misc"
     },
     {
       "alias": "rezero -starting life in another world- the prophecy of the throne",
@@ -4407,8 +3767,8 @@
       "familyId": "misc"
     },
     {
-      "alias": "rog gaming charger dock",
-      "modelId": "misc-rog_gaming_charger_dock",
+      "alias": "rog slash sling bag 4.0",
+      "modelId": "misc-rog_slash_sling_bag_4_0",
       "familyId": "misc"
     },
     {
@@ -4507,21 +3867,6 @@
       "familyId": "misc"
     },
     {
-      "alias": "rune factory 4 special",
-      "modelId": "games_multi-rune_factory_4_special",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "rune factory 5",
-      "modelId": "games_multi-rune_factory_5",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "rush rally collection",
-      "modelId": "games_multi-rush_rally_collection",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "sackboy: a big adventure",
       "modelId": "games_playstation-sackboy_a_big_adventure",
       "familyId": "games_playstation"
@@ -4535,11 +3880,6 @@
       "alias": "saints row (criminal customs edition)",
       "modelId": "games_playstation-saints_row_criminal_customs_edition",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "saints row: the third - the full package",
-      "modelId": "games_multi-saints_row_the_third_the_full_package",
-      "familyId": "games_multi"
     },
     {
       "alias": "sakura of rice and ruin",
@@ -4567,16 +3907,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "sd gundam g generation cross rays platinum",
-      "modelId": "games_multi-sd_gundam_g_generation_cross_rays_platinum_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sd gundam g generation cross rays platinum edition",
-      "modelId": "games_multi-sd_gundam_g_generation_cross_rays_platinum_edition",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "sebastienloeb rallyevo",
       "modelId": "games_playstation-sebastienloeb_rallyevo",
       "familyId": "games_playstation"
@@ -4587,9 +3917,9 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "sengoku musou 5",
-      "modelId": "games_multi-sengoku_musou_5",
-      "familyId": "games_multi"
+      "alias": "series elite 2 black",
+      "modelId": "xbox_series-xbox_series_elite_2_black",
+      "familyId": "xbox_series"
     },
     {
       "alias": "series s 1tb",
@@ -4637,21 +3967,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "shadowverse's champion battle",
-      "modelId": "games_multi-shadowverse_s_champion_battle",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "shantae: half-genie hero ultimate",
-      "modelId": "games_multi-shantae_half_genie_hero_ultimate_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "shantae: half-genie hero ultimate edition",
-      "modelId": "games_multi-shantae_half_genie_hero_ultimate_edition",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "shin megami tensei iii",
       "modelId": "games_multi-shin_megami_tensei_iii",
       "familyId": "games_multi"
@@ -4664,21 +3979,6 @@
     {
       "alias": "shining resonance refrain",
       "modelId": "games_multi-shining_resonance_refrain",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sifu - vengeance",
-      "modelId": "games_multi-sifu_vengeance_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sifu - vengeance edition",
-      "modelId": "games_multi-sifu_vengeance_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "silence",
-      "modelId": "games_multi-silence",
       "familyId": "games_multi"
     },
     {
@@ -4717,64 +4017,14 @@
       "familyId": "misc"
     },
     {
-      "alias": "smurfs kart",
-      "modelId": "games_multi-smurfs_kart",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sniper elite 4",
-      "modelId": "games_multi-sniper_elite_4",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sniper elite 5",
-      "modelId": "games_playstation-sniper_elite_5",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "sniper elite iii ultimate",
-      "modelId": "games_multi-sniper_elite_iii_ultimate_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sniper elite iii ultimate edition",
-      "modelId": "games_multi-sniper_elite_iii_ultimate_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sniper elite v2 remastered",
-      "modelId": "games_multi-sniper_elite_v2_remastered",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "snipperclips plus: cut it out, together",
       "modelId": "games_multi-snipperclips_plus_cut_it_out_together",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sonic colors ultimate launch",
-      "modelId": "games_multi-sonic_colors_ultimate_launch_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sonic colors ultimate launch edition",
-      "modelId": "games_multi-sonic_colors_ultimate_launch_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "sonic frontiers",
-      "modelId": "games_multi-sonic_frontiers",
       "familyId": "games_multi"
     },
     {
       "alias": "sony wh-1000xm6 / wh-1000xm5 black/midnight blue /silver headphone option",
       "modelId": "misc-sony_wh_1000xm6_wh_1000xm5_black_midnight_blue_silver_headphone_option",
       "familyId": "misc"
-    },
-    {
-      "alias": "soul hackers 2",
-      "modelId": "games_playstation-soul_hackers_2",
-      "familyId": "games_playstation"
     },
     {
       "alias": "soulstice (deluxe )",
@@ -4817,11 +4067,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "sports party",
-      "modelId": "games_multi-sports_party",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "spyro reignited trilogy",
       "modelId": "games_playstation-spyro_reignited_trilogy",
       "familyId": "games_playstation"
@@ -4830,16 +4075,6 @@
       "alias": "star ocean integrity and faithlessness",
       "modelId": "games_playstation-star_ocean_integrity_and_faithlessness",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "star wars jedi knight collection",
-      "modelId": "games_multi-star_wars_jedi_knight_collection",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "star wars racer and commando combo",
-      "modelId": "games_multi-star_wars_racer_and_commando_combo",
-      "familyId": "games_multi"
     },
     {
       "alias": "star wars: battlefront",
@@ -4875,11 +4110,6 @@
       "alias": "star wars: squadrons",
       "modelId": "games_playstation-star_wars_squadrons",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "stardew valley",
-      "modelId": "games_multi-stardew_valley",
-      "familyId": "games_multi"
     },
     {
       "alias": "state of mind",
@@ -4992,23 +4222,8 @@
       "familyId": "handheld_pc"
     },
     {
-      "alias": "story of seasons: friends of mineral town",
-      "modelId": "games_multi-story_of_seasons_friends_of_mineral_town",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "story of seasons: pinoneers of olive town",
-      "modelId": "games_multi-story_of_seasons_pinoneers_of_olive_town",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "stray",
       "modelId": "games_playstation-stray",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "street fighter 6",
-      "modelId": "games_playstation-street_fighter_6",
       "familyId": "games_playstation"
     },
     {
@@ -5022,22 +4237,12 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "super bomberman",
-      "modelId": "games_playstation-super_bomberman",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "super dragon ball heroes world mission",
       "modelId": "games_multi-super_dragon_ball_heroes_world_mission",
       "familyId": "games_multi"
     },
     {
       "alias": "super mario 3d world + bowser s fury",
-      "modelId": "games_multi-super_mario_3d_world_bowser_s_fury",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "super mario 3d world + bowser's fury",
       "modelId": "games_multi-super_mario_3d_world_bowser_s_fury",
       "familyId": "games_multi"
     },
@@ -5052,16 +4257,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "super mario odyssey",
-      "modelId": "games_multi-super_mario_odyssey",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "super mario party",
-      "modelId": "games_multi-super_mario_party",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "super mario party jamboree",
       "modelId": "games_multi-super_mario_party_jamboree",
       "familyId": "games_multi"
@@ -5072,18 +4267,8 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "super mario u deluxe",
-      "modelId": "games_multi-super_mario_u_deluxe",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "super monkey ball banana mania",
       "modelId": "games_multi-super_monkey_ball_banana_mania",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "super monkey ball: banana blitz",
-      "modelId": "games_multi-super_monkey_ball_banana_blitz",
       "familyId": "games_multi"
     },
     {
@@ -5217,21 +4402,6 @@
       "familyId": "nintendo_switch"
     },
     {
-      "alias": "switch yu-gi-oh! early days collection (asi english)",
-      "modelId": "games_switch-nintendo_switch_yu_gi_oh_early_days_collection_asi_english",
-      "familyId": "games_switch"
-    },
-    {
-      "alias": "sword and fairy together forever",
-      "modelId": "games_playstation-sword_and_fairy_together_forever",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "tactics ogre: reborn",
-      "modelId": "games_multi-tactics_ogre_reborn",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "taiko no tatsujin nintendo switch version",
       "modelId": "games_switch-taiko_no_tatsujin_nintendo_switch_version",
       "familyId": "games_switch"
@@ -5277,11 +4447,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "team sonic racing",
-      "modelId": "games_multi-team_sonic_racing",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "tearaway unfolded",
       "modelId": "games_playstation-tearaway_unfolded",
       "familyId": "games_playstation"
@@ -5290,11 +4455,6 @@
       "alias": "tecware flex rgb 24p+gpu (black/white)",
       "modelId": "misc-tecware_flex_rgb_24p_gpu_black_white",
       "familyId": "misc"
-    },
-    {
-      "alias": "teenage mutant ninja turtle l: the cowabunga collection",
-      "modelId": "games_playstation-teenage_mutant_ninja_turtle_l_the_cowabunga_collection",
-      "familyId": "games_playstation"
     },
     {
       "alias": "teenage mutant ninja turtles: wrath of the mutants",
@@ -5312,11 +4472,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "terraria",
-      "modelId": "games_multi-terraria",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "tesla cyberdock for iphone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
       "modelId": "phones-tesla_cyberdock_for_iphone_17_16_15_14_pro_pro_max_3_in_1_wireless_charger",
       "familyId": "phones"
@@ -5325,11 +4480,6 @@
       "alias": "teslagrad",
       "modelId": "games_multi-teslagrad",
       "familyId": "games_multi"
-    },
-    {
-      "alias": "test",
-      "modelId": "misc-test",
-      "familyId": "misc"
     },
     {
       "alias": "the alliance alive hd remastered",
@@ -5367,11 +4517,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "the elder scrolls v: skyrim",
-      "modelId": "games_multi-the_elder_scrolls_v_skyrim",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "the falconeer: warrior",
       "modelId": "games_playstation-the_falconeer_warrior_edition",
       "familyId": "games_playstation"
@@ -5387,18 +4532,8 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "the fox awaits me",
-      "modelId": "games_multi-the_fox_awaits_me",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "the house of the dead 2: remake",
       "modelId": "games_multi-the_house_of_the_dead_2_remake",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "the house of the dead remake",
-      "modelId": "games_multi-the_house_of_the_dead_remake",
       "familyId": "games_multi"
     },
     {
@@ -5442,21 +4577,6 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "the legend of zelda: breath of the wild",
-      "modelId": "games_multi-the_legend_of_zelda_breath_of_the_wild",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "the legend of zelda: breath of the wild (box)",
-      "modelId": "games_multi-the_legend_of_zelda_breath_of_the_wild_box",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "the legend of zelda: echoes of wisdom",
-      "modelId": "games_multi-the_legend_of_zelda_echoes_of_wisdom",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "the legend of zelda: link's awakening",
       "modelId": "games_multi-the_legend_of_zelda_link_s_awakening",
       "familyId": "games_multi"
@@ -5489,11 +4609,6 @@
     {
       "alias": "the legends of heroes: trails of cold steel ii sen no kiseki ii ii the erebonian civil war",
       "modelId": "games_multi-the_legends_of_heroes_trails_of_cold_steel_ii_sen_no_kiseki_ii_ii_the_erebonian_civil_war",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "the lego movie 2 videogame",
-      "modelId": "games_multi-the_lego_movie_2_videogame",
       "familyId": "games_multi"
     },
     {
@@ -5532,11 +4647,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "the smurfs: mission vileaf",
-      "modelId": "games_playstation-the_smurfs_mission_vileaf",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "the talos principle deluxe",
       "modelId": "games_playstation-the_talos_principle_deluxe_edition",
       "familyId": "games_playstation"
@@ -5545,11 +4655,6 @@
       "alias": "the talos principle deluxe edition",
       "modelId": "games_playstation-the_talos_principle_deluxe_edition",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "the walking dead destinies",
-      "modelId": "games_multi-the_walking_dead_destinies",
-      "familyId": "games_multi"
     },
     {
       "alias": "the walking dead: la temporada final",
@@ -5563,18 +4668,8 @@
     },
     {
       "alias": "the witcher 3: wild hunt complete",
-      "modelId": "games_multi-the_witcher_3_wild_hunt_complete_edition",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "the witcher 3: wild hunt complete",
       "modelId": "games_playstation-the_witcher_3_wild_hunt_complete_edition",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "the witcher 3: wild hunt complete edition",
-      "modelId": "games_multi-the_witcher_3_wild_hunt_complete_edition",
-      "familyId": "games_multi"
     },
     {
       "alias": "the witcher 3: wild hunt complete edition",
@@ -5609,11 +4704,6 @@
     {
       "alias": "thermalright tl-m10 vision black matx pc case",
       "modelId": "misc-thermalright_tl_m10_vision_black_matx_pc_case",
-      "familyId": "misc"
-    },
-    {
-      "alias": "thermalright wonder / trofeo vision 360 argb black / white aio",
-      "modelId": "misc-thermalright_wonder_trofeo_vision_360_argb_black_white_aio",
       "familyId": "misc"
     },
     {
@@ -5692,16 +4782,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "ufc 5",
-      "modelId": "games_playstation-ufc_5",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "ultraman: override 2 super mech league",
-      "modelId": "games_playstation-ultraman_override_2_super_mech_league",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "umihara karrase: fresh!",
       "modelId": "games_multi-umihara_karrase_fresh",
       "familyId": "games_multi"
@@ -5730,11 +4810,6 @@
       "alias": "until dawn",
       "modelId": "games_playstation-until_dawn",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "untitled goose game",
-      "modelId": "games_multi-untitled_goose_game",
-      "familyId": "games_multi"
     },
     {
       "alias": "upsiren prism 4 pro 120mm fan",
@@ -5774,11 +4849,6 @@
     {
       "alias": "vampyr",
       "modelId": "games_multi-vampyr",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "void terrarium",
-      "modelId": "games_multi-void_terrarium",
       "familyId": "games_multi"
     },
     {
@@ -5822,19 +4892,9 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "watch dogs: legion",
-      "modelId": "games_playstation-watch_dogs_legion",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "way of the hunter",
       "modelId": "games_playstation-way_of_the_hunter",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "wayfarer/skyler smart glasses l glasses l smart glasses option",
-      "modelId": "vr_wearables-rayban_meta_wayfarer_skyler_smart_glasses_l_meta_glasses_l_smart_glasses_option",
-      "familyId": "vr_wearables"
     },
     {
       "alias": "wh-1000xm6 / wh-1000xm5 black/midnight blue /silver headphone option",
@@ -5844,26 +4904,6 @@
     {
       "alias": "white day",
       "modelId": "games_playstation-white_day",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "who wants to be a millionaire?",
-      "modelId": "games_playstation-who_wants_to_be_a_millionaire",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "wild hearts",
-      "modelId": "games_playstation-wild_hearts",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "wireless controller black / white",
-      "modelId": "xbox_series-xbox_wireless_controller_black_white",
-      "familyId": "xbox_series"
-    },
-    {
-      "alias": "wo long: fallen dynasty",
-      "modelId": "games_playstation-wo_long_fallen_dynasty",
       "familyId": "games_playstation"
     },
     {
@@ -5877,39 +4917,9 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "world of final fantasy maxima",
-      "modelId": "games_multi-world_of_final_fantasy_maxima",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "world war z",
-      "modelId": "games_multi-world_war_z",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "world war z",
       "modelId": "games_playstation-world_war_z",
       "familyId": "games_playstation"
-    },
-    {
-      "alias": "wrc 8: the official game",
-      "modelId": "games_multi-wrc_8_the_official_game",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "wrc 9 the official game",
-      "modelId": "games_playstation-wrc_9_the_official_game",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "wrc generations",
-      "modelId": "games_playstation-wrc_generations",
-      "familyId": "games_playstation"
-    },
-    {
-      "alias": "wwe 2k battlegrounds",
-      "modelId": "games_multi-wwe_2k_battlegrounds",
-      "familyId": "games_multi"
     },
     {
       "alias": "wwe 2k16",
@@ -5922,11 +4932,6 @@
       "familyId": "games_playstation"
     },
     {
-      "alias": "wwe 2k23",
-      "modelId": "games_playstation-wwe_2k23",
-      "familyId": "games_playstation"
-    },
-    {
       "alias": "wwe 2k25 standard",
       "modelId": "games_playstation-wwe_2k25_standard_edition",
       "familyId": "games_playstation"
@@ -5935,6 +4940,31 @@
       "alias": "wwe 2k25 standard edition",
       "modelId": "games_playstation-wwe_2k25_standard_edition",
       "familyId": "games_playstation"
+    },
+    {
+      "alias": "xbox controller black",
+      "modelId": "xbox_series-xbox_controller_black",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox controller doom: the dark ages limited",
+      "modelId": "xbox_series-xbox_controller_doom_the_dark_ages_limited_edition",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox controller doom: the dark ages limited edition",
+      "modelId": "xbox_series-xbox_controller_doom_the_dark_ages_limited_edition",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox controller white",
+      "modelId": "xbox_series-xbox_controller_white",
+      "familyId": "xbox_series"
+    },
+    {
+      "alias": "xbox series elite 2 black",
+      "modelId": "xbox_series-xbox_series_elite_2_black",
+      "familyId": "xbox_series"
     },
     {
       "alias": "xbox series s",
@@ -5982,23 +5012,8 @@
       "familyId": "xbox_series"
     },
     {
-      "alias": "xbox wireless controller black / white",
-      "modelId": "xbox_series-xbox_wireless_controller_black_white",
-      "familyId": "xbox_series"
-    },
-    {
-      "alias": "xcom 2 collection",
-      "modelId": "games_multi-xcom_2_collection",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "xenoblade chronicles 2",
       "modelId": "games_multi-xenoblade_chronicles_2",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "xenoblade chronicles 3",
-      "modelId": "games_multi-xenoblade_chronicles_3",
       "familyId": "games_multi"
     },
     {
@@ -6012,18 +5027,8 @@
       "familyId": "games_multi"
     },
     {
-      "alias": "xpg lancer rgb ddr5 6400 cl32 2x xmp/expo - white desktop memory ram",
-      "modelId": "misc-xpg_lancer_rgb_ddr5_6400_cl32_2x32gb_xmp_expo_white_desktop_memory_ram",
-      "familyId": "misc"
-    },
-    {
-      "alias": "xpg lancer rgb ddr5 6400 cl32 2x32gb xmp/expo - white desktop memory ram",
-      "modelId": "misc-xpg_lancer_rgb_ddr5_6400_cl32_2x32gb_xmp_expo_white_desktop_memory_ram",
-      "familyId": "misc"
-    },
-    {
-      "alias": "xreal one pro / xreal air 2 ultra / xreal one / xreal air 2 pro / xreal beam pro option",
-      "modelId": "misc-xreal_one_pro_xreal_air_2_ultra_xreal_one_xreal_air_2_pro_xreal_beam_pro_option",
+      "alias": "xreal one pro / xreal 1s / xreal one / xreal air 2 ultra / xreal beam pro option",
+      "modelId": "misc-xreal_one_pro_xreal_1s_xreal_one_xreal_air_2_ultra_xreal_beam_pro_option",
       "familyId": "misc"
     },
     {
@@ -6037,18 +5042,8 @@
       "familyId": "xbox_series"
     },
     {
-      "alias": "yoshi's crafted world",
-      "modelId": "games_multi-yoshi_s_crafted_world",
-      "familyId": "games_multi"
-    },
-    {
       "alias": "young souls",
       "modelId": "games_multi-young_souls",
-      "familyId": "games_multi"
-    },
-    {
-      "alias": "yu-gi-oh! legacy of te duelist: link evolution",
-      "modelId": "games_multi-yu_gi_oh_legacy_of_te_duelist_link_evolution",
       "familyId": "games_multi"
     },
     {

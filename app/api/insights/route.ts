@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,11 @@ interface InsightData {
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = verifyAdminAccess(req);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { searchParams } = new URL(req.url);
     const days = parseInt(searchParams.get("days") || "30");
     const since = new Date();

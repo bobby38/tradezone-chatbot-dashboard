@@ -132,7 +132,7 @@ Test API directly:
 ```bash
 curl -X POST http://localhost:3000/api/tools/search \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY" \
   -d '{"query": "PS5 Pro", "context": "catalog"}'
 ```
 

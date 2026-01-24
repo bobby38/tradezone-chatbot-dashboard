@@ -82,66 +82,152 @@ export default function ChatLogsPage() {
   );
   const [sortField, setSortField] = useState<keyof typeof SORT_FIELDS>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [viewMode, setViewMode] = useState<"grouped" | "detailed">("grouped");
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("chat_logs")
-        .select("*", { count: "exact" })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+      if (viewMode === "grouped") {
+        // For grouped view, fetch all logs and group by session_id client-side
+        let query = supabase.from("chat_logs").select("*", { count: "exact" });
 
-      if (searchTerm) {
-        query = query.or(
-          `prompt.ilike.%${searchTerm}%,response.ilike.%${searchTerm}%`,
-        );
-      }
+        if (searchTerm) {
+          query = query.or(
+            `prompt.ilike.%${searchTerm}%,response.ilike.%${searchTerm}%,session_id.ilike.%${searchTerm}%`,
+          );
+        }
 
-      // Channel filter shortcuts: "channel:voice" OR dropdown filter
-      const channelFromSearch = /channel:voice/i.test(searchTerm)
-        ? "voice"
-        : /channel:text/i.test(searchTerm)
-          ? "text"
-          : null;
+        // Channel filter
+        const channelFromSearch = /channel:voice/i.test(searchTerm)
+          ? "voice"
+          : /channel:text/i.test(searchTerm)
+            ? "text"
+            : null;
 
-      const channelChoice =
-        channelFromSearch || (channelFilter !== "all" ? channelFilter : null);
+        const channelChoice =
+          channelFromSearch || (channelFilter !== "all" ? channelFilter : null);
 
-      if (channelChoice === "voice") {
-        query = query
-          .in("source", ["chatkit_voice", "chatkit", "livekit-voice"])
-          .eq("channel", "voice");
-      } else if (channelChoice === "text") {
-        query = query
-          .in("source", ["chatkit", "chatkit_voice", "livekit-voice"])
-          .or("channel.neq.voice,channel.is.null");
-      } else {
-        // Default: include all sources (voice, text, and legacy without channel)
-        query = query.in("source", [
-          "chatkit",
-          "chatkit_voice",
-          "livekit-voice",
-          "n8n-chat",
-        ]);
-      }
+        if (channelChoice === "voice") {
+          query = query
+            .in("source", ["chatkit_voice", "chatkit", "livekit-voice"])
+            .eq("channel", "voice");
+        } else if (channelChoice === "text") {
+          query = query
+            .in("source", ["chatkit", "chatkit_voice", "livekit-voice"])
+            .or("channel.neq.voice,channel.is.null");
+        } else {
+          query = query.in("source", [
+            "chatkit",
+            "chatkit_voice",
+            "livekit-voice",
+            "n8n-chat",
+          ]);
+        }
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter);
+        }
 
-      // Sorting
-      const orderColumn = SORT_FIELDS[sortField];
-      query = query.order(orderColumn, { ascending: sortDir === "asc" });
-      if (orderColumn !== "created_at") {
         query = query.order("created_at", { ascending: false });
+
+        const { data, error, count } = await query;
+
+        if (error) throw error;
+
+        // Group by session_id
+        const grouped = new Map<string, ChatLog[]>();
+        (data || []).forEach((log) => {
+          const sessionKey = log.session_id || log.user_id || "unknown";
+          if (!grouped.has(sessionKey)) {
+            grouped.set(sessionKey, []);
+          }
+          grouped.get(sessionKey)!.push(log);
+        });
+
+        // Convert to array of representative logs (first message of each session)
+        const groupedLogs = Array.from(grouped.entries())
+          .map(([sessionId, sessionLogs]) => {
+            const sortedLogs = sessionLogs.sort(
+              (a, b) =>
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime(),
+            );
+            const firstLog = sortedLogs[0];
+            return {
+              ...firstLog,
+              turn_index: sessionLogs.length, // Store total turn count
+              session_id: sessionId,
+            };
+          })
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          );
+
+        // Apply pagination to grouped results
+        const startIdx = (currentPage - 1) * pageSize;
+        const endIdx = startIdx + pageSize;
+        const paginatedLogs = groupedLogs.slice(startIdx, endIdx);
+
+        setLogs(paginatedLogs);
+        setTotalCount(groupedLogs.length);
+      } else {
+        // Detailed view - original behavior
+        let query = supabase
+          .from("chat_logs")
+          .select("*", { count: "exact" })
+          .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+
+        if (searchTerm) {
+          query = query.or(
+            `prompt.ilike.%${searchTerm}%,response.ilike.%${searchTerm}%`,
+          );
+        }
+
+        const channelFromSearch = /channel:voice/i.test(searchTerm)
+          ? "voice"
+          : /channel:text/i.test(searchTerm)
+            ? "text"
+            : null;
+
+        const channelChoice =
+          channelFromSearch || (channelFilter !== "all" ? channelFilter : null);
+
+        if (channelChoice === "voice") {
+          query = query
+            .in("source", ["chatkit_voice", "chatkit", "livekit-voice"])
+            .eq("channel", "voice");
+        } else if (channelChoice === "text") {
+          query = query
+            .in("source", ["chatkit", "chatkit_voice", "livekit-voice"])
+            .or("channel.neq.voice,channel.is.null");
+        } else {
+          query = query.in("source", [
+            "chatkit",
+            "chatkit_voice",
+            "livekit-voice",
+            "n8n-chat",
+          ]);
+        }
+
+        if (statusFilter !== "all") {
+          query = query.eq("status", statusFilter);
+        }
+
+        const orderColumn = SORT_FIELDS[sortField];
+        query = query.order(orderColumn, { ascending: sortDir === "asc" });
+        if (orderColumn !== "created_at") {
+          query = query.order("created_at", { ascending: false });
+        }
+
+        const { data, error, count } = await query;
+
+        if (error) throw error;
+
+        setLogs(data || []);
+        setTotalCount(count || 0);
       }
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setLogs(data || []);
-      setTotalCount(count || 0);
     } catch (error) {
       console.error("Error fetching logs:", error);
     } finally {
@@ -155,6 +241,7 @@ export default function ChatLogsPage() {
     sortDir,
     sortField,
     statusFilter,
+    viewMode,
   ]);
 
   useEffect(() => {
@@ -249,14 +336,46 @@ export default function ChatLogsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <CardTitle>Conversation History</CardTitle>
-              <CardDescription>
-                {totalCount} total conversations
-              </CardDescription>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div>
+                  <CardTitle>Conversation History</CardTitle>
+                  <CardDescription>
+                    {viewMode === "grouped"
+                      ? `${totalCount} unique conversations`
+                      : `${totalCount} total messages`}
+                  </CardDescription>
+                </div>
+                {/* View mode toggle */}
+                <div className="flex gap-1 border rounded-md p-1">
+                  <Button
+                    size="sm"
+                    variant={viewMode === "grouped" ? "default" : "ghost"}
+                    onClick={() => {
+                      setViewMode("grouped");
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs h-8"
+                  >
+                    Grouped
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewMode === "detailed" ? "default" : "ghost"}
+                    onClick={() => {
+                      setViewMode("detailed");
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs h-8"
+                  >
+                    Detailed
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+
+            <div className="flex flex-wrap gap-2">
               {/* Status filter */}
               <Select
                 value={statusFilter}
@@ -398,7 +517,7 @@ export default function ChatLogsPage() {
                       className="cursor-pointer"
                       onClick={() => toggleSort("turns")}
                     >
-                      Turns
+                      {viewMode === "grouped" ? "Turns" : "Turn"}
                     </TableHead>
                     <TableHead
                       role="button"

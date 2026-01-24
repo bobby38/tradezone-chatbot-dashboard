@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -11,6 +12,11 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(req);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { id } = params;
 
     if (!id) {

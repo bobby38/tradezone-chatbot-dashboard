@@ -1,5 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  enhanceSearchQuery,
+  shouldEnhanceQuery,
+} from "@/lib/graphiti-search-enhancer";
 
 export type ConditionKey = "brand_new" | "pre_owned";
 
@@ -527,18 +531,45 @@ export async function findCatalogMatches(
   query: string,
   limit = 3,
 ): Promise<CatalogMatch[]> {
-  const normalizedQuery = normalizeQuery(query);
+  // 🎯 GRAPHITI GRAPH RAG - Enhance query with synonyms FIRST
+  let effectiveQuery = query;
+  if (shouldEnhanceQuery(query)) {
+    const enhancement = await enhanceSearchQuery(query);
+    if (enhancement.redirect) {
+      effectiveQuery = enhancement.redirect;
+      query = enhancement.redirect; // Update query so domain filters (wantsGame, etc.) see the resolved name
+      console.log("[CatalogSearch] 🔍 Graph RAG enhanced query", {
+        original: query,
+        enhanced: effectiveQuery,
+        source: enhancement.source,
+      });
+    }
+  }
+
+  const normalizedQuery = normalizeQuery(effectiveQuery);
   if (!normalizedQuery) return [];
 
-  const intent = deriveQueryIntent(query);
+  const intent = deriveQueryIntent(effectiveQuery);
   const queryTokens = tokenize(normalizedQuery);
   const { models, aliasMap } = await loadCatalogContext();
 
   // Domain filters to cut noise (tablets, games, coolers, etc.)
-  const wantsTablet = /\b(tab|tablet)\b/i.test(query);
-  const wantsSamsung = /\bgalaxy|samsung\b/i.test(query);
-  const wantsGame = /(ps[45]|playstation|xbox|switch|nintendo|game)\b/i.test(query) || /aladdin|aladin/i.test(query);
-  const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(query);
+  // Use effectiveQuery (enhanced) for filter detection
+  const wantsTablet = /\b(tab|tablet|ipad)\b/i.test(effectiveQuery);
+  const wantsSamsung = /\bgalaxy|samsung\b/i.test(effectiveQuery);
+
+  // FIX: "wantsGame" should ONLY trigger if user explicitly says "game" or specific game genres.
+  // Previously it triggered on "PS5"/"Xbox" which filtered out consoles (category != "game").
+  const wantsGame =
+    /\b(game|games|videogame|rpg|fps|cartridge|disc)\b/i.test(effectiveQuery) ||
+    /aladdin|aladin/i.test(effectiveQuery);
+
+  const wantsCooler = /cooler|heatsink|aio|liquid\s*cool/i.test(effectiveQuery);
+  const wantsGPU = /\b(gpu|graphics\s*card|rtx|gtx|radeon|video\s*card)\b/i.test(effectiveQuery);
+  const wantsLaptop = /\b(laptop|notebook|macbook)\b/i.test(effectiveQuery);
+  // wantsConsole catch-all for explicit console searches if not game
+  const wantsConsole = /\b(console|system|device)\b/i.test(effectiveQuery) && !wantsGame;
+  const wantsChair = /\b(chair|seatzone)\b/i.test(effectiveQuery);
 
   const filteredModels = models.filter((model) => {
     const categories = (model.categories || []).map((c) => c.toLowerCase());
@@ -550,17 +581,44 @@ export async function findCatalogMatches(
     }
 
     if (wantsGame) {
-      const isGame = categories.some((c) => c.includes("game"));
-      if (!isGame) return false;
+      // If user asks for "game console", let it pass through to be handled by wantsConsole logic or generic
+      if (wantsConsole && /console/i.test(effectiveQuery)) {
+        // loose check
+      } else {
+        const isGame = categories.some((c) => c.includes("game"));
+        // Allow consoles if query explicitly mentions console context, otherwise strict
+        if (!isGame && !wantsConsole) return false;
+      }
+
       // platform hints
-      if (/switch|nintendo/i.test(query)) return categories.some((c) => c.includes("switch"));
-      if (/ps5|playstation 5|ps 5/i.test(query)) return categories.some((c) => c.includes("ps5"));
-      if (/ps4|playstation 4|ps 4/i.test(query)) return categories.some((c) => c.includes("ps4"));
-      if (/xbox/i.test(query)) return categories.some((c) => c.includes("xbox"));
+      if (/switch|nintendo/i.test(query))
+        return categories.some((c) => c.includes("switch"));
+      if (/ps5|playstation 5|ps 5/i.test(query))
+        return categories.some((c) => c.includes("ps5"));
+      if (/ps4|playstation 4|ps 4/i.test(query))
+        return categories.some((c) => c.includes("ps4"));
+      if (/xbox/i.test(query))
+        return categories.some((c) => c.includes("xbox"));
     }
 
     if (wantsCooler) {
-      if (!categories.some((c) => c.includes("cooler") || c.includes("thermal"))) return false;
+      if (
+        !categories.some((c) => c.includes("cooler") || c.includes("thermal"))
+      )
+        return false;
+    }
+
+    if (wantsGPU) {
+      // Strict GPU filter
+      if (!categories.some((c) => c.includes("gpu") || c.includes("card") || c.includes("component"))) return false;
+    }
+
+    if (wantsLaptop) {
+      if (!categories.some(c => c.includes("laptop") || c.includes("computer"))) return false;
+    }
+
+    if (wantsChair) {
+      if (!categories.some(c => c.includes("chair"))) return false;
     }
 
     return true;
@@ -609,9 +667,9 @@ export async function findCatalogMatches(
       model,
       score: aliasCandidates
         ? 250 +
-          (selectFlagshipCondition(model.conditions, intent.preferCondition)
-            ?.basePrice ?? 0) /
-            1000
+        (selectFlagshipCondition(model.conditions, intent.preferCondition)
+          ?.basePrice ?? 0) /
+        1000
         : scoreModel(model, normalizedQuery, queryTokens, intent),
     }))
     .filter(({ score, model }) => {

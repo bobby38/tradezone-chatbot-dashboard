@@ -1,0 +1,4598 @@
+[
+  {
+    "id": 28692,
+    "name": "ASUS ROG Astral GeForce RTX 5090 32GB GDDR7 OC Edition Graphic Card",
+    "category": "Graphic Card, PC Parts, PC Related",
+    "proposedSku": "TZ-GRAP-ASUS-AB43"
+  },
+  {
+    "id": 7162,
+    "name": "PlayStation Portal",
+    "category": "Best Selling Products, Console, Gadgets, Handheld Consoles, Playstation, Playstation 5",
+    "proposedSku": "TZ-BEST-PLAY-582B"
+  },
+  {
+    "id": 13595,
+    "name": "Asus ROG AllyXBOX / Ally X / Ally 512GB/1TB/2TB/4TB",
+    "category": "Gadgets, Handheld Consoles",
+    "proposedSku": "TZ-GADG-ASUS-965C"
+  },
+  {
+    "id": 7163,
+    "name": "Steam Deck  OLED / Limited Edition Transparent / LCD 512GB/1TB/2TB",
+    "category": "Best Selling Products, Gadgets, Handheld Consoles",
+    "proposedSku": "TZ-BEST-STEA-8782"
+  },
+  {
+    "id": 7167,
+    "name": "Lenovo Legion Go 2 / Go / Go S Z1 / Z2 Extreme Gaming Handheld 512GB / 1TB / 2TB",
+    "category": "Best Selling Products, Gadgets, Handheld Consoles",
+    "proposedSku": "TZ-BEST-LENO-B823"
+  },
+  {
+    "id": 17259,
+    "name": "PlayStation 5 Pro / Slim/ PS5 Disc &amp; Digital 1TB / 2TB 🇸🇬 🇯🇵",
+    "category": "Console, Playstation 5",
+    "proposedSku": "TZ-CONS-PLAY-08DB"
+  },
+  {
+    "id": 19163,
+    "name": "ASUS ROG Swift OLED PG27AQDM",
+    "category": "",
+    "proposedSku": "TZ-GEN-ASUS-B547"
+  },
+  {
+    "id": 7185,
+    "name": "PlayStation 4 (Pre-Owned)",
+    "category": "Best Selling Products, Console, Gadgets, Playstation 4",
+    "proposedSku": "TZ-BEST-PLAY-336A"
+  },
+  {
+    "id": 21537,
+    "name": "XMAS SALE - RTX 5060 Intel i5-14400F 16GB 1TB Jonsbo C6 Max Black / White MATX Gaming PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-155C"
+  },
+  {
+    "id": 21544,
+    "name": "XMAS SALE - RTX 5060 Ryzen 5 7500X3D 16GB 1TB Jonsbo C6 Max Black / White Gaming MATX PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-F57F"
+  },
+  {
+    "id": 23149,
+    "name": "XMAS SALE - Intel i5-14400F RTX 5050 16GB 512GB Deepcool CH160 Plus Black / White Gaming MATX PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-897D"
+  },
+  {
+    "id": 21491,
+    "name": "XMAS SALE - RTX 5060 Ryzen 5 9600X 16GB 1TB Jonsbo C6 Max White/Black Gaming MATX PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-312F"
+  },
+  {
+    "id": 21594,
+    "name": "XMAS SALE - RTX 4070 TI Ryzen 5 9600X 32GB 2TB Lian Li O11 Vision Black Gaming PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-D4B3"
+  },
+  {
+    "id": 21497,
+    "name": "XMAS SALE - RTX 5060 Ryzen 5 9600X 32GB 1TB Deepcool Ch160 Plus Black / White Gaming Mini ITX PC - Able to custom pc",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-7F6E"
+  },
+  {
+    "id": 21503,
+    "name": "XMAS SALE - RTX 5060 Ryzen 5 9600X 32GB 1TB Deepcool Ch170 Black / White Gaming Mini ITX PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-82CC"
+  },
+  {
+    "id": 21513,
+    "name": "XMAS SALE - RTX 5060 Ryzen 5 9600X 32GB 1TB Deepcool Ch170 Black / White Gaming Mini ITX PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-50C9"
+  },
+  {
+    "id": 21580,
+    "name": "XMAS SALE - RTX 5060 Ryzen 5 9600X 32GB 1TB Thermalright TL-M10 Vision Black MATX Gaming Pc",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-F75F"
+  },
+  {
+    "id": 21587,
+    "name": "XMAS SALE - RTX 5070 Ryzen 7 7800X3D 32GB 1TB DeepCool CH 170 Plus Custom MATX Gaming Pc",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-103E"
+  },
+  {
+    "id": 21521,
+    "name": "XMAS SALE - RTX 5070 Ryzen 7 7800X3D 32GB 1TB Deepcool CH160 Plus Black / White MATX Gaming PC",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-3659"
+  },
+  {
+    "id": 24370,
+    "name": "KLEVV Cras V RGB / ROG Certified DDR5 7400/7200 MT/s CL34 (2x16GB) Ram",
+    "category": "PC Parts, RAM",
+    "proposedSku": "TZ-PCPA-KLEV-F940"
+  },
+  {
+    "id": 7181,
+    "name": "Xbox Series S 512GB / 1TB",
+    "category": "Best Selling Products, Brand New, Xbox, Xbox Series S",
+    "proposedSku": "TZ-BEST-XBOX-6AE3"
+  },
+  {
+    "id": 23835,
+    "name": "ZOTAC GAMING RTX 5060 Ti 8GB / 16GB Twin Edge OC Black/White Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-ZOTA-AA53"
+  },
+  {
+    "id": 26550,
+    "name": "Moza R3 Racing Wheel and Pedals Bundle for Xbox/PC and PC Only",
+    "category": "Gadgets, Xbox",
+    "proposedSku": "TZ-GADG-MOZA-5BAA"
+  },
+  {
+    "id": 27881,
+    "name": "Deepcool LM240 White 240MM AIO",
+    "category": "CPU Cooler, PC Parts",
+    "proposedSku": "TZ-CPUC-DEEP-AD73"
+  },
+  {
+    "id": 7452,
+    "name": "MSI Claw A8 / 8 AI+ / A1M 512GB/1TB/2TB Z2 Extreme / UT7 / UT5",
+    "category": "Best Selling Products, Gadgets, Handheld Consoles",
+    "proposedSku": "TZ-BEST-MSIC-50F6"
+  },
+  {
+    "id": 14529,
+    "name": "Samsung EVO Plus SDXC UHS-I Card 512GB",
+    "category": "Accessories, Gadgets",
+    "proposedSku": "TZ-ACCE-SAMS-BBFE"
+  },
+  {
+    "id": 26971,
+    "name": "Ready Stock -DJI Osmo Nano - 128GB / 64GB",
+    "category": "Cameras",
+    "proposedSku": "TZ-CAME-READ-188E"
+  },
+  {
+    "id": 7247,
+    "name": "DJI Osmo Pocket 3",
+    "category": "Cameras, Gadgets",
+    "proposedSku": "TZ-CAME-DJIO-6544"
+  },
+  {
+    "id": 25920,
+    "name": "DJI Osmo 360- Handheld / Adventure Combo",
+    "category": "Cameras, Gadgets",
+    "proposedSku": "TZ-CAME-DJIO-1564"
+  },
+  {
+    "id": 28040,
+    "name": "Samsung 990 Evo Plus 2TB NVME M.2 SSD",
+    "category": "PC Parts, Storage",
+    "proposedSku": "TZ-PCPA-SAMS-BCB3"
+  },
+  {
+    "id": 15836,
+    "name": "Deepcool CH160/CH160 PLUS Black/White",
+    "category": "Cases",
+    "proposedSku": "TZ-CASE-DEEP-E3CA"
+  },
+  {
+    "id": 27910,
+    "name": "XMAS SALE RTX 4080 Super Intel i9-14900K 32GB 1TB NZXT H9 Flow Gaming PC",
+    "category": "Refurbished",
+    "proposedSku": "TZ-REFU-XMAS-17C2"
+  },
+  {
+    "id": 21529,
+    "name": "XMAS SALE - RTX 5060 Intel Core Ultra 5 225F 16GB 1TB Custom Jonsbo C6 Max Black / White Matx Gaming Pc",
+    "category": "Ready To Ship",
+    "proposedSku": "TZ-READ-XMAS-22B1"
+  },
+  {
+    "id": 26981,
+    "name": "XMAS SALE - RTX 3080 RYZEN 5 5700X 32GB 2TB Corsair 4000D Gaming Pc",
+    "category": "Refurbished",
+    "proposedSku": "TZ-REFU-XMAS-D9C2"
+  },
+  {
+    "id": 14402,
+    "name": "Crucial 32GB DDR5 UDIMM CL46 5600MHz Desktop RAM CT32G56C46U5",
+    "category": "RAM",
+    "proposedSku": "TZ-RAM-CRUC-9C6C"
+  },
+  {
+    "id": 13445,
+    "name": "Lexar NM790",
+    "category": "Storage",
+    "proposedSku": "TZ-STOR-LEXA-0ABC"
+  },
+  {
+    "id": 7236,
+    "name": "PlayStation Pulse Elite Wireless Headset",
+    "category": "Accessories, Headset, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-0ACA"
+  },
+  {
+    "id": 19234,
+    "name": "Thermalright Assassin X 120 REFINED SE ARGB CPU COOLER",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-THER-DD14"
+  },
+  {
+    "id": 28364,
+    "name": "PS5 Silent Hill F",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-PS5S-1B0D"
+  },
+  {
+    "id": 28362,
+    "name": "Just Dance 2026 Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-JUST-AE4F"
+  },
+  {
+    "id": 28342,
+    "name": "ACER ASPIRE GO 14 ULTRA 7 155H AG14-71M-75NH 16GB 512GB Laptop",
+    "category": "Laptop",
+    "proposedSku": "TZ-LAPT-ACER-55E9"
+  },
+  {
+    "id": 26537,
+    "name": "Retroid Pocket 5 Dual Screen / Retroid Pocket 5 Black Handheld AMOLED SD865 Android Console 128GB",
+    "category": "Gadgets, Handheld Consoles",
+    "proposedSku": "TZ-GADG-RETR-83ED"
+  },
+  {
+    "id": 22298,
+    "name": "ZOTAC GAMING GeForce RTX 5090 / RTX 5080 / RTX 5070 Ti / RTX 5070 SOLID OC Gaming Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-ZOTA-4707"
+  },
+  {
+    "id": 24536,
+    "name": "ZOTAC GAMING RTX 5060 TWIN EDGE OC 8GB Black / White Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-ZOTA-DD5F"
+  },
+  {
+    "id": 25329,
+    "name": "ZOTAC GAMING RTX 5050 TWIN EDGE OC 8GB",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-ZOTA-D00E"
+  },
+  {
+    "id": 26718,
+    "name": "Gigabyte Monitor M27UP ICE / M27UP /M27Q3 /M27Q2 ICE 1440p / 2160p / 144Hz / 160Hz / 180Hz /210 Hz /300 Hz",
+    "category": "Monitor",
+    "proposedSku": "TZ-MONI-GIGA-EFE9"
+  },
+  {
+    "id": 14331,
+    "name": "Resident Evil 4",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-RESI-2CF4"
+  },
+  {
+    "id": 27370,
+    "name": "ASUS ROG Strix GeForce RTX 5070 Ti OC Edition 16GB GDDR7 Graphics Card",
+    "category": "Graphic Card, PC Parts, PC Related",
+    "proposedSku": "TZ-GRAP-ASUS-15C7"
+  },
+  {
+    "id": 26506,
+    "name": "EA Sports FC 26 PS5/PS4/Switch 2/Switch",
+    "category": "Brand New Games, Brand New Games, Nintendo, Playstation, Playstation 4, Playstation 5, Pre-Order, Pre-Order Games",
+    "proposedSku": "TZ-BRAN-EASP-E37D"
+  },
+  {
+    "id": 7172,
+    "name": "Nintendo Switch 2 + Mario Kart / Switch 2 / OLED/ Gen 2/ Gen 1/ Switch Lite",
+    "category": "Best Selling Products, Console, Gadgets, Handheld Consoles, Nintendo",
+    "proposedSku": "TZ-BEST-NINT-0876"
+  },
+  {
+    "id": 7954,
+    "name": "Overcooked! All You Can Eat",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-OVER-CCC7"
+  },
+  {
+    "id": 7868,
+    "name": "Batman: Arkham Trilogy",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-BATM-981E"
+  },
+  {
+    "id": 23819,
+    "name": "Playstation PS5 Slim Disc Drive For Digital Console",
+    "category": "Accessories, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-F3A9"
+  },
+  {
+    "id": 16249,
+    "name": "RayBan|Oakley Meta Wayfarer / Headliner / Skyler / Smart AI Glasses",
+    "category": "Gadgets, VR Glasses",
+    "proposedSku": "TZ-GADG-RAYB-16AA"
+  },
+  {
+    "id": 22423,
+    "name": "Galaxy Z Fold 6 White 256GB",
+    "category": "Handphone, Handphone &amp; Tablet",
+    "proposedSku": "TZ-HAND-GALA-E597"
+  },
+  {
+    "id": 16622,
+    "name": "Xreal One Pro / Xreal Air 2 Ultra / Xreal One / Xreal Air 2 Pro / Xreal Beam Pro",
+    "category": "VR Glasses",
+    "proposedSku": "TZ-VRGL-XREA-6B1D"
+  },
+  {
+    "id": 27626,
+    "name": "Takara Tomy Pokémon Poké Nade Monster Ball",
+    "category": "Pokemon, Pokemon Merchandise",
+    "proposedSku": "TZ-POKE-TAKA-1E8C"
+  },
+  {
+    "id": 28086,
+    "name": "Pokemon Chinese 151 Gengar Slim Box",
+    "category": "Pokemon, Pokemon Card",
+    "proposedSku": "TZ-POKE-POKE-78AE"
+  },
+  {
+    "id": 27008,
+    "name": "Pokemon Trading Card Game: Classic Collection Japanese",
+    "category": "Pokemon, Pokemon Card",
+    "proposedSku": "TZ-POKE-POKE-5E7D"
+  },
+  {
+    "id": 28091,
+    "name": "Pokemon 3d Poster 15½ x 11¾ Pikachu Van Gogh/Squirtle/Snorlax/Eevee",
+    "category": "Pokemon, Pokemon Merchandise",
+    "proposedSku": "TZ-POKE-POKE-C0E0"
+  },
+  {
+    "id": 22649,
+    "name": "Gigabyte GeForce RTX 5070Ti | Aero OC 16GB GPU",
+    "category": "",
+    "proposedSku": "TZ-GEN-GIGA-A378"
+  },
+  {
+    "id": 22701,
+    "name": "Gigabyte Aorus Master /Gaming OC / Aero / Windforce / Eagle ICE RTX 5090/5080/5070 TI/5070/5060TI/5060/5050 Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-5056"
+  },
+  {
+    "id": 24743,
+    "name": "Gigabyte RTX 5090 WINDFORCE OC 32G Graphic Card",
+    "category": "Graphic Card, PC Parts",
+    "proposedSku": "TZ-GRAP-GIGA-34D6"
+  },
+  {
+    "id": 27927,
+    "name": "Galaxy Tab A9 WiFi Graphite 64GB",
+    "category": "Handphone &amp; Tablet, Tablet",
+    "proposedSku": "TZ-HAND-GALA-83BC"
+  },
+  {
+    "id": 27929,
+    "name": "Galaxy Tab A9 WiFi Navy 64GB",
+    "category": "Handphone &amp; Tablet, Tablet",
+    "proposedSku": "TZ-HAND-GALA-ED6E"
+  },
+  {
+    "id": 27120,
+    "name": "PS5 UNCHARTED : Legacy of Thieves Collection",
+    "category": "Brand New Games, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-PS5U-DE63"
+  },
+  {
+    "id": 7602,
+    "name": "PS5 Dualsense Edge / 30th Anniversary/ Standard Wireless Controllers (red/black/white/blue/camo)",
+    "category": "Accessories, Playstation, Playstation 5",
+    "proposedSku": "TZ-ACCE-PS5D-C530"
+  },
+  {
+    "id": 27252,
+    "name": "Asus ROG Strix B650E-I GAMING WIFI Motherboard",
+    "category": "Motherboard, PC Parts",
+    "proposedSku": "TZ-MOTH-ASUS-7510"
+  },
+  {
+    "id": 18013,
+    "name": "Lexar PLAY 512GB / 1TB microSDXC UHS-I-Card, Up To 160MB/s Read, Class 10 Micro SD Card",
+    "category": "Accessories, Gadgets, Storage",
+    "proposedSku": "TZ-ACCE-LEXA-1AE7"
+  },
+  {
+    "id": 28015,
+    "name": "ROG Slash Sling Bag 4.0",
+    "category": "Accessories",
+    "proposedSku": "TZ-ACCE-ROGS-B0C1"
+  },
+  {
+    "id": 27055,
+    "name": "LiberLive C2/C1 Stringless Smart Guitar",
+    "category": "",
+    "proposedSku": "TZ-GEN-LIBE-3B32"
+  },
+  {
+    "id": 7936,
+    "name": "Minecraft",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-MINE-61D1"
+  },
+  {
+    "id": 7928,
+    "name": "Mario Kart 8 Deluxe",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-MARI-4388"
+  },
+  {
+    "id": 27976,
+    "name": "iPad Pro 3 11\" WiFi (2021) Space Grey 128GB",
+    "category": "Handphone &amp; Tablet, Tablet",
+    "proposedSku": "TZ-HAND-IPAD-584F"
+  },
+  {
+    "id": 7989,
+    "name": "Super Monkey Ball Banana Mania",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-SUPE-98F3"
+  },
+  {
+    "id": 27935,
+    "name": "Call of Duty: Black Ops 7",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-CALL-D699"
+  },
+  {
+    "id": 27923,
+    "name": "Oppo A17k Gold 64GB",
+    "category": "Handphone, Handphone &amp; Tablet",
+    "proposedSku": "TZ-HAND-OPPO-2463"
+  },
+  {
+    "id": 27931,
+    "name": "Google Pixel 9 Pro Fold 512GB Obsidian",
+    "category": "Handphone, Handphone &amp; Tablet",
+    "proposedSku": "TZ-HAND-GOOG-F859"
+  },
+  {
+    "id": 27925,
+    "name": "iPad Air 3 10.5\" WiFi + Cellular (2019) 256GB Gold",
+    "category": "Handphone &amp; Tablet, Tablet",
+    "proposedSku": "TZ-HAND-IPAD-588F"
+  },
+  {
+    "id": 7590,
+    "name": "Avatar: Frontiers of Pandora",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-AVAT-873D"
+  },
+  {
+    "id": 27891,
+    "name": "THE HOUSE OF THE DEAD 2: Remake",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEH-187A"
+  },
+  {
+    "id": 27883,
+    "name": "Thermalright TL-M10 Vision Black MATX PC Case",
+    "category": "Cases, PC Parts",
+    "proposedSku": "TZ-CASE-THER-4E81"
+  },
+  {
+    "id": 27879,
+    "name": "ID Cooling HA-08 (ARGB + FAN HUB)",
+    "category": "PC Accessories, PC Parts",
+    "proposedSku": "TZ-PCAC-IDCO-98CD"
+  },
+  {
+    "id": 22269,
+    "name": "Thermalright SFX 650W / 850W Gold Modular ATX3.1+Gen5.1 Power Supply Unit",
+    "category": "PC Parts, Power Supply Unit",
+    "proposedSku": "TZ-PCPA-THER-DCFE"
+  },
+  {
+    "id": 26498,
+    "name": "Thermalright KG 650W/850W 80+ Gold Modular (ATX3.1) - Black",
+    "category": "PC Parts, Power Supply Unit",
+    "proposedSku": "TZ-PCPA-THER-4B51"
+  },
+  {
+    "id": 26494,
+    "name": "Thermalright SP 1000W  80+ Platinum Modular",
+    "category": "PC Parts, Power Supply Unit",
+    "proposedSku": "TZ-PCPA-THER-6596"
+  },
+  {
+    "id": 24617,
+    "name": "Tecware FLEX RGB 24p+GPU (Black/White)",
+    "category": "PC Accessories, PC Parts",
+    "proposedSku": "TZ-PCAC-TECW-56DD"
+  },
+  {
+    "id": 7335,
+    "name": "Hades",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-HADE-ADD0"
+  },
+  {
+    "id": 27249,
+    "name": "MSI MAG B850 Tomahawk MAX WiFi Motherboard",
+    "category": "Motherboard, PC Parts",
+    "proposedSku": "TZ-MOTH-MSIM-CDF9"
+  },
+  {
+    "id": 25668,
+    "name": "SONY WH-1000XM6 / WH-1000XM5 Black/Midnight Blue /Silver Headphone",
+    "category": "Headset, Peripherals",
+    "proposedSku": "TZ-HEAD-SONY-9C79"
+  },
+  {
+    "id": 16896,
+    "name": "PICO 4 / Ultra / 128GB / 256GB ",
+    "category": "Gadgets, Virtual Reality Headset",
+    "proposedSku": "TZ-GADG-PICO-F089"
+  },
+  {
+    "id": 24465,
+    "name": "ASROCK B850I LIGHTNING WIFI ITX Motherboard",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-ASRO-65EF"
+  },
+  {
+    "id": 27801,
+    "name": "JSAUX Shockproof Storage Case for Nintendo Switch 2",
+    "category": "Casing, Nintendo",
+    "proposedSku": "TZ-CASI-JSAU-10CE"
+  },
+  {
+    "id": 26867,
+    "name": "Lian Li O11 Dynamic Mini V2 Flow + 5F Black / White",
+    "category": "Cases, PC Parts",
+    "proposedSku": "TZ-CASE-LIAN-DC7D"
+  },
+  {
+    "id": 27799,
+    "name": "Asus ROG Ally / X XBOX Travel Protective Case Pouch",
+    "category": "Accessories, Casing, Gadgets",
+    "proposedSku": "TZ-ACCE-ASUS-9FD2"
+  },
+  {
+    "id": 27797,
+    "name": "Lenovo Legion GO 2 ROX Shock Absorbing Case",
+    "category": "Accessories, Casing, Gadgets",
+    "proposedSku": "TZ-ACCE-LENO-E261"
+  },
+  {
+    "id": 27795,
+    "name": "Lenovo Legion Go 2 Screen Protector Tempered Glass",
+    "category": "Accessories, Gadgets, Screen Protector",
+    "proposedSku": "TZ-ACCE-LENO-28DD"
+  },
+  {
+    "id": 13896,
+    "name": "Monster Hunter Rise",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MONS-134A"
+  },
+  {
+    "id": 13895,
+    "name": "Monster Hunter Generations Ultimate",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-MONS-69CE"
+  },
+  {
+    "id": 7909,
+    "name": "Grand Theft Auto: The Trilogy – The Definitive Edition",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-GRAN-ECED"
+  },
+  {
+    "id": 23084,
+    "name": "Logitech G Pro X Superlight 2 / DEX Gaming Mouse",
+    "category": "Mouse, Peripherals",
+    "proposedSku": "TZ-MOUS-LOGI-9C51"
+  },
+  {
+    "id": 13938,
+    "name": "Pokemon Scarlet",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-758B"
+  },
+  {
+    "id": 7964,
+    "name": "Pokemon: Let's Go Pikachu!",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-626D"
+  },
+  {
+    "id": 7958,
+    "name": "Pokemon Legends: Arceus",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-E7F7"
+  },
+  {
+    "id": 13939,
+    "name": "Pokemon Violet",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-B9C2"
+  },
+  {
+    "id": 13934,
+    "name": "Pokemon Let's Go, Evee!",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-4A14"
+  },
+  {
+    "id": 13941,
+    "name": "Pokemon Sword",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-3189"
+  },
+  {
+    "id": 13943,
+    "name": "Pokemon Shining Pearl",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-ECA3"
+  },
+  {
+    "id": 13940,
+    "name": "Pokemon Shield",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-9E9C"
+  },
+  {
+    "id": 24286,
+    "name": "DEEPCOOL CH170/CH170 PLUS DIGITAL Black / White MATX/ITX PC Case",
+    "category": "Cases",
+    "proposedSku": "TZ-CASE-DEEP-349C"
+  },
+  {
+    "id": 26589,
+    "name": "NBA 2K26",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-NBA2-8B91"
+  },
+  {
+    "id": 21038,
+    "name": "Teenage Mutant Ninja Turtles: Wrath of the Mutants",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-TEEN-D4B0"
+  },
+  {
+    "id": 21035,
+    "name": "NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-NARU-88AB"
+  },
+  {
+    "id": 7858,
+    "name": "Animal Crossing New Horizons",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-ANIM-FF54"
+  },
+  {
+    "id": 27608,
+    "name": "PS5 Ninja Gaiden 4",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-PS5N-A86D"
+  },
+  {
+    "id": 7950,
+    "name": "Nintendo Switch Sports (Includes leg strap)",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NINT-8413"
+  },
+  {
+    "id": 21030,
+    "name": "Mario &amp; Luigi: Brothership",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-MARI-898A"
+  },
+  {
+    "id": 7930,
+    "name": "Mario Strikers: Battle League",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-MARI-0329"
+  },
+  {
+    "id": 7920,
+    "name": "Lego DC Super-Villian",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-LEGO-B459"
+  },
+  {
+    "id": 7916,
+    "name": "Kao the Kangeroo",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-KAOT-08A5"
+  },
+  {
+    "id": 13863,
+    "name": "Immortals: Fenyx Rising",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-IMMO-95CD"
+  },
+  {
+    "id": 21027,
+    "name": "Hot Wheels Unleashed 2: Turbocharged",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-HOTW-DDC8"
+  },
+  {
+    "id": 7911,
+    "name": "Hogwarts Legacy",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-HOGW-389A"
+  },
+  {
+    "id": 27279,
+    "name": "Little Nightmares III PS5 / Nintendo Switch 2 / Nintendo Switch",
+    "category": "Brand New Games, Brand New Games, Nintendo, Playstation 5",
+    "proposedSku": "TZ-BRAN-LITT-09E3"
+  },
+  {
+    "id": 7907,
+    "name": "Fire Emblem Warriors: Three Hopes",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-FIRE-0C3A"
+  },
+  {
+    "id": 13846,
+    "name": "Fire Emblem: Three Houses",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-FIRE-2A66"
+  },
+  {
+    "id": 7905,
+    "name": "Final Fantasy XII The Zodiac Age",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-FINA-661D"
+  },
+  {
+    "id": 7893,
+    "name": "Detective Pikachu Returns",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-DETE-DC1B"
+  },
+  {
+    "id": 7895,
+    "name": "Digimon Survive",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-DIGI-1F19"
+  },
+  {
+    "id": 13830,
+    "name": "Disney Tsum Tsum Festival",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-DISN-426A"
+  },
+  {
+    "id": 7875,
+    "name": "Clubhouse Games: 51 Worldwide Classics",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-CLUB-1486"
+  },
+  {
+    "id": 7890,
+    "name": "Crisis Core Final Fantasy VII Reunion",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-CRIS-1CB3"
+  },
+  {
+    "id": 21034,
+    "name": "Crash Bandicoot 4: It's About Time",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-CRAS-7FBD"
+  },
+  {
+    "id": 8144,
+    "name": "ROG Xbox Ally X/Ally X Screen Protector",
+    "category": "Screen Protector",
+    "proposedSku": "TZ-SCRE-ROGX-A704"
+  },
+  {
+    "id": 19387,
+    "name": "Intel i5-14400F /i7-14700KF / i9-14900KF / i9-14900K / Core Ultra 7 265K / 265KF CPU Processor",
+    "category": "Central Processing Unit",
+    "proposedSku": "TZ-CENT-INTE-FD3E"
+  },
+  {
+    "id": 14619,
+    "name": "Ryzen 5/7/9/ 7600X / 9600X / 7700X / 9700X / 7800X3D / 9800X3D / 9900X / 9950X3D CPU Processors",
+    "category": "Central Processing Unit",
+    "proposedSku": "TZ-CENT-RYZE-8F36"
+  },
+  {
+    "id": 13942,
+    "name": "Pokemon Brillant Diamond",
+    "category": "Brand New Games, Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-POKE-D146"
+  },
+  {
+    "id": 27359,
+    "name": "Nintendo Switch 2 Pro Controller",
+    "category": "Console, Nintendo",
+    "proposedSku": "TZ-CONS-NINT-57DF"
+  },
+  {
+    "id": 22775,
+    "name": "Gigabyte RTX 5070 EAGLE OC SFF 12GB Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-DC7E"
+  },
+  {
+    "id": 22389,
+    "name": "Gigabyte GeForce RTX 5070Ti | Eagle OC SFF 16GB",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-D006"
+  },
+  {
+    "id": 27205,
+    "name": "Pokemon Legends: Z-A – Nintendo Switch 2 / Switch 1 Edition (Physical Cartridge)",
+    "category": "Brand New Games, Nintendo, Pre-Order Games",
+    "proposedSku": "TZ-BRAN-POKE-F9CC"
+  },
+  {
+    "id": 25996,
+    "name": "Logitech G29 Driving Force Steering Wheels &amp; Pedals &amp; Shifter",
+    "category": "Console, Console, Gadgets, Playstation 4, Playstation 5",
+    "proposedSku": "TZ-CONS-LOGI-6479"
+  },
+  {
+    "id": 27275,
+    "name": "PS5 Ghost Of Yotei",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-PS5G-AC43"
+  },
+  {
+    "id": 27272,
+    "name": "Dobe Storage Case for Playstation Portal",
+    "category": "",
+    "proposedSku": "TZ-GEN-DOBE-5BB1"
+  },
+  {
+    "id": 27263,
+    "name": "GALAX RTX 5070 1-Click OC White 12GB GDDR7 Graphic Card",
+    "category": "Graphic Card, PC Parts",
+    "proposedSku": "TZ-GRAP-GALA-A08E"
+  },
+  {
+    "id": 27177,
+    "name": "Gigabyte Gaming OC RX 9070 / 9070 XT 16GB Graphic Card",
+    "category": "Graphic Card, PC Parts",
+    "proposedSku": "TZ-GRAP-GIGA-7153"
+  },
+  {
+    "id": 27019,
+    "name": "PlayStation 5 - Ghost of Yotei Gold Limited Edition / Dual Sebse Controller Bundle",
+    "category": "Accessories, Console, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-5C35"
+  },
+  {
+    "id": 27152,
+    "name": "Tesla Cyberdock for iPhone 17/16/15/14 / pro / pro max (3 in 1) wireless charger",
+    "category": "Chargers",
+    "proposedSku": "TZ-CHAR-TESL-12F3"
+  },
+  {
+    "id": 27076,
+    "name": "Lenovo Legion Y700 Gen 4 12/16GB 256/512GB White / Black",
+    "category": "Handphone &amp; Tablet, Tablet",
+    "proposedSku": "TZ-HAND-LENO-557B"
+  },
+  {
+    "id": 27067,
+    "name": "Lenovo Legion Y700 Gen 4 / Lenovo Legion Game Controller G9 12/16GB 256/512GB",
+    "category": "Gadgets",
+    "proposedSku": "TZ-GADG-LENO-690E"
+  },
+  {
+    "id": 27075,
+    "name": "Lenovo Legion Game Controller G9",
+    "category": "Accessories",
+    "proposedSku": "TZ-ACCE-LENO-2F30"
+  },
+  {
+    "id": 13284,
+    "name": "NZXT KRAKEN Elite RGB WHITE 360mm / 240mm",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-NZXT-2454"
+  },
+  {
+    "id": 18614,
+    "name": "Sony Playstation PS5 Slim / Pro 30th Anniversary",
+    "category": "Console, Playstation 5",
+    "proposedSku": "TZ-CONS-SONY-2046"
+  },
+  {
+    "id": 26935,
+    "name": "JSAUX ROG Ally X Case Protective Hard Shell Travel Casing Accessories Storage Bag",
+    "category": "Accessories, Casing, Gadgets",
+    "proposedSku": "TZ-ACCE-JSAU-B932"
+  },
+  {
+    "id": 18074,
+    "name": "Seagate Storage Expansion Card 1TB for Xbox Series X|S",
+    "category": "Pre-Owned, Pre-Owned, Xbox, Xbox Series S, Xbox Series X",
+    "proposedSku": "TZ-PREO-SEAG-5F4F"
+  },
+  {
+    "id": 26874,
+    "name": "ASROCK A620I LIGHTNING WIFI ITX",
+    "category": "Motherboard, PC Related",
+    "proposedSku": "TZ-MOTH-ASRO-8A71"
+  },
+  {
+    "id": 26592,
+    "name": "NBA 2K26 R2/R3",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-NBA2-94C8"
+  },
+  {
+    "id": 24440,
+    "name": "SeatZone E1/E1PRO Fully Synchronized Ergonomic Office Chair",
+    "category": "Chair, Peripherals",
+    "proposedSku": "TZ-CHAI-SEAT-FE72"
+  },
+  {
+    "id": 19321,
+    "name": "SeatZone G7 Ergonomic Office Best Gaming Chair Series",
+    "category": "Chair, Peripherals",
+    "proposedSku": "TZ-CHAI-SEAT-6AE6"
+  },
+  {
+    "id": 25248,
+    "name": "ROG Strix SCAR 15 G533QR (2021) RTX 3070 5900HX 32GB 1TB 300Hz Gaming Laptop",
+    "category": "Laptop",
+    "proposedSku": "TZ-LAPT-ROGS-8344"
+  },
+  {
+    "id": 26743,
+    "name": "GIGABYTE AERO X16, FHD+ (WUXGA), RYZEN AI 7 350 RTX 5050 8G DDR5 16GB 1TB Gaming Laptop",
+    "category": "Laptop",
+    "proposedSku": "TZ-LAPT-GIGA-2C0E"
+  },
+  {
+    "id": 26741,
+    "name": "GIGABYTE Gaming A16 RTX 5050 16\" FHD 1TB SSD 16GB RAM RTX 5050 Gaming Laptop",
+    "category": "Laptop",
+    "proposedSku": "TZ-LAPT-GIGA-2106"
+  },
+  {
+    "id": 23921,
+    "name": "Jabra Engage 65 Convertible Headset",
+    "category": "Headset, Peripherals",
+    "proposedSku": "TZ-HEAD-JABR-CC55"
+  },
+  {
+    "id": 24662,
+    "name": "ASRock B760M Pro-A WiFi Motherboard",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-ASRO-B2F0"
+  },
+  {
+    "id": 26230,
+    "name": "Rokid Max 2 + Station / Rokid Max 2 / Rokid Station 2 Black AR Glasses",
+    "category": "VR Glasses",
+    "proposedSku": "TZ-VRGL-ROKI-6A21"
+  },
+  {
+    "id": 22418,
+    "name": "iPhone 15 Pro Max 1 TB Black Titanium",
+    "category": "Handphone, Handphone &amp; Tablet",
+    "proposedSku": "TZ-HAND-IPHO-2206"
+  },
+  {
+    "id": 7836,
+    "name": "META QUEST 3 / 3S 128GB / 256GB / 512GB",
+    "category": "Gadgets, Virtual Reality Headset",
+    "proposedSku": "TZ-GADG-META-0FFB"
+  },
+  {
+    "id": 21616,
+    "name": "Xbox Wireless Controller Black / White",
+    "category": "Xbox",
+    "proposedSku": "TZ-XBOX-XBOX-E9A3"
+  },
+  {
+    "id": 26263,
+    "name": "TRYX PANORAMA SE 360 ARGB Liquid Cooler White",
+    "category": "CPU Cooler, PC Parts",
+    "proposedSku": "TZ-CPUC-TRYX-BB3F"
+  },
+  {
+    "id": 26251,
+    "name": "Switch 2 Screen Protector",
+    "category": "Accessories, Gadgets, Screen Protector",
+    "proposedSku": "TZ-ACCE-SWIT-B785"
+  },
+  {
+    "id": 24384,
+    "name": "Thermalright Frozen Warframe Pro 360 ARGB - Black/White AIO",
+    "category": "CPU Cooler, PC Parts",
+    "proposedSku": "TZ-CPUC-THER-2BB2"
+  },
+  {
+    "id": 24306,
+    "name": "ASUS ROG Astral GeForce RTX 5080 16GB GDDR7 OC Edition Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-ASUS-C4C4"
+  },
+  {
+    "id": 23804,
+    "name": "Gigabyte RTX 5060 Ti GAMING OC 16G Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-3DD2"
+  },
+  {
+    "id": 24543,
+    "name": "Gigabyte GeForce RTX 5060 AORUS ELITE 8GB Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-B8B1"
+  },
+  {
+    "id": 24530,
+    "name": "Gigabyte GeForce Eagle / ICE 5060 OC 8GB Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-5C10"
+  },
+  {
+    "id": 24545,
+    "name": "Gigabyte GeForce RTX 5060 Gaming OC 8GB Graphic Card",
+    "category": "Graphic Card",
+    "proposedSku": "TZ-GRAP-GIGA-9389"
+  },
+  {
+    "id": 21389,
+    "name": "Rock Band 4",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-ROCK-3263"
+  },
+  {
+    "id": 23926,
+    "name": "HP Thunderbolt Dock 280W / 120W / G4 / G2",
+    "category": "Gadgets",
+    "proposedSku": "TZ-GADG-HPTH-CC43"
+  },
+  {
+    "id": 15833,
+    "name": "Thermalright SG Gold 650W / 850W Non Modular ATX 3.1 Black / White Power Supply Unit PSU",
+    "category": "Power Supply Unit",
+    "proposedSku": "TZ-POWE-THER-4517"
+  },
+  {
+    "id": 7179,
+    "name": "Xbox Series X / Digital",
+    "category": "Best Selling Products, Brand New, Pre-Owned, Xbox, Xbox Series X",
+    "proposedSku": "TZ-BEST-XBOX-F9EB"
+  },
+  {
+    "id": 25709,
+    "name": "Jsaux Racing Steering Wheel for Switch 2",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-JSAU-786D"
+  },
+  {
+    "id": 23229,
+    "name": "Z890M Gigabyte AORUS ELITE WIFI7 Motherboard",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-Z890-93CA"
+  },
+  {
+    "id": 7421,
+    "name": "Marvels: Avengers",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MARV-D86E"
+  },
+  {
+    "id": 25665,
+    "name": "Death Stranding 2: On the Beach",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEAT-6ABE"
+  },
+  {
+    "id": 25663,
+    "name": "The First Berserker: Khazan",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEF-1A56"
+  },
+  {
+    "id": 25621,
+    "name": "KOORUI S4941XO | S3241XO | S2721BO | S2721PM | S2741LM | G3441VC | G2711P | E2711K | E2411K 27\" FHD/QHD/UHD 144/180/200/240/320/360Hz LED/OLED/miniLED Gaming Monitor",
+    "category": "Monitor, Peripherals",
+    "proposedSku": "TZ-MONI-KOOR-E9BF"
+  },
+  {
+    "id": 7768,
+    "name": "Battlefield 1",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-BATT-FCA8"
+  },
+  {
+    "id": 25223,
+    "name": "MotoGP 25",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-MOTO-06A8"
+  },
+  {
+    "id": 7625,
+    "name": "PlayStation Dualsense Charging Station",
+    "category": "Accessories, Playstation, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-E3F4"
+  },
+  {
+    "id": 25365,
+    "name": "Nintendo Switch 2: The Legend of Zelda: Tears of the Kingdom",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NINT-68C1"
+  },
+  {
+    "id": 13818,
+    "name": "Captain Toad: Treasure Tracker",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-CAPT-FBF6"
+  },
+  {
+    "id": 25276,
+    "name": "SanDisk 256GB MicroSD Express Card/ Carte For Nintendo Switch 2",
+    "category": "Nintendo",
+    "proposedSku": "TZ-NINT-SAND-9D2D"
+  },
+  {
+    "id": 25221,
+    "name": "Clair Obscur: Expedition 33",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-CLAI-92D2"
+  },
+  {
+    "id": 25219,
+    "name": "Split Fiction",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-SPLI-94A7"
+  },
+  {
+    "id": 23353,
+    "name": "Assassin's Creed Shadows (R2)",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-ASSA-89EA"
+  },
+  {
+    "id": 23746,
+    "name": "Retroid Pocket Flip 2 128GB",
+    "category": "Handheld Consoles, Pre-Order",
+    "proposedSku": "TZ-HAND-RETR-3E7B"
+  },
+  {
+    "id": 25100,
+    "name": "Nintendo Switch 2 Joy-Con 2 (L)/(R) Light Blue/Light Red",
+    "category": "Console, Nintendo",
+    "proposedSku": "TZ-CONS-NINT-B7E4"
+  },
+  {
+    "id": 16683,
+    "name": "UPSIREN Prism 4 Pro 120MM Fan",
+    "category": "PC Fans",
+    "proposedSku": "TZ-PCFA-UPSI-B300"
+  },
+  {
+    "id": 14347,
+    "name": "Ghost of Tsushima Director's Cut",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GHOS-E8FB"
+  },
+  {
+    "id": 24994,
+    "name": "Vivobook Pro 15 OLED M3500QC Ryzen 5 5600H 8GB RAM 512GB SSD 15.6",
+    "category": "Laptop",
+    "proposedSku": "TZ-LAPT-VIVO-ED5D"
+  },
+  {
+    "id": 24377,
+    "name": "INTEL AX200 PCIE WIFI 6 CARD + BLUETOOTH 5.1 PCIE Wifi Card",
+    "category": "PC Accessories, PC Parts",
+    "proposedSku": "TZ-PCAC-INTE-95D4"
+  },
+  {
+    "id": 22443,
+    "name": "Huawei MatePad Air 11.5 inch Silver 256GB",
+    "category": "Tablet",
+    "proposedSku": "TZ-TABL-HUAW-9AF9"
+  },
+  {
+    "id": 24803,
+    "name": "DEEPCOOL CG530 ARGB 120MM PWM Black PC Fan",
+    "category": "PC Fans, PC Parts",
+    "proposedSku": "TZ-PCFA-DEEP-6378"
+  },
+  {
+    "id": 17372,
+    "name": "PS5 Controller Dual Sense Astro Bot",
+    "category": "Accessories",
+    "proposedSku": "TZ-ACCE-PS5C-B176"
+  },
+  {
+    "id": 22768,
+    "name": "PS5 Controller Dual Sense Monster Hunter Wilds Limited Edition",
+    "category": "Accessories, Playstation 5",
+    "proposedSku": "TZ-ACCE-PS5C-2FB6"
+  },
+  {
+    "id": 23098,
+    "name": "ROG Strix Scope RX TKL Wireless Deluxe Gaming Keyboard",
+    "category": "Keyboard, Peripherals",
+    "proposedSku": "TZ-KEYB-ROGS-DA2F"
+  },
+  {
+    "id": 19596,
+    "name": "The Legend of Zelda: Tears of the Kingdom Collector's Edition",
+    "category": "",
+    "proposedSku": "TZ-GEN-THEL-4D00"
+  },
+  {
+    "id": 17127,
+    "name": "PS4 Playstation 4 Dualshock Wireless Controller",
+    "category": "Console, Playstation 4",
+    "proposedSku": "TZ-CONS-PS4P-E159"
+  },
+  {
+    "id": 7519,
+    "name": "Grand Theft Auto V",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GRAN-CC86"
+  },
+  {
+    "id": 24400,
+    "name": "*Pre Order - Retroid Pocket Classic",
+    "category": "Pre-Order",
+    "proposedSku": "TZ-PREO-PREO-E4C1"
+  },
+  {
+    "id": 23078,
+    "name": "Minecraft",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MINE-471D"
+  },
+  {
+    "id": 14320,
+    "name": "Horizon Forbidden West",
+    "category": "Brand New Games, Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-BRAN-HORI-4C38"
+  },
+  {
+    "id": 7251,
+    "name": "Hyte Y70",
+    "category": "Cases, PC Parts",
+    "proposedSku": "TZ-CASE-HYTE-94AE"
+  },
+  {
+    "id": 15841,
+    "name": "Deepcool Assasin 4S White / Black",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-DEEP-3D63"
+  },
+  {
+    "id": 19662,
+    "name": "Super Mario Party Jamboree",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SUPE-A1BA"
+  },
+  {
+    "id": 24078,
+    "name": "FSP VITA GD 750W 80+Gold Non Modular (ATX3.1+Gen 5.1) Power Supply Unit",
+    "category": "Power Supply Unit",
+    "proposedSku": "TZ-POWE-FSPV-0F55"
+  },
+  {
+    "id": 24058,
+    "name": "Nintendo Switch Crash Bandicoot N. Sane Trilogy",
+    "category": "Pre-Owned Games",
+    "proposedSku": "TZ-PREO-NINT-5019"
+  },
+  {
+    "id": 24055,
+    "name": "Nintendo Switch Fire Emblem Warriors Game",
+    "category": "Pre-Owned Games",
+    "proposedSku": "TZ-PREO-NINT-A4D1"
+  },
+  {
+    "id": 24052,
+    "name": "Nintendo Switch Atelier Escha &amp; Logy: Alchemists of the Dusk Sky DX",
+    "category": "Pre-Owned Games",
+    "proposedSku": "TZ-PREO-NINT-27D6"
+  },
+  {
+    "id": 24049,
+    "name": "Nintendo Switch Atelier Rorona The Alchemist Of Arland Dx",
+    "category": "Pre-Owned Games",
+    "proposedSku": "TZ-PREO-NINT-E8D7"
+  },
+  {
+    "id": 24047,
+    "name": "Nintendo Switch Atelier Ryza: Ever Darkness &amp; the Secret Hideout Game",
+    "category": "Pre-Owned Games",
+    "proposedSku": "TZ-PREO-NINT-BE0D"
+  },
+  {
+    "id": 24045,
+    "name": "Nintendo Switch Nelke &amp; the Legendary Alchemists: Ateliers of the New World switch game",
+    "category": "Pre-Owned Games",
+    "proposedSku": "TZ-PREO-NINT-F9F1"
+  },
+  {
+    "id": 14004,
+    "name": "The Legend of Zelda: Tears of The Kingdom",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEL-CAFD"
+  },
+  {
+    "id": 13971,
+    "name": "Splatoon 3",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SPLA-13F1"
+  },
+  {
+    "id": 24021,
+    "name": "Gigabyte B850 AORUS ELITE WIFI7 Motherboard",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-GIGA-B19D"
+  },
+  {
+    "id": 23139,
+    "name": "Gigabyte B650M GAMING PLUS WIFI Motherboard",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-GIGA-AE91"
+  },
+  {
+    "id": 23845,
+    "name": "DJI Osmo Pocket 3 Magnetic ND Filters Set",
+    "category": "Accessories",
+    "proposedSku": "TZ-ACCE-DJIO-CB5B"
+  },
+  {
+    "id": 23840,
+    "name": "K&amp;F CONCEPT DJI OSMO Pocket 3 Action camera filter ND4 + ND8 + ND16 + ND32",
+    "category": "Accessories",
+    "proposedSku": "TZ-ACCE-KAMP-6D16"
+  },
+  {
+    "id": 22913,
+    "name": "be quiet! Silent Loop 2 360 ARGB Liquid Cooler(LGA1700/AM5)",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-BEQU-3E45"
+  },
+  {
+    "id": 22478,
+    "name": "Acer Swift Edge FE16-44-R901 Thin &amp; Light Laptop 16-Inches WQXGA+(3200x2000) OLED Display with 120Hz, AMD Ryzen 7 8840U processor,16GB RAM and 1TB SSD",
+    "category": "Laptop",
+    "proposedSku": "TZ-LAPT-ACER-8053"
+  },
+  {
+    "id": 7221,
+    "name": "PlayStation VR 2",
+    "category": "Console, Gadgets, Playstation, Playstation 5",
+    "proposedSku": "TZ-CONS-PLAY-AB5E"
+  },
+  {
+    "id": 23728,
+    "name": "PS5 Limited 30th Anniversary Faceplate with Logo Sticker For PS5 Slim Digital/Disc",
+    "category": "Accessories, Playstation 5",
+    "proposedSku": "TZ-ACCE-PS5L-7B05"
+  },
+  {
+    "id": 14012,
+    "name": "Two Point Hospital",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TWOP-53CE"
+  },
+  {
+    "id": 23670,
+    "name": "Deepcool CG530 + 4F (Fans) Black/White PC Case",
+    "category": "Cases",
+    "proposedSku": "TZ-CASE-DEEP-ABDF"
+  },
+  {
+    "id": 19554,
+    "name": "Nintendo Switch Lite: Hyrule Edition",
+    "category": "Console, Gadgets, Nintendo",
+    "proposedSku": "TZ-CONS-NINT-7D43"
+  },
+  {
+    "id": 14376,
+    "name": "Red Dead Redemption II",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-REDD-8FAD"
+  },
+  {
+    "id": 7326,
+    "name": "Gran Turismo 7",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GRAN-7F53"
+  },
+  {
+    "id": 22205,
+    "name": "GIGABYTE B840M/B850I/B850/B860 Intel and AMD B800 Series Motherboards",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-GIGA-D812"
+  },
+  {
+    "id": 22190,
+    "name": "GIGABYTE X870E/X870/Z890/Z890M Intel Z800 and AMD X800 Series Motherboards",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-GIGA-423D"
+  },
+  {
+    "id": 7533,
+    "name": "Marvels: Spiderman 2",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MARV-E7B6"
+  },
+  {
+    "id": 20632,
+    "name": "Black Myth: Wukong Deluxe Edition",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-BLAC-2746"
+  },
+  {
+    "id": 14998,
+    "name": "Imperion Atmosphere RGB Gaming Mousepad",
+    "category": "Mouse Pad",
+    "proposedSku": "TZ-MOUS-IMPE-BF5D"
+  },
+  {
+    "id": 14968,
+    "name": "Corsair MM300 PRO GAMING MOUSEPAD",
+    "category": "Mouse Pad",
+    "proposedSku": "TZ-MOUS-CORS-5220"
+  },
+  {
+    "id": 23080,
+    "name": "WWE 2K25 Standard Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-WWE2-17A9"
+  },
+  {
+    "id": 7378,
+    "name": "Minecraft: Legends",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MINE-2371"
+  },
+  {
+    "id": 18854,
+    "name": "Asus Rog Ally X Casing White / Black",
+    "category": "Casing",
+    "proposedSku": "TZ-CASI-ASUS-D437"
+  },
+  {
+    "id": 17132,
+    "name": "NBA 2K25",
+    "category": "Brand New Games",
+    "proposedSku": "TZ-BRAN-NBA2-74E6"
+  },
+  {
+    "id": 7384,
+    "name": "Mortal Kombat 1",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MORT-353A"
+  },
+  {
+    "id": 16804,
+    "name": "Steam Deck Screen Protector for LCD &amp; OLED",
+    "category": "Screen Protector",
+    "proposedSku": "TZ-SCRE-STEA-15B3"
+  },
+  {
+    "id": 21460,
+    "name": "ROG Ally / ROG Ally X Case",
+    "category": "Casing",
+    "proposedSku": "TZ-CASI-ROGA-9A2C"
+  },
+  {
+    "id": 17986,
+    "name": "MSI Claw Accessory Kit",
+    "category": "Casing",
+    "proposedSku": "TZ-CASI-MSIC-4D00"
+  },
+  {
+    "id": 21455,
+    "name": "Lenovo Legion Go Casing",
+    "category": "Casing",
+    "proposedSku": "TZ-CASI-LENO-9831"
+  },
+  {
+    "id": 16796,
+    "name": "Lenovo Legion Go Screen Protector",
+    "category": "Screen Protector",
+    "proposedSku": "TZ-SCRE-LENO-5DAD"
+  },
+  {
+    "id": 16529,
+    "name": "JSAUX USB C Docking Station 6-IN-1",
+    "category": "Accessories, Gadgets",
+    "proposedSku": "TZ-ACCE-JSAU-8913"
+  },
+  {
+    "id": 21213,
+    "name": "JSAUX Steam Deck Protective Case",
+    "category": "Casing",
+    "proposedSku": "TZ-CASI-JSAU-34C2"
+  },
+  {
+    "id": 22870,
+    "name": "LOOI AI Robot ChatGPT Integrated Biomimetic Behavior System AI with Personality 10W Wireless Phone Charging",
+    "category": "AI Robot, Gadgets",
+    "proposedSku": "TZ-AIRO-LOOI-C10C"
+  },
+  {
+    "id": 22397,
+    "name": "Deepcool AK620 Digital Pro CPU Cooler",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-DEEP-65EF"
+  },
+  {
+    "id": 14518,
+    "name": "Logitech K750R Solar Ultra Slim Solar Powered Keyboard",
+    "category": "Keyboard",
+    "proposedSku": "TZ-KEYB-LOGI-0C47"
+  },
+  {
+    "id": 18108,
+    "name": "Razer Orochi V2",
+    "category": "Mouse",
+    "proposedSku": "TZ-MOUS-RAZE-F01E"
+  },
+  {
+    "id": 22156,
+    "name": "Gigabyte B850M GAMING X WIFI6E Motherboard",
+    "category": "Motherboard",
+    "proposedSku": "TZ-MOTH-GIGA-5EF5"
+  },
+  {
+    "id": 22089,
+    "name": "EVGA CLC AIO 280mm cooler (AM4/AM5/LGA1200)",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-EVGA-6800"
+  },
+  {
+    "id": 21767,
+    "name": "Nintendo Switch Pro Controller",
+    "category": "Console",
+    "proposedSku": "TZ-CONS-NINT-1F29"
+  },
+  {
+    "id": 14979,
+    "name": "ASUS TUF GAMING P1 MOUSEPAD",
+    "category": "Mouse Pad",
+    "proposedSku": "TZ-MOUS-ASUS-DAC3"
+  },
+  {
+    "id": 21392,
+    "name": "Star Wars: Squadrons",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-STAR-0F93"
+  },
+  {
+    "id": 21387,
+    "name": "Rocket Arena",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-ROCK-D930"
+  },
+  {
+    "id": 21383,
+    "name": "Pang Adventures Buster Edition",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-PANG-61FE"
+  },
+  {
+    "id": 21381,
+    "name": "Project CARS 3",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-PROJ-B625"
+  },
+  {
+    "id": 21378,
+    "name": "Final Fantasy Type-0 HD",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-FINA-F38E"
+  },
+  {
+    "id": 21376,
+    "name": "Destiny - The Collection",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-DEST-8117"
+  },
+  {
+    "id": 21374,
+    "name": "Burnout™ Paradise Remastered",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-BURN-1D21"
+  },
+  {
+    "id": 21372,
+    "name": "Borderlands 3",
+    "category": "Brand New Games, Playstation 4",
+    "proposedSku": "TZ-BRAN-BORD-AEBD"
+  },
+  {
+    "id": 7740,
+    "name": "White Day",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-WHIT-E002"
+  },
+  {
+    "id": 7592,
+    "name": "WWE 2K24 Standard/Deluxe Edition",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-WWE2-107F"
+  },
+  {
+    "id": 7718,
+    "name": "Shadow Of The Beast",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-SHAD-3B3E"
+  },
+  {
+    "id": 7741,
+    "name": "Ziggurat",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-ZIGG-046A"
+  },
+  {
+    "id": 7347,
+    "name": "Warriors Orochi 4",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-WARR-0C8B"
+  },
+  {
+    "id": 7739,
+    "name": "Warriors All-Stars",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-WARR-E3F8"
+  },
+  {
+    "id": 7738,
+    "name": "Warhammer 40,000: Deathwatch",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-WARH-51D1"
+  },
+  {
+    "id": 7732,
+    "name": "Valthirian Arc",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-VALT-C803"
+  },
+  {
+    "id": 14357,
+    "name": "Valkyria Revolution",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-VALK-904C"
+  },
+  {
+    "id": 7730,
+    "name": "V letter Root Letter Last Answer",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-VLET-AEC4"
+  },
+  {
+    "id": 7721,
+    "name": "Tokyo Twilight Ghost Hunters Daybreak: Special Gigs",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-TOKY-35ED"
+  },
+  {
+    "id": 7720,
+    "name": "The Sexy Brutale: Full House Edition",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-THES-09F9"
+  },
+  {
+    "id": 7719,
+    "name": "Tales Borderlands From The Cames Beres",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-TALE-1B81"
+  },
+  {
+    "id": 14353,
+    "name": "Sackboy: A Big Adventure",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-SACK-48C6"
+  },
+  {
+    "id": 7715,
+    "name": "Past Cure",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-PAST-79FB"
+  },
+  {
+    "id": 7714,
+    "name": "Oasis Games VR Fun Pack",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-OASI-BBAF"
+  },
+  {
+    "id": 7713,
+    "name": "Little Big Planet 3",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-LITT-BF17"
+  },
+  {
+    "id": 7712,
+    "name": "Lichdom: Battlemage",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-LICH-4280"
+  },
+  {
+    "id": 7711,
+    "name": "Kotodama: The 7 Mysteries of Fujisawa",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-KOTO-08E8"
+  },
+  {
+    "id": 7710,
+    "name": "It Takes Two",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-ITTA-2F95"
+  },
+  {
+    "id": 7356,
+    "name": "Horizon Forbidden West",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-HORI-BE3F"
+  },
+  {
+    "id": 7355,
+    "name": "Horizon Zero Dawn",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-HORI-7436"
+  },
+  {
+    "id": 7707,
+    "name": "Gunvolt Chronicles: Luminous Avenger iX",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-GUNV-3220"
+  },
+  {
+    "id": 7708,
+    "name": "Hades",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-HADE-EA88"
+  },
+  {
+    "id": 7709,
+    "name": "Hero Defense",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-HERO-662D"
+  },
+  {
+    "id": 7357,
+    "name": "Guilty Gear XRD Revelator",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-GUIL-DF55"
+  },
+  {
+    "id": 7706,
+    "name": "God of War",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-GODO-D0E8"
+  },
+  {
+    "id": 7705,
+    "name": "Girls and Panzer Dream Tank Match Girls",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-GIRL-87A4"
+  },
+  {
+    "id": 7354,
+    "name": "Final Fantasy XV Day One Edition",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-FINA-0AEF"
+  },
+  {
+    "id": 7348,
+    "name": "Final Fantasy X / X-2 HD Remaster",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-FINA-07CB"
+  },
+  {
+    "id": 7703,
+    "name": "Fallout 76",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-FALL-36E9"
+  },
+  {
+    "id": 7701,
+    "name": "Ether",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-ETHE-4AD3"
+  },
+  {
+    "id": 7700,
+    "name": "Dungeons 2",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-DUNG-0A05"
+  },
+  {
+    "id": 7693,
+    "name": "Destiny 2",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-DEST-72FD"
+  },
+  {
+    "id": 7692,
+    "name": "Destiny",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-DEST-0E55"
+  },
+  {
+    "id": 7691,
+    "name": "Dark Pictures: House Of Ashes",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-DARK-F363"
+  },
+  {
+    "id": 7688,
+    "name": "Bound By Flame",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-BOUN-13B1"
+  },
+  {
+    "id": 7689,
+    "name": "Chorvs",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-CHOR-9D3D"
+  },
+  {
+    "id": 7686,
+    "name": "Aladdin and Lion king",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-ALAD-5C2F"
+  },
+  {
+    "id": 7687,
+    "name": "Bladestorm: Nightmare",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-BLAD-81D8"
+  },
+  {
+    "id": 7684,
+    "name": "Aegis Of Earth",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-AEGI-DEEA"
+  },
+  {
+    "id": 7683,
+    "name": "8 To Glory",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-8TOG-99F0"
+  },
+  {
+    "id": 14379,
+    "name": "Street Fighter V",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-STRE-80FF"
+  },
+  {
+    "id": 8068,
+    "name": "One Punch Man: A Hero Nobody Knows",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ONEP-2B8A"
+  },
+  {
+    "id": 8036,
+    "name": "Final Fantasy Type-0 HD Special Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FINA-DD28"
+  },
+  {
+    "id": 8035,
+    "name": "Final Fantasy Type-0 HD",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FINA-AD67"
+  },
+  {
+    "id": 14002,
+    "name": "The Legend of Zelda: Link's Awakening",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEL-8FB3"
+  },
+  {
+    "id": 7779,
+    "name": "Call of Duty: Black Ops III",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CALL-E237"
+  },
+  {
+    "id": 21046,
+    "name": "Cuphead",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-CUPH-5047"
+  },
+  {
+    "id": 21031,
+    "name": "Kirby's Return to Dream Land Deluxe",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-KIRB-E50A"
+  },
+  {
+    "id": 20325,
+    "name": "Replacement Shell for 30th Anniversary Grey PlayStation Portal Case",
+    "category": "",
+    "proposedSku": "TZ-GEN-REPL-B76A"
+  },
+  {
+    "id": 7409,
+    "name": "Hitman: World Of Assassination Pre-Owned",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HITM-0757"
+  },
+  {
+    "id": 14029,
+    "name": "Young Souls",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-YOUN-B96F"
+  },
+  {
+    "id": 19698,
+    "name": "Dragon Quest Builders 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DRAG-B5F6"
+  },
+  {
+    "id": 19701,
+    "name": "Dragon Quest Builders",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DRAG-FF0E"
+  },
+  {
+    "id": 19696,
+    "name": "Dragon Quest Monsters: The Dark Prince",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DRAG-5013"
+  },
+  {
+    "id": 19690,
+    "name": "Lost Sphear",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-LOST-E0B6"
+  },
+  {
+    "id": 19665,
+    "name": "Mario + Rabbids Kingdom Battle",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MARI-6DEE"
+  },
+  {
+    "id": 19660,
+    "name": "Super Mario RPG",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SUPE-40B1"
+  },
+  {
+    "id": 19654,
+    "name": "Unknown 9: Awakening",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-UNKN-616F"
+  },
+  {
+    "id": 19652,
+    "name": "ASTRO BOT",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-ASTR-C688"
+  },
+  {
+    "id": 19650,
+    "name": "Little Nightmares II",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-LITT-77C3"
+  },
+  {
+    "id": 19648,
+    "name": "SILENT HILL 2 Remake",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-SILE-1B64"
+  },
+  {
+    "id": 19646,
+    "name": "The Last of Us Part II Remastered",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEL-330F"
+  },
+  {
+    "id": 19643,
+    "name": "F1 24",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-F124-6235"
+  },
+  {
+    "id": 19593,
+    "name": "Fire Emblem Engage Divine Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-FIRE-8825"
+  },
+  {
+    "id": 7388,
+    "name": "NFS: Unbound",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NFSU-4D8A"
+  },
+  {
+    "id": 7500,
+    "name": "God of War Ragnarox",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GODO-71A1"
+  },
+  {
+    "id": 7316,
+    "name": "Garfield Lasagna Party",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GARF-D75D"
+  },
+  {
+    "id": 19461,
+    "name": "Far Cry 6",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-FARC-82FE"
+  },
+  {
+    "id": 7408,
+    "name": "Elden Ring",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ELDE-D1D1"
+  },
+  {
+    "id": 7277,
+    "name": "Demon's Souls",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEMO-386A"
+  },
+  {
+    "id": 19458,
+    "name": "Dragon Ball Z: Kakarot",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-DRAG-B831"
+  },
+  {
+    "id": 7286,
+    "name": "Dead Space",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEAD-9853"
+  },
+  {
+    "id": 14307,
+    "name": "Dead Island 2 Pulp Edition",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEAD-2CCA"
+  },
+  {
+    "id": 19448,
+    "name": "Dead Island 2 Pulp Edition",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEAD-55DE"
+  },
+  {
+    "id": 19445,
+    "name": "Cyberpunk 2077 Ultimate Edition",
+    "category": "Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CYBE-DB50"
+  },
+  {
+    "id": 19441,
+    "name": "Cyberpunk 2077 Ultimate Edition",
+    "category": "Brand New Games, Playstation 5",
+    "proposedSku": "TZ-BRAN-CYBE-02A3"
+  },
+  {
+    "id": 7302,
+    "name": "Crash Team Rumble",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-CRAS-805F"
+  },
+  {
+    "id": 7300,
+    "name": "Cobra Kai 2: Dojos Rising",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-COBR-8BA3"
+  },
+  {
+    "id": 7274,
+    "name": "Atomic Heart",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ATOM-2B94"
+  },
+  {
+    "id": 7405,
+    "name": "Assassin's Creed Valhalla",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-6C50"
+  },
+  {
+    "id": 7288,
+    "name": "Assassin's Creed Valhalla",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ASSA-1078"
+  },
+  {
+    "id": 7937,
+    "name": "Minecraft Legends Deluxe Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-MINE-9F4B"
+  },
+  {
+    "id": 14304,
+    "name": "EA Sports FC 24",
+    "category": "Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-EASP-BB96"
+  },
+  {
+    "id": 19136,
+    "name": "PS5: Taiko no Tatsujin Rhythm Fest Game",
+    "category": "Brand New Games",
+    "proposedSku": "TZ-BRAN-PS5T-ED9E"
+  },
+  {
+    "id": 14311,
+    "name": "Demon Slayer -Kimetsu no Yaiba- The Hinokami Chronicles",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEMO-5D7A"
+  },
+  {
+    "id": 7498,
+    "name": "Demon Slayer -Kmetsu no Yaiba- The Hinokami Chronicles",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEMO-9E9F"
+  },
+  {
+    "id": 7312,
+    "name": "Devil May Cry 5 Special Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEVI-356E"
+  },
+  {
+    "id": 7435,
+    "name": "Subnautica: Below Zero",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-SUBN-F9EA"
+  },
+  {
+    "id": 14327,
+    "name": "Helldivers 2",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HELL-EFEE"
+  },
+  {
+    "id": 18193,
+    "name": "+1 Year Store Warranty Extension (XBOX)",
+    "category": "Xbox",
+    "proposedSku": "TZ-XBOX-1YEA-1E1B"
+  },
+  {
+    "id": 13439,
+    "name": "Prolink GT-314001 140W GaN Fast PD3.1 Charger",
+    "category": "Chargers",
+    "proposedSku": "TZ-CHAR-PROL-17E9"
+  },
+  {
+    "id": 13441,
+    "name": "Prolink 120W 4-Port GaN Fast PPS PD Charger",
+    "category": "Chargers",
+    "proposedSku": "TZ-CHAR-PROL-B41A"
+  },
+  {
+    "id": 15015,
+    "name": "Prolink PRT7011L 4G LTE WiFi 300Mbps Hotspot Travel Mobile Router Mini Wifi",
+    "category": "Wifi Routers",
+    "proposedSku": "TZ-WIFI-PROL-C4CA"
+  },
+  {
+    "id": 7967,
+    "name": "Pikmin 4",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-PIKM-2573"
+  },
+  {
+    "id": 7344,
+    "name": "Immortals Fenyx Rising",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-IMMO-5015"
+  },
+  {
+    "id": 7424,
+    "name": "Star Wars: Jedi Fallen Order",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-STAR-D9CF"
+  },
+  {
+    "id": 7423,
+    "name": "Spirit of the North (Enhanced Edition)",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-SPIR-A94B"
+  },
+  {
+    "id": 7420,
+    "name": "Soulstice (Deluxe Edition)",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-SOUL-D2C7"
+  },
+  {
+    "id": 7410,
+    "name": "Saints Row (Criminal Customs Edition)",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-SAIN-5339"
+  },
+  {
+    "id": 7397,
+    "name": "Ratchet & Clank: Rift Apart",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-RATC-A126"
+  },
+  {
+    "id": 7396,
+    "name": "Persona 5 Royal",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-PERS-508D"
+  },
+  {
+    "id": 7395,
+    "name": "Override 2: Super Mech League Ultraman Deluxe Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-OVER-DF84"
+  },
+  {
+    "id": 7531,
+    "name": "Oercooked! All You Can Eat",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-OERC-0893"
+  },
+  {
+    "id": 8008,
+    "name": "The Legend of Zelda: Breath of The Wiild",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEL-F5A8"
+  },
+  {
+    "id": 7387,
+    "name": "New Tales from the Borderlands",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NEWT-4886"
+  },
+  {
+    "id": 7385,
+    "name": "Moving Out 2",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MOVI-5304"
+  },
+  {
+    "id": 7422,
+    "name": "Marvels: Spider-Man Miles Morales",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MARV-6578"
+  },
+  {
+    "id": 7377,
+    "name": "Marvels: Midnight Suns",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MARV-030C"
+  },
+  {
+    "id": 7375,
+    "name": "Life is Strange: True Colors",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-LIFE-7CDD"
+  },
+  {
+    "id": 7374,
+    "name": "Kitaria Fables",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-KITA-0CBF"
+  },
+  {
+    "id": 7368,
+    "name": "Jurassic World: Evolution 2",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-JURA-4184"
+  },
+  {
+    "id": 7345,
+    "name": "Immorals Of Aveum",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-IMMO-DF88"
+  },
+  {
+    "id": 15017,
+    "name": "Prolink DL-7203E 4G LTE Mobile WiFi with LCD display with RJ45 LAN port/ Powerbank",
+    "category": "Wifi Routers",
+    "proposedSku": "TZ-WIFI-PROL-3BF9"
+  },
+  {
+    "id": 17982,
+    "name": "DRAGON BALL: Sparking! ZERO",
+    "category": "Brand New Games",
+    "proposedSku": "TZ-BRAN-DRAG-8F07"
+  },
+  {
+    "id": 8112,
+    "name": "Wolfenstein 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-WOLF-E2BC"
+  },
+  {
+    "id": 7748,
+    "name": "Anthem",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ANTH-7A79"
+  },
+  {
+    "id": 7509,
+    "name": "Monark",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MONA-3756"
+  },
+  {
+    "id": 14342,
+    "name": "The Last Of Us Part 1",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEL-7458"
+  },
+  {
+    "id": 7517,
+    "name": "Naruto x Boruto: Ultimate Ninja Storm Connections",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NARU-A0D5"
+  },
+  {
+    "id": 7591,
+    "name": "Chernobylite",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CHER-B31A"
+  },
+  {
+    "id": 14350,
+    "name": "GodFall",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GODF-C376"
+  },
+  {
+    "id": 7398,
+    "name": "Resident Evil: Village",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-RESI-D3C7"
+  },
+  {
+    "id": 14336,
+    "name": "Resident Evil: Village",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-RESI-81A0"
+  },
+  {
+    "id": 7467,
+    "name": "Zorro- The Chronicles",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ZORR-7D1B"
+  },
+  {
+    "id": 7327,
+    "name": "Greak: Memories of Azur",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GREA-99F9"
+  },
+  {
+    "id": 14011,
+    "name": "Two Point Campus Enrollment Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TWOP-3E73"
+  },
+  {
+    "id": 13931,
+    "name": "Octopath Traveler II",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-OCTO-7237"
+  },
+  {
+    "id": 13892,
+    "name": "Minecraft Dungeons Hero Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MINE-1532"
+  },
+  {
+    "id": 13821,
+    "name": "Collar X Malice",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-COLL-92F8"
+  },
+  {
+    "id": 14325,
+    "name": "Hogwarts Legacy",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HOGW-E1E2"
+  },
+  {
+    "id": 14316,
+    "name": "God of War Ragnarok Pre-Owned",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GODO-6C41"
+  },
+  {
+    "id": 7406,
+    "name": "Call Of Duty Black Ops: Cold War",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CALL-0697"
+  },
+  {
+    "id": 7432,
+    "name": "Stray",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-STRA-193E"
+  },
+  {
+    "id": 7542,
+    "name": "PGA Tour 2K23",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-PGAT-D928"
+  },
+  {
+    "id": 7394,
+    "name": "Nioh Collection",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NIOH-A65C"
+  },
+  {
+    "id": 7299,
+    "name": "Chivalry II Day One Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-CHIV-0CAC"
+  },
+  {
+    "id": 7287,
+    "name": "Dead Island 2 Day One Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DEAD-5606"
+  },
+  {
+    "id": 7328,
+    "name": "Guardians of The Galaxy",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GUAR-8FBE"
+  },
+  {
+    "id": 7835,
+    "name": "Dragon's Dogma II",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DRAG-7DBE"
+  },
+  {
+    "id": 7303,
+    "name": "Crisis Core: Final Fantasy VII Reunion",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-CRIS-7EE0"
+  },
+  {
+    "id": 7304,
+    "name": "Cris Tales",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-CRIS-88DD"
+  },
+  {
+    "id": 7267,
+    "name": "Assassin's Creed Mirage",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ASSA-2D13"
+  },
+  {
+    "id": 7323,
+    "name": "Ghostbusters: Spirits Unleashed",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GHOS-82BB"
+  },
+  {
+    "id": 7469,
+    "name": "The Last of Us Part 1",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEL-C106"
+  },
+  {
+    "id": 7431,
+    "name": "Star Wars: Jedi Survivor",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-STAR-9D8A"
+  },
+  {
+    "id": 7273,
+    "name": "Atlas Fallen",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ATLA-30CF"
+  },
+  {
+    "id": 14323,
+    "name": "Medium Pre-Owned",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MEDI-4D65"
+  },
+  {
+    "id": 7376,
+    "name": "Medium",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MEDI-EF4F"
+  },
+  {
+    "id": 7336,
+    "name": "Hogwarts Legacy",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-HOGW-7CF5"
+  },
+  {
+    "id": 7325,
+    "name": "Gotham Knights",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GOTH-69CE"
+  },
+  {
+    "id": 7468,
+    "name": "Tekken 8",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-TEKK-3663"
+  },
+  {
+    "id": 7301,
+    "name": "Crazy Chicken Shooter Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-CRAZ-45E4"
+  },
+  {
+    "id": 7940,
+    "name": "Moving Out 2",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-MOVI-E63F"
+  },
+  {
+    "id": 8006,
+    "name": "The Legend of Zelda: Skyward Sword HD",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEL-62BB"
+  },
+  {
+    "id": 8004,
+    "name": "The Legend of Heroes: Trails from Zero: Zero no Kiseki Kai",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEL-B629"
+  },
+  {
+    "id": 8001,
+    "name": "The Legends of Heroes: Trails of Cold Steel II Sen No Kiseki II 閃之軌跡 II The Erebonian Civil War",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEL-84A1"
+  },
+  {
+    "id": 7999,
+    "name": "The Legend of Heroes: Trails To Azure Deluxe Edition Ao no Kiseki: Kai 碧之軌跡：改",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEL-5F00"
+  },
+  {
+    "id": 7994,
+    "name": "Taiko No Tatsujin: Rhythm Festival",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-TAIK-A6C2"
+  },
+  {
+    "id": 7990,
+    "name": "Super Smash Bros Ultimate",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SUPE-D5EE"
+  },
+  {
+    "id": 16361,
+    "name": "Corsair ICUE Commander Core XT, Digital Fan Speed and RGB Lighting Controller,Black",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-CORS-035B"
+  },
+  {
+    "id": 15013,
+    "name": "Prolink PRN3006L 4G LTE WiFi Router w Voice landline",
+    "category": "Wifi Routers",
+    "proposedSku": "TZ-WIFI-PROL-661F"
+  },
+  {
+    "id": 7791,
+    "name": "Destiny",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEST-F555"
+  },
+  {
+    "id": 7704,
+    "name": "FIFA 19",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-FIFA-429A"
+  },
+  {
+    "id": 7572,
+    "name": "Hogwarts Legacy",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-HOGW-0639"
+  },
+  {
+    "id": 15019,
+    "name": "Asus AX1800 RT-AX56U Dual Band Wifi Router",
+    "category": "Wifi Routers",
+    "proposedSku": "TZ-WIFI-ASUS-3180"
+  },
+  {
+    "id": 13779,
+    "name": "+1 Year Store Warranty Extension (Cameras)",
+    "category": "Cameras, Extended Store Warranty",
+    "proposedSku": "TZ-CAME-1YEA-1A68"
+  },
+  {
+    "id": 13735,
+    "name": "+1 Year Store Warranty Extension (Handheld Console)",
+    "category": "Extended Store Warranty, Handheld Consoles",
+    "proposedSku": "TZ-EXTE-1YEA-A50F"
+  },
+  {
+    "id": 13780,
+    "name": "+1 Year Store Warranty Extension (VR Glasses)",
+    "category": "Extended Store Warranty, VR Glasses",
+    "proposedSku": "TZ-EXTE-1YEA-FAD2"
+  },
+  {
+    "id": 13781,
+    "name": "+1 Year Store Warranty Extension (VR Headset)",
+    "category": "Extended Store Warranty, Virtual Reality Headset, VR Glasses",
+    "proposedSku": "TZ-EXTE-1YEA-045C"
+  },
+  {
+    "id": 13434,
+    "name": "+1 Year Store Warranty Extension (PS5 Consoles)",
+    "category": "Console, Extended Store Warranty, Playstation 5",
+    "proposedSku": "TZ-CONS-1YEA-3527"
+  },
+  {
+    "id": 13732,
+    "name": "+1 Year Store Warranty Extension (PS4 Consoles)",
+    "category": "Console, Extended Store Warranty, Playstation 4",
+    "proposedSku": "TZ-CONS-1YEA-E9E8"
+  },
+  {
+    "id": 13733,
+    "name": "+1 Year Store Warranty Extension (PC Parts)",
+    "category": "Extended Store Warranty, PC Parts, PC Related",
+    "proposedSku": "TZ-EXTE-1YEA-42BC"
+  },
+  {
+    "id": 14996,
+    "name": "Atlas VGA GPU Holder",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-ATLA-3EE2"
+  },
+  {
+    "id": 14985,
+    "name": "LOGITECH DESK MAT STUDIO LAVENDER",
+    "category": "Mouse Pad",
+    "proposedSku": "TZ-MOUS-LOGI-DBBA"
+  },
+  {
+    "id": 14504,
+    "name": "Corsair K70 RGB MK.2 SE Rapid Fire Mechanical Gaming Wired Keybo",
+    "category": "Keyboard",
+    "proposedSku": "TZ-KEYB-CORS-D09B"
+  },
+  {
+    "id": 14524,
+    "name": "Logitech Slim Multi Device K580 Keyboard",
+    "category": "Keyboard",
+    "proposedSku": "TZ-KEYB-LOGI-102F"
+  },
+  {
+    "id": 14522,
+    "name": "Logitech Craft Wireless Advanced Keyboard with Creative Input Dial",
+    "category": "Keyboard",
+    "proposedSku": "TZ-KEYB-LOGI-225F"
+  },
+  {
+    "id": 14520,
+    "name": "Logitech K780 Multi-Device Keyboard",
+    "category": "Keyboard",
+    "proposedSku": "TZ-KEYB-LOGI-5B6C"
+  },
+  {
+    "id": 14514,
+    "name": "Logitech MX Master 3S (for Mac)",
+    "category": "Mouse",
+    "proposedSku": "TZ-MOUS-LOGI-B3FC"
+  },
+  {
+    "id": 14637,
+    "name": "Thermal Grizzly Kryonaut, High Performance Thermal Paste",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-THER-9C74"
+  },
+  {
+    "id": 14534,
+    "name": "Tecware Omni Beam Neon LED Strip TWAC-OMNEON",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-TECW-6EEF"
+  },
+  {
+    "id": 14532,
+    "name": "Tecware Orbis LED Strip Magnetic",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-TECW-FD5B"
+  },
+  {
+    "id": 7235,
+    "name": "PlayStation Pulse Explore",
+    "category": "Accessories, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-505F"
+  },
+  {
+    "id": 14027,
+    "name": "Xenoblade Chronicles Definitive Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-XENO-EF17"
+  },
+  {
+    "id": 14479,
+    "name": "InWin CROWN AC120",
+    "category": "PC Fans",
+    "proposedSku": "TZ-PCFA-INWI-5D01"
+  },
+  {
+    "id": 14020,
+    "name": "Vostok Inc",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-VOST-6940"
+  },
+  {
+    "id": 14018,
+    "name": "Vampyr",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-VAMP-1281"
+  },
+  {
+    "id": 14017,
+    "name": "V-Rally 4",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-VRAL-2FB5"
+  },
+  {
+    "id": 13988,
+    "name": "Taiko No Tatsujin Nintendo Switch Version",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TAIK-A158"
+  },
+  {
+    "id": 13945,
+    "name": "Puyo Puyo Tetris",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-PUYO-7D87"
+  },
+  {
+    "id": 13937,
+    "name": "Pokken Tournament DX",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-POKK-13D6"
+  },
+  {
+    "id": 13930,
+    "name": "Octopath Traveler",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-OCTO-42A3"
+  },
+  {
+    "id": 13861,
+    "name": "Hyrule Warriors: Age of Calamity Definitive Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-HYRU-E19A"
+  },
+  {
+    "id": 13847,
+    "name": "Fire Emblem Warriors",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-FIRE-CD20"
+  },
+  {
+    "id": 13843,
+    "name": "Fate Exello Link",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-FATE-3D67"
+  },
+  {
+    "id": 13842,
+    "name": "Farming Simulator 23",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-FARM-765E"
+  },
+  {
+    "id": 14384,
+    "name": "World War Z",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-WORL-A976"
+  },
+  {
+    "id": 14383,
+    "name": "WWE 2K16",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-WWE2-4468"
+  },
+  {
+    "id": 14382,
+    "name": "UFC 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-UFC2-72AC"
+  },
+  {
+    "id": 14381,
+    "name": "The Last Guardian",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEL-686E"
+  },
+  {
+    "id": 14380,
+    "name": "The Elder Scrolls Online: Elsweyr",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEE-12CA"
+  },
+  {
+    "id": 14377,
+    "name": "Sleeping Dogs Definitive Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SLEE-F40B"
+  },
+  {
+    "id": 14378,
+    "name": "Sekiro: Shadows Die Twice",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SEKI-2ABA"
+  },
+  {
+    "id": 14436,
+    "name": "Lian Li Strimer Plus V2 8 Pin (PW8-PV2) - Addressable RGB VGA Power Cable-(No Controller Included)",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-LIAN-60C7"
+  },
+  {
+    "id": 14434,
+    "name": "CORSAIR CL-8930002 RGB LED Lighting PRO Expansion Kit, Black",
+    "category": "PC Accessories",
+    "proposedSku": "TZ-PCAC-CORS-42EE"
+  },
+  {
+    "id": 14375,
+    "name": "Okami HD Remastered",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-OKAM-3C1B"
+  },
+  {
+    "id": 14374,
+    "name": "Nier: Replicant",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-NIER-0B77"
+  },
+  {
+    "id": 14368,
+    "name": "Monster Hunter: Iceborne Master Edition (Steel Book)",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MONS-B926"
+  },
+  {
+    "id": 14369,
+    "name": "Marvel: Avengers",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MARV-0D54"
+  },
+  {
+    "id": 14370,
+    "name": "Marvel Vs Capcom: Infinite",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MARV-6920"
+  },
+  {
+    "id": 14373,
+    "name": "Maneater",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MANE-7CE5"
+  },
+  {
+    "id": 14371,
+    "name": "Mafia III",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MAFI-F3D3"
+  },
+  {
+    "id": 14415,
+    "name": "Cooler Master Masterfan MF120 Halo 120mm Fan",
+    "category": "PC Fans",
+    "proposedSku": "TZ-PCFA-COOL-71C9"
+  },
+  {
+    "id": 14372,
+    "name": "Mad Max",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MADM-D415"
+  },
+  {
+    "id": 8053,
+    "name": "J-Stars Victory VS+",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-JSTA-0AC0"
+  },
+  {
+    "id": 14366,
+    "name": "Injustice 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-INJU-09A4"
+  },
+  {
+    "id": 14364,
+    "name": "Harvest Moon: Light of Hope Special Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HARV-2052"
+  },
+  {
+    "id": 14365,
+    "name": "Hack// G. U. Last Recode",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HACK-E1DE"
+  },
+  {
+    "id": 14363,
+    "name": "Grand Theft Auto 5",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GRAN-1A91"
+  },
+  {
+    "id": 14360,
+    "name": "Dragon Quest Heroes The World Tree's oe and the Blight Below",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DRAG-FC78"
+  },
+  {
+    "id": 14362,
+    "name": "Death Mark: Spirit Hunter",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEAT-6E95"
+  },
+  {
+    "id": 14359,
+    "name": "Darksiders Genesis",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DARK-180E"
+  },
+  {
+    "id": 13972,
+    "name": "Spongebob SquarePants: Battle for Bikini Bottom Rehydrated",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SPON-DDAF"
+  },
+  {
+    "id": 14358,
+    "name": "Cybperpunk 2077",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CYBP-FD71"
+  },
+  {
+    "id": 14355,
+    "name": "Tales of Berseria",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-TALE-6DD8"
+  },
+  {
+    "id": 14354,
+    "name": "Spyro Reignited Trilogy",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-SPYR-88FF"
+  },
+  {
+    "id": 14352,
+    "name": "Persona 5 Strikers",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-PERS-D8F5"
+  },
+  {
+    "id": 14322,
+    "name": "Judge Eyes: Death God's Testament Remastered",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-JUDG-E56A"
+  },
+  {
+    "id": 14388,
+    "name": "Lost Judgment",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-LOST-B6BE"
+  },
+  {
+    "id": 14349,
+    "name": "Dungeons &amp; Dragons: Dark Alliance Day One Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DUNG-93FE"
+  },
+  {
+    "id": 7263,
+    "name": "Marvel: Spider-Man Miles Morales",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MARV-91F7"
+  },
+  {
+    "id": 14340,
+    "name": "The Callist Protocol Day One Edition",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEC-986A"
+  },
+  {
+    "id": 14339,
+    "name": "Tales of Arise",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TALE-AA3D"
+  },
+  {
+    "id": 14335,
+    "name": "Scarlet Nexus",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SCAR-8F65"
+  },
+  {
+    "id": 14330,
+    "name": "Octopath Traveler II",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-OCTO-2EE7"
+  },
+  {
+    "id": 14329,
+    "name": "Override 2 Ultraman Super Mech League Deluxe Edition",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-OVER-99C2"
+  },
+  {
+    "id": 14313,
+    "name": "Final Fantasy XVI",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FINA-83AC"
+  },
+  {
+    "id": 14305,
+    "name": "Crisis Core - Final Fantasy VII Reunion",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CRIS-C672"
+  },
+  {
+    "id": 13986,
+    "name": "Sakura of Rice And Ruin",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SAKU-2BD6"
+  },
+  {
+    "id": 13932,
+    "name": "Okami HD Remaster",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-OKAM-1E54"
+  },
+  {
+    "id": 13927,
+    "name": "Ori And The Will Of The Wisps",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-ORIA-F428"
+  },
+  {
+    "id": 13926,
+    "name": "Ori And The Blind Forest: Definitive Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-ORIA-6DF0"
+  },
+  {
+    "id": 13925,
+    "name": "One Piece: Pirate Warriors 4",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-ONEP-3AB0"
+  },
+  {
+    "id": 13919,
+    "name": "Ni No Kuni: Wrath Of The White Witch",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-NINO-6446"
+  },
+  {
+    "id": 13920,
+    "name": "Ni No Kuni: Revenant Kingdom Prince's Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-NINO-0B9A"
+  },
+  {
+    "id": 13922,
+    "name": "NEO: The World Ends With You",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-NEOT-2E40"
+  },
+  {
+    "id": 13909,
+    "name": "Naruto Shippuden Ultimate Ninja Storm 4 Road to Boruto",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-NARU-9EB8"
+  },
+  {
+    "id": 13906,
+    "name": "My Hero One's Justice 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MYHE-3251"
+  },
+  {
+    "id": 13902,
+    "name": "Moto Racer 4",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MOTO-23CD"
+  },
+  {
+    "id": 13901,
+    "name": "Monstrum",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MONS-6038"
+  },
+  {
+    "id": 13887,
+    "name": "Mega Man Zero/Zx Legacy Collection",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MEGA-B424"
+  },
+  {
+    "id": 13886,
+    "name": "Max: The Curse of Brotherhood",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MAXT-5537"
+  },
+  {
+    "id": 13881,
+    "name": "Mario Golf Super Rush",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-MARI-4A73"
+  },
+  {
+    "id": 13876,
+    "name": "La-Mulana 1 & 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-LAMU-AC68"
+  },
+  {
+    "id": 13875,
+    "name": "Knockout Home Fitness",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-KNOC-7012"
+  },
+  {
+    "id": 13870,
+    "name": "Kill la Kill - IF",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-KILL-303E"
+  },
+  {
+    "id": 13869,
+    "name": "Kemco RPG Omnibus",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-KEMC-087A"
+  },
+  {
+    "id": 13860,
+    "name": "Hyrule Warriors: Age of Calamity",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-HYRU-0C98"
+  },
+  {
+    "id": 13858,
+    "name": "Has Been Heroes",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-HASB-61D8"
+  },
+  {
+    "id": 13857,
+    "name": "Harvestella",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-HARV-289B"
+  },
+  {
+    "id": 13853,
+    "name": "Georifters",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-GEOR-76D6"
+  },
+  {
+    "id": 13852,
+    "name": "Gal Meta - World Tour Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-GALM-B8AA"
+  },
+  {
+    "id": 13849,
+    "name": "Friday The 13th: The Game Ultimate Slasher Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-FRID-D963"
+  },
+  {
+    "id": 13850,
+    "name": "Fatal Frame: Maiden of Black Water",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-FATA-6C08"
+  },
+  {
+    "id": 13839,
+    "name": "Dying Light Platinum Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DYIN-930B"
+  },
+  {
+    "id": 13837,
+    "name": "DragonBall Xenoverse 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DRAG-2BF8"
+  },
+  {
+    "id": 13835,
+    "name": "Dragon Quest Treasures",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DRAG-699F"
+  },
+  {
+    "id": 13836,
+    "name": "Dragon Ball Fighrerz",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DRAG-F4A1"
+  },
+  {
+    "id": 13829,
+    "name": "Diablo III: Eternal Collection",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-DIAB-5C66"
+  },
+  {
+    "id": 13817,
+    "name": "Candle: The Power Of The Flame",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-CAND-7706"
+  },
+  {
+    "id": 13814,
+    "name": "Bloodstained: Ritual Of The Night",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BLOO-DD92"
+  },
+  {
+    "id": 13810,
+    "name": "Bayonetta",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BAYO-A6F8"
+  },
+  {
+    "id": 13813,
+    "name": "Bayonetta Origins: Cereza And The Lost Demon",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BAYO-718D"
+  },
+  {
+    "id": 13808,
+    "name": "Battle Axe",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BATT-5445"
+  },
+  {
+    "id": 13809,
+    "name": "Battle World: Kronos",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BATT-283C"
+  },
+  {
+    "id": 13803,
+    "name": "Astral Chain",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-ASTR-E160"
+  },
+  {
+    "id": 13805,
+    "name": "Bakugan: Champions of Vestroia",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BAKU-BAE0"
+  },
+  {
+    "id": 13806,
+    "name": "Bass Pro Shops The Strike Championship Edition",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-BASS-2FA5"
+  },
+  {
+    "id": 13800,
+    "name": "Assassin's Creed III Remastered",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-ASSA-B589"
+  },
+  {
+    "id": 13947,
+    "name": "Persona 5 Scramble: The Phantom Strikers",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-PERS-02B6"
+  },
+  {
+    "id": 13946,
+    "name": "Paper Mario Origami King",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-PAPE-00E0"
+  },
+  {
+    "id": 13952,
+    "name": "ReZero -Starting Life In Another World- The Prophecy of the Throne",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-REZE-FFBE"
+  },
+  {
+    "id": 13953,
+    "name": "Road To GuangDong",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-ROAD-9BFC"
+  },
+  {
+    "id": 13959,
+    "name": "Shin Megami Tensei III",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SHIN-A54E"
+  },
+  {
+    "id": 13961,
+    "name": "Shining Resonance Refrain",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SHIN-1EE7"
+  },
+  {
+    "id": 13960,
+    "name": "Shin Megami Tensei V",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SHIN-85CF"
+  },
+  {
+    "id": 13968,
+    "name": "Snipperclips Plus: Cut It Out, Together",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SNIP-62AD"
+  },
+  {
+    "id": 13970,
+    "name": "Splatoon 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SPLA-1475"
+  },
+  {
+    "id": 13975,
+    "name": "State of Mind",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-STAT-6D7B"
+  },
+  {
+    "id": 13979,
+    "name": "Super Mario Maker 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SUPE-37B1"
+  },
+  {
+    "id": 13985,
+    "name": "Superbeat Xonic EX",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-SUPE-D8EB"
+  },
+  {
+    "id": 13990,
+    "name": "Tales of Symphonia Remastered",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TALE-2461"
+  },
+  {
+    "id": 13987,
+    "name": "Taiko no Tatsujin Rhythm Festival",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TAIK-950D"
+  },
+  {
+    "id": 13992,
+    "name": "Teslagrad",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TESL-CA55"
+  },
+  {
+    "id": 13996,
+    "name": "The Centennial Case: A Shijima Story",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEC-45EA"
+  },
+  {
+    "id": 13995,
+    "name": "The Alliance Alive HD Remastered",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEA-6CEB"
+  },
+  {
+    "id": 14003,
+    "name": "The Legend of Zelda: Skyward Sword HD",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEL-7691"
+  },
+  {
+    "id": 14007,
+    "name": "The Wonderful 101: Remastered",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEW-05C4"
+  },
+  {
+    "id": 14006,
+    "name": "The Raven Remastered",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THER-C1F6"
+  },
+  {
+    "id": 14010,
+    "name": "Troll And I",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TROL-F048"
+  },
+  {
+    "id": 14009,
+    "name": "Triangle Strategy",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-TRIA-C02A"
+  },
+  {
+    "id": 14014,
+    "name": "The World Ends With You: Final Remix",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEW-8BE2"
+  },
+  {
+    "id": 14013,
+    "name": "The Walking Dead: La Temporada Final",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-THEW-1B0D"
+  },
+  {
+    "id": 14015,
+    "name": "Umihara Karrase: Fresh!",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-UMIH-CBE1"
+  },
+  {
+    "id": 14025,
+    "name": "Xenoblade Chronicles 2",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-XENO-F3B5"
+  },
+  {
+    "id": 13796,
+    "name": "Aeternoblade II",
+    "category": "Nintendo, Pre-Owned Games",
+    "proposedSku": "TZ-NINT-AETE-8964"
+  },
+  {
+    "id": 8110,
+    "name": "World of Final Fantasy",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-WORL-99F8"
+  },
+  {
+    "id": 8111,
+    "name": "Warriors Orochi 3 Ultimate",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-WARR-496F"
+  },
+  {
+    "id": 8109,
+    "name": "Valkyria Chronicles 4",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-VALK-0C2A"
+  },
+  {
+    "id": 8105,
+    "name": "Until Dawn",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-UNTI-D3D4"
+  },
+  {
+    "id": 8108,
+    "name": "Uncharted: The Lost Legacy",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-UNCH-0D8B"
+  },
+  {
+    "id": 8107,
+    "name": "Uncharted 4: A Thief's End",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-UNCH-DA2C"
+  },
+  {
+    "id": 8106,
+    "name": "Uncharted 4: A Theif's End/Horizon Zero Dawn/God of War III Remastered",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-UNCH-3753"
+  },
+  {
+    "id": 8104,
+    "name": "Toukiden 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TOUK-6597"
+  },
+  {
+    "id": 8096,
+    "name": "Tom Clancy's The Division",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TOMC-C0D5"
+  },
+  {
+    "id": 8095,
+    "name": "Tom Clancy's Rainbow Six Siege",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TOMC-0EAF"
+  },
+  {
+    "id": 8094,
+    "name": "Tom Clancy's Ghost Recon Wildlands",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TOMC-DC37"
+  },
+  {
+    "id": 8102,
+    "name": "The Witcher 3: Wild Hunt",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEW-FEE6"
+  },
+  {
+    "id": 8103,
+    "name": "The Talos Principle Deluxe Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THET-8CBA"
+  },
+  {
+    "id": 8098,
+    "name": "The Outerworlds",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEO-7021"
+  },
+  {
+    "id": 8099,
+    "name": "The Order: 1886",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEO-C5A4"
+  },
+  {
+    "id": 8100,
+    "name": "The Idolmaster: Stella Stage",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEI-94CA"
+  },
+  {
+    "id": 8097,
+    "name": "Tearaway Unfolded",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TEAR-D5DD"
+  },
+  {
+    "id": 8101,
+    "name": "The Elder Scrolls Online",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-THEE-A2AF"
+  },
+  {
+    "id": 8092,
+    "name": "Star Wars: Battlefront II",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-STAR-CD67"
+  },
+  {
+    "id": 8093,
+    "name": "Star Wars: Battlefront II Elite Trooper Deluxe Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-STAR-266E"
+  },
+  {
+    "id": 8091,
+    "name": "Star Wars: Battlefront",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-STAR-CA17"
+  },
+  {
+    "id": 8083,
+    "name": "Star Ocean Integrity and Faithlessness",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-STAR-9FBB"
+  },
+  {
+    "id": 8085,
+    "name": "Sinking City",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SINK-3D2B"
+  },
+  {
+    "id": 8086,
+    "name": "Sims 4 Cats & Dogs Bundle",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SIMS-8630"
+  },
+  {
+    "id": 8088,
+    "name": "Shadow Of War Silver Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SHAD-B01F"
+  },
+  {
+    "id": 8087,
+    "name": "Shadow Of War",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SHAD-E6E4"
+  },
+  {
+    "id": 8089,
+    "name": "Shadow of the Colossus",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SHAD-B4D6"
+  },
+  {
+    "id": 8090,
+    "name": "Sebastienloeb Rallyevo",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-SEBA-5C42"
+  },
+  {
+    "id": 8081,
+    "name": "Romance Of The Three Kingdoms XIII",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ROMA-7F7F"
+  },
+  {
+    "id": 8080,
+    "name": "Rise Of The Tomb Raider",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-RISE-FED0"
+  },
+  {
+    "id": 8078,
+    "name": "Resident Evil 5",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-RESI-8901"
+  },
+  {
+    "id": 8077,
+    "name": "Resident Evil 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-RESI-5EE5"
+  },
+  {
+    "id": 8082,
+    "name": "Red Faction Guerrilla Remarstered",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-REDF-DE33"
+  },
+  {
+    "id": 8079,
+    "name": "Rage 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-RAGE-E8AD"
+  },
+  {
+    "id": 8076,
+    "name": "Pure Hold'Em World Poker Championship",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-PURE-C767"
+  },
+  {
+    "id": 8074,
+    "name": "Pillars Complete Eternity Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-PILL-A845"
+  },
+  {
+    "id": 8073,
+    "name": "PES 2017 Winning Eleven",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-PES2-A508"
+  },
+  {
+    "id": 8072,
+    "name": "Persona 5",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-PERS-AF57"
+  },
+  {
+    "id": 8075,
+    "name": "Pro Evolution Soccer 2017",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-PROE-152A"
+  },
+  {
+    "id": 8070,
+    "name": "Owlboy",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-OWLB-469E"
+  },
+  {
+    "id": 8071,
+    "name": "Overcooked! + Overcooked! 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-OVER-56BF"
+  },
+  {
+    "id": 8069,
+    "name": "Overwatch: Origins Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-OVER-34DA"
+  },
+  {
+    "id": 8067,
+    "name": "One Piece Burning Blood",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ONEP-00F1"
+  },
+  {
+    "id": 8064,
+    "name": "Nioh 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-NIOH-DD5D"
+  },
+  {
+    "id": 8066,
+    "name": "Nier: Automata",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-NIER-6C19"
+  },
+  {
+    "id": 8060,
+    "name": "Monster Hunter: World",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MONS-D2B0"
+  },
+  {
+    "id": 8065,
+    "name": "NBA 2K18",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-NBA2-345B"
+  },
+  {
+    "id": 8061,
+    "name": "Monopoly Family Fun Pack",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MONO-BADD"
+  },
+  {
+    "id": 8063,
+    "name": "Metal Gear Solid V: The Phantom Pain",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-META-4547"
+  },
+  {
+    "id": 8062,
+    "name": "Mass Effect Anoromeda",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-MASS-95A3"
+  },
+  {
+    "id": 8059,
+    "name": "Lego Star Wars: The Force Awakens",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-LEGO-D60F"
+  },
+  {
+    "id": 8055,
+    "name": "Kingdoms of Amatur Re-Reckoning",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-KING-8A4F"
+  },
+  {
+    "id": 8056,
+    "name": "Kingdom Hearts III",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-KING-9BA4"
+  },
+  {
+    "id": 8057,
+    "name": "Killzone Shadow Fall",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-KILL-5B17"
+  },
+  {
+    "id": 8058,
+    "name": "Killing Floor 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-KILL-6BA3"
+  },
+  {
+    "id": 8052,
+    "name": "Just Dance 2019",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-JUST-B379"
+  },
+  {
+    "id": 8050,
+    "name": "Just Cause 3",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-JUST-E8D6"
+  },
+  {
+    "id": 8051,
+    "name": "Judgment",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-JUDG-3497"
+  },
+  {
+    "id": 8054,
+    "name": "Jogo Tales of Zestiria",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-JOGO-30E0"
+  },
+  {
+    "id": 8049,
+    "name": "Horizon Zero Dawn/Driveclub/Ratchet & Clank",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HORI-4A78"
+  },
+  {
+    "id": 8047,
+    "name": "Horizon Zero Dawn",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HORI-7528"
+  },
+  {
+    "id": 8048,
+    "name": "Horizon Zero Dawn Complete Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HORI-21D8"
+  },
+  {
+    "id": 8046,
+    "name": "Homefront: The Revolution",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-HOME-874B"
+  },
+  {
+    "id": 8045,
+    "name": "Grand Theft Auto 5 Premium Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GRAN-2E79"
+  },
+  {
+    "id": 8043,
+    "name": "God of War/Horizon Zero Dawn: Complete Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GODO-6B63"
+  },
+  {
+    "id": 8044,
+    "name": "God of War/Horizon Zero Dawn: Complete Edition/The Last of Us Remastered",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GODO-C377"
+  },
+  {
+    "id": 8042,
+    "name": "God of War/Detroit: Become Human/The Last of Us Remastered",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GODO-8804"
+  },
+  {
+    "id": 8041,
+    "name": "God Eater 2 Rage Burst",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-GODE-B996"
+  },
+  {
+    "id": 8040,
+    "name": "For Honor Deluxe Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FORH-FA56"
+  },
+  {
+    "id": 8039,
+    "name": "For Honor",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FORH-4C5A"
+  },
+  {
+    "id": 8038,
+    "name": "Final Fantasy XV Day One Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FINA-B92B"
+  },
+  {
+    "id": 8037,
+    "name": "Final Fantasy VII Remake",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FINA-2C1A"
+  },
+  {
+    "id": 8034,
+    "name": "FIFA 23",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-D685"
+  },
+  {
+    "id": 8033,
+    "name": "FIFA 21 Champions Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-8DA0"
+  },
+  {
+    "id": 8032,
+    "name": "FIFA 20",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-6023"
+  },
+  {
+    "id": 8031,
+    "name": "FIFA 19 Champions Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-0B29"
+  },
+  {
+    "id": 8030,
+    "name": "FIFA 19",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-F758"
+  },
+  {
+    "id": 8029,
+    "name": "FIFA 18",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-2CC2"
+  },
+  {
+    "id": 8028,
+    "name": "FIFA 17 Deluxe Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-B3D0"
+  },
+  {
+    "id": 8026,
+    "name": "FIFA 16 Deluxe Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-5139"
+  },
+  {
+    "id": 8025,
+    "name": "FIFA 16",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-1C3A"
+  },
+  {
+    "id": 8024,
+    "name": "FIFA 15",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-95ED"
+  },
+  {
+    "id": 8023,
+    "name": "Fate Extella: The Umbral Star",
+    "category": "Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FATE-FE7C"
+  },
+  {
+    "id": 8022,
+    "name": "Zorro The Chronicles",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-ZORR-D970"
+  },
+  {
+    "id": 8014,
+    "name": "Waku Waku Sweets",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-WAKU-C434"
+  },
+  {
+    "id": 8012,
+    "name": "Umihara Karrase: Fresh!",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-UMIH-0D89"
+  },
+  {
+    "id": 8011,
+    "name": "Two Point Campus Enrollment Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-TWOP-7953"
+  },
+  {
+    "id": 8009,
+    "name": "The Wonderful 101: Remastered",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEW-8E1E"
+  },
+  {
+    "id": 8000,
+    "name": "The Legends of Heroes: Hajimari No Kiseki 創之軌跡",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-THEL-06E2"
+  },
+  {
+    "id": 7993,
+    "name": "Survivng The Aftermath",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SURV-43BF"
+  },
+  {
+    "id": 7984,
+    "name": "Super Mario Bros Wonder",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SUPE-349E"
+  },
+  {
+    "id": 7983,
+    "name": "Super Dragon Ball Heroes World Mission",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SUPE-6F39"
+  },
+  {
+    "id": 7988,
+    "name": "Super Mario 3D World + Bowser’s Fury",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SUPE-3D17"
+  },
+  {
+    "id": 7981,
+    "name": "Splatoon 3",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SPLA-1B34"
+  },
+  {
+    "id": 7974,
+    "name": "Shin Megami Tensei V",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-SHIN-3EFF"
+  },
+  {
+    "id": 7731,
+    "name": "Valkyria Chronicles 4",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-VALK-C9BC"
+  },
+  {
+    "id": 7966,
+    "name": "Puyo Puyo Tetris 2",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-PUYO-1263"
+  },
+  {
+    "id": 7968,
+    "name": "Prinny Presents Nis Classics Volume 1 Deluxe Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-PRIN-D037"
+  },
+  {
+    "id": 7952,
+    "name": "Ori And The Blind Forest: Definitive Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-ORIA-DFDB"
+  },
+  {
+    "id": 7951,
+    "name": "No More Heroes 3",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NOMO-F273"
+  },
+  {
+    "id": 7947,
+    "name": "New Tales From The Borderlands",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NEWT-F78E"
+  },
+  {
+    "id": 7946,
+    "name": "New Super Mario Bros. U Deluxe",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NEWS-2EE2"
+  },
+  {
+    "id": 7944,
+    "name": "Neogeo Pocket Color Selection Vol 1",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NEOG-8D48"
+  },
+  {
+    "id": 7943,
+    "name": "NBA 2K24 Kobe Bryant Edition",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-NBA2-5A21"
+  },
+  {
+    "id": 7932,
+    "name": "Mario Vs Donkey Kong",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-MARI-3ABA"
+  },
+  {
+    "id": 7929,
+    "name": "Mario Party Superstars",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-MARI-7DA8"
+  },
+  {
+    "id": 7922,
+    "name": "Lego The Incredibles",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-LEGO-3D46"
+  },
+  {
+    "id": 7914,
+    "name": "It Takes Two",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-ITTA-43F5"
+  },
+  {
+    "id": 7912,
+    "name": "Hyrule Warriors: Age of Calmity",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-HYRU-EA2A"
+  },
+  {
+    "id": 7898,
+    "name": "Dragon Ball Fighterz",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-DRAG-616C"
+  },
+  {
+    "id": 7879,
+    "name": "Crash Team Racing: Nitro-Fueled",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-CRAS-C8E5"
+  },
+  {
+    "id": 7869,
+    "name": "Cars 3: Driven To Win",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-CARS-6CB3"
+  },
+  {
+    "id": 7857,
+    "name": "Aeternoblade II",
+    "category": "Brand New Games, Nintendo",
+    "proposedSku": "TZ-BRAN-AETE-42B2"
+  },
+  {
+    "id": 8027,
+    "name": "FIFA 17",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-24DC"
+  },
+  {
+    "id": 13300,
+    "name": " DarkFlash Infinity 8 PWM ARGB 5in1 Fan Pack with Controller (WHITE)",
+    "category": "PC Fans",
+    "proposedSku": "TZ-PCFA-DARK-C6CA"
+  },
+  {
+    "id": 13282,
+    "name": "NZXT KRAKEN Elite RGB BLACK 240mm",
+    "category": "CPU Cooler",
+    "proposedSku": "TZ-CPUC-NZXT-1DF1"
+  },
+  {
+    "id": 7834,
+    "name": "Fate Extella Link",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FATE-EF2B"
+  },
+  {
+    "id": 7824,
+    "name": "Far Cry Primal",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FARC-4973"
+  },
+  {
+    "id": 7823,
+    "name": "Fallout 4",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FALL-C8D0"
+  },
+  {
+    "id": 7822,
+    "name": "Eagle Flight",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-EAGL-B2C0"
+  },
+  {
+    "id": 7816,
+    "name": "Devil May Cry: Definitive Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEVI-1529"
+  },
+  {
+    "id": 7815,
+    "name": "Devil May Cry 5",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEVI-3708"
+  },
+  {
+    "id": 7814,
+    "name": "Dynasty Warriors 7 Empires",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DYNA-DFAA"
+  },
+  {
+    "id": 7813,
+    "name": "Dragon Ball Fighterz",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DRAG-C81A"
+  },
+  {
+    "id": 7812,
+    "name": "Dragon Age Inquisition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DRAG-0878"
+  },
+  {
+    "id": 7806,
+    "name": "Dissidia Final Fantasy NT",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DISS-8221"
+  },
+  {
+    "id": 7805,
+    "name": "Dishonored Definitive Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DISH-EDCF"
+  },
+  {
+    "id": 7804,
+    "name": "Disgaea 5: Alliance of Vengeance",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DISG-3807"
+  },
+  {
+    "id": 7803,
+    "name": "Digimon Story Cyber Sleuth Hacker's Memory",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DIGI-7EF7"
+  },
+  {
+    "id": 7802,
+    "name": "Digimon Story Cyber Sleuth",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DIGI-6AB8"
+  },
+  {
+    "id": 7801,
+    "name": "Deus Ex Mankind Divided",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEUS-6626"
+  },
+  {
+    "id": 7794,
+    "name": "Destiny: The Collection Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEST-C4E8"
+  },
+  {
+    "id": 7793,
+    "name": "Destiny: The Taken King Legendary Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEST-994D"
+  },
+  {
+    "id": 7792,
+    "name": "Destiny 2",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEST-45E6"
+  },
+  {
+    "id": 7790,
+    "name": "Deathwing Enhanced Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEAT-FC30"
+  },
+  {
+    "id": 7789,
+    "name": "Dead or alive 6",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DEAD-7B5D"
+  },
+  {
+    "id": 7782,
+    "name": "Darksiders 3",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-DARK-FA32"
+  },
+  {
+    "id": 7781,
+    "name": "Call of Duty WWII",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CALL-610D"
+  },
+  {
+    "id": 7780,
+    "name": "Call of Duty Infinite Warfare",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CALL-C461"
+  },
+  {
+    "id": 7778,
+    "name": "Code Vein",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-CODE-D09B"
+  },
+  {
+    "id": 7772,
+    "name": "Brothers",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-BROT-CE90"
+  },
+  {
+    "id": 7771,
+    "name": "Blood & Truth",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-BLOO-2408"
+  },
+  {
+    "id": 7770,
+    "name": "Bladestorm: Nightmare",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-BLAD-457F"
+  },
+  {
+    "id": 7769,
+    "name": "Battlefield 4",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-BATT-0BF5"
+  },
+  {
+    "id": 7762,
+    "name": "Batman: Arkham VR",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-BATM-F539"
+  },
+  {
+    "id": 7761,
+    "name": "Atelier Sophie: The Alchemist Of The Mysterious Book",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ATEL-B4DE"
+  },
+  {
+    "id": 7760,
+    "name": "Assassin's Creed: The Ezio Collection",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-CBC9"
+  },
+  {
+    "id": 7759,
+    "name": "Assassin's Creed Valhalla",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-6C9A"
+  },
+  {
+    "id": 7758,
+    "name": "Assassin's Creed Unity",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-3B4E"
+  },
+  {
+    "id": 7752,
+    "name": "Assassin's Creed Syndicate",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-8EA0"
+  },
+  {
+    "id": 7751,
+    "name": "Assassin's Creed Odysessy",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-ACF1"
+  },
+  {
+    "id": 7750,
+    "name": "Assassin's Creed Origins",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-4E94"
+  },
+  {
+    "id": 7749,
+    "name": "Assassin's Creed IV Black Flag",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ASSA-9D54"
+  },
+  {
+    "id": 7742,
+    "name": "Alien Isolation: Nostromo Edition",
+    "category": "Playstation, Playstation 4, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-ALIE-3990"
+  },
+  {
+    "id": 7729,
+    "name": "Transference",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-TRAN-590B"
+  },
+  {
+    "id": 7728,
+    "name": "Toukiden: Kiwami",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-TOUK-FDCF"
+  },
+  {
+    "id": 7722,
+    "name": "Tom Clancy's The Division 2",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-TOMC-6AB6"
+  },
+  {
+    "id": 7717,
+    "name": "Red Faction Remastered Guerrilla",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-REDF-D9A7"
+  },
+  {
+    "id": 7716,
+    "name": "PlayStation VR Demo Disc",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-PLAY-50CD"
+  },
+  {
+    "id": 7699,
+    "name": "Destiny: The Taken King Legendary Edition",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-DEST-2946"
+  },
+  {
+    "id": 7690,
+    "name": "Codevain",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-CODE-F5D2"
+  },
+  {
+    "id": 7685,
+    "name": "Agents Mayhem",
+    "category": "Brand New Games, Playstation, Playstation 4",
+    "proposedSku": "TZ-BRAN-AGEN-A17A"
+  },
+  {
+    "id": 7613,
+    "name": "PlayStation Slim Cover Plates (Disc)",
+    "category": "Accessories, Playstation, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-22EE"
+  },
+  {
+    "id": 7534,
+    "name": "Terminator Resistance",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-TERM-8FDC"
+  },
+  {
+    "id": 7520,
+    "name": "No Man's Sky",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NOMA-A66F"
+  },
+  {
+    "id": 7518,
+    "name": "NBA 2K24",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NBA2-8BCE"
+  },
+  {
+    "id": 7508,
+    "name": "Mortal Kombat 11 Ultimate",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-MORT-BF83"
+  },
+  {
+    "id": 7456,
+    "name": "Way of The Hunter",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-WAYO-03E9"
+  },
+  {
+    "id": 7455,
+    "name": "Vampire: The Masquerade - Swansong",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-VAMP-DD27"
+  },
+  {
+    "id": 7453,
+    "name": "The Lord Of The Rings: Gollum",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEL-8AEC"
+  },
+  {
+    "id": 7444,
+    "name": "The Pathless",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEP-D2C8"
+  },
+  {
+    "id": 7443,
+    "name": "The Falconeer: Warrior Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEF-7FB2"
+  },
+  {
+    "id": 7442,
+    "name": "The Witcher 3: Wild Hunt Complete Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEW-203F"
+  },
+  {
+    "id": 7441,
+    "name": "The Crew: Motorfest Limited Edt.",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-THEC-A746"
+  },
+  {
+    "id": 7386,
+    "name": "NBA 2K23",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-NBA2-2EBB"
+  },
+  {
+    "id": 7346,
+    "name": "In Sound Mind (Deluxe Edition)",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-INSO-D9AA"
+  },
+  {
+    "id": 7338,
+    "name": "Humankind: Heritage Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-HUMA-D510"
+  },
+  {
+    "id": 7334,
+    "name": "Guilty Gear - Strive",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GUIL-7E3F"
+  },
+  {
+    "id": 7324,
+    "name": "Ghostrunner",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-GHOS-9D33"
+  },
+  {
+    "id": 7314,
+    "name": "Endless Dungeon Day One Edition",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-ENDL-5D08"
+  },
+  {
+    "id": 7313,
+    "name": "Doki Doki Literature Club Plus!",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-DOKI-57C6"
+  },
+  {
+    "id": 7289,
+    "name": "Balan Wonderworld",
+    "category": "Brand New Games, Playstation, Playstation 5",
+    "proposedSku": "TZ-BRAN-BALA-2850"
+  },
+  {
+    "id": 7265,
+    "name": "WWE 2K22",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-WWE2-A27F"
+  },
+  {
+    "id": 7264,
+    "name": "Tony Hawk's Pro Skater 1+2",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-TONY-E43B"
+  },
+  {
+    "id": 7262,
+    "name": "FIFA 23",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-F3F9"
+  },
+  {
+    "id": 7261,
+    "name": "FIFA 22",
+    "category": "Playstation, Playstation 5, Pre-Owned Games",
+    "proposedSku": "TZ-PLAY-FIFA-3CFA"
+  },
+  {
+    "id": 7237,
+    "name": "PlayStation VR 2 Sense Controller Charging Station",
+    "category": "Accessories, Playstation 5",
+    "proposedSku": "TZ-ACCE-PLAY-2472"
+  }
+]

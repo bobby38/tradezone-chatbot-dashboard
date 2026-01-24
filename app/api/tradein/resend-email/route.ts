@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { submitTradeInLead } from "@/lib/trade-in/service";
+import {
+  getTradeInLeadDetail,
+  submitTradeInLead,
+} from "@/lib/trade-in/service";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 /**
  * Resend email notification for an existing trade-in lead
@@ -7,27 +11,39 @@ import { submitTradeInLead } from "@/lib/trade-in/service";
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { leadId } = await request.json();
 
     if (!leadId) {
       return NextResponse.json(
         { error: "leadId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    console.log(`[Resend Email] Attempting to resend email for lead: ${leadId}`);
+    console.log(
+      `[Resend Email] Attempting to resend email for lead: ${leadId}`,
+    );
 
-    // Re-submit the lead with notify=true to trigger email
+    const existingLead = await getTradeInLeadDetail(leadId);
+
+    // Re-submit the lead with notify=true to trigger email (do not force payout for resend)
     const { lead, emailSent } = await submitTradeInLead({
       leadId,
-      summary: "Email resend request",
       notify: true, // Force email send
-      status: undefined, // Don't change status
+      status: existingLead.status || "new", // Preserve current status
+      allowMissingPayout: true,
+      emailContext: "resend",
     });
 
     if (emailSent) {
-      console.log(`[Resend Email] ✅ Email successfully sent for lead ${leadId}`);
+      console.log(
+        `[Resend Email] ✅ Email successfully sent for lead ${leadId}`,
+      );
       return NextResponse.json({
         success: true,
         message: "Email sent successfully",
@@ -51,7 +67,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to resend email",
         message: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

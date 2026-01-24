@@ -1,7 +1,7 @@
 #!/bin/bash
 # Quick test runner for local development
 
-export CHATKIT_API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+export CHATKIT_API_KEY="YOUR_CHATKIT_API_KEY"
 export API_BASE_URL="http://localhost:3001"
 
 echo "🧪 Running tests against: $API_BASE_URL"

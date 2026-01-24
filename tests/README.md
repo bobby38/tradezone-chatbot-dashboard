@@ -174,7 +174,7 @@ Received: true
 Expected: latency < 5000
 Received: 6723
 ```
-**Cause:** Still using gpt-4.1 instead of gpt-4o-mini
+**Cause:** Still using gpt-4.1 instead of gpt-4.1-mini
 **Fix:** Check `lib/tools/vectorSearch.ts` model configuration
 
 **High token usage (>10K):**

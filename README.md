@@ -224,7 +224,7 @@ X-API-Key: tzck_widget_xxxxxxxxxxxxxxxxxxxxx
 {
   "response": "Here are our gaming laptops...",
   "sessionId": "session-123",
-  "model": "gpt-4o-mini",
+  "model": "gpt-4.1-mini",
   "usage": {
     "promptTokens": 150,
     "completionTokens": 80,
@@ -264,13 +264,13 @@ WooCommerce order data.
 | Rate limiting | None | 20/min | **~90%** spam blocked |
 | Budget control | None | $10/day | **~75%** cost reduction |
 
-### Expected Costs (GPT-4o-mini)
+### Expected Costs (GPT-4.1-mini)
 
 | Traffic | Requests/Day | Cost/Day | Cost/Month |
 |---------|--------------|----------|------------|
-| Low | 100 | $0.03 | $1 |
-| Medium | 1,000 | $0.30 | $9 |
-| High | 10,000 | $3.00 | $90 |
+| Low | 100 | ~$0.07 | ~$2 |
+| Medium | 1,000 | ~$0.68 | ~$20 |
+| High | 10,000 | ~$6.80 | ~$204 |
 
 **Daily budget limit:** $10 (configurable)
 
@@ -319,7 +319,7 @@ tradezone-chatbot-dashboard/
 
 - **Framework:** Next.js 14
 - **Database:** Supabase (PostgreSQL)
-- **AI:** OpenAI GPT-4o-mini
+- **AI:** OpenAI GPT-4.1-mini
 - **Analytics:** Google Analytics 4, Search Console
 - **E-commerce:** WooCommerce API
 - **Styling:** Tailwind CSS

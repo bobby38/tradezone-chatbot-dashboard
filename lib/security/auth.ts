@@ -107,6 +107,110 @@ function getValidApiKeys(): string[] {
 }
 
 /**
+ * Get server-only API keys (do NOT include NEXT_PUBLIC keys).
+ */
+function getServerApiKeys(): string[] {
+  const keys: string[] = [];
+
+  if (process.env.CHATKIT_API_KEY) {
+    keys.push(process.env.CHATKIT_API_KEY);
+  }
+
+  if (process.env.CHATKIT_SERVER_KEY) {
+    keys.push(process.env.CHATKIT_SERVER_KEY);
+  }
+
+  if (process.env.CHATKIT_ADMIN_KEY) {
+    keys.push(process.env.CHATKIT_ADMIN_KEY);
+  }
+
+  if (process.env.CHATKIT_ADDITIONAL_SERVER_KEYS) {
+    const additionalKeys = process.env.CHATKIT_ADDITIONAL_SERVER_KEYS.split(",")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+    keys.push(...additionalKeys);
+  }
+
+  return keys;
+}
+
+/**
+ * Verify a server-only API key (no public keys allowed).
+ */
+export function verifyServerApiKey(request: Request): AuthResult {
+  const apiKey = request.headers.get("x-api-key");
+  const authHeader = request.headers.get("authorization");
+  const validKeys = getServerApiKeys();
+
+  if (!validKeys.length) {
+    return {
+      authenticated: false,
+      error: "Server API key not configured",
+    };
+  }
+
+  if (apiKey && validKeys.includes(apiKey)) {
+    return {
+      authenticated: true,
+      userId: "server-api-key-user",
+      source: "server-api-key",
+    };
+  }
+
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+    if (validKeys.includes(token)) {
+      return {
+        authenticated: true,
+        userId: "server-bearer-token-user",
+        source: "server-bearer-token",
+      };
+    }
+  }
+
+  return {
+    authenticated: false,
+    error: "Invalid or missing server API key",
+  };
+}
+
+/**
+ * Verify admin access (server key preferred; allowed origins as fallback).
+ * Set CHATKIT_ADMIN_REQUIRE_KEY=true to enforce server-key-only access.
+ */
+export function verifyAdminAccess(request: Request): AuthResult {
+  const requireKey = process.env.CHATKIT_ADMIN_REQUIRE_KEY === "true";
+
+  if (!isAuthRequired()) {
+    return {
+      authenticated: true,
+      userId: "dev-user",
+      source: "dev-mode",
+    };
+  }
+
+  const serverAuth = verifyServerApiKey(request);
+  if (serverAuth.authenticated) return serverAuth;
+
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const hasOrigin = Boolean(origin || referer);
+
+  if (!requireKey && hasOrigin && verifyOrigin(request)) {
+    return {
+      authenticated: true,
+      userId: "origin-allowed-user",
+      source: "origin-allowlist",
+    };
+  }
+
+  return {
+    authenticated: false,
+    error: serverAuth.error || "Unauthorized",
+  };
+}
+
+/**
  * Check if auth is required for this endpoint
  * Can disable in development or for specific routes
  */

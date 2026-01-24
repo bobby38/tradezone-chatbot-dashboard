@@ -31,6 +31,38 @@ async function main() {
       intent: "retail",
       expected: 900,
     },
+    // Trade-up scenarios (source device trade-in + target retail)
+    {
+      query: "trade-in PS4 Pro 1TB",
+      intent: "trade_in",
+      expected: 100,
+    },
+    // PS5 trade-in tests (critical fix validation)
+    {
+      query: "trade-in PS5",
+      intent: "trade_in",
+      expected: 400, // Matches PS5 Slim 1TB Disc (most common/best match)
+    },
+    {
+      query: "trade-in PS5 Fat 825GB Disc",
+      intent: "trade_in",
+      expected: 350,
+    },
+    {
+      query: "trade-in PS5 Slim 1TB Disc",
+      intent: "trade_in",
+      expected: 400,
+    },
+    {
+      query: "trade-in PS5 Pro 2TB Digital",
+      intent: "trade_in",
+      expected: 700,
+    },
+    {
+      query: "trade-in PlayStation 5",
+      intent: "trade_in",
+      expected: 400, // Matches PS5 Slim (NOT $60 PS4 price - that was the bug!)
+    },
   ];
 
   let failures = 0;

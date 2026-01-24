@@ -43,10 +43,17 @@ function normalizeLeadHash(value: string) {
   // - chat-client_..._<timestamp>
   // into a stable hash based on the client id portion.
   const match = normalized.match(
-    /^(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
+    /^(chat-)?(?:text-|voice-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
   );
   if (match && match[2]) {
     return match[2];
+  }
+
+  const prefixedMatch = normalized.match(
+    /^(?:text-|voice-)(chat-)?(client_[a-z0-9]+_[a-z0-9]+)(?:_\d+)?$/i,
+  );
+  if (prefixedMatch && prefixedMatch[2]) {
+    return prefixedMatch[2];
   }
 
   return normalized;
@@ -245,6 +252,8 @@ export interface TradeInSubmitInput {
   summary?: string | null;
   status?: string;
   notify?: boolean;
+  allowMissingPayout?: boolean;
+  emailContext?: "initial" | "resend" | "retry";
 }
 
 export async function ensureTradeInLead(
@@ -257,6 +266,46 @@ export async function ensureTradeInLead(
 
   if (!leadHash) {
     throw new TradeInValidationError("Lead hash or session id is required");
+  }
+
+  if (params.sessionId && !params.forceNew) {
+    const { data: sessionLead, error: sessionLeadError } = await supabaseAdmin
+      .from("trade_in_leads")
+      .select("id, status, created_at")
+      .eq("session_id", params.sessionId)
+      .not("status", "in", "(completed,closed,archived,cancelled)")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sessionLeadError) {
+      throw new Error(
+        `Trade-in lead lookup by session_id failed: ${sessionLeadError.message}`,
+      );
+    }
+
+    if (sessionLead) {
+      if (params.maxAgeMinutes && sessionLead.created_at) {
+        const ageMs =
+          Date.now() - new Date(sessionLead.created_at as string).getTime();
+        const maxMs = params.maxAgeMinutes * 60 * 1000;
+        if (ageMs > maxMs) {
+          // Stale lead for this session_id: allow creating a fresh one
+        } else {
+          return {
+            leadId: sessionLead.id,
+            status: sessionLead.status,
+            created: false,
+          };
+        }
+      } else {
+        return {
+          leadId: sessionLead.id,
+          status: sessionLead.status,
+          created: false,
+        };
+      }
+    }
   }
 
   const leadHashCandidates = new Set<string>();
@@ -314,6 +363,49 @@ export async function ensureTradeInLead(
       ? params.initialMessage.slice(0, 500)
       : null,
   };
+
+  // If we're creating a fresh lead (new trade), reuse known contact info from the most recent lead
+  // with the same lead_hash. This prevents the customer from retyping name/email/phone.
+  // The chatbot can still confirm the values in-chat before submitting.
+  try {
+    const { data: previousLead } = await supabaseAdmin
+      .from("trade_in_leads")
+      .select("contact_name, contact_phone, contact_email, created_at")
+      .eq("lead_hash", leadHash)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (previousLead) {
+      const candidateName =
+        typeof previousLead.contact_name === "string"
+          ? previousLead.contact_name.trim()
+          : null;
+      const candidatePhone =
+        typeof previousLead.contact_phone === "string"
+          ? previousLead.contact_phone.trim()
+          : null;
+      const candidateEmail =
+        typeof previousLead.contact_email === "string"
+          ? previousLead.contact_email.trim()
+          : null;
+
+      if (hasMeaningfulValue(candidateName)) {
+        (insertPayload as any).contact_name = candidateName;
+      }
+      if (isValidPhone(candidatePhone)) {
+        (insertPayload as any).contact_phone = candidatePhone;
+      }
+      if (isValidEmail(candidateEmail)) {
+        (insertPayload as any).contact_email = candidateEmail;
+      }
+    }
+  } catch (reuseContactError) {
+    console.warn(
+      "[TradeIn] Failed to reuse contact info for new lead",
+      reuseContactError,
+    );
+  }
 
   const { data: createdLead, error: insertError } = await supabaseAdmin
     .from("trade_in_leads")
@@ -794,10 +886,8 @@ export async function submitTradeInLead(
     brand: "device brand",
     model: "device model",
     condition: "device condition",
-    contact_name: "contact name",
     contact_phone: "contact phone number (at least 8 digits)",
     contact_email: "contact email (valid format)",
-    preferred_payout: "preferred payout method",
   };
 
   if (!lead.brand?.trim()) {
@@ -809,19 +899,15 @@ export async function submitTradeInLead(
   if (!lead.condition?.trim()) {
     missingFields.push("condition");
   }
-  if (!hasMeaningfulValue(lead.contact_name)) {
-    missingFields.push("contact_name");
-  }
   if (!isValidPhone(lead.contact_phone)) {
     missingFields.push("contact_phone");
   }
   if (!isValidEmail(lead.contact_email)) {
     missingFields.push("contact_email");
   }
-  // Trade-ups do not require payout preference (top-up is paid separately).
-  if (!isTradeUpLead && !lead.preferred_payout?.trim()) {
-    missingFields.push("preferred_payout");
-  }
+
+  // Payout preference is optional for trade-ins (staff can follow up if missing).
+  // Trade-ups also do not require payout preference (top-up is paid separately).
 
   if (missingFields.length > 0) {
     const missingList = missingFields
@@ -918,6 +1004,7 @@ export async function submitTradeInLead(
     console.log("[TradeIn] Sending email notification...");
     console.log("[TradeIn] Form data:", JSON.stringify(formData, null, 2));
 
+    let emailErrorMessage: string | null = null;
     try {
       emailSent = await EmailService.sendFormNotification({
         type: "trade-in",
@@ -930,13 +1017,8 @@ export async function submitTradeInLead(
     } catch (emailError) {
       console.error("[TradeIn] Email send failed:", emailError);
       emailSent = false;
-
-      // Surface email failure back to caller so LiveKit/Realtime can tell the user
-      const errorMessage =
+      emailErrorMessage =
         emailError instanceof Error ? emailError.message : String(emailError);
-      throw new Error(
-        `Trade-in saved but email notification failed: ${errorMessage}`,
-      );
     }
 
     await supabaseAdmin.from("trade_in_actions").insert({
@@ -946,6 +1028,8 @@ export async function submitTradeInLead(
         type: "trade-in",
         status: emailSent ? "sent" : "failed",
         summary: input.summary || null,
+        context: input.emailContext || "initial",
+        error: emailSent ? null : emailErrorMessage,
         timestamp: new Date().toISOString(),
       },
     });
@@ -994,6 +1078,44 @@ export function getSupabaseAdminClient() {
   return supabaseAdmin;
 }
 
+type EmailStatus = "sent" | "failed" | "not_sent";
+
+function deriveEmailStatus(actions?: Array<any>) {
+  const normalized = Array.isArray(actions) ? actions : [];
+  const emailActions = normalized
+    .filter((action) =>
+      ["email_sent", "email_failed"].includes(action.action_type),
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).valueOf() - new Date(a.created_at).valueOf(),
+    );
+
+  const latest = emailActions[0];
+  const lastSent = emailActions.find(
+    (action) => action.action_type === "email_sent",
+  );
+  const lastResent = emailActions.find(
+    (action) =>
+      action.action_type === "email_sent" &&
+      ["resend", "retry"].includes(action.payload?.context),
+  );
+  const lastFailed = emailActions.find(
+    (action) => action.action_type === "email_failed",
+  );
+
+  let status: EmailStatus = "not_sent";
+  if (latest?.action_type === "email_sent") status = "sent";
+  if (latest?.action_type === "email_failed") status = "failed";
+
+  return {
+    email_status: status,
+    email_last_sent_at: lastSent?.created_at ?? null,
+    email_last_resent_at: lastResent?.created_at ?? null,
+    email_last_failed_at: lastFailed?.created_at ?? null,
+  };
+}
+
 export async function listTradeInLeads(
   options: {
     status?: string;
@@ -1006,7 +1128,8 @@ export async function listTradeInLeads(
     .select(
       `id, created_at, updated_at, status, channel, brand, model, storage, condition,
        range_min, range_max, preferred_payout, preferred_fulfilment,
-       contact_name, contact_phone, contact_email`,
+       contact_name, contact_phone, contact_email,
+       trade_in_actions (action_type, created_at, payload)`,
     )
     .order("created_at", { ascending: false });
 
@@ -1032,10 +1155,37 @@ export async function listTradeInLeads(
     throw new Error(`Failed to load trade-in leads: ${error.message}`);
   }
 
-  return data;
+  return (data || []).map((lead: any) => ({
+    ...lead,
+    ...deriveEmailStatus(lead.trade_in_actions),
+  }));
 }
 
 export async function getTradeInLeadDetail(leadId: string) {
+  // First check if the lead exists and if there are duplicates
+  const { data: checkData, error: checkError } = await supabaseAdmin
+    .from("trade_in_leads")
+    .select("id")
+    .eq("id", leadId);
+
+  if (checkError) {
+    console.error("[TradeIn] Error checking lead existence:", checkError);
+    throw new Error(`Failed to check lead: ${checkError.message}`);
+  }
+
+  if (!checkData || checkData.length === 0) {
+    throw new Error(`Lead not found with ID: ${leadId}`);
+  }
+
+  if (checkData.length > 1) {
+    console.error(
+      `[TradeIn] CRITICAL: Found ${checkData.length} leads with same ID: ${leadId}`,
+    );
+    throw new Error(
+      `Database integrity error: duplicate leads found for ID ${leadId}`,
+    );
+  }
+
   const { data, error } = await supabaseAdmin
     .from("trade_in_leads")
     .select(
@@ -1047,6 +1197,7 @@ export async function getTradeInLeadDetail(leadId: string) {
     .single();
 
   if (error || !data) {
+    console.error("[TradeIn] Error fetching lead detail:", error);
     throw new Error(`Lead not found: ${error?.message ?? "unknown"}`);
   }
 
@@ -1068,6 +1219,7 @@ export async function getTradeInLeadDetail(leadId: string) {
     ...data,
     trade_in_media: media,
     trade_in_actions: actions,
+    ...deriveEmailStatus(actions),
   };
 }
 

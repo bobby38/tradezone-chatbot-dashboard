@@ -388,24 +388,24 @@ NODE_ENV=development
 ### Current Settings
 
 - **Max tokens**: 800 (reduced from 2000)
-- **Model**: gpt-4o-mini (most cost-effective)
+- **Model**: gpt-4.1-mini (balanced cost/performance)
 - **Temperature**: 0.7 (balanced)
 
 ### Estimated Costs
 
-**GPT-4o-mini pricing:**
-- Input: $0.15 per 1M tokens
-- Output: $0.60 per 1M tokens
+**GPT-4.1-mini pricing:**
+- Input: $0.40 per 1M tokens
+- Output: $1.60 per 1M tokens
 
 **Typical request:**
 - Prompt: ~500 tokens
 - Completion: ~300 tokens
-- Cost: ~$0.0003 per request
+- Cost: ~$0.0007 per request
 
 **At scale:**
-- 1,000 requests/day: ~$0.30/day
-- 10,000 requests/day: ~$3/day
-- 100,000 requests/day: ~$30/day
+- 1,000 requests/day: ~$0.70/day
+- 10,000 requests/day: ~$7/day
+- 100,000 requests/day: ~$70/day
 
 ### Optimization Tips
 

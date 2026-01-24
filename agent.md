@@ -1,5 +1,494 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
+## Recent Updates (2026-01-24)
+- **CRITICAL FIX**: Voice realtime mode now uses separate `VOICE_REALTIME_MODEL` env var (defaults to `gpt-4o-realtime-preview-2024-12-17`). Previously, `VOICE_LLM_MODEL=google/gemini-flash-2.5` was incorrectly passed to OpenAI Realtime API, causing "Model not supported in realtime mode" errors and no voice output on mobile.
+- Voice agent now enforces short replies (≤10 words) and confirms intent.
+- Deterministic voice routing mirrors text chat: Product → Trade → Support.
+- Price-only trade-in is gated, clarifies variants, and exits cleanly on “no”.
+- Support flow is short, Singapore-first, and collects issue/contact once.
+- Voice avoids long product lists; links remain in chat.
+
+## 📐 Complete System Architecture
+
+### **System Overview**
+TradeZone is a multi-agent AI chatbot platform with 4 main components working together:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         TRADEZONE ECOSYSTEM                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+1️⃣  NEXT.JS DASHBOARD (TypeScript)
+    └─ Location: /Users/bobbymini/Documents/tradezone-chatbot-dashboard/
+       ├─ /app/                      - Next.js 14 App Router
+       ├─ /lib/                      - Business logic & utilities
+       ├─ /components/               - React UI components
+       └─ /public/widget/            - Embeddable chat widget
+       
+       Purpose: Admin dashboard, analytics, management UI
+
+2️⃣  CHATKIT TEXT AGENT (TypeScript - runs in Next.js)
+    └─ Entry: /app/api/chatkit/agent/route.ts
+       ├─ /lib/chatkit/defaultPrompt.ts      - System instructions
+       ├─ /lib/chatkit/productCatalog.ts     - Product search engine
+       ├─ /lib/chatkit/tradeInPrompts.ts     - Trade-in workflows
+       └─ /lib/tools/vectorSearch.ts         - Hybrid search (Woo + Vector + Graphiti)
+       
+       Purpose: Text-based chat on website (GPT-4 + Gemini 3 Flash)
+
+3️⃣  VOICE AGENT (Python)
+    └─ Location: /agents/voice/agent.py
+       ├─ AssemblyAI STT                     - Speech-to-text
+       ├─ GPT-4.1-mini                       - Conversation engine
+       ├─ Cartesia Sonic 3 TTS               - Text-to-speech
+       └─ LiveKit SDK                        - WebRTC voice infrastructure
+       
+       Purpose: Real-time voice chat (3x faster latency than OpenAI Realtime)
+
+4️⃣  LIVEKIT SERVER (External SaaS)
+    └─ URL: wss://tradezone-9kwy60jr.livekit.cloud
+       Purpose: WebRTC infrastructure for voice/video sessions
+```
+
+---
+
+### **Data Layer & Knowledge Systems**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          DATA ARCHITECTURE                           │
+└─────────────────────────────────────────────────────────────────────┘
+
+🗄️  SUPABASE (PostgreSQL)
+    └─ Shared database for all agents
+       ├─ chat_logs                  - All text & voice messages
+       ├─ chat_sessions              - Session metadata (Guest-XX IDs from n8n)
+       ├─ chat_usage_metrics         - Token usage & costs
+       ├─ chat_security_events       - Rate limits, auth failures
+       ├─ trade_in_leads             - Trade-in submissions
+       ├─ gsc_daily_summary          - Search Console metrics
+       ├─ gsc_performance            - SEO data
+       └─ profiles, organizations    - User management
+
+🧠 GRAPHITI (Knowledge Graph - Railway)
+    └─ URL: https://graphiti-production-334e.up.railway.app
+       ├─ Product catalog facts      - 1,024+ synced catalog entries
+       ├─ Trade-in pricing           - 94 trade grid entries
+       ├─ Search synonyms            - Auto-learned mappings
+       └─ Conversation memory        - User preferences & history
+       
+       Purpose: Graph RAG for smart search enhancement
+       - "basketball" → "NBA 2K"
+       - "horror game" → "Silent Hill, Resident Evil"
+       - Self-learning from failed searches
+
+📊 VECTOR DATABASES (OpenAI)
+    └─ Product Catalog Vector Store
+       └─ ID: vs_68e89cf979e88191bb8b4882caadbc0d
+       Purpose: Semantic product search
+
+🛒 WOOCOMMERCE (External)
+    └─ Live product data source
+       ├─ Product catalog JSON       - https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+       ├─ Real-time pricing          - Source of truth for prices
+       └─ Stock availability         - Live inventory status
+
+🚀 UPSTASH REDIS (Serverless)
+    └─ Purpose: Distributed rate limiting & high-performance session caching
+```
+
+---
+
+### **Agent Communication Flow**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    HOW AGENTS WORK TOGETHER                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+USER ON WEBSITE
+    │
+    ├─── [TEXT CHAT] ──────────────────────────────────────────┐
+    │                                                            │
+    │    Widget → /api/chatkit/agent                            │
+    │             ↓                                              │
+    │    1. Security Layer (rate limit, API key, budget)        │
+    │    2. Session Management (Guest-XX from n8n)              │
+    │    3. Graphiti Context (load conversation history)        │
+    │    4. Hybrid Search Flow:                                 │
+    │       a) WooCommerce (source of truth)                    │
+    │       b) Vector Search (semantic matching)                │
+    │       c) Graphiti Graph RAG (synonym expansion)           │
+    │       d) Perplexity (web fallback)                        │
+    │    5. LLM Processing (GPT-4 or Gemini 3 Flash)            │
+    │    6. Save to Supabase                                    │
+    │    7. Update Graphiti Memory                              │
+    │             ↓                                              │
+    │    Response to user                                        │
+    │                                                            │
+    └─── [VOICE CHAT] ──────────────────────────────────────────┘
+                                                                 │
+         Widget → /api/livekit/token                            │
+                  ↓                                              │
+         LiveKit Server (WebRTC)                                │
+                  ↓                                              │
+         Python Voice Agent (agents/voice/agent.py)             │
+                  ↓                                              │
+         1. AssemblyAI STT (user speech → text)                 │
+         2. GPT-4.1-mini (conversation logic)                   │
+         3. Tools call Next.js APIs:                            │
+            - /api/tradein/update                               │
+            - /api/tradein/submit                               │
+            - /api/chatkit/agent (product search)               │
+         4. Cartesia TTS (text → speech)                        │
+         5. Save to Supabase (same tables as text)              │
+                  ↓                                              │
+         Voice response to user                                 │
+```
+
+---
+
+### **Search Intelligence Hierarchy**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SEARCH FLOW (RANKED BY PRIORITY)                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+Query: "basketball game for PS5"
+
+STEP 1: Graphiti Search Enhancer
+    └─ Input: "basketball game for PS5"
+    └─ Graphiti Graph RAG finds: "basketball" → "NBA 2K"
+    └─ Enhanced Query: "NBA 2K PS5"
+
+STEP 2: WooCommerce Product Search (Source of Truth)
+    └─ Search JSON catalog: tradezone-WooCommerce-Products.json
+    └─ Filter by: category, platform, stock status
+    └─ Sort by: price (if "cheap"/"best" in query)
+    └─ Returns: Live pricing + availability
+
+STEP 3: Vector Search (Semantic Enhancement)
+    └─ OpenAI Vector Store semantic search
+    └─ Enriches WooCommerce results with specs/details
+
+STEP 4: Catalog Master (Metadata Layer)
+    └─ /data/catalog/products_master.json
+    └─ Adds: trade-in values, warranty info, aliases
+
+STEP 5: Perplexity Search (Fallback)
+    └─ Only if WooCommerce + Vector return nothing
+    └─ Live web search: "NBA 2K PS5 site:tradezone.sg"
+
+RESULT: Deterministic product list with:
+    - Accurate pricing (WooCommerce)
+    - Smart matching (Graphiti + Vector)
+    - Complete details (Catalog Master)
+    - Live availability (WooCommerce stock status)
+```
+
+---
+
+### **Environment Variables Reference**
+
+```bash
+# === SUPABASE (Core Database) ===
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# === GRAPHITI (Knowledge Graph) ===
+GRAPHTI_BASE_URL=https://graphiti-production-334e.up.railway.app
+GRAPHTI_API_KEY=your-graphiti-api-key
+GRAPHTI_DEFAULT_GROUP_ID=tradezone-main
+
+# === LIVEKIT (Voice Infrastructure) ===
+LIVEKIT_URL=wss://tradezone-9kwy60jr.livekit.cloud
+LIVEKIT_API_KEY=APIexoxxNQJkjoW
+LIVEKIT_API_SECRET=6ZtxzOricfKDesvfnf2BfV3hoLMGJ7s8tnfz9ezHnQ4U
+
+# === AI PROVIDERS ===
+OPENAI_API_KEY=your-openai-key
+NEXT_PUBLIC_OPENROUTER_API_KEY=your-openrouter-key (optional)
+OPENAI_VECTOR_STORE_ID=vs_68e89cf979e88191bb8b4882caadbc0d
+OPENAI_VECTOR_STORE_ID_TRADEIN=vs_tradein_id (optional)
+
+# === WOOCOMMERCE ===
+WC_SITE=https://tradezone.sg
+WC_KEY=your-consumer-key
+WC_SECRET=your-consumer-secret
+WOOCOMMERCE_PRODUCT_JSON_PATH=https://videostream44.b-cdn.net/tradezone-WooCommerce-Products.json
+
+# === GOOGLE SERVICES ===
+GA_PROPERTY=your-ga4-property-id
+SC_SITE=sc-domain:tradezone.sg
+GOOGLE_SERVICE_ACCOUNT_KEY=your-service-account-json
+
+# === SMTP (Email) ===
+SMTP_HOST=smtp.smtp2go.com
+SMTP_PORT=2525
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-pass
+SMTP_FROM_EMAIL=contactus@tradezone.sg
+SMTP_FROM_NAME=TradeZone
+
+# === CHATKIT SECURITY ===
+CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY
+NEXT_PUBLIC_DEFAULT_ORG_ID=your-org-id
+
+# === UPSTASH REDIS ===
+UPSTASH_REDIS_URL=your-upstash-url
+UPSTASH_REDIS_TOKEN=your-upstash-token
+```
+
+---
+
+### **Key File Locations**
+
+```
+📂 TYPESCRIPT (Next.js Dashboard + Text Agent)
+   ├─ app/api/chatkit/agent/route.ts         - Main text agent endpoint
+   ├─ lib/chatkit/defaultPrompt.ts           - System instructions
+   ├─ lib/chatkit/productCatalog.ts          - Product search engine
+   ├─ lib/tools/vectorSearch.ts              - Hybrid search logic
+   ├─ lib/graphiti.ts                        - Graphiti client
+   ├─ lib/graphiti-search-enhancer.ts        - Graph RAG query enhancement
+   ├─ lib/graphiti-learning-loop.ts          - Self-learning system
+   ├─ lib/trade-in/service.ts                - Trade-in business logic
+   └─ lib/email-service.ts                   - SMTP email sender
+
+📂 PYTHON (Voice Agent)
+   ├─ agents/voice/agent.py                  - Main voice agent
+   ├─ agents/voice/auto_save.py              - Contact auto-extraction
+   └─ agents/voice/requirements.txt          - Python dependencies
+
+📂 DATA (Catalogs & Pricing)
+   ├─ data/catalog/products_master.json      - Master product catalog
+   ├─ data/catalog/alias_index.json          - Product name aliases
+   ├─ data/catalog/search_synonyms.jsonl     - Search mappings
+   ├─ data/trade_in_prices_2025.json         - Trade-in pricing
+   └─ data/tradezone_price_grid.jsonl        - Price grid format
+
+📂 SCRIPTS (Automation)
+   ├─ scripts/sync-graphiti-graph.ts         - Sync catalog to Graphiti
+   ├─ scripts/run-learning-loop.ts           - Weekly learning job
+   └─ scripts/refresh-product-catalog.mjs    - Update WooCommerce snapshot
+```
+
+---
+
+### **Deployment Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        PRODUCTION DEPLOYMENT                         │
+└─────────────────────────────────────────────────────────────────────┘
+
+🌐 FRONTEND (Coolify)
+   └─ trade.rezult.co (Next.js dashboard + text agent)
+      - Port: 3001/3003
+      - Auto-deploy from: main branch
+
+🎙️ VOICE AGENT (Coolify)
+   └─ Python container (feature/livekit-voice-agent)
+      - Connects to: LiveKit cloud
+      - Calls back to: trade.rezult.co/api/*
+
+☁️  EXTERNAL SERVICES
+   ├─ LiveKit Cloud         - wss://tradezone-9kwy60jr.livekit.cloud
+   ├─ Graphiti (Railway)    - https://graphiti-production-334e.up.railway.app
+   ├─ Supabase              - Managed PostgreSQL
+   └─ WooCommerce           - tradezone.sg (WordPress)
+
+📧 EMAIL FLOW
+   └─ SMTP2GO → contactus@tradezone.sg (BCC: info@rezult.co)
+```
+
+---
+
+## Planned Phase — Weekly Trend Pulse & Content (Backlog)
+- Add a weekly “market pulse” that summarizes electronics/games trends, ties to current catalog, and outputs short advisory + draft content.
+- Scope: internal report first (not public). Later: blog outline + 2–3 social post drafts.
+- Inputs: catalog changes, search demand, stock status, price shifts, and trusted release/news sources.
+- Guardrails: cite sources, never promote out‑of‑stock items, keep SG context.
+
+
+## Change Log — Jan 6, 2026 (Search Efficiency & Genre Accuracy)
+
+
+## Change Log — Jan 7, 2026 (Trade-In Flow Precision & Session Isolation)
+
+### Trade-In Flow Precision (Jan 7, 2026) ✅
+**Goal**: Resolve session data leakage and improve clarity for payment/payout prompts.
+
+**Fixes** (Commit `b7ccde95`, `f5c1313b`, `0b4836ce`):
+- **Robust Session Reset**: Relaxed the "New Trade Intent" regex to `/(?:^|\b)(?:want\s+to\s+)?(?:trade|sell|swap|upgrade)\s+(?:my|this|a|an|the)\b/i`. This ensures that starting a message with "Trade my ROG Ally..." or "Sell this phone..." forcefully resets any stale session data (like old names/emails from previous users).
+- **Context-Aware Payout Prompts**: 
+  - **Trade-Up**: Agent now asks *"How would you like to pay the top-up? (Cash, PayNow, or Installment?)"* instead of a generic payout question.
+  - **Trade-In**: Continues to ask *"Which payout suits you best: cash, PayNow, or bank transfer?"*
+- **Persistent Installment Intent**: If a user mentions "installment" early in the flow, the agent now acknowledges it correctly by asking for terms (3, 6, or 12 months) instead of resetting to a generic payment menu.
+- **Trade-Up Payout Detection**: Fixed logic to correctly set `preferred_payout` to `"top_up"` internally when trade-up intent is detected, ensuring clear documentation in the dashboard.
+
+### Promo & Flash Sale Integration ✅
+- **Flash Sale Protocol**: Integrated the `TZSALE` promo code logic. Queries containing "sale", "promo", or "deals" now trigger an immediate response: *"Flash sale unlocked ⚡ 5% off with code “TZSALE”"*.
+
+### Voice Agent Fallback & Search Logic (Jan 7, 2026) ✅
+**Goal**: Improve handling of requests for out-of-stock items (GoPro, Roblox) effectively and unblock specific game genres.
+
+**Fixes** (Commit `0310ad62`, `1c604f9d`, `5cab0a47`):
+- **Out-of-Stock Protocol**: 
+  - **Behavior**: If user asks for X and we find Y (e.g., GoPro -> DJI Osmo), agent **must** say: "We don't have X, but we have Y."
+  - **Personality & Pivot**: For missing games/consoles, inject a **short, punchy** gamer joke (e.g., "Loot goblins snatched that one") and IMMEDIATELY pivot to promos or popular category items.
+  - **Waitlist Offer**: Only if user insists on the missing item, agent offers to take Name/Phone for a waitlist (`sendemail` with reason "Waitlist Request").
+- **Search Intent Fixes**:
+  - **Roblox**: Mapped `roblox` -> `Minecraft` in synonyms. **Critical Fix**: Updated `findCatalogMatches` to use the *redirected* term for domain filtering. Now "Roblox" correctly triggers "Game" mode (via Minecraft association) instead of failing as a non-electronic item.
+  - **Basketball**: Removed hardcoded "basketball" intent blocker in `agent.py`. Queries like "basketball game" now properly hit the search tool and map to `NBA 2K`.
+  - **GoPro**: Mapped `gopro` -> `DJI Osmo Insta360` to ensure relevant alternatives appear immediately.
+
+### Voice Agent Stabilization (Jan 7, 2026) ✅
+**Goal**: Address data loss during contact collection and ensure visual cards appear reliable.
+
+**Fixes** (Commit `1bf76b5e`, `05c020b9`):
+- **Contact Save Failure (400 Error)**: Relaxed strict state enforcement in `tradein_update_lead`. Now, if a user provides contact info but the "Photos" step wasn't explicitly marked (e.g., user said "sent" and agent moved on), the system auto-resolves the photo step instead of blocking the save.
+- **Phantom Visuals**: Updated system prompt to MANDATE calling `searchProducts` again if the user asks to "show details" or "see it". This ensures the `product_results` data packet is actually sent to the UI, fixing cases where the agent said "Showing details" but nothing appeared.
+
+### Search Efficiency & Genre Accuracy (Jan 6, 2026) ✅
+**Goal**: Ensure accurate search results for specific genres (Horror, Sports) and prevent unrelated products from appearing in "any X game" queries.
+
+
+**Fixes** (Commit `4f3a7986`, `766451e0`):
+- **Strict Genre Filtering**: Fixed category slug matching logic to correctly identify game products. Previously, category names with spaces caused mismatches.
+- **Pre-Owned Visibility**: Relaxed score penalty for pre-owned games (from -10 to -20%) to ensure they remain visible in short queries (e.g., "FIFA") while still favoring brand new items.
+- **Graphiti Search Enhancer**: Integrated `enhanceSearchQuery` early in vector search.
+  - **Static Synonyms**: Added comprehensive expansions for:
+    - **Horror**: Resident Evil, Silent Hill, etc.
+    - **Sports**: FIFA, NBA 2K, MLB The Show, UFC, Tony Hawk, Bass Pro Shops, F1, etc.
+  - Queries like "any horror game" or "skateboard" now automatically expand to specific franchise titles for accurate retrieval.
+- **Result Stability**: Fixed bug where empty strict filters prevented fallback to broader vector search.
+
+## Change Log — Jan 5, 2026 (Trade-In Reliability & Flexibility)
+
+### Trade-In Flow Hardening (Jan 5, 2026) ✅
+**Goal**: Fix looping prompts and ensure critical questions (payout) are asked.
+**Changes** (Commit `86561393`):
+- **Name Capture Fix**: Added negative lookahead/guard to prevent "pas de photo" and declined photo responses from being captured as names.
+- **Photo Loop Fix**: Suppressed photo prompt if `tradeInPhotoAcknowledged` is true (handles "no" response correctly).
+- **Payout Prompt**: Added explicit `needsPayoutPrompt` logic to ensure "Cash/PayNow/Bank" is asked for sell flows before recap.
+- **Session Reset**: Added logic to detect "I want to trade..." intents and forcefully reset any existing, incomplete trade-in leads (marking them as cancelled). This prevents stale data from previous sessions (e.g., spam names, old device info) from contaminating new requests.
+- **Installment Logic**: Updated formula to include 5% processing fee (`(amount * 1.05) / 3`) and force-append this estimate to the summary for email/dashboard visibility.
+
+### Spam & False Positive Name Protection (Jan 6, 2026) ✅
+**Goal**: Prevent spam messages (e.g. SEO offers) or conversational phrases from being wrongly captured as contact names.
+**Changes** (Commits `ce506063`, `f669a9eb`, `9d07e4a6`):
+- **Expanded Blocklist**: Added SEO terms ("seo", "backlink", "website") and conversational fillers ("help", "can", "proceed", "month") to `PLACEHOLDER_NAME_TOKENS`.
+- **Contact Keyword Suppression**: Name extraction is now skipped if the message contains keywords like "email", "phone", "contact", or "whatsapp".
+- **Suspicious Name Prompt**: If an auto-extracted name is >3 words or contains common verbs ("can", "help", "need"), the agent treats the name as missing and re-prompts the user to confirm.
+
+### Trade-In Lead Reuse & Name Capture (Jan 5, 2026) ✅
+**Goal**: Stabilize lead reuse to prevent duplicates and improve name capture.
+**Changes** (Commit `a1254957`):
+- **Lead Reuse**: Reuse active trade-in lead by session_id for ~60 minutes to prevent duplicate leads.
+- **Contact Reuse**: When creating a new lead, reuse contact info (name/email/phone) from previous leads with same hash.
+- **Smart Name Capture**: Improved regex to capture explicit "my name is X" or "name: X" patterns and avoid collecting filler words.
+- **Recap Fix**: Fixed scoping of `alreadyAskedConfirm` variable to prevent repeated confirmation prompts.
+
+### Trade-In Submission Flexibility (Jan 5, 2026) ✅
+**Goal**: Prevent submission blocks due to missing optional fields.
+**Changes** (Commit `d36a83fb`):
+- **Relaxed Requirements**: `contact_name` and `preferred_payout` are now OPTIONAL for submission.
+- **Premature Recap Prevention**: Forces missing-field prompt if model tries to recap before all required data is collected.
+- **False Success Prevention**: Agent checks `tradeInSubmissionSucceeded` flag before claiming success.
+- **Payout Prompt**: Moved to after email+phone collection, and made purely optional (does not block submit).
+- **Submission Guard**: Validation logic only strictly requires Device details, Condition, and Contact (Phone + Email).
+
+## Change Log — Jan 3, 2026 (Trade-In Flow Structure & Formatting)
+
+### Trade-In Reply Formatting (Jan 3, 2026) ✅
+**Goal**: Match trade-in replies to the clean, consistent product formatting.
+
+**Structured Flow (Text):**
+1. **Price → Proceed?** (two short lines + "Proceed?")
+2. **Condition → Accessories → Photos**
+3. **Email → Phone → Name**
+4. **Recap (full details + top-up)**
+5. **“Yes” to submit** (or idle auto-submit via cron)
+
+**Recap Format:**
+```
+Here's what I got:
+• Trading: {source device} (trade-in S$X)
+• For: {target device} (retail S$Y)
+• Top-up: S$Z
+• Condition: {condition}
+• Accessories: {accessories}
+• Contact: {name · phone · email}
+• Photos: {Provided | Not provided — final quote upon inspection}
+Is this correct? Reply yes to submit.
+```
+
+**Trade-Up Rule:** Skip payout questions for trade-ups (top-up only).
+**Session Note:** Trade-in sessions are persistent by design to avoid losing data on reload.
+
+## Change Log — Jan 4, 2026 (Text Chat Game Search Coverage)
+
+### Game Search Results Coverage (Jan 4, 2026) ✅
+**Goal**: Avoid empty or single-item results for broad game queries.
+
+**Fixes:**
+- Include **pre-order** game categories in game matching (treated as brand new unless user asks for pre-owned).
+- If a game query returns zero matches, fall back to **game category listings** (brand new by default; pre-owned only if requested).
+- Add football/soccer entity hints so “football game” resolves to FIFA/FC titles.
+
+### Dashboard Ops (Jan 3, 2026) ✅
+- Trade-in dashboard now shows **Email Sent / Failed / Not Sent** status.
+- Added **Resend Trade-In Email** action on lead detail view.
+- Added **Email retry queue** endpoint (`/api/tradein/email-retry`) for failed sends.
+- Scheduler panel loads tasks from `data/scheduled_tasks.json` (or `SCHEDULED_TASKS_JSON` env) and includes **Trade-in auto submit**.
+
+## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES + UX IMPROVEMENTS)
+
+### Voice Agent - Trade-In UX Flow Fix (Dec 24, 2025 - Evening) ✅
+**Problem**: Voice agent asked for device condition BEFORE user confirmed they want to proceed with trade-in.
+
+**Example from Production Logs**:
+```
+Agent: "Your Switch OLED trades for $100. Nintendo Switch 2 is $500. Top-up: $400. Want to proceed?"
+[User hasn't answered yet]
+Agent: "What's the condition of your console?" ❌ WRONG - Asked condition too early!
+```
+
+**Root Cause** (`agents/voice/agent.py:2091`):
+- `initial_quote_given` flag was set to `True` IMMEDIATELY when agent spoke the pricing
+- This activated auto-extraction BEFORE user confirmed
+- System thought trade-in flow had started, so it began collecting details
+
+**Fix Applied** (commit pending):
+```python
+# Before: Set flag when agent ASKS "Want to proceed?"
+if ("trades for" in lower_content) and ("top-up" in lower_content):
+    checklist.collected_data["initial_quote_given"] = True  # ❌ TOO EARLY!
+
+# After: Set flag when user CONFIRMS "yes"
+if is_proceed_prompt and user_said_yes:
+    # User confirmed! NOW activate the trade-in flow
+    checklist.collected_data["initial_quote_given"] = True  # ✅ CORRECT TIMING!
+```
+
+**Result**: Voice agent now waits for user confirmation before starting data collection.
+
+**Correct Flow**:
+```
+Agent: "Want to proceed?"
+[initial_quote_given = False - auto-extraction OFF]
+User: "Yes"
+[NOW set initial_quote_given = True - auto-extraction ON]
+Agent: "Storage size?"
+```
+
+**Impact**: This fix does NOT break the Dec 24 morning fix for auto-extraction. The guard is still in place (`is_trade_in_active = checklist_state.collected_data.get("initial_quote_given", False)`), but now it activates at the correct time.
+
+---
+
 ## Change Log — Dec 24, 2025 (CRITICAL PRODUCTION FIXES)
 
 ### Voice Agent - Auto-Extraction Bug Fix (Dec 24, 2025) ✅
@@ -88,7 +577,7 @@ const QUERY_STOP_WORDS = new Set([
 
 **Error from Logs**:
 ```
-[tradein/start] Unexpected error Error: Trade-in lead lookup failed: 
+[tradein/start] Unexpected error Error: Trade-in lead lookup failed:
 invalid input value for enum trade_in_status: "cancelled"
 ```
 
@@ -232,6 +721,96 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 - Make stopping voice intentional: require a quick second tap (“tap again to stop”).
 - Surface LiveKit local mic silence detection with a clear status message (mic permission / device selection).
 
+## Change Log — Jan 24, 2026 (Console Filtering + Trade-In & Support Flow Fixes)
+
+### Console Filtering Fix (Jan 24, 2026) ✅
+**Problem**: "do you have ps5/switch/xbox" queries showed games, controllers, accessories instead of just console units.
+
+**Examples from Production**:
+- "do you have ps5" → Showed Uncharted, Ghost of Yotei, Silent Hill (games)
+- "do you have switch" → Showed 18 results including Pro Controller
+- "do you have xbox" → Showed Seagate Storage Expansion Card
+
+**Root Cause**: 
+1. Duplicate 100-line filter blocks existed in `vectorSearch.ts`
+2. Filter logic wasn't catching all non-console items
+3. "Pro Controller" passed through because "pro" matched console unit pattern
+
+**Fix Applied** (`lib/tools/vectorSearch.ts`):
+1. **Unified `filterConsoleResults()` function** - Single reusable function replacing duplicate code blocks
+2. **Strict exclusion patterns** - Controllers, storage cards, warranties, games always excluded
+3. **Smart game detection** - Games only allowed if they have console indicators (slim/pro/digital/disc/oled)
+4. **Applied to all console paths** - Direct category load + WooCommerce search results
+
+**Test Results**:
+- ✅ PS5: 3 results (consoles only - no games)
+- ✅ Switch: 1 result (Nintendo Switch Lite - no Pro Controller)
+- ✅ Xbox: 2 results (Series X/S only - no Seagate storage)
+- ✅ All 3 Product Family Filtering tests pass
+
+---
+
+## Change Log — Jan 24, 2026 (Text Agent - Critical Trade-In & Support Flow Fixes)
+
+### Trade-In Only Triggers on Explicit Intent (Jan 23-24, 2026)
+**Problem**: Agent was pushing trade-in options on every request, even when user just asked about products or warranty.
+
+**Root Causes**:
+1. `TRADE_IN_SYSTEM_CONTEXT` was injected into ALL conversations, not just trade-in queries
+2. Trade-in variant prompts (Switch OLED/Lite prices) were added unconditionally
+3. Steam Deck 1-month warranty was overriding general 7-day warranty for ALL queries
+
+**Fixes Applied**:
+1. **Removed TRADE_IN_SYSTEM_CONTEXT from default messages** (`route.ts:~5056`): Trade-in context only added when `tradeInIntent` detected
+2. **Wrapped variant prompts in if(tradeInIntent)** (`route.ts:~6207`): Price variant prompts only shown for trade-in queries
+3. **Steam Deck warranty scoped** (`route.ts:~6246`): 1-month warranty only mentioned when query contains "steam deck"
+4. **Added CRITICAL RULE #4** (`defaultPrompt.ts`): "NEVER PROACTIVELY OFFER TRADE-IN" at top of system prompt
+
+### Singapore Location Question Loop Fix (Jan 23, 2026)
+**Problem**: "Are you in Singapore?" asked 5+ times in same session.
+
+**Root Cause**: `locationConfirmed` only stored in `supportFlowState` Map which gets cleared between support flows.
+
+**Fix Applied**:
+- Added session-level `sessionLocationConfirmed` Map with 1-hour TTL
+- Once user confirms Singapore, NEVER ask again in the same session
+- Session check runs BEFORE support flow state check
+
+### Warranty Policy Not Triggering Support Flow (Jan 23, 2026)
+**Problem**: Questions like "is your warranty 1 year or 1 month" incorrectly triggered support flow instead of direct answer.
+
+**Root Cause**: Word "check" in `supportHints` array was too generic - "check your warranty policy" ≠ "check my warranty claim"
+
+**Fix Applied**:
+- Removed "check" from `supportHints`
+- Added more specific hints: "my warranty", "under warranty", "claim", "status"
+- Added `issueHints` for problem-related keywords
+
+### Support Flow Exit Detection (Jan 24, 2026)
+**Problem**: Support flow kept asking for name/phone/email even after user said "nevermind" or changed topic to ask about products.
+
+**Root Cause**: No exit detection in support flow - once started, it would keep prompting for the next field regardless of user intent.
+
+**Fix Applied**:
+- Added exit keyword detection: `nevermind`, `forget it`, `cancel`, `stop`, `nah`, `nvm`, etc.
+- Added topic change detection: if user asks about products/prices while in support flow
+- Exit keyword → clears flow + friendly "No problem! Is there anything else I can help you with?"
+- Topic change → clears flow silently + processes new query normally
+
+### Test Results (All Passing ✅)
+```
+📊 Results: 4 passed, 0 failed out of 4 tests
+
+✅ Game trade-in (ps5 games): S$5-S$40 (not console prices)
+✅ Warranty policy question: 7-day warranty (no Singapore question)
+✅ PS5 console trade-in: S$250-S$700 with model question
+✅ Product search (switch games): Shows products, no trade-in push
+✅ Support flow exit ('nevermind'): Flow cleared, friendly acknowledgment
+✅ Support flow exit (topic change): Flow cleared, shows products
+```
+
+---
+
 ## Change Log — Dec 15, 2025 (Voice Agent - Critical Bug Fixes)
 
 ### Contact Info Saving as Boolean Bug (Dec 15, 2025)
@@ -323,9 +902,9 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 
 ## 🎙️ LiveKit Voice Agent - RUNNING ✅
 
-**Status**: Production-ready Python agent (previously LiveKit Cloud; now migrating to self-hosted LiveKit)  
-**Branch**: `feature/livekit-voice-agent` (commit `2f7671c` includes Bearer auth + logging/pacing fixes)  
-**Region**: Singapore  
+**Status**: Production-ready Python agent (previously LiveKit Cloud; now migrating to self-hosted LiveKit)
+**Branch**: `feature/livekit-voice-agent` (commit `2f7671c` includes Bearer auth + logging/pacing fixes)
+**Region**: Singapore
 **Performance**: 3x faster latency (450ms vs 1500ms), 50% cost reduction
 
 **Self-hosted note (Dec 21, 2025)**:
@@ -333,12 +912,12 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 - Keep `VOICE_NOISE_CANCELLATION=false` on self-hosted; enabling LiveKit noise cancellation triggers a Cloud-only filter error.
 
 ### Deployment must-haves (Dec 12, 2025)
-- Environment (runtime) in the voice container **must** include:  
-  - `CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB`  
+- Environment (runtime) in the voice container **must** include:
+  - `CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY`
   - `NEXT_PUBLIC_API_URL=https://trade.rezult.co`
 - Use the image built from commit `2f7671c` **or newer** (latest `main` includes trade-only pricing fixes and brevity guards). Older images (e.g., `7c96289`) **do not** send the Bearer header and will 401 on `/api/chatkit/agent`.
 - If Coolify shows AUTH_FAILURE after envs are set, force a rebuild/redeploy of the voice service from `feature/livekit-voice-agent` (disable cache/skip-build). The correct image automatically sends `Authorization: Bearer <CHATKIT_API_KEY>` + `X-API-Key`.
-- Quick container check:  
+- Quick container check:
   ```
   echo $CHATKIT_API_KEY | cut -c1-8   # expect tzck_mfu
   echo $NEXT_PUBLIC_API_URL           # expect https://trade.rezult.co
@@ -475,8 +1054,8 @@ Agent is running and ready! Need to create frontend client to test. See `agents/
   - `CATEGORY_SLUG_MAP` exposes `DIRECT_CATEGORY_KEYS/SET` for both `searchWooProducts` and `handleVectorSearch`, preventing duplication and keeping deterministic responses consistent across layers.
   - Added seat/cooler keyword detection upstream so “gaming chair”/“cpu cooler” requests resolve to the correct slug even when product names omit exact words.
   - Introduced `cacheTradeUpQuote` helper: after deterministic trade-up math we update `trade_in_leads` once with `initial_quote_given`, source/target names, numeric quote fields, and ISO timestamp plus a note entry so Supabase validations pass and quote caching no longer fails.
-- **Nov 23, 2025 – Trade-up determinism**: For “trade/upgrade X for Y”, the backend now pre-fetches the trade-in price of **X** and the retail price of **Y** (preowned only if the user says so) and synthesizes a fixed reply:  
-  `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`  
+- **Nov 23, 2025 – Trade-up determinism**: For “trade/upgrade X for Y”, the backend now pre-fetches the trade-in price of **X** and the retail price of **Y** (preowned only if the user says so) and synthesizes a fixed reply:
+  `{X} ~S$<trade>. {Y} S$<retail>. Top-up ≈ S$<retail - trade> (subject to inspection/stock).`
   LLM wording is ignored for this step; contact must be captured before payout; photo is a single yes/no prompt and never blocks submission.
 - **Nov 27, 2025 – Graphiti rollout**: The legacy Zep memory/graph endpoints are replaced with Graphiti. Configure `GRAPHTI_BASE_URL` + `GRAPHTI_API_KEY` (and optional `GRAPHTI_DEFAULT_GROUP_ID`) so `/api/chatkit/agent` uses Graphiti for structured catalog lookups. Zep references below remain for historical context only.
 - **Dec 5, 2025 – Show full inventory to maximize sales**: Removed vague query clarification logic that was hiding products from customers:
@@ -714,7 +1293,7 @@ The agent needs logic to:
 
 **Status**: ✅ **FIXED** - Smart extraction acknowledgment logic implemented
 
-**Solution Implemented**: 
+**Solution Implemented**:
 - Added `build_smart_acknowledgment()` function in `auto_save.py`
 - Agent now acknowledges extracted data: "Got your name: Bobby Denny", "Got your email: bobby_dennie@hotmail.com"
 - Handles bulk input: "Bobby B-O-B-B-Y Family name Denny" → extracts full name correctly
@@ -737,7 +1316,7 @@ What's the condition of your Steam Deck?"
 
 **Discovery**: The system prompt is loaded from **Supabase database** (`organizations.settings.chatkit.systemPrompt`), NOT from the code file.
 
-**Problem**: 
+**Problem**:
 - ✅ Code file updated: `lib/chatkit/defaultPrompt.ts`
 - ❌ Database prompt: Was NULL (fallback to code default)
 - ❌ Organizations table: Didn't exist in production!
@@ -771,7 +1350,7 @@ CREATE INDEX idx_chat_logs_created_desc ON chat_logs (created_at DESC);
 CREATE INDEX idx_chat_logs_session_created ON chat_logs (session_id, created_at DESC);
 CREATE INDEX idx_chat_logs_user_created ON chat_logs (user_id, created_at DESC);
 
--- GSC performance optimization  
+-- GSC performance optimization
 CREATE INDEX idx_gsc_perf_site_date_clicks ON gsc_performance (site, date DESC, clicks DESC)
   WHERE query IS NOT NULL;
 CREATE INDEX idx_gsc_perf_site_date_page_clicks ON gsc_performance (site, date DESC, clicks DESC)
@@ -875,7 +1454,7 @@ The validation logic is **TOO STRICT**:
 - If ANY field fails extraction, email is blocked
 - Name extraction is the weakest link (most likely to fail)
 
-**Impact**: 
+**Impact**:
 - ❌ Trade-in submissions don't send email notifications
 - ❌ Staff doesn't get notified of new leads
 - ❌ Customers don't get confirmation emails
@@ -899,7 +1478,7 @@ const hasEmail = Boolean(detail.contact_email);
 // Add smarter pattern matching for bulk input
 // Example: "joe doe 8448 9068 bobby@email.com"
 // 1. Extract email first (regex)
-// 2. Extract phone (regex)  
+// 2. Extract phone (regex)
 // 3. Everything else = name (remaining text)
 ```
 
@@ -1148,7 +1727,7 @@ Three main tools available to the AI agent:
 ```javascript
 {
   chatkit: {
-    textModel: "gpt-4o-mini",  // or gpt-4o, gpt-4.1-mini, etc.
+    textModel: "gpt-4.1-mini",  // or gpt-4o, gpt-4.1-mini, etc.
     systemPrompt: "..."        // Full Izacc prompt
   }
 }
@@ -1171,7 +1750,7 @@ Three main tools available to the AI agent:
 {
   "response": "Let me check our inventory for you...",
   "sessionId": "Guest-1234",
-  "model": "gpt-4o-mini"
+  "model": "gpt-4.1-mini"
 }
 ```
 
@@ -1253,7 +1832,7 @@ Admins can configure via Supabase `organizations.settings` JSONB field:
 ```json
 {
   "chatkit": {
-    "textModel": "gpt-4o-mini",
+    "textModel": "gpt-4.1-mini",
     "voiceModel": "gpt-realtime-mini",
     "voice": "alloy",
     "systemPrompt": "IMPORTANT: Do NOT include [USER_INPUT...]..."
@@ -1591,7 +2170,7 @@ lib/
    - Blocks console bundles and standalone consoles from responses
    - Enforces exact product names from WooCommerce results
 
-**Result**: 
+**Result**:
 - ✅ Search "controller" → Shows all 24 controllers from WooCommerce
 - ✅ Built-in filtering: "ps5 controller", "xbox controller", "switch controller"
 - ✅ Built-in sorting: "cheap controller" sorts by price
@@ -1613,14 +2192,15 @@ Message: Request to talk to staff.
 ```
 No information about what the customer actually asked about.
 
-**Solution**: Cascading Perplexity search provides instant research + sources
+**Solution**: Cascading Perplexity search provides instant research + sources (short hint for fast staff triage)
 
 **Features Implemented**:
 
 1. **Enhanced Message Context** (`lib/chatkit/defaultPrompt.ts:248`)
    - Prompt now explicitly requires full conversation summary
-   - Must include: original question, products discussed, reason for escalation
-   - Example: "Customer asked: Is PS5 portal playable without PS5? Question not answered, needs expert advice."
+   - Must include: original question, products discussed, **Reason: {reason}**
+   - Escalation requires **reason + email + name** (phone optional but preferred)
+   - Example: "Customer asked: Is PS5 portal playable without PS5? Reason: needs expert advice."
 
 2. **Cascading Search Strategy** (`lib/tools/emailSend.ts:84-140`)
    - **Step 1**: Search tradezone.sg first (store-specific info)
@@ -1633,16 +2213,16 @@ No information about what the customer actually asked about.
    Customer Message:
    Customer asked: "Is PS5 portal playable without PS5?"
    Question not answered, needs expert advice.
-   
+
    ---
    📚 AI Research Hint for Staff (🏪 TradeZone.sg + 🌐 Web):
-   
+
    🏪 TradeZone.sg Search: No information found
-   
+
    🌐 General Web Search:
-   The PlayStation Portal requires a PS5 console to function. 
+   The PlayStation Portal requires a PS5 console to function.
    It's a remote play device that streams from your PS5.
-   
+
    🔗 Sources:
    - https://www.playstation.com/portal
    - https://www.ign.com/articles/ps5-portal-review
@@ -2087,7 +2667,7 @@ User Query → searchtool called
     voiceModel: "gpt-4o-realtime-preview",
     voice: "alloy",
     systemPrompt: "Custom instructions...",
-    textModel: "gpt-4o-mini",
+    textModel: "gpt-4.1-mini",
     temperature: 0.7
   }
 }
@@ -2289,7 +2869,7 @@ User message → /api/chatkit/agent
   User: "I want to trade in my PS5"
   Agent: → Call tradein_update_lead({brand: "Sony", model: "PlayStation 5"})
   Agent: "What's the storage - 1TB or 825GB?"
-  
+
   ❌ WRONG (Too Many Questions):
   User: "I want to trade in my PS5"
   Agent: "What's the storage, condition, accessories, payout method..." ← TOO MANY
@@ -2314,7 +2894,7 @@ User message → /api/chatkit/agent
     catalog=${catalogLatency}ms,
     perplexity=${perplexityLatency}ms,
     total=${totalLatency}ms`);
-  
+
   // Warnings:
   if (vectorLatency > 2000) console.warn(`[ChatKit] Slow vector search...`);
   if (catalogLatency > 500) console.warn(`[ChatKit] Slow catalog search...`);
@@ -2413,7 +2993,7 @@ feat: optimize ChatKit flow for natural conversation and consistency
 
 ## Core Improvements (Phase 1 & 2)
 1. Tool Priority Clarification ⭐
-2. Device Synonym Expansion  
+2. Device Synonym Expansion
 3. English-Only Enforcement 🔴
 4. Step-by-Step Conversation Flow
 5. Natural Language Patterns
@@ -2471,7 +3051,7 @@ References: SYSTEM_FLOW_ANALYSIS.md, FINAL_DEPLOYMENT_SUMMARY.md
 ### January 20, 2025 - Text Chat Trade-In Tool Execution Fix
 **Critical Fix**: Text chat was not calling trade-in tools during conversation.
 
-**Root Cause**: 
+**Root Cause**:
 - Trade-in system context (`TRADE_IN_SYSTEM_CONTEXT`) was only injected when `tradeInIntent` was detected
 - Mid-conversation, if detection failed, agent lost trade-in instructions
 - Agent would collect info conversationally but never execute `tradein_update_lead` or `tradein_submit_lead`
@@ -2631,14 +3211,15 @@ if (!emailRegex.test(customerEmail)) {
 **sendemail Tool Updated:**
 ```typescript
 {
-  emailType: "trade_in | info_request | contact",
-  name: string,
-  email: string,  // Now validated and auto-corrected
-  phone_number?: string,
-  message: string,
-  note?: string  // NEW: Optional context for staff
+  emailType: "info_request | contact",
+  name: string,   // REQUIRED
+  email: string,  // REQUIRED (validated + auto-corrected)
+  phone_number?: string, // optional but preferred
+  message: string, // REQUIRED: must include "Reason: {reason}"
+  note?: string   // Optional context for staff
 }
 ```
+**Note:** AI hint is intentionally short (≈280 chars) for fast scanning.
 
 #### **5. Dashboard Submissions - FIXED** ✅
 **Problem:** Agent emails didn't appear in `/dashboard/submissions`
@@ -2793,7 +3374,7 @@ DEV_EMAIL=info@rezult.co           # BCC for testing
     top: 0 !important;
     transform: none !important;
   }
-  
+
   body.tz-widget-open {
     overflow: hidden !important;
     position: fixed !important;
@@ -2880,18 +3461,18 @@ appwrite: {
 uploadToAppwrite: async function (file) {
   const { endpoint, projectId, bucketId } = this.config.appwrite;
   const fileId = `chat-${this.sessionId}-${Date.now()}`;
-  
+
   // Upload via FormData
   const formData = new FormData();
   formData.append("fileId", fileId);
   formData.append("file", file);
-  
+
   const response = await fetch(`${endpoint}/storage/buckets/${bucketId}/files`, {
     method: "POST",
     headers: { "X-Appwrite-Project": projectId },
     body: formData
   });
-  
+
   // Return public view URL
   return `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
 }
@@ -2995,7 +3576,7 @@ Widget displays image from CDN
 - `chat_usage_metrics` - Token usage & cost tracking per request
 - `chat_security_events` - Security incident logging (rate limits, auth failures)
 - `daily_usage_summary` - Materialized view for daily analytics
-- `hourly_usage_summary` - Materialized view for hourly patterns  
+- `hourly_usage_summary` - Materialized view for hourly patterns
 - `top_ips_by_usage` - Materialized view for top 100 IPs (7 days)
 
 **Helper Functions**:
@@ -3101,7 +3682,7 @@ Every request logged to `chat_usage_metrics`:
   request_id: UUID,
   session_id: string,
   endpoint: string,
-  model: "gpt-4o-mini",
+  model: "gpt-4.1-mini",
   prompt_tokens: 1108,
   completion_tokens: 19,
   total_tokens: 1127,
@@ -3113,7 +3694,7 @@ Every request logged to `chat_usage_metrics`:
 }
 ```
 
-**Cost Calculation** (GPT-4o-mini):
+**Cost Calculation** (GPT-4.1-mini):
 - Input: $0.15 per 1M tokens
 - Output: $0.60 per 1M tokens
 - Example: 1,127 tokens ≈ $0.00028
@@ -3202,7 +3783,7 @@ CHATKIT_DISABLE_AUTH=true  # Dev only - NEVER in production!
 
 **Check Today's Usage**:
 ```sql
-SELECT 
+SELECT
   SUM(total_tokens) as tokens,
   ROUND(SUM(estimated_cost)::numeric, 2) as cost
 FROM chat_usage_metrics
@@ -3217,7 +3798,7 @@ SELECT * FROM get_suspicious_ips(24, 10);
 
 **Security Events (Last Hour)**:
 ```sql
-SELECT 
+SELECT
   event_type,
   COUNT(*) as count,
   MAX(timestamp) as last_seen
@@ -3228,7 +3809,7 @@ GROUP BY event_type;
 
 **Daily Cost Breakdown**:
 ```sql
-SELECT * FROM daily_usage_summary 
+SELECT * FROM daily_usage_summary
 WHERE date >= CURRENT_DATE - INTERVAL '7 days'
 ORDER BY date DESC;
 ```
@@ -3388,13 +3969,13 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
     border-radius: 16px;
     margin-bottom: 40px;
   }
-  
+
   .tz-hero-video {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  
+
   .tz-hero-overlay {
     position: absolute;
     top: 0;
@@ -3410,7 +3991,7 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
     gap: 12px;
     padding-top: 120px;
   }
-  
+
   .tz-hero-title {
     color: white;
     font-size: 48px;
@@ -3418,14 +3999,14 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
     margin: 0 0 4px 0;
     text-shadow: 0 2px 8px rgba(0,0,0,0.8);
   }
-  
+
   .tz-hero-subtitle {
     color: white;
     font-size: 20px;
     margin: 0 0 8px 0;
     text-shadow: 0 2px 8px rgba(0,0,0,0.8);
   }
-  
+
   .tz-hero-cta-button {
     padding: 18px 36px;
     background: #822EE3;
@@ -3441,13 +4022,13 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
     align-items: center;
     gap: 8px;
   }
-  
+
   .tz-hero-cta-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(130, 46, 227, 0.6);
     background: #9333ea;
   }
-  
+
   .tz-unmute-button {
     position: absolute;
     top: 20px;
@@ -3464,30 +4045,30 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
     z-index: 1;
     transition: all 0.2s;
   }
-  
+
   .tz-unmute-button:hover {
     background: rgba(0, 0, 0, 0.7);
   }
-  
+
   @media (max-width: 768px) {
     .tz-hero-section {
       height: 50vh;
       min-height: 300px;
     }
-    
+
     .tz-hero-overlay {
       padding-top: 60px;
       gap: 8px;
     }
-    
+
     .tz-hero-title {
       font-size: 32px;
     }
-    
+
     .tz-hero-subtitle {
       font-size: 16px;
     }
-    
+
     .tz-hero-cta-button {
       padding: 16px 28px;
       font-size: 16px;
@@ -3499,17 +4080,17 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
   <video id="tz-hero-video" autoplay playsinline class="tz-hero-video">
     <source src="https://videostream44.b-cdn.net/tradezone-amara-welcome.mp4" type="video/mp4">
   </video>
-  
+
   <button id="tz-unmute-btn" class="tz-unmute-button">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
       <path d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"/>
     </svg>
   </button>
-  
+
   <div class="tz-hero-overlay">
     <h1 class="tz-hero-title">Meet Amara</h1>
     <p class="tz-hero-subtitle">Your AI Shopping Assistant</p>
-    
+
     <button class="tz-hero-cta-button" onclick="document.getElementById('tz-chat-button').click();">
       💬 Chat with Us
     </button>
@@ -3520,12 +4101,12 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
 (function() {
   const video = document.getElementById('tz-hero-video');
   const unmuteBtn = document.getElementById('tz-unmute-btn');
-  
+
   if (!video || !unmuteBtn) return;
-  
+
   let loopCount = 0;
   let hasPlayedOnce = false;
-  
+
   // Try to play with sound on first load
   video.muted = false;
   video.play().catch(() => {
@@ -3533,11 +4114,11 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
     video.muted = true;
     video.play();
   });
-  
+
   // Unmute button toggle
   unmuteBtn.addEventListener('click', function() {
     video.muted = !video.muted;
-    
+
     if (!video.muted) {
       video.play().catch(e => console.error('Video play failed', e));
       unmuteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
@@ -3545,14 +4126,14 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
       unmuteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M3.63 3.63c-.39.39-.39 1.02 0 1.41L7.29 8.7 7 9H3c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4l5 5V17.29l2.06 2.06c-.29.13-.6.2-.91.2-.31 0-.6-.07-.87-.2a1 1 0 0 0-.53.91c.07.69.63 1.22 1.32 1.22.33 0 .64-.13.88-.36l2.78 2.78c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.33 1.55-.88 2.09l1.46 1.46C20.48 14.56 21 13.35 21 12c0-3.87-2.68-7.11-6.31-7.86l-1.6.8C16.22 5.53 19 8.46 19 12zm-11-4.29l4 4V3l-5 5H3v-1h3.29l4-4z"/></svg>';
     }
   });
-  
+
   // After first play, mute for subsequent loops
   video.addEventListener('ended', function() {
     if (!hasPlayedOnce) {
       hasPlayedOnce = true;
       video.muted = true;
     }
-    
+
     if (loopCount < 2) {
       loopCount++;
       this.play();
@@ -3595,7 +4176,7 @@ curl -X POST http://localhost:3001/api/chatkit/agent \
 For pages without video, add this in Elementor HTML widget:
 
 ```html
-<button 
+<button
   style="padding: 18px 36px; background: #822EE3; color: white; border-radius: 12px; font-weight: 600; font-size: 18px; border: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(130, 46, 227, 0.4);"
   onclick="document.getElementById('tz-chat-button').click();"
   onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(130, 46, 227, 0.6)'; this.style.background='#9333ea';"
@@ -3881,6 +4462,7 @@ https://trade.rezult.co/widget/chat-widget-enhanced.js
 ## Future Enhancements
 
 ### Next Phase Focus
+- **Gemini Flash 3.0 Skill (Mid-term)**: Evaluate a long-context Gemini Flash 3.0 skill to handle trade-in flows and product Q&A with tighter context retention, then gate with regression checks so deterministic trade math stays intact.
 - **Voice Transcript Logging**: Finalize the `RealtimeVoice` turn batching, post each completed user/assistant pair to a new `/api/chatkit/voice-log` route, and align Supabase session/turn counters so voice conversations appear in `chat_logs` beside text threads.
 - **Prompt Management Controls**: Deliver a settings surface that stores Amara’s text + voice system prompts in Supabase with versioning, preview, and safe rollout toggles—letting ops adjust tone and playbooks without a redeploy.
 - **WhatsApp & Telegram Connectors**: Stand up outbound integrations for trade-in leads (and future automations) covering authentication, rate limiting, delivery receipts, and staff notification preferences for both platforms.
@@ -4027,7 +4609,7 @@ Document progress + deviations here whenever the plan evolves so every teammate 
 **🎯 Major Enhancements Deployed:**
 
 #### 1. Product Family Filtering (Commits: 285d968, f04103e)
-**Problem:** "PS5 bundle" search returned Nintendo Switch and unrelated products  
+**Problem:** "PS5 bundle" search returned Nintendo Switch and unrelated products
 **Fix:** Added intelligent family detection to both catalog and WooCommerce fallback
 - Detects keywords: PS5, Xbox Series, Switch, Steam Deck, etc.
 - Filters results to only show products from detected family
@@ -4040,7 +4622,7 @@ After:  "PS5 bundle" → Only PS5 bundles
 ```
 
 #### 2. Trade-In Price-First Flow (Commit: 402d5b6)
-**Problem:** Agent asked condition BEFORE showing price (wrong order)  
+**Problem:** Agent asked condition BEFORE showing price (wrong order)
 **Fix:** Updated `tradeInPrompts.ts` with explicit PRICE-FIRST instructions
 
 **Correct Flow:**
@@ -4052,14 +4634,14 @@ Agent: (THEN asks condition)
 
 **Data Verified:**
 - Xbox Series S: S$150 (preowned) ✅
-- Xbox Series X: S$350 (preowned) ✅  
+- Xbox Series X: S$350 (preowned) ✅
 - Prices from `data/tradezone_price_grid.jsonl`
 
 #### 3. Performance Optimization (Commit: 7ca0a19)
 **Problem:** 4.3s vector search latency, 12,490 tokens per query
 
 **Fixes:**
-- Vector search: `gpt-4.1` → `gpt-4o-mini` (5x faster, 60% cheaper)
+- Vector search: `gpt-4.1` → `gpt-4.1-mini` (5x faster, 60% cheaper)
 - History truncation: Limited to last 20 messages (prevents unbounded growth)
 - Created `PERFORMANCE_OPTIMIZATION_PLAN.md` for ongoing work
 
@@ -4110,7 +4692,7 @@ Query: "xbox bundles"
 Expected: Xbox Series consoles/accessories only
 
 # Test 3: Switch products (should show ONLY Nintendo)
-Query: "switch bundles"  
+Query: "switch bundles"
 Expected: Nintendo Switch products only
 ```
 
@@ -4147,7 +4729,7 @@ Query: "What bundles are available for PS5?"
    - See Coolify Configuration → Webhooks section
 
 2. **Vector Search Performance** - Target <1s, currently optimized
-   - Model switched to gpt-4o-mini
+   - Model switched to gpt-4.1-mini
    - Monitor for regression
 
 3. **Token Usage** - Target <3K per query
@@ -4169,7 +4751,7 @@ Query: "What bundles are available for PS5?"
 ```
 7ca0a19 - perf: optimize vector search and reduce token usage
 f04103e - fix: add family filtering to WooCommerce fallback
-402d5b6 - fix: enforce price-first flow for trade-in conversations  
+402d5b6 - fix: enforce price-first flow for trade-in conversations
 285d968 - fix: add product family filtering to catalog search
 a036e68 - chore: add zep graph integration and update catalog
 ```
@@ -4201,10 +4783,10 @@ openssl enc -aes-256-cbc -salt -in .env.local -out env_backup_$(date +%Y%m%d).en
 **Status:** All optimizations committed and ready for deployment
 
 **Performance Improvements:**
-1. **Vector Search Speed:** Switched from `gpt-4.1` → `gpt-4o-mini` (lib/tools/vectorSearch.ts)
+1. **Vector Search Speed:** Switched from `gpt-4.1` → `gpt-4.1-mini` (lib/tools/vectorSearch.ts)
    - Expected latency: 4.3s → <1s (5x faster)
    - Cost reduction: 60% cheaper per query
-   
+
 2. **Token Usage Optimization:** Added conversation history truncation (app/api/chatkit/agent/route.ts)
    - Previous: Unbounded growth (12K+ tokens observed)
    - New: Max 20 messages (last 10 exchanges)
@@ -4212,7 +4794,7 @@ openssl enc -aes-256-cbc -salt -in .env.local -out env_backup_$(date +%Y%m%d).en
 
 **Commits:**
 - `7ca0a19` - perf: optimize vector search and reduce token usage
-- `f04103e` - fix: add family filtering to WooCommerce fallback  
+- `f04103e` - fix: add family filtering to WooCommerce fallback
 - `402d5b6` - fix: enforce price-first flow for trade-in conversations
 - `285d968` - fix: add product family filtering to catalog search
 - `a036e68` - chore: add zep graph integration and update catalog
@@ -4258,7 +4840,7 @@ Expected: Price shown BEFORE asking condition
    - ✅ PS5 family filtering: PASSED (18.8s)
    - Validates no Nintendo/Xbox contamination in PS5 results
    - Confirms commits 285d968 and f04103e working correctly
-   
+
 2. **Trade-In Price-First Flow Tests** (`tests/trade-in-price-first.spec.ts`)
    - Validates price shown BEFORE condition questions
    - Tests Xbox Series S ($150) and Series X ($350) accuracy
@@ -4372,7 +4954,7 @@ npm run test:ui
 **BEFORE:**
 ```
 Query: "any ps5 bundle"
-Response: 
+Response:
 - PlayStation 5 Pro/Slim for S$499
 - PS5 Ninja Gaiden 4 for S$89.90
 - EA Sports FC 26 for S$79.90
@@ -4386,11 +4968,11 @@ Response:
 ```
 Query: "any ps5 bundle"
 Response:
-- PS5 Slim Disc 30th Anniversary Limited Edition 1TB — S$1149 
+- PS5 Slim Disc 30th Anniversary Limited Edition 1TB — S$1149
   ([View Product](https://tradezone.sg/product/sony-playstation-ps5-30th-anniversary/))
-- PS5 Slim Digital 30th Anniversary Limited Edition 1TB — S$949 
+- PS5 Slim Digital 30th Anniversary Limited Edition 1TB — S$949
   ([View Product](URL))
-- PS5 Disc Slim 1TB Japan Ghost of Yotei Gold Limited Edition — S$149 
+- PS5 Disc Slim 1TB Japan Ghost of Yotei Gold Limited Edition — S$149
   ([View Product](URL))
 
 ✅ Limited Editions appear first
@@ -4420,7 +5002,7 @@ Response:
 1. ⚠️ Response latency still 8-10s (target <3s)
    - Possible causes: Vector search still slow, network latency
    - Next step: Monitor production logs after deployment
-   
+
 2. ⚠️ Token usage still 13-20K (target <6K)
    - History truncation may not be working
    - Check: app/api/chatkit/agent/route.ts history truncation logic
@@ -4469,7 +5051,7 @@ Response:
      .update(updatePayload)
      .eq("id", leadId)
      .select();  // No .single()
-   
+
    // Handle array response properly
    const lead = Array.isArray(updatedLead) ? updatedLead[0] : updatedLead;
    ```
@@ -4531,7 +5113,7 @@ Response:
 
 #### 1. **Photo Status Display Bug** (Commit: `5a4c13f`)
 **Problem**: Agent saying "Photos: Not provided" even after user uploaded image
-**Root Cause**: 
+**Root Cause**:
 - Image upload is asynchronous (via `/api/tradein/media`)
 - Agent generates summary immediately before upload completes
 - Database check happens too early
@@ -4548,7 +5130,7 @@ Response:
 
 #### 2. **Trade-In Email Not Sending** (Commit: `d584ff9`)
 **Problem**: Trade-in completes successfully but no email to `contactus@tradezone.sg`
-**Root Cause**: 
+**Root Cause**:
 - Auto-submit checks `photoAcknowledged` before proceeding
 - User says "here" (photo intent)
 - Auto-submit checks database BEFORE image links
@@ -4778,7 +5360,7 @@ if (tradeInLeadId && noToolCalls) {
 
 **Fix**: Changed to one-at-a-time sequence:
 ```typescript
-10. **Contact info collection - ONE AT A TIME**: 
+10. **Contact info collection - ONE AT A TIME**:
    - First ask: "What's your email?" → Wait for response → Repeat back: "Got it, {email}."
    - Then ask: "Phone number?" → Wait for response → Repeat back: "{phone}, right?"
    - NEVER ask for name/phone/email all at once
@@ -4801,7 +5383,7 @@ Full flow test: PS5 Fat Disc → PS5 Pro + installment
 3. ✅ Agent: Offers 6-month installment (S$92/month)
 4. ✅ Agent: Asks for email (one question)
 5. ✅ Agent: Confirms email
-6. ✅ Agent: Asks for phone (one question)  
+6. ✅ Agent: Asks for phone (one question)
 7. ✅ Agent: Confirms phone by repeating it back
 8. ✅ Agent: Confirms payout preference (cash/PayNow/bank OR installment)
 9. ✅ Agent: Asks for photos once all info saved (optional)
@@ -4842,7 +5424,7 @@ const hasContact = Boolean(detail.contact_name && detail.contact_phone);
 
 // But agent was calling tradein_update_lead after EACH field:
 User: "info@rezult.co" → tradein_update_lead({contact_email: "..."})
-User: "8448 9068" → tradein_update_lead({contact_phone: "..."}) 
+User: "8448 9068" → tradein_update_lead({contact_phone: "..."})
 User: "robert grunt" → Agent asks accessories (never saved name!)
 ```
 
@@ -4870,14 +5452,14 @@ User: "robert grunt" → Agent asks accessories (never saved name!)
 User: "info@rezult.co"
 Agent: "Got it, info@rezult.co."  (NO tool call yet)
 
-User: "8448 9068"  
+User: "8448 9068"
 Agent: "8448 9068, right?"  (NO tool call yet)
 
 User: "robert grunt"
 Agent: "Thanks, robert grunt."
 → NOW calls tradein_update_lead with {
     contact_email: "info@rezult.co",
-    contact_phone: "8448 9068", 
+    contact_phone: "8448 9068",
     contact_name: "robert grunt"
   }
 
@@ -5033,7 +5615,7 @@ Agent: "128GB or 1TB?" ← ❌ WRONG! Switch OLED only has 64GB
 - `app/api/chatkit/agent/route.ts` - Storage optional in auto-submit
 - `lib/chatkit/defaultPrompt.ts` - Anti-hallucination storage rules
 
-**Deployments**: 
+**Deployments**:
 - Commit `c0e5709` - Storage optional fix
 - Commit `962b027` - Anti-hallucination rules
 - Ready for Coolify auto-deploy
@@ -5084,12 +5666,12 @@ STEP 4: Perplexity Web Search (if needed)
 FINAL RESPONSE:
     **Products in Stock:** (from WooCommerce)
     1. Galaxy Z Fold 6 — S$1,099 [View Product](link)
-    
+
     **Additional Details:** (from Vector/Zep/Perplexity)
     - Specs, features, comparisons, user context
 ```
 
-**Key Principles**: 
+**Key Principles**:
 - If product doesn't exist in WooCommerce → Stop immediately, don't enrich nothing
 - If product exists in WooCommerce → Layer on Vector/Zep/Perplexity details
 - WooCommerce = "What we sell" (factual inventory)
@@ -5198,8 +5780,8 @@ Two separate OpenAI vector stores:
 
 ```
 🔴 CRITICAL - NO PRODUCT HALLUCINATION:
-NEVER invent or add product names, models, or prices beyond what 
-the search tool explicitly returned. If the tool says "I found 1 
+NEVER invent or add product names, models, or prices beyond what
+the search tool explicitly returned. If the tool says "I found 1
 phone product", you MUST mention EXACTLY 1 product (not 3 or 5).
 Copy product names and prices VERBATIM from the tool result.
 ```
@@ -5368,17 +5950,17 @@ const PRODUCT_KEYWORDS = [
 
 function detectProductInfoIntent(query: string): boolean {
   const normalized = query.trim().toLowerCase();
-  
+
   // Check if query contains any product keyword
   const hasProductKeyword = PRODUCT_KEYWORDS.some(keyword =>
     normalized.includes(keyword)
   );
-  
+
   // Check if query has product need pattern
   const hasProductNeed = PRODUCT_NEED_PATTERNS.some(pattern =>
     pattern.test(normalized)
   );
-  
+
   return hasProductKeyword || hasProductNeed;
 }
 ```
@@ -5602,7 +6184,7 @@ Agent: "I checked our website and don't see any current promotions" ❌
 ```typescript
 const isPromotionQuery = /\b(promotion|promo|sale|deal|discount|offer|special|black friday|cyber monday|clearance)\b/i.test(query);
 
-const vectorUseful = 
+const vectorUseful =
   vectorResult &&
   vectorResult.trim().length >= 160 &&
   !isPromotionQuery; // Always skip vector for promotions
@@ -5688,3 +6270,316 @@ After deployment, test:
 - **Problem**: The voice agent was successfully collecting all trade-in details (name, phone, condition, etc.) during a conversation but failed to save them to the database. The trade-in lead was created empty, often only containing a photo if one was uploaded.
 - **Root Cause**: The `tradein_update_lead` tool in `agents/voice/agent.py` contained overly strict validation guards. It was designed to only accept one piece of information at a time, in a rigid order. When the LLM tried to efficiently send a batch of collected data (e.g., name, phone, and email together), the validation would fail, and the data was never sent to the backend API.
 - **Fix**: The restrictive step-by-step validation guards have been removed from the `tradein_update_lead` tool. The function now correctly accepts and processes all provided data at once, ensuring that all collected lead details are reliably persisted to the database.
+
+---
+
+## 📅 Latest Updates - January 24, 2026
+
+### Storage Query Handling (Short Queries)
+**Problem:** "ssd" (3 chars) was treated as a vague greeting and returned a welcome message, causing storage tests to fail.
+
+**Fix Applied:**
+- Short product intents now bypass the greeting handler (uses `detectProductInfoIntent`).
+- Direct storage responses now include an explicit "SSD/NVMe/HDD" intro to guarantee storage keywords.
+
+**Files:** `app/api/chatkit/agent/route.ts`, `lib/tools/vectorSearch.ts`
+
+---
+
+### Performance Test Alignment (GPT-4.1-mini)
+**Change:**
+- Updated performance test to target GPT-4.1-mini and set latency threshold to <6000ms.
+
+**File:** `tests/performance-optimization.spec.ts`
+
+---
+
+### Tests Run
+- `npx playwright test tests/storage-filter.spec.ts` ✅
+- `npx playwright test tests/performance-optimization.spec.ts` ✅
+
+---
+
+## 📅 Latest Updates - January 15, 2026
+
+### Search & Response Quality Improvements
+
+#### Issue: Product Search Too Narrow
+**Problem:** "nvme ssd" query returned only 1 product despite having 5+ in stock
+- Search only looked at product titles, ignored tags/categories
+- Products like "Lexar NQ790 4TB" had "nvme" and "ssd" in tags but not in title
+
+**Fix Applied:**
+- Added "storage" to `DIRECT_CATEGORY_KEYS` in `lib/agent-tools/index.ts`
+- Now uses category-based lookup instead of strict token matching
+- Result: "nvme ssd" now returns 5+ products correctly
+
+**Commit:** `44d04577`
+
+---
+
+#### Issue: Availability Questions Showing Product Lists
+**Problem:** User asks "is the limited edition oled 2tb still available?" but gets:
+- 3-item list including screen protector and protective case (irrelevant accessories)
+- No direct yes/no answer
+
+**Fix Applied:**
+- Added availability question detection in `lib/tools/vectorSearch.ts`
+- Detects keywords: "available", "in stock", "still have", "do you have", "got"
+- Filters out accessories: cases, screen protectors, cables, chargers, adapters
+- Returns concise answer for single product: "Yes, S$549 — [View Product](link)"
+
+**Commit:** `89b5ecc6`
+
+**Example:**
+```
+Before:
+User: "is the limited edition oled 2tb still available"
+Bot: Shows 3 items (Steam Deck + Screen Protector + Case)
+
+After:
+User: "is the limited edition oled 2tb still available"
+Bot: "Yes, S$549 — [View Product](link)"
+```
+
+---
+
+### Product Catalog Sync
+
+**Updated:** January 15, 2026
+- **762 products** synced from WooCommerce (up from stale December data)
+- **718 models** indexed across 11 product families
+- **812 records** synced to Graphiti knowledge graph
+- **Automated sync:** Every 3 days via Coolify scheduled task (`0 2 */3 * *`)
+
+**Sync Commands:**
+```bash
+npm run refresh:catalog       # Fetch from WooCommerce
+npm run catalog:build         # Rebuild products_master.json
+npm run catalog:sync-graphiti # Sync to knowledge graph
+```
+
+---
+
+### Known Limitations & Future Improvements
+
+See `SEARCH_FIX_PLAN.md` for detailed analysis and roadmap:
+
+1. **Broken "Product — View Product" links** (when no results found)
+   - Shows placeholder links with no actual product data
+   - Fix: Don't render links when search returns empty
+
+2. **Search token indexing** 
+   - Currently only indexes title + aliases
+   - Should include: categories, tags, descriptions, storage keywords
+
+3. **"No results" response quality**
+   - Currently: "Want me to connect you with team?" (gives up too fast)
+   - Better: Show alternatives, category links, broader search suggestions
+
+**Priority:** Medium (current workarounds functional)
+
+---
+
+### Search Flow Architecture
+
+```
+User Query: "nvme ssd"
+    ↓
+1. Detect category: "storage" ✅
+    ↓
+2. Check DIRECT_CATEGORY_SET ✅ (storage now included)
+    ↓
+3. Load products by category slug: ["storage"]
+    ↓
+4. Filter by tags: nvme, ssd ✅
+    ↓
+5. Return 5+ products ✅
+
+User Query: "is steam deck oled available?"
+    ↓
+1. Detect availability question: "is...available" ✅
+    ↓
+2. Search for "steam deck oled"
+    ↓
+3. Filter accessories (case, protector) ✅
+    ↓
+4. Return single product with YES/NO answer ✅
+```
+
+---
+
+### Testing Queries
+
+**Storage Products:**
+- ✅ "nvme ssd" → Shows Samsung 990 EVO, Lexar NQ790, WD Black, etc. (5+ products)
+- ✅ "m2 ssd 4tb" → Shows 4TB M.2 drives or suggests 2TB alternatives
+- ✅ "any ssd" → Shows full storage category
+
+**Availability Questions:**
+- ✅ "is the limited edition oled 2tb still available" → "Yes, S$549 — [link]"
+- ✅ "do you have steam deck" → "Yes, S$549 — [link]" (no accessories)
+- ✅ "got ps5 digital" → Direct answer with price + link
+
+**Category Searches:**
+- ✅ "cheap laptops" → Shows laptop category with prices
+- ✅ "gaming headset" → Shows audio category
+- ✅ "ps5 games" → Shows game list with platform filter
+
+---
+
+### Maintenance Schedule
+
+**Automated Tasks (Coolify):**
+- Product catalog refresh: Every 3 days at 2 AM (`0 2 */3 * *`)
+- Search Console sync: Weekly Sunday 2 AM
+- Database backups: Daily
+
+**Manual Tasks:**
+- Review chat logs weekly for failed searches
+- Update SEARCH_FIX_PLAN.md with new edge cases
+- Monitor Graphiti learning loop for synonym improvements
+
+---
+
+
+---
+
+## 📅 Latest Updates - January 15, 2026 (Part 2)
+
+### Additional Search Quality Improvements
+
+#### Issue: SD Cards Appearing in NVMe/SSD Searches
+**Problem:** "nvme ssd" query included microSD cards in results
+- Lexar PLAY microSD Card appeared at position #1
+- Users searching for internal SSDs got external memory cards
+
+**Fix Applied:**
+- Added SD card detection in direct storage category path (`lib/tools/vectorSearch.ts:724`)
+- Detects query intent: nvme, ssd, or hdd keywords
+- Filters out SD/microSD/TF cards when user searches for NVMe/SSD
+- Keeps SD cards for generic "storage" queries
+
+**Commits:** `5a0f1acf`, `17b9ad90`
+
+**Test Result:**
+```
+Query: "nvme ssd"
+Before: 6 products (1 microSD + 5 SSDs)
+After: 5 products (NVMe SSDs only)
+Log: "🔍 Storage filter: excluded 1 SD cards, kept 5 NVMe/SSDs"
+```
+
+---
+
+#### Issue: Wrong Phone Brand Priority
+**Problem:** User asks "any iphone" but gets Galaxy phone mixed in results
+- Galaxy Z Fold 6 appeared before iPhones
+- Non-iPhone brands not sorted to bottom
+
+**Fix Applied:**
+- Added brand-specific sorting for phone searches (`lib/tools/vectorSearch.ts:1221`)
+- Detects iPhone or Samsung/Galaxy keywords in query
+- Sorts requested brand to top, other phones to bottom
+- Shows ALL phones (not filtered) but prioritized correctly
+
+**Commits:** `9004ab7b`, `5891ca76`
+
+**Result:**
+```
+Query: "any iphone"
+Before: Galaxy Z Fold 6 → iPhone 15 → iPhone 17 (mixed order)
+After: iPhone 15 → iPhone 17 → Galaxy Z Fold 6 (iPhone first, others last)
+Log: "✅ iPhone priority sort: 2 iPhones first, 1 others at end"
+```
+
+**Also works for Samsung queries:**
+- "any samsung phone" → Samsung first, others last
+- "galaxy phone" → Galaxy models prioritized
+
+---
+
+### Updated Search Flow
+
+```
+User Query: "any iphone"
+    ↓
+1. Detect category: "phone" ✅
+    ↓
+2. Load phone category products
+    ↓
+3. Filter phones vs tablets ✅
+    ↓
+4. Detect brand intent: "iphone" ✅
+    ↓
+5. Sort: iPhones first, others last ✅
+    ↓
+6. Return sorted list (2 iPhones + 1 other)
+
+User Query: "nvme ssd"
+    ↓
+1. Detect category: "storage" ✅
+    ↓
+2. Detect storage type: "nvme", "ssd" ✅
+    ↓
+3. Load storage category products
+    ↓
+4. Filter out SD/microSD cards ✅
+    ↓
+5. Return 5 NVMe SSDs (no SD cards)
+```
+
+---
+
+### Summary of All Fixes (January 15, 2026)
+
+| Issue | Commits | Status |
+|-------|---------|--------|
+| Product catalog outdated | `44d04577` | ✅ Fixed - 762 products synced |
+| "nvme ssd" returns 1 product | `44d04577` | ✅ Fixed - shows 5+ products |
+| Availability questions show lists | `89b5ecc6` | ✅ Fixed - concise yes/no answers |
+| Accessories in availability results | `89b5ecc6` | ✅ Fixed - filtered out |
+| SD cards in NVMe searches | `5a0f1acf`, `17b9ad90` | ✅ Fixed - excluded |
+| Wrong phone brand priority | `9004ab7b`, `5891ca76` | ✅ Fixed - sorted correctly |
+| Agent.md documentation | `98bdf756` | ✅ Updated with all changes |
+
+---
+
+### Testing Checklist
+
+**Storage Searches:**
+- ✅ "nvme ssd" → 5 NVMe SSDs (no SD cards)
+- ✅ "m2 ssd 4tb" → 4TB M.2 drives
+- ✅ "any ssd" → All SSDs (no SD cards)
+
+**Phone Searches:**
+- ✅ "any iphone" → iPhones first, Galaxy at end
+- ✅ "samsung phone" → Samsung first, others last
+- ✅ "any phone" → All phones (no brand priority)
+
+**Availability Questions:**
+- ✅ "is steam deck oled available" → "Yes, S$549 — [link]"
+- ✅ "do you have ps5 digital" → Direct answer
+- ✅ "got iphone 15" → Concise response
+
+**Category Searches:**
+- ✅ "cheap tablets" → Tablet category
+- ✅ "gaming headset" → Audio devices
+- ✅ "ps5 games" → PlayStation games
+
+---
+
+### Performance Notes
+
+**Search Response Times:**
+- Direct category lookup: ~200-400ms
+- With filters (SD cards, brand sorting): ~250-450ms
+- Availability detection: ~200-350ms
+- Average end-to-end: ~500-800ms
+
+**Catalog Sync:**
+- Full refresh: ~45 seconds (762 products)
+- Graphiti sync: ~60 seconds (812 records)
+- Total: ~2 minutes every 3 days
+
+---

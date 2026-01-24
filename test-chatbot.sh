@@ -2,7 +2,7 @@
 # Fast comprehensive chatbot test script
 
 API_URL="${1:-http://localhost:3000}"
-API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+API_KEY="YOUR_CHATKIT_API_KEY"
 
 echo "🧪 Testing ChatBot @ $API_URL"
 echo "================================"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,11 @@ const supabase = createClient(
  */
 export async function GET(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     // For now, return empty notifications
     // TODO: Implement notifications table in Supabase
     const notifications: any[] = [];
@@ -43,6 +49,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const body = await request.json();
 
     // TODO: Implement notification creation

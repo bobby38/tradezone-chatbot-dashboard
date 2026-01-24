@@ -49,7 +49,7 @@ Current Multi-Channel Architecture:
 ┌─────────────────────────────────────────────────────────────┐
 │  Core Processing Layer                                      │
 ├─────────────────────────────────────────────────────────────┤
-│  • OpenAI GPT-4o-mini (ChatKit Agent)                       │
+│  • OpenAI GPT-4.1-mini (ChatKit Agent)                       │
 │  • Vector Search (Product Catalog)                          │
 │  • Perplexity AI (Web Search)                               │
 │  • Trade-In Service (Multi-channel)                         │

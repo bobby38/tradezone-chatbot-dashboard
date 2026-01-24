@@ -8,7 +8,11 @@
 # - Family filtering
 # - Performance optimizations
 
-set -e
+# Don't exit on failure - we want to run all tests and show summary
+# set -e
+
+FAILED_TESTS=0
+PASSED_TESTS=0
 
 echo "🧪 TradeZone Chatbot - Critical Test Suite"
 echo "=========================================="
@@ -55,60 +59,92 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 1: Product Family Filtering"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test product-family-filtering.spec.ts --reporter=list
+if npx playwright test product-family-filtering.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 2: Storage Filter
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 2: Storage Filter (NVMe/SSD)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test storage-filter.spec.ts --reporter=list
+if npx playwright test storage-filter.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 3: Phone/Tablet Separation
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 3: Phone/Tablet Category Separation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test phone-tablet-separation.spec.ts --reporter=list
+if npx playwright test phone-tablet-separation.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 4: Product Format Consistency
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 4: Product Format Consistency"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test product-format-consistency.spec.ts --reporter=list
+if npx playwright test product-format-consistency.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 5: Prompt Injection Security
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 5: Prompt Injection Security"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test prompt-injection.spec.ts --reporter=list
+if npx playwright test prompt-injection.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 6: Trade-In Price-First Flow
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 6: Trade-In Price-First Flow"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test trade-in-price-first.spec.ts --reporter=list
+if npx playwright test trade-in-price-first.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 7: Performance Optimization
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 7: Performance Optimization"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test performance-optimization.spec.ts --reporter=list
+if npx playwright test performance-optimization.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 # Test 8: API Security
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "TEST 8: API Security & Authentication"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-npx playwright test api-security.spec.ts --reporter=list
+if npx playwright test api-security.spec.ts --reporter=list; then
+  ((PASSED_TESTS++))
+else
+  ((FAILED_TESTS++))
+fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ All tests completed!"
+echo "📊 FINAL RESULTS: $PASSED_TESTS passed, $FAILED_TESTS failed"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "📊 Test Summary:"

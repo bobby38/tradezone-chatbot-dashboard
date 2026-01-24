@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyApiKey } from "@/lib/security/auth";
 import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,14 @@ export async function POST(req: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
+  const authResult = verifyApiKey(req);
+  if (!authResult.authenticated) {
+    return NextResponse.json(
+      { error: authResult.error || "Unauthorized" },
+      { status: 401, headers: corsHeaders },
+    );
+  }
+
   let linkedLeadId: string | null = null;
   let mediaLinked = false;
   let linkErrorMessage: string | null = null;
@@ -78,7 +87,8 @@ export async function POST(req: NextRequest) {
         : `chat-${rawSessionId}`
       : rawSessionId;
 
-    const leadIdFromClient = typeof rawLeadId === "string" ? rawLeadId.trim() : "";
+    const leadIdFromClient =
+      typeof rawLeadId === "string" ? rawLeadId.trim() : "";
     const looksLikeUuid = (value: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         value,

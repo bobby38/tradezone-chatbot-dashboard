@@ -197,6 +197,26 @@ export default function DashboardPage() {
         })) || [],
       );
 
+      // Fetch trade-in leads data
+      const { count: totalLeads } = await supabase
+        .from("trade_in_leads")
+        .select("*", { count: "exact", head: true });
+
+      const { count: todayLeads } = await supabase
+        .from("trade_in_leads")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", today);
+
+      const { count: pendingLeads } = await supabase
+        .from("trade_in_leads")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["new", "in_review"]);
+
+      // Note: We don't have separate contact_forms table, so using 0 for now
+      // All forms are currently tracked as trade-in leads
+      const contactForms = 0;
+      const tradeInForms = totalLeads || 0;
+
       setStats((prev) => ({
         ...prev,
         totalChats: totalChats || 0,
@@ -205,6 +225,11 @@ export default function DashboardPage() {
         successRate: Math.round(successRate),
         activeUsers,
         errorRate: Math.round(errorRate),
+        totalSubmissions: totalLeads || 0,
+        todaySubmissions: todayLeads || 0,
+        pendingSubmissions: pendingLeads || 0,
+        contactForms,
+        tradeInForms,
       }));
 
       try {

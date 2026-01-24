@@ -1,0 +1,27 @@
+{"query": "basketball", "redirect_to": "NBA 2K", "category": "sports_games", "platforms": ["PS5", "PS4", "Xbox", "Switch"], "confidence": 1.0}
+{"query": "football", "redirect_to": "FIFA EA Sports FC", "category": "sports_games", "platforms": ["PS5", "PS4", "Xbox", "Switch"], "confidence": 1.0}
+{"query": "soccer", "redirect_to": "FIFA EA Sports FC", "category": "sports_games", "platforms": ["PS5", "PS4", "Xbox", "Switch"], "confidence": 1.0}
+{"query": "horror game", "redirect_to": "Silent Hill Resident Evil", "category": "horror_games", "platforms": ["PS5", "PS4", "Xbox", "PC"], "confidence": 0.9}
+{"query": "scary game", "redirect_to": "horror games Silent Hill Resident Evil", "category": "horror_games", "platforms": ["PS5", "PS4", "Xbox", "PC"], "confidence": 0.9}
+{"query": "car game", "redirect_to": "racing games Gran Turismo Forza", "category": "racing_games", "platforms": ["PS5", "PS4", "Xbox"], "confidence": 0.9}
+{"query": "racing game", "redirect_to": "Gran Turismo Forza Need for Speed", "category": "racing_games", "platforms": ["PS5", "PS4", "Xbox"], "confidence": 1.0}
+{"query": "pokemon", "redirect_to": "Pokemon Scarlet Violet Legends", "category": "rpg_games", "platforms": ["Switch"], "confidence": 1.0}
+{"query": "zelda", "redirect_to": "Legend of Zelda Breath Wild Tears Kingdom", "category": "adventure_games", "platforms": ["Switch"], "confidence": 1.0}
+{"query": "mario", "redirect_to": "Super Mario Wonder Odyssey Kart", "category": "platformer_games", "platforms": ["Switch"], "confidence": 1.0}
+{"query": "shooting game", "redirect_to": "Call of Duty Battlefield FPS", "category": "shooter_games", "platforms": ["PS5", "PS4", "Xbox", "PC"], "confidence": 0.8}
+{"query": "war game", "redirect_to": "Call of Duty Battlefield", "category": "shooter_games", "platforms": ["PS5", "PS4", "Xbox"], "confidence": 0.8}
+{"query": "adventure game", "redirect_to": "Zelda Uncharted Horizon", "category": "adventure_games", "platforms": ["PS5", "PS4", "Switch"], "confidence": 0.7}
+{"query": "cheap tablet", "redirect_to": "Samsung Galaxy Tab A", "category": "tablets", "platforms": [], "confidence": 0.9}
+{"query": "affordable phone", "redirect_to": "Samsung Galaxy A series", "category": "phones", "platforms": [], "confidence": 0.8}
+{"query": "budget console", "redirect_to": "PS4 Xbox Series S", "category": "consoles", "platforms": [], "confidence": 0.9}
+{"query": "best handheld", "redirect_to": "Steam Deck ROG Ally", "category": "handheld_gaming", "platforms": [], "confidence": 0.9}
+{"query": "vr headset", "redirect_to": "PlayStation VR2 Meta Quest", "category": "vr", "platforms": [], "confidence": 1.0}
+{"query": "wireless controller", "redirect_to": "DualSense Xbox controller", "category": "accessories", "platforms": ["PS5", "Xbox"], "confidence": 0.9}
+{"query": "rpg", "redirect_to": "Final Fantasy Elden Ring Pokemon", "category": "rpg_games", "platforms": ["PS5", "PS4", "Xbox", "Switch"], "confidence": 0.9}
+{"query": "role playing game", "redirect_to": "Final Fantasy Dragon Quest Persona", "category": "rpg_games", "platforms": ["PS5", "PS4", "Switch"], "confidence": 0.85}
+{"query": "mmorpg", "redirect_to": "Final Fantasy XIV Elder Scrolls Online", "category": "mmorpg", "platforms": ["PC", "PS5"], "confidence": 0.8}
+{"query": "mmo", "redirect_to": "Final Fantasy XIV Elder Scrolls Online", "category": "mmorpg", "platforms": ["PC", "PS5"], "confidence": 0.8}
+{"query": "jrpg", "redirect_to": "Persona Final Fantasy Dragon Quest", "category": "rpg_games", "platforms": ["PS5", "PS4", "Switch"], "confidence": 0.85}
+{"query": "metroidvania", "redirect_to": "Hollow Knight Metroid Dread Ori", "category": "action_adventure", "platforms": ["Switch", "PS5", "Xbox"], "confidence": 0.85}
+{"query": "roguelike", "redirect_to": "Hades Dead Cells Slay the Spire", "category": "indie_games", "platforms": ["Switch", "PS5", "Xbox"], "confidence": 0.85}
+{"query": "looter shooter", "redirect_to": "Destiny 2 Borderlands Warframe", "category": "shooter_games", "platforms": ["PS5", "PS4", "Xbox"], "confidence": 0.85}

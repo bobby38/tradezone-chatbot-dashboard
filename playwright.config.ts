@@ -9,10 +9,17 @@ export default defineConfig({
     baseURL: process.env.API_BASE_URL || "http://127.0.0.1:3000",
   },
   testDir: "tests",
+  testIgnore: "**/*.test.ts", // Ignore Jest unit tests (using .test.ts)
+  testMatch: "**/*.spec.ts", // Only run Playwright spec files
   // Run tests sequentially to avoid rate limiting
   workers: 1,
   // Retry failed tests once (in case of transient rate limit issues)
   retries: 1,
+  // Increase timeout for AI API calls
+  timeout: 90000, // 90 seconds per test
+  expect: {
+    timeout: 60000, // 60 seconds for assertions
+  },
   projects: [
     {
       name: "chromium",

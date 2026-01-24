@@ -1,37 +1,46 @@
 /**
- * Simple in-memory rate limiter for ChatKit endpoints
+ * Hybrid rate limiter with Upstash Redis support
  *
- * For production with multiple servers, upgrade to:
- * - Upstash Redis (@upstash/ratelimit)
- * - Vercel KV
- * - Redis
+ * Automatically uses:
+ * - Upstash Redis (if UPSTASH_REDIS_URL configured) - Production-ready, serverless-compatible
+ * - In-memory fallback (for local development) - Works but doesn't scale
  */
+
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 interface RateLimitEntry {
   count: number;
   resetTime: number;
 }
 
-class RateLimiter {
+// In-memory fallback for local development
+class InMemoryRateLimiter {
   private limits: Map<string, RateLimitEntry> = new Map();
   private cleanupInterval: NodeJS.Timeout;
-  private readonly MAX_ENTRIES = 10000; // Prevent memory leak from unbounded growth
+  private readonly MAX_ENTRIES = 10000;
 
   constructor() {
-    // Cleanup expired entries every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanup();
+      },
+      5 * 60 * 1000,
+    );
+
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "⚠️  [RateLimit] Using in-memory rate limiter in production. " +
+          "Add UPSTASH_REDIS_URL to enable distributed rate limiting.",
+      );
+    }
   }
 
-  /**
-   * Check if request is allowed
-   * @param identifier - IP address or session ID
-   * @param maxRequests - Maximum requests allowed
-   * @param windowMs - Time window in milliseconds
-   * @returns { allowed: boolean, remaining: number, resetTime: number }
-   */
-  check(identifier: string, maxRequests: number, windowMs: number): {
+  check(
+    identifier: string,
+    maxRequests: number,
+    windowMs: number,
+  ): {
     allowed: boolean;
     remaining: number;
     resetTime: number;
@@ -40,15 +49,16 @@ class RateLimiter {
     const now = Date.now();
     const entry = this.limits.get(identifier);
 
-    // No existing entry or expired
     if (!entry || now > entry.resetTime) {
       const resetTime = now + windowMs;
 
-      // Prevent memory leak: evict oldest entry if at capacity
       if (this.limits.size >= this.MAX_ENTRIES) {
         const oldestKey = this.limits.keys().next().value;
         this.limits.delete(oldestKey);
-        console.warn("[RateLimit] Max entries reached, evicted oldest:", oldestKey);
+        console.warn(
+          "[RateLimit] Max entries reached, evicted oldest:",
+          oldestKey,
+        );
       }
 
       this.limits.set(identifier, {
@@ -62,10 +72,8 @@ class RateLimiter {
       };
     }
 
-    // Increment count
     entry.count++;
 
-    // Check if over limit
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
       return {
@@ -83,9 +91,6 @@ class RateLimiter {
     };
   }
 
-  /**
-   * Remove expired entries to prevent memory leaks
-   */
   private cleanup() {
     const now = Date.now();
     for (const [key, entry] of this.limits.entries()) {
@@ -95,103 +100,198 @@ class RateLimiter {
     }
   }
 
-  /**
-   * Get current stats (for monitoring)
-   */
-  getStats() {
-    return {
-      totalEntries: this.limits.size,
-      activeEntries: Array.from(this.limits.values()).filter(
-        (e) => Date.now() <= e.resetTime
-      ).length,
-    };
-  }
-
-  /**
-   * Clear all entries (useful for testing)
-   */
   clear() {
     this.limits.clear();
   }
 
-  /**
-   * Cleanup on shutdown
-   */
   destroy() {
     clearInterval(this.cleanupInterval);
     this.limits.clear();
   }
 }
 
-// Singleton instance
-export const rateLimiter = new RateLimiter();
-
 // Rate limit configurations
 export const RATE_LIMITS = {
-  // ChatKit endpoints - per IP
   CHATKIT_PER_IP: {
-    maxRequests: 20, // 20 requests
-    windowMs: 60 * 1000, // per minute
+    maxRequests: 20,
+    windowMs: 60 * 1000, // 1 minute
   },
-
-  // ChatKit endpoints - per session
   CHATKIT_PER_SESSION: {
-    maxRequests: 50, // 50 requests
-    windowMs: 60 * 60 * 1000, // per hour
+    maxRequests: 50,
+    windowMs: 60 * 60 * 1000, // 1 hour
   },
-
-  // Realtime config endpoint - per IP
   REALTIME_CONFIG: {
     maxRequests: 10,
     windowMs: 60 * 1000,
   },
-
-  // Telemetry endpoint - per IP
   TELEMETRY: {
     maxRequests: 100,
     windowMs: 60 * 1000,
   },
 } as const;
 
+// Initialize Upstash Redis if configured
+let upstashRedis: Redis | null = null;
+let upstashRateLimiters: Map<string, Ratelimit> = new Map();
+
+try {
+  if (process.env.UPSTASH_REDIS_URL && process.env.UPSTASH_REDIS_TOKEN) {
+    upstashRedis = new Redis({
+      url: process.env.UPSTASH_REDIS_URL,
+      token: process.env.UPSTASH_REDIS_TOKEN,
+    });
+    console.log(
+      "✅ [RateLimit] Upstash Redis configured - using distributed rate limiting",
+    );
+  } else {
+    console.log(
+      "ℹ️  [RateLimit] Upstash not configured - using in-memory fallback. " +
+        "Set UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN for production.",
+    );
+  }
+} catch (error) {
+  console.error("❌ [RateLimit] Failed to initialize Upstash:", error);
+  upstashRedis = null;
+}
+
+// Fallback limiter
+const inMemoryLimiter = new InMemoryRateLimiter();
+
+/**
+ * Get or create Upstash rate limiter for a specific config
+ */
+function getUpstashLimiter(
+  prefix: string,
+  maxRequests: number,
+  windowMs: number,
+): Ratelimit | null {
+  if (!upstashRedis) return null;
+
+  const key = `${prefix}:${maxRequests}:${windowMs}`;
+  if (upstashRateLimiters.has(key)) {
+    return upstashRateLimiters.get(key)!;
+  }
+
+  const limiter = new Ratelimit({
+    redis: upstashRedis,
+    limiter: Ratelimit.slidingWindow(maxRequests, `${windowMs} ms`),
+    prefix,
+    analytics: true, // Enable analytics for monitoring
+  });
+
+  upstashRateLimiters.set(key, limiter);
+  return limiter;
+}
+
+/**
+ * Check rate limit using Upstash (if configured) or in-memory fallback
+ */
+export async function checkRateLimit(
+  identifier: string,
+  config: { maxRequests: number; windowMs: number },
+  prefix: string = "ratelimit",
+): Promise<{
+  allowed: boolean;
+  remaining: number;
+  resetTime: number;
+  retryAfter?: number;
+}> {
+  // Try Upstash first
+  const upstashLimiter = getUpstashLimiter(
+    prefix,
+    config.maxRequests,
+    config.windowMs,
+  );
+
+  if (upstashLimiter) {
+    try {
+      const result = await upstashLimiter.limit(identifier);
+
+      return {
+        allowed: result.success,
+        remaining: result.remaining,
+        resetTime: result.reset,
+        retryAfter: result.success
+          ? undefined
+          : Math.ceil((result.reset - Date.now()) / 1000),
+      };
+    } catch (error) {
+      console.error(
+        "[RateLimit] Upstash error, falling back to in-memory:",
+        error,
+      );
+      // Fall through to in-memory
+    }
+  }
+
+  // Fallback to in-memory
+  return inMemoryLimiter.check(identifier, config.maxRequests, config.windowMs);
+}
+
 /**
  * Get client identifier (IP address with fallback)
  */
 export function getClientIdentifier(request: Request): string {
-  // Try various headers for IP (Vercel, Cloudflare, etc.)
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  const cfConnectingIp = request.headers.get('cf-connecting-ip');
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
   // @ts-ignore - ip exists on NextRequest
-  const ip = cfConnectingIp || realIp || forwarded?.split(',')[0] || request.ip || '127.0.0.1';
+  const ip =
+    cfConnectingIp ||
+    realIp ||
+    forwarded?.split(",")[0] ||
+    request.ip ||
+    "127.0.0.1";
 
   return ip.trim();
 }
 
 /**
- * Helper to apply rate limit and return response if blocked
+ * Apply rate limit and return response if blocked
  */
-export function applyRateLimit(
+export async function applyRateLimit(
   identifier: string,
   config: { maxRequests: number; windowMs: number },
-  endpoint: string
-): { allowed: boolean; response?: Response; headers: HeadersInit } {
-  const result = rateLimiter.check(identifier, config.maxRequests, config.windowMs);
+  endpoint: string,
+): Promise<{ allowed: boolean; response?: Response; headers: HeadersInit }> {
+  // Skip rate limiting for localhost in development
+  if (
+    process.env.NODE_ENV === "development" &&
+    (identifier === "127.0.0.1" ||
+      identifier === "::1" ||
+      identifier === "::ffff:127.0.0.1")
+  ) {
+    return {
+      allowed: true,
+      headers: {
+        "X-RateLimit-Limit": config.maxRequests.toString(),
+        "X-RateLimit-Remaining": config.maxRequests.toString(),
+        "X-RateLimit-Reset": new Date(
+          Date.now() + config.windowMs,
+        ).toISOString(),
+      },
+    };
+  }
+
+  const result = await checkRateLimit(identifier, config, endpoint);
 
   const headers: HeadersInit = {
-    'X-RateLimit-Limit': config.maxRequests.toString(),
-    'X-RateLimit-Remaining': result.remaining.toString(),
-    'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
+    "X-RateLimit-Limit": config.maxRequests.toString(),
+    "X-RateLimit-Remaining": result.remaining.toString(),
+    "X-RateLimit-Reset": new Date(result.resetTime).toISOString(),
   };
 
   if (!result.allowed) {
-    console.warn(`[RateLimit] Blocked ${identifier} on ${endpoint} - ${result.retryAfter}s retry`);
+    console.warn(
+      `[RateLimit] Blocked ${identifier} on ${endpoint} - ${result.retryAfter}s retry`,
+    );
 
     return {
       allowed: false,
       response: Response.json(
         {
-          error: 'Too many requests',
+          error: "Too many requests",
           message: `Rate limit exceeded. Please try again in ${result.retryAfter} seconds.`,
           retryAfter: result.retryAfter,
         },
@@ -199,9 +299,9 @@ export function applyRateLimit(
           status: 429,
           headers: {
             ...headers,
-            'Retry-After': result.retryAfter?.toString() || '60',
+            "Retry-After": result.retryAfter?.toString() || "60",
           },
-        }
+        },
       ),
       headers,
     };
@@ -209,3 +309,6 @@ export function applyRateLimit(
 
   return { allowed: true, headers };
 }
+
+// Legacy export for backward compatibility
+export const rateLimiter = inMemoryLimiter;

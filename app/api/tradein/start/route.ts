@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureTradeInLead, type TradeInChannel } from "@/lib/trade-in/service";
+import { verifyApiKey } from "@/lib/security/auth";
 
 const HANDLER_VERSION = "tradein-start-2025-12-14";
 
@@ -47,6 +48,14 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
   try {
+    const authResult = verifyApiKey(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || "Unauthorized" },
+        { status: 401, headers: corsHeaders },
+      );
+    }
+
     const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const body = await request.json();
     const {
@@ -76,6 +85,7 @@ export async function POST(request: NextRequest) {
       channel,
       initialMessage,
       source: "api.tradein.start",
+      maxAgeMinutes: 60,
     });
 
     console.log("[tradein/start]", {
@@ -89,13 +99,16 @@ export async function POST(request: NextRequest) {
       identity,
     });
 
-    return NextResponse.json({
-      success: true,
-      requestId,
-      handlerVersion: HANDLER_VERSION,
-      leadId,
-      existing: !created,
-    }, { headers: corsHeaders });
+    return NextResponse.json(
+      {
+        success: true,
+        requestId,
+        handlerVersion: HANDLER_VERSION,
+        leadId,
+        existing: !created,
+      },
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[tradein/start] Unexpected error", error);
     return NextResponse.json(

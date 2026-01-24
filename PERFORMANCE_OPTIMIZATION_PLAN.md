@@ -12,7 +12,7 @@
 - Sequential operations (vector → catalog → perplexity)
 
 **Solutions:**
-- [ ] Switch to `gpt-4o-mini` for vector search (5x faster, 60% cheaper)
+- [ ] Switch to `gpt-4.1-mini` for vector search (5x faster, 60% cheaper)
 - [ ] Implement parallel execution where possible
 - [ ] Add response streaming for better UX
 - [ ] Cache frequent queries (Redis/memory)
@@ -50,7 +50,7 @@
 
 ### Immediate (This Session):
 1. ✅ Document the issues
-2. Switch vector search model to gpt-4o-mini
+2. Switch vector search model to gpt-4.1-mini
 3. Implement history truncation
 4. Test performance improvement
 

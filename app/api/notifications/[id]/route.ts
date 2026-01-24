@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,11 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { id } = params;
     const body = await request.json();
 
@@ -37,6 +43,11 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { id } = params;
 
     // TODO: Implement notification deletion in Supabase

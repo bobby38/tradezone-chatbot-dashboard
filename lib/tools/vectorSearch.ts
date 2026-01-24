@@ -16,8 +16,13 @@ import {
   DIRECT_CATEGORY_SET,
   getWooProductsByCategory,
 } from "@/lib/agent-tools";
+import {
+  enhanceSearchQuery,
+  shouldEnhanceQuery,
+} from "@/lib/graphiti-search-enhancer";
+import { logFailedSearch } from "@/lib/graphiti-learning-loop";
 
-type VectorStoreLabel = "catalog" | "trade_in";
+type VectorStoreLabel = "catalog" | "trade_in" | "product_catalog";
 
 const QUERY_STOP_WORDS = new Set([
   "any",
@@ -473,6 +478,115 @@ function formatPriceWithBudget(
   return formatted;
 }
 
+/**
+ * Standardized category link mapping for "view all" links
+ */
+function getCategoryLink(
+  category: string | null,
+  query: string,
+): string | null {
+  if (!category) return null;
+
+  const getGamesCategoryLink = (q: string): string => {
+    const lower = q.toLowerCase();
+    const isPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(lower);
+    if (/\bps5\b|playstation\s*5/i.test(lower)) {
+      return isPreOwned
+        ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games/"
+        : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games/";
+    }
+    if (/\bps4\b|playstation\s*4/i.test(lower)) {
+      return isPreOwned
+        ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games/"
+        : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games/";
+    }
+    if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
+      return "https://tradezone.sg/product-category/xbox-item/";
+    }
+    if (/\bswitch\b|nintendo|pokemon|pokémon/i.test(lower)) {
+      return isPreOwned
+        ? "https://tradezone.sg/product-category/nintendo/pre-owned-games-nintendo/"
+        : "https://tradezone.sg/product-category/nintendo/brand-new-games-nintendo/";
+    }
+    return "https://tradezone.sg/product-category/console-games/";
+  };
+
+  const categoryLinks: Record<string, string> = {
+    vr: "https://tradezone.sg/product-category/gadgets/virtual-reality-headset/",
+    games: getGamesCategoryLink(query),
+    laptop: "https://tradezone.sg/product-category/laptop/",
+    phone: "https://tradezone.sg/product-category/handphone-tablet/handphone/",
+    tablet: "https://tradezone.sg/product-category/handphone-tablet/tablet/",
+    console: "https://tradezone.sg/product-category/gadgets/consoles/",
+    gpu: "https://tradezone.sg/product-category/graphic-card/",
+    motherboard: "https://tradezone.sg/product-category/motherboard/",
+    handheld: "https://tradezone.sg/product-category/gadgets/",
+    storage:
+      "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
+  };
+
+  return categoryLinks[category] || null;
+}
+
+/**
+ * Properly pluralize category names
+ */
+function pluralizeCategory(category: string): string {
+  // Special cases that don't need 's' or have irregular plurals
+  const irregularPlurals: Record<string, string> = {
+    games: "games",
+    storage: "storage devices",
+    mouse: "mice",
+  };
+
+  if (irregularPlurals[category]) {
+    return irregularPlurals[category];
+  }
+
+  // Default: add 's'
+  return `${category}s`;
+}
+
+/**
+ * Standardized "more results" text with category links
+ */
+function buildMoreResultsText(
+  displayLimit: number,
+  totalCount: number,
+  category: string | null,
+  query: string,
+): string {
+  const hasMore = totalCount > displayLimit;
+  const categoryLink = getCategoryLink(category, query);
+
+  // Check if this is a game query showing brand new games (not pre-owned)
+  const isGameQuery = category === "games" && /\b(game|games)\b/i.test(query);
+  const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
+  const preOwnedHint =
+    isGameQuery && !wantsPreOwned
+      ? "\n\n💡 *These are brand new games. Want to see pre-owned options? Just ask!*"
+      : "";
+
+  // If showing all results, just show count + category link (no "show more" needed)
+  if (!hasMore) {
+    if (categoryLink && category) {
+      const categoryPlural = pluralizeCategory(category);
+      return `\n\n**Showing all ${totalCount} results.** [View all ${categoryPlural} on website](${categoryLink})${preOwnedHint}`;
+    }
+    return preOwnedHint || ""; // Show pre-owned hint even without category link
+  }
+
+  // Has more results - show pagination with "show more" option
+  const remaining = totalCount - displayLimit;
+
+  if (categoryLink && category) {
+    const categoryPlural = pluralizeCategory(category);
+    return `\n\n**Showing ${displayLimit} of ${totalCount} results.** Type "show more" to see the remaining ${remaining}, or [View all ${categoryPlural} on website](${categoryLink}).${preOwnedHint}`;
+  }
+
+  return `\n\nShowing ${displayLimit} of ${totalCount} results. Type "show more" to see the remaining ${remaining}.${preOwnedHint}`;
+}
+
 function filterWooResultsByTokens<T extends { name?: string }>(
   items: T[],
   tokens: string[],
@@ -481,6 +595,84 @@ function filterWooResultsByTokens<T extends { name?: string }>(
   return items.filter((item) => {
     const hay = (item.name || "").toLowerCase();
     return tokens.some((token) => hay.includes(token));
+  });
+}
+
+/**
+ * Filter console results to show only the specific console UNIT user asked for
+ * "do you have ps5" → PS5 consoles only (not games/accessories)
+ * "do you have switch" → Switch consoles only
+ * "do you have ps5 games" → PS5 games (user explicitly asked)
+ */
+function filterConsoleResults<T extends { name?: string }>(
+  items: T[],
+  query: string,
+): T[] {
+  // Detect console type from query
+  const consoleType = /\b(ps5|playstation\s*5)\b/i.test(query)
+    ? "ps5"
+    : /\b(ps4|playstation\s*4)\b/i.test(query)
+      ? "ps4"
+      : /\b(xbox)\b/i.test(query)
+        ? "xbox"
+        : /\b(switch\s*2|ns2|sw2)\b/i.test(query)
+          ? "switch2"
+          : /\b(switch|nintendo)\b/i.test(query)
+            ? "switch"
+            : null;
+
+  if (!consoleType) return items;
+
+  // User explicitly wants games/controllers/accessories? Let them through
+  const wantsGame = /\bgames?\b/i.test(query);
+  const wantsController = /\bcontroller\b/i.test(query);
+  const wantsAccessory = /\b(storage|card|seagate|charger|stand)\b/i.test(
+    query,
+  );
+  if (wantsGame || wantsController || wantsAccessory) return items;
+
+  // ALWAYS exclude these - they're never console units
+  const alwaysExclude =
+    /\b(controller|joy-?con|dualsense|seagate|storage\s*expansion|card|charger|stand|case|skin|headset|cable|adapter|warranty|extension|wheel|microsd)\b/i;
+
+  // Game titles and game-related words
+  const gameWords =
+    /\b(game|uncharted|ghost\s*of|yotei|silent\s*hill|collection|legacy|thieves|sports|sifu|zelda|pokemon|mario|nba|fifa|crash|emblem|atelier|taiko)\b/i;
+
+  return items.filter((item) => {
+    const name = (item.name || "").toLowerCase();
+
+    // Brand must match
+    const brandMatch =
+      consoleType === "ps5"
+        ? /\b(ps5|playstation\s*5|playstation\s*portal)\b/i.test(name)
+        : consoleType === "ps4"
+          ? /\b(ps4|playstation\s*4)\b/i.test(name)
+          : consoleType === "xbox"
+            ? /\b(xbox)\b/i.test(name)
+            : consoleType === "switch2"
+              ? /\b(switch\s*2)\b/i.test(name)
+              : consoleType === "switch"
+                ? /\b(switch|nintendo)\b/i.test(name) &&
+                  !/switch\s*2/i.test(name)
+                : false;
+
+    if (!brandMatch) return false;
+
+    // Always exclude accessories/controllers/storage
+    if (alwaysExclude.test(name)) return false;
+
+    // Exclude games (unless it's actually a console bundle with "edition" in the name that also has console indicators)
+    if (gameWords.test(name)) {
+      // Allow if it's clearly a console (has slim/pro/digital/disc/oled/lite/series)
+      const hasConsoleIndicator =
+        /\b(slim|digital|disc|oled|lite|series\s*[xs]|1tb|2tb|512gb)\b/i.test(
+          name,
+        );
+      if (!hasConsoleIndicator) return false;
+    }
+
+    return true;
   });
 }
 
@@ -541,21 +733,31 @@ export async function handleVectorSearch(
   query: string,
   context?: VectorSearchContext,
 ): Promise<VectorSearchResult> {
+  // 🎯 GRAPHITI GRAPH RAG - Enhance query with synonyms FIRST
+  let effectiveQuery = query;
+  if (shouldEnhanceQuery(query)) {
+    const enhancement = await enhanceSearchQuery(query);
+    if (enhancement.redirect) {
+      effectiveQuery = enhancement.redirect;
+      console.log("[VectorSearch] 🔍 Graph RAG enhanced query", {
+        original: query,
+        enhanced: effectiveQuery,
+        source: enhancement.source,
+        confidence: enhancement.confidence,
+      });
+    }
+  }
+
   const resolvedStore = resolveVectorStore(context);
-  const enrichedQuery = enrichQueryWithCategory(query); // Returns original query now
-  const queryTokens = extractQueryTokens(query);
+  const enrichedQuery = enrichQueryWithCategory(effectiveQuery); // Returns original query now
+  const queryTokens = extractQueryTokens(effectiveQuery); // Use enhanced query for tokenization
   const filteringTokens = selectFilteringTokens(queryTokens);
   let detectedCategory = extractProductCategory(query);
-  // Hard override to avoid mis-detection for critical categories
-  if (/\btablet\b/i.test(query)) detectedCategory = "tablet";
-  if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query))
-    detectedCategory = "phone";
-  // Hard override to avoid mis-detection
   if (/\btablet\b/i.test(query)) {
-    detectedCategory = "tablet" as any;
+    detectedCategory = "tablet";
   }
   if (/\b(phone|handphone|mobile|smartphone)\b/i.test(query)) {
-    detectedCategory = "phone" as any;
+    detectedCategory = "phone";
   }
   const tradeQueryOverride = context?.tradeDeviceQuery?.trim();
   let priceListMatch = tradeQueryOverride
@@ -577,7 +779,7 @@ export async function handleVectorSearch(
   const wantsFullList = /\b(any|all|everything|list|show\s+me\s+all)\b/i.test(
     query,
   );
-  const wooLimit = wantsFullList ? 20 : 12;
+  const wooLimit = wantsFullList ? 30 : 20;
   const isTradeIntentContext =
     resolvedStore.label === "trade_in" ||
     (context?.intent && context.intent.toLowerCase() === "trade_in") ||
@@ -590,11 +792,42 @@ export async function handleVectorSearch(
 
   if (detectedCategory && DIRECT_CATEGORY_SET.has(detectedCategory)) {
     const slugs = CATEGORY_SLUG_MAP[detectedCategory] || [];
-    const directResults = await getWooProductsByCategory(
-      slugs,
-      wooLimit,
-      "asc",
-    );
+    let directResults = await getWooProductsByCategory(slugs, wooLimit, "asc");
+
+    // 🎯 FILTER SD CARDS for storage category when searching for NVMe/SSD
+    if (detectedCategory === "storage" && directResults.length > 0) {
+      const wantsNVMe = /\b(nvme|m\.?2|pcie)\b/i.test(query);
+      const wantsSSD = /\b(ssd|solid\s*state)\b/i.test(query);
+
+      if (wantsNVMe || wantsSSD) {
+        const beforeFilter = directResults.length;
+        directResults = directResults.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          const isSDCard = /\b(sd\s*card|microsd|micro\s*sd|tf\s*card)\b/i.test(
+            name,
+          );
+          return !isSDCard; // Exclude SD cards for NVMe/SSD queries
+        });
+        console.log(
+          `[VectorSearch] 🔍 Storage filter: excluded ${beforeFilter - directResults.length} SD cards, kept ${directResults.length} NVMe/SSDs`,
+        );
+      }
+    }
+
+    // 🎯 FILTER CONSOLES: Use unified filterConsoleResults function
+    if (
+      (detectedCategory === "console" || detectedCategory === "handheld") &&
+      directResults.length > 0
+    ) {
+      const beforeFilter = directResults.length;
+      directResults = filterConsoleResults(directResults, query);
+      if (directResults.length !== beforeFilter) {
+        console.log(
+          `[VectorSearch] 🎮 Console filter: ${beforeFilter} → ${directResults.length} items for "${query}"`,
+        );
+      }
+    }
+
     if (directResults.length) {
       console.log(
         `[VectorSearch] Direct ${detectedCategory} category load: ${directResults.length} items`,
@@ -626,7 +859,10 @@ export async function handleVectorSearch(
 
       // Show ALL products - no clarification needed for direct categories
       // Customer needs to see full inventory to make purchase decision
-      const intro = `Here's what we have (${directResults.length} products):\n\n`;
+      const intro =
+        detectedCategory === "storage"
+          ? `Here's what we have in storage (SSD/NVMe/HDD) (${directResults.length} products):\n\n`
+          : `Here's what we have (${directResults.length} products):\n\n`;
       const deterministicResponse = `${summaryPrefix}${intro}${listText}`;
       const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
@@ -662,6 +898,10 @@ export async function handleVectorSearch(
       regex:
         /\bronald|messi|madrid|barca|barcelona|man\s*united|man\s*u\b|liverpool|premier\s+league|fifa\b|fc\s2[34]/i,
       tokens: ["fifa", "fc"],
+    },
+    {
+      regex: /\b(football|soccer)\b/i,
+      tokens: ["fifa", "fc", "football"],
     },
     {
       regex: /\bpeter\s+parker|spidey|spider-?man/i,
@@ -813,6 +1053,25 @@ export async function handleVectorSearch(
       // Hardware: gpu → graphic card, console → playstation, gamepad → controller
       let searchQuery = query;
       const lowerQuery = query.toLowerCase();
+
+      // 🎯 GRAPHITI ENHANCEMENT: Use Graph RAG to expand query (synonyms/redirects)
+      // This handles "horror" -> "resident evil silent hill...", "basketball" -> "NBA 2K", etc.
+      try {
+        if (shouldEnhanceQuery(query)) {
+          const enhancement = await enhanceSearchQuery(query);
+          if (
+            enhancement.enhancedQuery &&
+            enhancement.enhancedQuery !== query
+          ) {
+            console.log(
+              `[VectorSearch] ⚡️ Graphiti enhanced query: "${enhancement.enhancedQuery}" (source: ${enhancement.source})`,
+            );
+            searchQuery = enhancement.enhancedQuery;
+          }
+        }
+      } catch (err) {
+        console.warn("[VectorSearch] Graphiti enhancement failed:", err);
+      }
 
       // Live-sale / latest intent: bypass catalog and fetch fresh via Perplexity first
       const saleIntent =
@@ -979,10 +1238,41 @@ export async function handleVectorSearch(
         await searchWooProducts(cleanedQuery, wooLimit),
       );
 
+      // If we have specific tokens (e.g., "unicorn"), require them in product names
+      if (filteringTokens.length && wooProducts.length) {
+        const strictFiltered = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          return filteringTokens.some((token) => name.includes(token));
+        });
+        if (strictFiltered.length) {
+          wooProducts = strictFiltered;
+        } else {
+          wooProducts = [];
+        }
+      }
+
+      if (
+        !isTradeIntentContext &&
+        filteringTokens.length &&
+        !wooProducts.length
+      ) {
+        return {
+          text: prependTradeSnippet(
+            `I checked our catalog and don't see that in stock right now. Use [search](https://tradezone.sg/?s=${encodeURIComponent(query)}) to check other models.`,
+          ),
+          store: resolvedStore.label,
+          matches: [],
+          wooProducts: [],
+        };
+      }
+
       // Phone-specific cleanup: remove tablet cross-bleed
       if (detectedCategory === "phone" && wooProducts.length > 0) {
         let phoneFiltered = wooProducts.filter((p) => {
-          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const cats = ((p as any).categories || [])
+            .map((c: any) => c.name || "")
+            .join(" ")
+            .toLowerCase();
           const name = (p.name || "").toLowerCase();
           const isPhoneCat =
             /handphone|phone|mobile|smartphone|iphone|galaxy|pixel|oppo|xiaomi|huawei/.test(
@@ -1000,7 +1290,10 @@ export async function handleVectorSearch(
           phoneFiltered = dedupeWooProducts(
             await searchWooProducts("handphone phone mobile", wooLimit),
           ).filter((p) => {
-            const cats = ((p as any).categories || []).join(" ").toLowerCase();
+            const cats = ((p as any).categories || [])
+              .map((c: any) => c.name || "")
+              .join(" ")
+              .toLowerCase();
             const name = (p.name || "").toLowerCase();
             const isPhoneCat =
               /handphone|phone|mobile|smartphone|iphone|galaxy|pixel/.test(
@@ -1020,6 +1313,37 @@ export async function handleVectorSearch(
           console.log(
             `[VectorSearch] Phone filter applied: kept ${phoneFiltered.length} items`,
           );
+
+          // 🎯 BRAND-SPECIFIC SORTING (show all phones but prioritize requested brand)
+          const wantsIPhone = /\biphone\b/i.test(query);
+          const wantsSamsung = /\b(samsung|galaxy)\b/i.test(query);
+
+          if (wantsIPhone || wantsSamsung) {
+            const requestedBrand = wantsIPhone ? "iphone" : "samsung|galaxy";
+            const brandRegex = new RegExp(`\\b(${requestedBrand})\\b`, "i");
+
+            // Separate into requested brand and others
+            const brandMatches: typeof wooProducts = [];
+            const otherPhones: typeof wooProducts = [];
+
+            wooProducts.forEach((p) => {
+              const name = (p.name || "").toLowerCase();
+              if (brandRegex.test(name)) {
+                brandMatches.push(p);
+              } else {
+                otherPhones.push(p);
+              }
+            });
+
+            // Put requested brand first, others at the end
+            if (brandMatches.length > 0) {
+              wooProducts = [...brandMatches, ...otherPhones];
+              const brandName = wantsIPhone ? "iPhone" : "Samsung";
+              console.log(
+                `[VectorSearch] ✅ ${brandName} priority sort: ${brandMatches.length} ${brandName}s first, ${otherPhones.length} others at end`,
+              );
+            }
+          }
         } else {
           return {
             text: "Browse phones here: https://tradezone.sg/product-category/handphone-tablet/handphone/",
@@ -1033,7 +1357,10 @@ export async function handleVectorSearch(
       // Tablet-specific cleanup: remove phone/handphone cross-bleed
       if (detectedCategory === "tablet" && wooProducts.length > 0) {
         let tabletFiltered = wooProducts.filter((p) => {
-          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const cats = ((p as any).categories || [])
+            .map((c: any) => c.name || "")
+            .join(" ")
+            .toLowerCase();
           const name = (p.name || "").toLowerCase();
           const isTabletCat =
             /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
@@ -1047,7 +1374,10 @@ export async function handleVectorSearch(
           tabletFiltered = dedupeWooProducts(
             await searchWooProducts("tablet", wooLimit),
           ).filter((p) => {
-            const cats = ((p as any).categories || []).join(" ").toLowerCase();
+            const cats = ((p as any).categories || [])
+              .map((c: any) => c.name || "")
+              .join(" ")
+              .toLowerCase();
             const name = (p.name || "").toLowerCase();
             const isTabletCat =
               /tablet|ipad|tab\b/.test(cats) || /tablet|ipad|tab\b/.test(name);
@@ -1102,22 +1432,63 @@ export async function handleVectorSearch(
       if (platformIntent && wooProducts.length > 0) {
         const platformFiltered = wooProducts.filter((p) => {
           const name = (p.name || "").toLowerCase();
-          const cats = ((p as any).categories || []).join(" ").toLowerCase();
+          const cats = (p.categories || [])
+            .map((c: any) => `${c.name || ""} ${c.slug || ""}`)
+            .join(" ")
+            .toLowerCase();
+
+          // Check if QUERY mentions multiple platforms
+          const queryHasPS = /ps[45]|playstation/i.test(lowerQuery);
+          const queryHasXbox = /xbox|series\s*[xs]/i.test(lowerQuery);
+          const queryHasSwitch = /switch|nintendo/i.test(lowerQuery);
+
+          const multiPlatformQuery =
+            (queryHasPS && (queryHasXbox || queryHasSwitch)) ||
+            (queryHasXbox && queryHasSwitch);
+          const shouldBeStrict = !multiPlatformQuery;
+
           switch (platformIntent) {
             case "ps5":
-              return (
-                /ps5|playstation\s*5/.test(name) || /playstation\s*5/.test(cats)
-              );
+              const isPS5 =
+                /ps5|playstation\s*5/.test(name) ||
+                /playstation\s*5|playstation-5|ps5/.test(cats);
+              if (!isPS5) return false;
+              if (shouldBeStrict) {
+                // Exclude Switch/Xbox mentions in a PS5 search
+                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name))
+                  return false;
+              }
+              return true;
             case "ps4":
-              return (
-                /ps4|playstation\s*4/.test(name) || /playstation\s*4/.test(cats)
-              );
+              const isPS4 =
+                /ps4|playstation\s*4/.test(name) ||
+                /playstation\s*4|playstation-4|ps4/.test(cats);
+              if (!isPS4) return false;
+              if (shouldBeStrict) {
+                if (/(switch|nintendo|xbox|series\s*[xs])/.test(name))
+                  return false;
+              }
+              return true;
             case "switch":
-              return /switch|nintendo/.test(name) || /switch/.test(cats);
+              const isSwitch =
+                /switch|nintendo/.test(name) || /switch|nintendo/.test(cats);
+              if (!isSwitch) return false;
+              if (shouldBeStrict) {
+                // Exclude PS/Xbox mentions in a Switch search
+                if (/(ps5|ps4|playstation|xbox|series\s*[xs])/.test(name))
+                  return false;
+              }
+              return true;
             case "xbox":
-              return (
-                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats)
-              );
+              const isXbox =
+                /xbox|series\s*[xs]|xbox\s*one/.test(name) || /xbox/.test(cats);
+              if (!isXbox) return false;
+              if (shouldBeStrict) {
+                // Exclude PS/Switch mentions in an Xbox search
+                if (/(ps5|ps4|playstation|switch|nintendo)/.test(name))
+                  return false;
+              }
+              return true;
             case "pc":
               return /pc|windows|steam/.test(name) || /pc\s*related/.test(cats);
             default:
@@ -1134,13 +1505,30 @@ export async function handleVectorSearch(
 
       // Storage intent: prefer storage categories and drop non-storage if possible
       if (detectedCategory === "storage" && wooProducts.length > 0) {
+        // Detect specific storage type from query
+        const wantsNVMe = /\b(nvme|m\.?2|pcie)\b/i.test(query);
+        const wantsSSD = /\b(ssd|solid\s*state)\b/i.test(query);
+        const wantsHDD = /\b(hdd|hard\s*drive|harddrive)\b/i.test(query);
+
         let storageFiltered = wooProducts.filter((p) => {
           const cats = (p as any).categories || [];
           const name = (p.name || "").toLowerCase();
           const isStorageCat = cats.some((c: string) =>
             /\b(storage|hdd|ssd|nvme|hard\s*drive|solid\s*state)\b/i.test(c),
           );
+          const isLaptopCat = cats.some((c: string) =>
+            /\b(laptop|notebook|desktop|pc)\b/i.test(c),
+          );
           const isSSDName = /\b(ssd|nvme|m\.?2|solid\s*state)\b/i.test(name);
+
+          // Exclude SD cards, microSD cards when searching for SSD/NVMe
+          const isSDCard = /\b(sd\s*card|microsd|micro\s*sd|tf\s*card)\b/i.test(
+            name,
+          );
+          if ((wantsNVMe || wantsSSD) && isSDCard) {
+            return false; // Skip SD cards for NVMe/SSD queries
+          }
+
           // Exclude accessories, cases, games, and consoles that contain "storage" in name
           const isAccessory =
             /case|bag|controller|fan|game|mouse|pad|cover|housing|expansion card|drive.*console|portal|switch|playstation|xbox|ally/i.test(
@@ -1156,7 +1544,8 @@ export async function handleVectorSearch(
             (isStorageCat || isSSDName) &&
             hasStorageKeyword &&
             !isAccessory &&
-            !isLaptopPc
+            !isLaptopPc &&
+            !isLaptopCat
           );
         });
         if (storageFiltered.length === 0) {
@@ -1172,6 +1561,12 @@ export async function handleVectorSearch(
           wooProducts = storageFiltered;
           console.log(
             `[VectorSearch] Storage intent: filtered to ${storageFiltered.length} storage items`,
+          );
+        } else {
+          // Avoid returning unrelated products for storage queries
+          wooProducts = [];
+          console.log(
+            "[VectorSearch] Storage intent: no storage items found after filtering",
           );
         }
       }
@@ -1221,7 +1616,7 @@ export async function handleVectorSearch(
             ) {
               return {
                 text: perplexityResult,
-                store: label,
+                store: resolvedStore.label,
                 matches: [],
                 wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
               };
@@ -1269,21 +1664,63 @@ export async function handleVectorSearch(
 
       if (sportTokens.length > 0 && wooProducts.length > 0) {
         console.log(
-          `[VectorSearch] Sport query detected, prioritizing canonical titles:`,
+          `[VectorSearch] Sport query detected, filtering for canonical titles:`,
           sportTokens,
         );
         const prioritized = wooProducts.filter((product) => {
           const hay = (product.name || "").toLowerCase();
           return sportTokens.some((token) => hay.includes(token));
         });
+
+        // Strict filter: DROP the remainder
         if (prioritized.length > 0) {
-          const remainder = wooProducts.filter(
-            (product) => !prioritized.includes(product),
-          );
-          wooProducts = [...prioritized, ...remainder];
+          wooProducts = prioritized;
           console.log(
-            `[VectorSearch] ✅ Re-ordered ${wooProducts.length} products, ${prioritized.length} canonical titles first`,
+            `[VectorSearch] ✅ Filtered to ${wooProducts.length} canonical sport titles`,
           );
+        } else {
+          // If strict filter found nothing, clear the list so we don't show unrelated items
+          wooProducts = [];
+          console.log(`[VectorSearch] ❌ Sport filter removed all items`);
+        }
+      }
+
+      // Horror genre filter (Jan 2026)
+      if (
+        /\b(horror|scary|zombie|resident\s*evil|silent\s*hill|until\s*dawn|alan\s*wake|last\s*of\s*us)\b/i.test(
+          searchQuery,
+        ) &&
+        wooProducts.length > 0
+      ) {
+        const horrorTokens = [
+          "horror",
+          "resident evil",
+          "silent hill",
+          "dead space",
+          "dying light",
+          "last of us",
+          "evil within",
+          "alien",
+          "zombie",
+          "until dawn",
+          "alan wake",
+          "friday",
+          "13th",
+          "slasher",
+        ];
+        const horrorFiltered = wooProducts.filter((p) => {
+          const hay = (p.name || "").toLowerCase();
+          return horrorTokens.some((t) => hay.includes(t));
+        });
+
+        if (horrorFiltered.length > 0) {
+          wooProducts = horrorFiltered;
+          console.log(
+            `[VectorSearch] ✅ Filtered to ${wooProducts.length} horror titles`,
+          );
+        } else {
+          wooProducts = [];
+          console.log(`[VectorSearch] ❌ Horror filter removed all items`);
         }
       }
 
@@ -1428,16 +1865,78 @@ export async function handleVectorSearch(
         );
       }
 
+      // 🎯 AVAILABILITY QUESTION DETECTION + ACCESSORY FILTERING
+      // Detect if user is asking "is X available?" or "do you have X?"
+      const isAvailabilityQuestion =
+        /\b(available|in stock|still have|do you have|got|have you got)\b/i.test(
+          query,
+        );
+
+      if (isAvailabilityQuestion && wooProducts.length > 0) {
+        console.log(`[VectorSearch] 🔍 Availability question detected`);
+
+        // Filter out accessories (screen protectors, cases, cables, etc.) to show only main product
+        const accessoryKeywords = [
+          /screen\s*protector/i,
+          /protective\s*case/i,
+          /\bcase\b/i,
+          /\bcover\b/i,
+          /\bcable\b/i,
+          /charger/i,
+          /adapter/i,
+          /stand/i,
+          /mount/i,
+          /\bgrip\b/i,
+          /\bskin\b/i,
+          /decal/i,
+          /sticker/i,
+        ];
+
+        const mainProducts = wooProducts.filter((product) => {
+          const name = (product.name || "").toLowerCase();
+          // Keep product if it doesn't match any accessory keywords
+          return !accessoryKeywords.some((keyword) => keyword.test(name));
+        });
+
+        if (
+          mainProducts.length > 0 &&
+          mainProducts.length < wooProducts.length
+        ) {
+          wooProducts = mainProducts;
+          console.log(
+            `[VectorSearch] ✅ Filtered accessories: ${wooProducts.length} main products (removed ${wooProducts.length - mainProducts.length} accessories)`,
+          );
+        }
+
+        // If exactly 1 product found, give YES + price + link (concise availability answer)
+        if (wooProducts.length === 1) {
+          const product = wooProducts[0];
+          const price = formatSGDPrice(product.price_sgd);
+          const url = product.permalink || `https://tradezone.sg`;
+          const stockStatus =
+            product.stock_status === "instock" ? "Yes" : "Out of stock";
+
+          const simpleResponse = `${stockStatus}, ${price} — [View Product](${url})`;
+
+          return {
+            text: `<<<DETERMINISTIC_START>>>${simpleResponse}<<<DETERMINISTIC_END>>>`,
+            store: resolvedStore.label,
+            matches: [],
+            wooProducts: [product],
+          };
+        }
+      }
+
       let budgetContext: BudgetContext | null = null;
       if (wooProducts.length > 0) {
         console.log(
           `[VectorSearch] ✅ WooCommerce found ${wooProducts.length} products - continuing to enrichment layers`,
         );
         budgetContext = createBudgetContext(query, wooProducts);
-        if (budgetContext.maxBudget != null) {
+        if (budgetContext?.maxBudget != null) {
           const within = wooProducts.filter((product) => {
             const price = getProductPrice(product);
-            return price != null && price <= budgetContext.maxBudget!;
+            return price != null && price <= budgetContext!.maxBudget!;
           });
           const above = wooProducts.filter(
             (product) => !within.includes(product),
@@ -1466,16 +1965,15 @@ export async function handleVectorSearch(
           const maxCount = Math.max(...Object.values(baseNameCounts));
           const isSeries = maxCount >= 3;
 
-          const displayLimit = isSeries ? 5 : 8;
+          const displayLimit = Math.min(wooProducts.length, 20);
           const productsToShow = wooProducts.slice(0, displayLimit);
           const hasMore = wooProducts.length > displayLimit;
 
           const listText = productsToShow
             .map((product, idx) => {
-              const price = formatPriceWithBudget(
-                product.price_sgd,
-                budgetContext!,
-              );
+              const price = budgetContext
+                ? formatPriceWithBudget(product.price_sgd, budgetContext)
+                : formatSGDPrice(product.price_sgd);
               const url = product.permalink || `https://tradezone.sg`;
               const imageStr =
                 idx === 0 && product.image
@@ -1485,52 +1983,12 @@ export async function handleVectorSearch(
             })
             .join("\n\n");
 
-          // Platform-specific game category links with new/pre-owned
-          const getGamesCategoryLink = (query: string): string => {
-            const lower = query.toLowerCase();
-            const isPreOwned =
-              /\b(pre[-\s]?owned|used|second[-\s]?hand)\b/i.test(lower);
-
-            if (/\bps5\b|playstation\s*5/i.test(lower)) {
-              return isPreOwned
-                ? "https://tradezone.sg/product-category/playstation/playstation-5/pre-owned-games-playstation-5/"
-                : "https://tradezone.sg/product-category/playstation/playstation-5/brand-new-games-playstation-5/";
-            }
-            if (/\bps4\b|playstation\s*4/i.test(lower)) {
-              return isPreOwned
-                ? "https://tradezone.sg/product-category/playstation/playstation-4/pre-owned-games-playstation-4/"
-                : "https://tradezone.sg/product-category/playstation/playstation-4/brand-new-games-playstation-4/";
-            }
-            if (/\bxbox\s*(series\s*[xs]|one)/i.test(lower)) {
-              return "https://tradezone.sg/product-category/xbox-item/";
-            }
-            if (/\bswitch\b|nintendo/i.test(lower)) {
-              return "https://tradezone.sg/product-category/nintendo-switch/";
-            }
-            return "https://tradezone.sg/product-category/console-games/";
-          };
-
-          // Category link mapping
-          const categoryLinks: Record<string, string> = {
-            vr: "https://tradezone.sg/product-category/gadgets/virtual-reality-headset/",
-            games: getGamesCategoryLink(query),
-            laptop: "https://tradezone.sg/product-category/laptop/",
-            phone: "https://tradezone.sg/product-category/phones/",
-            tablet: "https://tradezone.sg/product-category/tablet/",
-            console: "https://tradezone.sg/product-category/console-games/",
-            gpu: "https://tradezone.sg/product-category/graphic-card/",
-            motherboard: "https://tradezone.sg/product-category/motherboard/",
-            handheld: "https://tradezone.sg/product-category/gaming-handheld/",
-            storage:
-              "https://tradezone.sg/product-category/pc-related/pc-parts/storage/",
-          };
-
-          const categoryLink = detectedCategory
-            ? categoryLinks[detectedCategory]
-            : null;
-          const moreText = hasMore
-            ? `\n\n**Showing ${displayLimit} of ${wooProducts.length} results.** ${categoryLink ? `[View all ${detectedCategory}s on website](${categoryLink}) or ask for a specific title.` : "Ask for a specific title to see more."}`
-            : "";
+          const moreText = buildMoreResultsText(
+            displayLimit,
+            wooProducts.length,
+            detectedCategory,
+            query,
+          );
 
           const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
           const budgetSummaryLine = buildBudgetSummaryLine(
@@ -1632,10 +2090,15 @@ export async function handleVectorSearch(
             : "";
 
           // Return DETERMINISTIC response - show products directly
+          const storageIntro =
+            detectedCategory === "storage"
+              ? `Here's what we have in storage (SSD/NVMe/HDD) (${wooProducts.length} products):\n\n`
+              : null;
           const intro =
             wooProducts.length > 0
-              ? `Here's what we have (${wooProducts.length} products):\n\n`
-              : `I don't have any ${categoryLabel}s matching "${query}".`;
+              ? storageIntro ||
+                `Here's what we have (${wooProducts.length} products):\n\n`
+              : `Sorry, I couldn't find any ${categoryLabel || "products"} matching "${query}".`;
 
           const deterministicResponse =
             wooProducts.length > 0
@@ -1645,7 +2108,7 @@ export async function handleVectorSearch(
 
           return {
             text: responseText,
-            store: "product_catalog",
+            store: resolvedStore.label,
             matches: [],
             wooProducts: wooPayload,
           };
@@ -1660,92 +2123,117 @@ export async function handleVectorSearch(
         const hasEnoughResults = wooProducts.length >= 3;
 
         if (!isDetailQuery && hasEnoughResults) {
+          // 🎮 Filter console results if user asked for specific console
+          const filteredWooProducts = filterConsoleResults(wooProducts, query);
+
           console.log(
-            `[VectorSearch] ✅ Simple list query with ${wooProducts.length} WooCommerce results - returning WITHOUT vector enrichment (fast path)`,
+            `[VectorSearch] ✅ Simple list query with ${filteredWooProducts.length} WooCommerce results (filtered from ${wooProducts.length}) - returning WITHOUT vector enrichment (fast path)`,
           );
 
-          const displayLimit = 8;
-          const productsToShow = wooProducts.slice(0, displayLimit);
-          const hasMore = wooProducts.length > displayLimit;
+          // Show all products if total is small (≤20), otherwise limit to 10
+          const displayLimit =
+            filteredWooProducts.length <= 20 ? filteredWooProducts.length : 20;
+          const productsToShow = filteredWooProducts.slice(0, displayLimit);
 
           const listText = productsToShow
             .map((product, idx) => {
-              const price = formatSGDPrice(product.price_sgd);
+              const price = budgetContext
+                ? formatPriceWithBudget(product.price_sgd, budgetContext)
+                : formatSGDPrice(product.price_sgd);
               const url = product.permalink || `https://tradezone.sg`;
-              // Include image on ALL products for better UX
-              const imageStr = product.image
-                ? `\n   ![${product.name}](${product.image})`
-                : "";
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
               return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
             })
             .join("\n\n");
 
-          const moreText = hasMore
-            ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
+          const moreText = buildMoreResultsText(
+            displayLimit,
+            filteredWooProducts.length,
+            detectedCategory,
+            query,
+          );
+
+          const budgetSummaryLine = buildBudgetSummaryLine(
+            budgetContext!,
+            buildCategoryLabel(detectedCategory),
+          );
+          const summaryPrefix = budgetSummaryLine
+            ? `${budgetSummaryLine}\n\n`
             : "";
-
-          // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
-          const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
-          const deterministicResponse = intro + listText + moreText;
-          const wrappedResponse = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
-
+          const intro = `Here's what we have (${filteredWooProducts.length} results):\n\n`;
+          const deterministicResponse = `${summaryPrefix}${intro}${listText}${moreText}`;
           return {
-            text: wrappedResponse,
-            store: "product_catalog",
+            text: `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`,
+            store: resolvedStore.label,
             matches: [],
-            wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
+            wooProducts: filteredWooProducts,
           };
         }
 
+        // 🎮 Filter console results if user asked for specific console
+        const filteredWooProducts2 = filterConsoleResults(wooProducts, query);
+
         console.log(
-          `[VectorSearch] Specific query or few results (${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
+          `[VectorSearch] Specific query or few results (${filteredWooProducts2.length} filtered from ${wooProducts.length}) - returning WooCommerce list to avoid hallucinations`,
         );
-        const fallbackBudgetContext =
-          budgetContext || createBudgetContext(query, wooProducts);
-        const displayLimit = Math.min(wooProducts.length, 8);
-        const productsToShow = wooProducts.slice(0, displayLimit);
-        const hasMore = wooProducts.length > displayLimit;
+        if (filteredWooProducts2.length > 0) {
+          const fallbackBudgetContext =
+            budgetContext || createBudgetContext(query, filteredWooProducts2);
+          // Show all products if total is small (≤20), otherwise limit to 20
+          const displayLimit =
+            filteredWooProducts2.length <= 20
+              ? filteredWooProducts2.length
+              : 20;
+          const productsToShow = filteredWooProducts2.slice(0, displayLimit);
 
-        const listText = productsToShow
-          .map((product, idx) => {
-            const price = formatPriceWithBudget(
-              product.price_sgd,
-              fallbackBudgetContext,
-            );
-            const url = product.permalink || `https://tradezone.sg`;
-            // Include image on ALL products for better UX
-            const imageStr = product.image
-              ? `\n   ![${product.name}](${product.image})`
-              : "";
-            return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
-          })
-          .join("\n\n");
+          const listText = productsToShow
+            .map((product, idx) => {
+              const price = formatPriceWithBudget(
+                product.price_sgd,
+                fallbackBudgetContext,
+              );
+              const url = product.permalink || `https://tradezone.sg`;
+              // Include image for first product only to keep format consistent
+              const imageStr =
+                idx === 0 && product.image
+                  ? `\n   ![${product.name}](${product.image})`
+                  : "";
+              return `${idx + 1}. **${product.name}** — ${price}\n   [View Product](${url})${imageStr}`;
+            })
+            .join("\n\n");
 
-        const moreText = hasMore
-          ? `\n\nShowing ${displayLimit} of ${wooProducts.length} results. Ask for a specific title for more.`
-          : "";
+          const moreText = buildMoreResultsText(
+            displayLimit,
+            filteredWooProducts2.length,
+            detectedCategory,
+            query,
+          );
 
-        const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
-        const budgetSummaryLine = buildBudgetSummaryLine(
-          fallbackBudgetContext,
-          budgetCategoryLabel,
-        );
-        const summaryPrefix = budgetSummaryLine
-          ? `${budgetSummaryLine}\n\n`
-          : "";
+          const budgetCategoryLabel = buildCategoryLabel(detectedCategory);
+          const budgetSummaryLine = buildBudgetSummaryLine(
+            fallbackBudgetContext,
+            budgetCategoryLabel,
+          );
+          const summaryPrefix = budgetSummaryLine
+            ? `${budgetSummaryLine}\n\n`
+            : "";
 
-        // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
-        const intro = `Here's what we have (${productsToShow.length} products):\n\n`;
-        const deterministicResponse =
-          summaryPrefix + intro + listText + moreText;
-        const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
+          // DETERMINISTIC RESPONSE - show products directly to avoid losing sales
+          const intro = `Here's what we have (${filteredWooProducts2.length} results):\n\n`;
+          const deterministicResponse =
+            summaryPrefix + intro + listText + moreText;
+          const responseText = `<<<DETERMINISTIC_START>>>${prependTradeSnippet(deterministicResponse)}<<<DETERMINISTIC_END>>>`;
 
-        return {
-          text: responseText,
-          store: "product_catalog",
-          matches: [],
-          wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
-        };
+          return {
+            text: responseText,
+            store: resolvedStore.label,
+            matches: [],
+            wooProducts: filteredWooProducts2,
+          };
+        }
       } else {
         // For specific categories (phone/tablet/laptop), don't fall back to vector - prevent hallucination
         const detectedCategory = extractProductCategory(query);
@@ -1943,7 +2431,7 @@ export async function handleVectorSearch(
                         "\n\nThese are the ONLY " +
                         detectedCategory +
                         " products currently available. For more options, visit https://tradezone.sg",
-                      store: label,
+                      store: resolvedStore.label,
                       matches: [],
                       wooProducts: wooResults,
                     };
@@ -1982,7 +2470,7 @@ export async function handleVectorSearch(
                   );
                   return {
                     text: perplexityResult,
-                    store: label,
+                    store: resolvedStore.label,
                     matches: [],
                     wooProducts:
                       wooProducts.length > 0 ? wooProducts : undefined,
@@ -1998,7 +2486,7 @@ export async function handleVectorSearch(
               // Ultimate fallback message
               return {
                 text: `I don't have ${detectedCategory === "phone" ? "phones" : detectedCategory === "laptop" ? "laptops" : detectedCategory + "s"} in my current product database. Please check our website at https://tradezone.sg for our latest ${detectedCategory} inventory, or I can help you with gaming consoles and accessories instead.`,
-                store: label,
+                store: resolvedStore.label,
                 matches: [],
                 wooProducts: wooProducts.length > 0 ? wooProducts : undefined,
               };
@@ -2135,12 +2623,27 @@ export async function handleVectorSearch(
     const lowerQuery = query.toLowerCase();
     const sportFilters: string[] = [];
     const SPORT_TOKEN_MAP: Array<{ regex: RegExp; tokens: string[] }> = [
-      { regex: /basketball|nba|2k/i, tokens: ["nba", "2k"] },
       {
-        regex: /football|soccer|fifa|fc ?24|ea sports fc/i,
+        regex: /basketball|nba|2k|curry|jordan|lebron|durant/i,
+        tokens: ["nba", "2k", "basketball"],
+      },
+      {
+        regex: /football|soccer|fifa|fc ?24|ea sports fc|messi|ronaldo/i,
         tokens: ["fifa", "fc", "football"],
       },
-      { regex: /wrestling|wwe|wwf/i, tokens: ["wwe", "wrestling", "2k"] },
+      {
+        regex: /wrestling|wwe|wwf|undertaker|cena/i,
+        tokens: ["wwe", "wrestling", "2k"],
+      },
+      {
+        regex: /skateboard|skate|tony hawk/i,
+        tokens: ["skate", "tony hawk", "skateboard"],
+      },
+      {
+        regex:
+          /\bcar\s+games?|\bracing\s+games?|\bgran turismo|forza|need\s+for\s+speed|nfs|burnout|mario\s+kart/i,
+        tokens: ["racing", "car", "turismo", "forza", "kart", "speed"],
+      },
     ];
 
     SPORT_TOKEN_MAP.forEach(({ regex, tokens }) => {
@@ -2153,10 +2656,28 @@ export async function handleVectorSearch(
       if (!sportFilters.length) return items;
       return items.filter((item) => {
         const hay = (item.name || "").toLowerCase();
-        const hasSport = sportFilters.some((tok) => hay.includes(tok));
-        const isGameLike = /\b(game|edition|2k|fc|fifa|nba|wwe)\b/i.test(
-          item.name || "",
-        );
+
+        // Exclude false positives (graphic card, SD card, etc.)
+        if (
+          /graphic\s*card|sd\s*card|micro\s*sd|wifi\s*card|trading\s*card/i.test(
+            hay,
+          )
+        ) {
+          return false;
+        }
+
+        const hasSport = sportFilters.some((tok) => {
+          // For "car", only match if it's a standalone word (not part of "card")
+          if (tok === "car") {
+            return /\bcar\b/i.test(hay);
+          }
+          return hay.includes(tok);
+        });
+
+        const isGameLike =
+          /\b(game|edition|2k|fc|fifa|nba|wwe|racing|cars)\b/i.test(
+            item.name || "",
+          );
         return hasSport && isGameLike;
       });
     };
@@ -2180,7 +2701,7 @@ export async function handleVectorSearch(
           "- Confirm the caller is in Singapore before continuing.",
           '- Let them know we need a manual review: "We don\'t have this device in our system yet. Want me to have TradeZone staff review it?"',
           "- Keep saving any trade-in details with tradein_update_lead.",
-          '- If they confirm, collect name, phone, and email, then call sendemail with emailType:"contact" and include a note like "Manual trade-in review needed" plus the device details.',
+          '- If they confirm, collect reason/issue + email + name (required) and phone if available, then call sendemail with emailType:"contact". Message should include: "Reason: {reason}" plus device details.',
           "- If they decline, explain we currently only accept the models listed on TradeZone.sg, and offer to check other items.",
         ].join("\n");
 
@@ -2203,15 +2724,46 @@ export async function handleVectorSearch(
     // Step 4: Combine WooCommerce (source of truth) + Vector/Graphiti enrichment
     let finalText = "";
 
-    if (sportFilters.length && wooProducts.length === 0) {
-      finalText = `No matching products found for "${query}" right now. Want me to note it for staff and check availability for you?`;
-    } else if (wooProducts.length > 0) {
+    // Smart sports filter: Trust WooCommerce/Graphiti catalog as source of truth
+    // If products found → show them (they're video games we sell like NBA 2K, FIFA, Madden)
+    // If NO products found AND sports keyword → show helpful redirect message
+    if (sportFilters.length > 0 && wooProducts.length === 0) {
+      // No products found for sports query - offer helpful redirect
+      const sportType = lowerQuery.match(
+        /basketball|nba(?!\s*2k)|curry|jordan/i,
+      )
+        ? "basketball"
+        : lowerQuery.match(/skateboard|skate|tony hawk/i)
+          ? "skateboarding"
+          : lowerQuery.match(/football|soccer|messi|ronaldo/i)
+            ? "football/soccer"
+            : lowerQuery.match(/wrestling|wwe|cena/i)
+              ? "wrestling"
+              : lowerQuery.match(
+                    /\bcar\s+games?|\bracing\s+games?|gran turismo|forza|need\s+for\s+speed/i,
+                  )
+                ? "racing/car"
+                : "sports";
+
+      finalText = `[SPORTS_FILTER_APPLIED] We don't currently stock ${sportType} games, but we focus on other popular titles! Check out our console games section or let me know what else you're looking for.`;
+
+      return {
+        text: finalText,
+        store: label,
+        matches: [],
+        wooProducts: undefined,
+      };
+    }
+
+    // Products found OR not a sports query - show results normally
+    if (wooProducts.length > 0) {
       console.log(
         `[VectorSearch] Step 4: Combining WooCommerce products with vector enrichment`,
       );
+      // Show all products if total is small (≤20) or user wants full list, otherwise limit to 10
       const displayLimit = Math.min(
         wooProducts.length,
-        wantsFullList ? wooProducts.length : 8,
+        wantsFullList || wooProducts.length <= 20 ? wooProducts.length : 10,
       );
       const wooSection = wooProducts
         .slice(0, displayLimit)

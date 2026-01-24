@@ -25,6 +25,15 @@ export const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   tablet: ["tablet"],
   chair: ["chair"],
   cpu_cooler: ["cpu-cooler"],
+  storage: ["storage"],
+  console: [
+    "consoles",
+    "console",
+    "console-nintendo",
+    "console-playstation-4",
+    "gadgets",
+  ],
+  handheld: ["handheld", "handhelds", "consoles", "gadgets"],
 };
 
 export const DIRECT_CATEGORY_KEYS = [
@@ -32,6 +41,9 @@ export const DIRECT_CATEGORY_KEYS = [
   "tablet",
   "chair",
   "cpu_cooler",
+  "storage",
+  "console",
+  "handheld",
 ] as const;
 
 export const DIRECT_CATEGORY_SET = new Set<string>(DIRECT_CATEGORY_KEYS);
@@ -51,6 +63,10 @@ interface WooProduct {
   stock_quantity?: number | null;
   images?: Array<{ id: number; src: string; alt?: string }>;
   categories?: Array<{ id: number; name: string; slug: string }>;
+  short_description?: string;
+  description?: string;
+  tags?: Array<{ id: number; name: string; slug: string }>;
+  enrichment?: string | null;
 }
 
 export interface WooProductSearchResult {
@@ -60,6 +76,7 @@ export interface WooProductSearchResult {
   price_sgd: number | null;
   stock_status?: string;
   image?: string;
+  categories?: Array<{ name: string; slug: string }>;
 }
 
 export async function getWooProductsByCategory(
@@ -83,6 +100,10 @@ export async function getWooProductsByCategory(
       price_sgd: parseMoney(product.price),
       stock_status: product.stock_status,
       image: product.images?.[0]?.src,
+      categories: product.categories?.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+      })),
     }))
     .filter((entry) => entry.price_sgd != null)
     .sort((a, b) => {
@@ -315,6 +336,14 @@ function selectCondition(
   return model.flagshipCondition || model.conditions[0] || null;
 }
 
+function getFranchiseFocus(query: string): string[] | null {
+  if (/\bea\s*sports\s*fc\b/i.test(query)) return ["ea sports fc"];
+  if (/\bfifa\b/i.test(query)) return ["fifa", "ea sports fc"];
+  if (/\bnba\b/i.test(query)) return ["nba"];
+  if (/\bpokemon\b/i.test(query)) return ["pokemon"];
+  return null;
+}
+
 export async function searchWooProducts(
   query: string,
   limit = 5,
@@ -324,6 +353,27 @@ export async function searchWooProducts(
   const normalized = query.toLowerCase();
   const tokens = normalized.split(/\s+/).filter(Boolean);
   if (!tokens.length) return [];
+  const franchiseFocus = getFranchiseFocus(normalized);
+  const isGameQuery = /\b(game|games)\b/i.test(query);
+  const wantsPreOwned = /\b(pre-?owned|used|second-?hand)\b/i.test(query);
+  const wantsBrandNew = /\b(brand\s*new|new)\b/i.test(query);
+
+  if (isGameQuery && /\bps4\b|\bplaystation\s*4\b/i.test(query)) {
+    const slugList = wantsPreOwned
+      ? ["pre-owned-games-playstation-4"]
+      : ["brand-new-games-playstation-4"];
+    const deterministicResults = await getWooProductsByCategory(
+      slugList,
+      Math.max(limit, 120),
+      "asc",
+    );
+    if (deterministicResults.length) {
+      console.log(
+        `[searchWooProducts] Direct PS4 games hit (${deterministicResults.length} products)`,
+      );
+      return deterministicResults;
+    }
+  }
 
   // Detect product family in query (same logic as catalog search)
   const familyKeywords = [
@@ -392,6 +442,12 @@ export async function searchWooProducts(
       keywords: ["cpu cooler", "cooler", "aio", "liquid cooler", "heatsink"],
       category: "cpu_cooler",
     },
+    {
+      pattern:
+        /\b(hdd|hard\s*drive|harddrive|ssd|nvme|storage|m\.2|solid\s*state)\b/i,
+      keywords: ["ssd", "nvme", "m.2", "hard drive", "storage"],
+      category: "storage",
+    },
   ];
 
   let familyFilter: string[] | null = null;
@@ -453,16 +509,64 @@ export async function searchWooProducts(
   const scored = products
     .map((product) => {
       const name = (product.name || "").toLowerCase();
+      // DEBUG: Trace specific product
+
+      const productCategories = (product.categories || [])
+        .map((c) => c.slug.toLowerCase())
+        .join(" ");
+
+      // Initial Filter: Remove "test" products
+      if (name === "test" || name.includes("test product")) {
+        return { product, score: 0 };
+      }
+
+      // Base score
       let score = 0;
 
-      // FILTER: When user asks for "game", exclude trading cards/posters/non-games
+      if (
+        franchiseFocus &&
+        !franchiseFocus.some((token) => name.includes(token))
+      ) {
+        return { product, score: 0 };
+      }
+
+      // FILTER: When user asks for "game", ONLY show actual games (use WooCommerce categories)
       if (/\b(game|games)\b/i.test(query)) {
+        // Check if product is in a game category
+        const isInGameCategory =
+          /brand-new-games|pre-owned-games|pre-order-games/i.test(
+            productCategories,
+          );
+        if (!isInGameCategory) {
+          return { product, score: 0 }; // Exclude non-game products (controllers, warranties, etc.)
+        }
+
+        // Also exclude collectibles even if somehow in game category
         const isNonGame =
           /\b(trading\s*card|poster|figure|plush|toy|keychain|sticker|art\s*book)\b/i.test(
             name,
           );
         if (isNonGame) {
-          return { product, score: 0 }; // Exclude non-game items
+          return { product, score: 0 };
+        }
+
+        // Default to brand new games unless user specifically asks for pre-owned
+        const isPreOwned = /pre-owned-games/i.test(productCategories);
+        const isBrandNew = /brand-new-games|pre-order-games/i.test(
+          productCategories,
+        );
+
+        if (!wantsPreOwned && isPreOwned) {
+          if (wantsBrandNew) {
+            return { product, score: 0 }; // Strictly enforce 'new' if requested
+          }
+          // If user didn't specify 'new', allow pre-owned but maybe penalize slightly
+          score *= 0.8;
+        }
+
+        // Boost brand new games when user doesn't specify condition
+        if (!wantsPreOwned && isBrandNew) {
+          score += 50;
         }
       }
 
@@ -470,7 +574,7 @@ export async function searchWooProducts(
       if (categoryFilter === "phone" || categoryFilter === "tablet") {
         // Check if product is in the correct WooCommerce category
         const productCategories = (product.categories || [])
-          .map((c) => c.name.toLowerCase())
+          .map((c) => c.slug.toLowerCase())
           .join(" ");
 
         // For phone searches, require "Handphone" category AND exclude tablet-only products
@@ -561,6 +665,14 @@ export async function searchWooProducts(
             score += 500; // Heavy bonus for matching the requested brand
           }
         });
+        if (brandTokens.length > 0) {
+          const matchesAnyBrand = brandTokens.some((brand) =>
+            name.includes(brand),
+          );
+          if (!matchesAnyBrand) {
+            score -= 250; // Demote non-requested brands (e.g., iPhone query should not surface Samsung first)
+          }
+        }
       } else if (categoryFilter === "camera") {
         const matchesCategory = familyFilter!.some((keyword) =>
           name.includes(keyword),
@@ -595,6 +707,27 @@ export async function searchWooProducts(
         }
 
         score += 100;
+      } else if (categoryFilter === "storage") {
+        const productCategories = (product.categories || [])
+          .map((c) => c.name.toLowerCase())
+          .join(" ");
+        const hasStorageKeyword =
+          /\b(ssd|nvme|m\.?2|solid\s*state|hard\s*drive|hdd)\b/i.test(name);
+        if (!hasStorageKeyword) {
+          return { product, score: 0 };
+        }
+        const isAccessory =
+          /case|bag|cover|housing|controller|mouse|pad|fan|game|console|playstation|xbox|switch|portal|drive\b(?!\s*ssd|\s*nvme|\s*hard)/i.test(
+            name,
+          );
+        const isLaptopPc = /laptop|notebook|pc\b|desktop|gaming pc/i.test(name);
+        const isLaptopCategory = /\b(laptop|notebook|desktop|pc)\b/i.test(
+          productCategories,
+        );
+        if (isAccessory || isLaptopPc || isLaptopCategory) {
+          return { product, score: 0 };
+        }
+        score += 100;
       } else if (categoryFilter === "laptop") {
         // Laptops are identified via Woo categories since product names may omit "laptop"
         const inLaptopCategory = isInCategory(product, "laptop");
@@ -607,7 +740,12 @@ export async function searchWooProducts(
         score += 100;
       }
       // Apply family filter if detected (gaming products)
-      else if (familyFilter && tokens.length > 1) {
+      // BUT: Skip family filter for game queries - category filtering already handled it
+      else if (
+        familyFilter &&
+        tokens.length > 1 &&
+        !/\b(game|games)\b/i.test(query)
+      ) {
         const matchesFamily = familyFilter.some((keyword) =>
           name.includes(keyword),
         );
@@ -617,9 +755,34 @@ export async function searchWooProducts(
       }
 
       // Score based on token matching
+      // Search across name, description, tags, and AI enrichment
+      const shortDesc = (product.short_description || "").toLowerCase();
+      const fullDesc = (product.description || "").toLowerCase();
+      const productTags = (product.tags || [])
+        .map((t) => t.name.toLowerCase())
+        .join(" ");
+      const enrichment = (product.enrichment || "").toLowerCase();
+
       tokens.forEach((token) => {
+        // Name matches = highest priority (original scoring)
         if (name.includes(token)) {
           score += token.length;
+        }
+        // Enrichment matches = very high priority (90% weight - accurate semantic keywords)
+        else if (enrichment.includes(token)) {
+          score += Math.ceil(token.length * 0.9);
+        }
+        // Tag matches = medium-high priority
+        else if (productTags.includes(token)) {
+          score += Math.ceil(token.length * 0.6);
+        }
+        // Short description matches = medium priority (half weight)
+        else if (shortDesc.includes(token)) {
+          score += Math.ceil(token.length * 0.5);
+        }
+        // Full description matches = lower priority (quarter weight)
+        else if (fullDesc.includes(token)) {
+          score += Math.ceil(token.length * 0.25);
         }
       });
       return { product, score };
@@ -645,6 +808,10 @@ export async function searchWooProducts(
     price_sgd: parseMoney(product.price),
     stock_status: product.stock_status,
     image: product.images?.[0]?.src, // Include first image
+    categories: product.categories?.map((c) => ({
+      name: c.name,
+      slug: c.slug,
+    })),
   }));
 
   if (
@@ -669,7 +836,38 @@ export async function searchWooProducts(
         price_sgd: parseMoney(product.price),
         stock_status: product.stock_status,
         image: product.images?.[0]?.src,
+        categories: product.categories?.map((c) => ({
+          name: c.name,
+          slug: c.slug,
+        })),
       }));
+    }
+  }
+
+  if (results.length === 0 && isGameQuery) {
+    const gameSlugs = wantsPreOwned
+      ? [
+          "pre-owned-games",
+          "pre-owned-games-playstation-4",
+          "pre-owned-games-nintendo",
+        ]
+      : [
+          "brand-new-games",
+          "brand-new-games-playstation-4",
+          "brand-new-games-nintendo",
+          "pre-order-games",
+          "pre-order-games-ps5",
+        ];
+    const fallbackGames = await getWooProductsByCategory(
+      gameSlugs,
+      Math.max(limit, 120),
+      "asc",
+    );
+    if (fallbackGames.length) {
+      console.log(
+        `[searchWooProducts] Game category fallback hit (${fallbackGames.length} products)`,
+      );
+      return fallbackGames;
     }
   }
 

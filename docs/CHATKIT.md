@@ -20,7 +20,7 @@ Complete documentation for the ChatKit AI chat system, including text chat, voic
 ## Overview
 
 ChatKit is TradeZone's AI-powered chat system that provides:
-- **Text Chat** - GPT-4o-mini powered text conversations
+- **Text Chat** - GPT-4.1-mini powered text conversations
 - **Voice Chat** - Real-time voice conversations with GPT-4o-mini Realtime
 - **Embeddable Widget** - Standalone chat widget for any website
 - **Product Search** - Vector store integration for product queries
@@ -83,7 +83,7 @@ ChatKit is TradeZone's AI-powered chat system that provides:
 
 ### Features
 
-- **GPT-4o-mini** powered responses
+- **GPT-4.1-mini** powered responses
 - **Vector search** for product queries
 - **Perplexity search** for web information
 - **Email tool** for customer inquiries
@@ -117,7 +117,7 @@ Text chat settings are stored in `organizations.settings.chatkit`:
 ```json
 {
   "chatkit": {
-    "textModel": "gpt-4o-mini",
+    "textModel": "gpt-4.1-mini",
     "systemPrompt": "You are Izacc...",
     "vectorStoreId": "vs_xxx"
   }
@@ -270,7 +270,7 @@ OPENAI_VECTOR_STORE_ID=vs_xxx
 {
   "response": "Yes! We have several gaming keyboards...",
   "sessionId": "Guest-1234",
-  "model": "gpt-4o-mini"
+  "model": "gpt-4.1-mini"
 }
 ```
 
@@ -389,7 +389,7 @@ SET settings = jsonb_set(
   settings,
   '{chatkit}',
   '{
-    "textModel": "gpt-4o-mini",
+    "textModel": "gpt-4.1-mini",
     "voiceModel": "gpt-4o-mini-realtime-preview-2024-12-17",
     "voice": "verse",
     "systemPrompt": "You are Izacc...",
@@ -428,7 +428,7 @@ If database settings are missing, these defaults are used:
 
 ```typescript
 {
-  textModel: 'gpt-4o-mini',
+  textModel: 'gpt-4.1-mini',
   voiceModel: 'gpt-4o-mini-realtime-preview-2024-12-17',
   voice: 'verse',
   systemPrompt: CHATKIT_DEFAULT_PROMPT,

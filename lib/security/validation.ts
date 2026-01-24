@@ -3,7 +3,7 @@
  * Prevents token abuse and malicious payloads
  */
 
-import { logSuspiciousActivity } from './monitoring';
+import { logSuspiciousActivity } from "./monitoring";
 
 export const VALIDATION_LIMITS = {
   MAX_MESSAGE_LENGTH: 1000, // Max characters per message
@@ -44,7 +44,7 @@ async function logInjectionAttempt(
   sessionId: string,
   risk: "low" | "medium" | "high",
   patterns: string[],
-  clientIp: string = "unknown"
+  clientIp: string = "unknown",
 ): Promise<void> {
   await logSuspiciousActivity("prompt_injection", {
     sessionId,
@@ -208,21 +208,26 @@ export function validateChatMessage(input: any): ValidationResult {
       input.message,
       input.sessionId || "unknown",
       injectionCheck.risk,
-      injectionCheck.patterns
-    ).catch(err => console.error("[Security] Failed to log injection attempt:", err));
+      injectionCheck.patterns,
+    ).catch((err) =>
+      console.error("[Security] Failed to log injection attempt:", err),
+    );
 
     // Block high-risk attempts
     if (injectionCheck.risk === "high") {
       errors.push({
         field: "message",
-        message: "Your message contains patterns that may interfere with the chatbot. Please rephrase your question.",
+        message:
+          "Your message contains patterns that may interfere with the chatbot. Please rephrase your question.",
         value: injectionCheck.risk,
       });
       return ValidationResult.failure(errors);
     }
 
     // For medium/low risk, sanitize but allow
-    console.log("[Security] Allowing medium/low risk message after sanitization");
+    console.log(
+      "[Security] Allowing medium/low risk message after sanitization",
+    );
   }
 
   // Sanitize and return
@@ -291,6 +296,8 @@ export function detectPromptInjection(message: string): {
 
   // Critical injection patterns (HIGH RISK)
   const criticalPatterns = [
+    /forget\s+everything\s+you\s+know/i,
+    /override\s+your\s+(programming|instructions|rules)/i,
     /ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)/i,
     /disregard\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)/i,
     /forget\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)/i,
@@ -306,6 +313,7 @@ export function detectPromptInjection(message: string): {
     /<\|im_end\|>/i,
     /<<SYS>>/i,
     /<\/SYS>/i,
+    /reveal\s+your\s+(instructions|prompt|system\s+message)/i,
   ];
 
   // Medium-risk patterns (role-playing/identity confusion)
@@ -322,7 +330,6 @@ export function detectPromptInjection(message: string): {
   const lowPatterns = [
     /what\s+(are|is)\s+your\s+(instructions|rules|prompt)/i,
     /show\s+me\s+your\s+(instructions|prompt|system\s+message)/i,
-    /reveal\s+your\s+(instructions|prompt)/i,
     /tell\s+me\s+your\s+(instructions|rules)/i,
   ];
 
@@ -376,7 +383,10 @@ export function sanitizeMessage(message: string): string {
   sanitized = sanitized.replace(/\n{4,}/g, "\n\n\n");
 
   // Remove common instruction delimiters
-  sanitized = sanitized.replace(/<\|im_start\|>|<\|im_end\|>|<<SYS>>|<\/SYS>|\[SYSTEM\]|\[INST\]|\[\/INST\]/gi, "");
+  sanitized = sanitized.replace(
+    /<\|im_start\|>|<\|im_end\|>|<<SYS>>|<\/SYS>|\[SYSTEM\]|\[INST\]|\[\/INST\]/gi,
+    "",
+  );
 
   return sanitized;
 }

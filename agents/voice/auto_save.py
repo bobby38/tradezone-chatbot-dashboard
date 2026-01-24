@@ -179,6 +179,10 @@ def extract_data_from_message(
         "initial_quote_given", False
     )
 
+    # Do not collect checklist details until user accepts the quote
+    if not is_trade_in_active:
+        return extracted
+
     if is_trade_in_active and (
         "brand" not in checklist_state.collected_data
         or "model" not in checklist_state.collected_data
@@ -188,8 +192,23 @@ def extract_data_from_message(
             "asus rog ally": {"brand": "ASUS", "model": "ROG Ally"},
             "rog ally": {"brand": "ASUS", "model": "ROG Ally"},
             "steam deck": {"brand": "Valve", "model": "Steam Deck"},
+            # PS5 variants - MUST come before generic "ps5"
+            "ps5 pro": {"brand": "Sony", "model": "PlayStation 5 Pro"},
+            "playstation 5 pro": {"brand": "Sony", "model": "PlayStation 5 Pro"},
+            "ps5 slim": {"brand": "Sony", "model": "PlayStation 5 Slim"},
+            "playstation 5 slim": {"brand": "Sony", "model": "PlayStation 5 Slim"},
+            "ps5 digital": {"brand": "Sony", "model": "PlayStation 5 Digital"},
+            "playstation 5 digital": {
+                "brand": "Sony",
+                "model": "PlayStation 5 Digital",
+            },
             "playstation 5": {"brand": "Sony", "model": "PlayStation 5"},
             "ps5": {"brand": "Sony", "model": "PlayStation 5"},
+            # PS4 variants - MUST come before generic "ps4"
+            "ps4 pro": {"brand": "Sony", "model": "PlayStation 4 Pro"},
+            "playstation 4 pro": {"brand": "Sony", "model": "PlayStation 4 Pro"},
+            "ps4 slim": {"brand": "Sony", "model": "PlayStation 4 Slim"},
+            "playstation 4 slim": {"brand": "Sony", "model": "PlayStation 4 Slim"},
             "playstation 4": {"brand": "Sony", "model": "PlayStation 4"},
             "ps4": {"brand": "Sony", "model": "PlayStation 4"},
             "xbox series x": {"brand": "Microsoft", "model": "Xbox Series X"},
