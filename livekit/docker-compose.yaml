@@ -1,7 +1,7 @@
 # LiveKit Self-Hosted Deployment for livekit.rezult.co
 # Exposes UDP ports directly for WebRTC while keeping HTTP for Traefik
 
-version: '3.8'
+version: "3.8"
 
 networks:
   coolify:
@@ -28,7 +28,7 @@ services:
           use_external_ip: true
           enable_loopback_candidate: true
         keys:
-          API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=
+          ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
         logging:
           level: info
     labels:
@@ -47,6 +47,5 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
 # HTTP/WebSocket goes through Traefik (port 7880)
 # UDP ports exposed directly on host for WebRTC media

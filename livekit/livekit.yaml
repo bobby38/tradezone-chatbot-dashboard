@@ -9,17 +9,18 @@ rtc:
   use_external_ip: true
   tcp_port: 7881
   # Use Metered.ca free TURN for NAT traversal
-  turn_servers:
-    - host: a.relay.metered.ca
-      port: 80
-      protocol: udp
-      username: e8dd65c92f6ec4f4c5b85a9c
-      credential: uWdWNmkhvyqTEuTR
-    - host: a.relay.metered.ca
-      port: 443
-      protocol: tcp
-      username: e8dd65c92f6ec4f4c5b85a9c
-      credential: uWdWNmkhvyqTEuTR
+  # Optional TURN servers (recommended for strict NATs)
+  # turn_servers:
+  #   - host: a.relay.metered.ca
+  #     port: 80
+  #     protocol: udp
+  #     username: YOUR_METERED_USERNAME
+  #     credential: YOUR_METERED_CREDENTIAL
+  #   - host: a.relay.metered.ca
+  #     port: 443
+  #     protocol: tcp
+  #     username: YOUR_METERED_USERNAME
+  #     credential: YOUR_METERED_CREDENTIAL
 
 # API Keys - REPLACE THESE with your generated keys
 # Generate with:
@@ -27,7 +28,7 @@ rtc:
 #   Secret:  openssl rand -base64 32
 keys:
   # Format: API_KEY: API_SECRET
-  API3da17ac5856eb78524a98386: xN0/L4XcGm2REUgPISgj4rXXxt7JZNAqSKEnC3fRi4I=
+  API_YOUR_KEY_HERE: YOUR_SECRET_HERE
 
 logging:
   level: info
@@ -40,7 +41,6 @@ room:
   auto_create: true
   # Empty room timeout (seconds)
   empty_timeout: 300
-
 # Webhook configuration (optional - for monitoring)
 # webhook:
 #   urls:
