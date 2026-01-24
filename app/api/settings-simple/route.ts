@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,11 @@ const respondSupabaseMissing = () =>
 export async function GET(request: NextRequest) {
   console.log("[Settings] GET request received");
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     if (!supabaseClient) {
       console.error("[Settings] Supabase client not initialized");
       return respondSupabaseMissing();
@@ -122,6 +128,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     if (!supabaseClient) {
       return respondSupabaseMissing();
     }
@@ -198,6 +209,11 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   console.log("[Settings] PUT request received - saving all settings");
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     if (!supabaseClient) {
       console.error("[Settings] Supabase client not initialized");
       return respondSupabaseMissing();

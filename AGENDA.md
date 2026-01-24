@@ -124,7 +124,7 @@ VOICE_TTS_SPEED=1.15
 # Production API
 NEXT_PUBLIC_API_URL=https://trade.rezult.co
 API_BASE_URL=https://trade.rezult.co
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY
 
 # LiveKit (already configured)
 LIVEKIT_URL=wss://tradezone-9kwy60jr.livekit.cloud

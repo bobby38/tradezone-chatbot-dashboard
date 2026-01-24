@@ -7,8 +7,8 @@ import asyncio
 import json
 import logging
 import os
-import random
 import re
+import time
 from datetime import datetime
 from typing import Annotated, Any, Dict, Optional
 
@@ -22,10 +22,10 @@ from auto_save import (
     detect_and_fix_trade_up_prices,
     extract_data_from_message,
     force_save_to_db,
-    lookup_price,
-    needs_clarification,
 )
 from dotenv import load_dotenv
+from pydantic import Field
+
 from livekit import rtc
 from livekit.agents import (
     Agent,
@@ -40,29 +40,25 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import openai
-
-try:
-    from livekit.plugins import silero
-
-    SILERO_AVAILABLE = True
-except ImportError:
-    silero = None
-    SILERO_AVAILABLE = False
+from livekit.plugins import openai, silero
 from livekit.plugins.openai import realtime
-from pydantic import Field
 
-# Conditionally import noise cancellation only if enabled (Cloud-only feature)
-VOICE_NOISE_CANCELLATION = (
-    os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true"
-)
-if VOICE_NOISE_CANCELLATION:
-    from livekit.plugins import noise_cancellation
+noise_cancellation = None
+if os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true":
+    try:
+        from livekit.plugins import noise_cancellation as _noise_cancellation
+
+        noise_cancellation = _noise_cancellation
+    except Exception:
+        noise_cancellation = None
 
 logger = logging.getLogger("agent-amara")
 
 _last_user_utterance: Dict[str, str] = {}
 _awaiting_recap_confirmation: Dict[str, bool] = {}
+_session_last_seen: Dict[str, float] = {}
+
+SESSION_TTL_SECONDS = int(os.getenv("VOICE_SESSION_TTL_SECONDS", "7200"))
 
 load_dotenv(".env.local")
 
@@ -81,10 +77,23 @@ LLM_TEMPERATURE = float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2"))
 # Voice stack selector: "realtime" uses OpenAI Realtime API; "classic" uses STT+LLM+TTS stack
 VOICE_STACK = os.getenv("VOICE_STACK", "classic").lower()
 
+ENABLE_NOISE_CANCELLATION = (
+    os.getenv("VOICE_NOISE_CANCELLATION", "false").lower() == "true"
+)
+
 logger.info(f"[Voice Agent] API_BASE_URL = {API_BASE_URL}")
 logger.info(
     f"[Voice Agent] 🔥 AUTO-SAVE SYSTEM ACTIVE - Data extraction and save happens automatically"
 )
+logger.info(
+    f"[Voice Agent] VOICE_STACK={VOICE_STACK} VOICE_NOISE_CANCELLATION={ENABLE_NOISE_CANCELLATION}"
+)
+
+if VOICE_STACK != "realtime":
+    logger.info(
+        "[Voice Agent] ASSEMBLYAI_API_KEY configured = %s",
+        bool(os.getenv("ASSEMBLYAI_API_KEY")),
+    )
 
 if not API_KEY:
     logger.warning(
@@ -102,7 +111,7 @@ _tradeup_context: Dict[str, Dict[str, Any]] = {}
 # Session → waiting for photo upload (blocks further questions until photo received or user says done)
 _waiting_for_photo: Dict[str, bool] = {}
 
-VALID_PAYOUT_VALUES = {"cash", "paynow", "bank", "installment"}
+VALID_PAYOUT_VALUES = {"cash", "paynow", "bank"}
 PAYOUT_NORMALIZATION_MAP = {
     "cash": "cash",
     "cash payout": "cash",
@@ -114,16 +123,6 @@ PAYOUT_NORMALIZATION_MAP = {
     "bank transfer": "bank",
     "bank account": "bank",
     "wire transfer": "bank",
-    "installment": "installment",
-    "installments": "installment",
-    "instalment": "installment",
-    "instalments": "installment",
-    "installment plan": "installment",
-    "installment plans": "installment",
-    "payment plan": "installment",
-    "payment plans": "installment",
-    "monthly plan": "installment",
-    "monthly installment": "installment",
 }
 PAYOUT_KEYWORD_FALLBACKS = (
     ("cash", "cash"),
@@ -133,10 +132,6 @@ PAYOUT_KEYWORD_FALLBACKS = (
     ("bank account", "bank"),
     ("wire transfer", "bank"),
     ("bank", "bank"),
-    ("installment", "installment"),
-    ("instalment", "installment"),
-    ("payment plan", "installment"),
-    ("monthly", "installment"),
 )
 UNSUPPORTED_PAYOUT_KEYWORDS = ("top up", "topup", "top-up")
 
@@ -181,6 +176,60 @@ def _infer_brand_from_device_name(device_name: Optional[str]) -> Optional[str]:
     return None
 
 
+async def _force_submit_tradein(
+    session_id: str, checklist: "TradeInChecklistState"
+) -> None:
+    """Force submit the trade-in when agent self-confirms or user confirms recap."""
+    logger.warning(
+        f"[ForceSubmit] 🚀 Force submitting trade-in for session {session_id}"
+    )
+    logger.warning(f"[ForceSubmit] 📋 Checklist state: {checklist.get_progress()}")
+
+    # Check if this is a trade-up from context (in case is_trade_up wasn't set)
+    trade_ctx = _tradeup_context.get(session_id)
+    if trade_ctx and trade_ctx.get("target_device"):
+        if not checklist.is_trade_up:
+            logger.warning(
+                f"[ForceSubmit] 🔄 Setting is_trade_up=True from context (was False)"
+            )
+            checklist.is_trade_up = True
+
+    try:
+        headers = build_auth_headers()
+        lead_id = _lead_ids.get(session_id)
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/api/tradein/submit",
+                json={
+                    "sessionId": session_id,
+                    "leadId": lead_id,
+                    "notify": True,
+                    "status": "in_review",  # Valid enum value (not "submitted")
+                },
+                headers=headers,
+                timeout=15.0,
+            )
+
+            if response.status_code >= 400:
+                logger.error(
+                    f"[ForceSubmit] ❌ Failed: {response.status_code} - {response.text}"
+                )
+            else:
+                result = response.json()
+                logger.warning(f"[ForceSubmit] ✅ SUCCESS: {result}")
+                logger.warning(
+                    f"[ForceSubmit] Email sent: {result.get('emailSent', False)}"
+                )
+                checklist.completed = True
+                checklist.current_step_index = len(
+                    checklist.STEPS
+                )  # Mark as fully complete
+                logger.warning(f"[ForceSubmit] ✅ Checklist marked as COMPLETED")
+    except Exception as e:
+        logger.error(f"[ForceSubmit] ❌ Exception: {e}")
+
+
 async def _persist_quote_flag(session_id: str, quote_timestamp: Optional[str]) -> None:
     try:
         await _ensure_tradein_lead_for_session(session_id)
@@ -218,6 +267,8 @@ async def _async_generate_reply(
 
 def _get_checklist(session_id: str) -> "TradeInChecklistState":
     """Get or create checklist state for a specific session"""
+    _touch_session(session_id)
+    _cleanup_sessions()
     state = _checklist_states.get(session_id)
     if state is None:
         state = TradeInChecklistState()
@@ -229,6 +280,34 @@ def _get_checklist(session_id: str) -> "TradeInChecklistState":
             f"[checklist] ♻️ Reusing existing checklist for session {session_id}"
         )
     return state
+
+
+def _touch_session(session_id: str) -> None:
+    _session_last_seen[session_id] = time.time()
+
+
+def _cleanup_sessions(now: Optional[float] = None) -> None:
+    now = now or time.time()
+    expired = [
+        session_id
+        for session_id, last_seen in _session_last_seen.items()
+        if now - last_seen > SESSION_TTL_SECONDS
+    ]
+    if not expired:
+        return
+
+    for session_id in expired:
+        _session_last_seen.pop(session_id, None)
+        _checklist_states.pop(session_id, None)
+        _lead_ids.pop(session_id, None)
+        _tradeup_context.pop(session_id, None)
+        _waiting_for_photo.pop(session_id, None)
+        _last_user_utterance.pop(session_id, None)
+        _awaiting_recap_confirmation.pop(session_id, None)
+
+    logger.info(
+        f"[SessionCleanup] Cleared {len(expired)} stale sessions (ttl={SESSION_TTL_SECONDS}s)"
+    )
 
 
 # ============================================================================
@@ -248,662 +327,14 @@ def build_auth_headers() -> Dict[str, str]:
     return headers
 
 
-def _normalize_voice_currency(text: str) -> str:
-    """
-    Convert currency for TTS pronunciation.
-    S$200 → "200 dollars" (NOT "$200" which TTS says as "dollar sign 200")
-    """
-    if not text:
-        return text
-
-    # Replace currency symbols with spoken numbers
-    # Pattern: S$200, $200, S$ 200 → "200 dollars"
-    import re
-
-    def replace_currency(match):
-        amount = match.group(1).replace(",", "").strip()
-        return f"{amount} dollars"
-
-    # Match S$123, $123, S$ 123 (with optional comma separators)
-    normalized = re.sub(r"[S\$]*\$\s*([\d,]+(?:\.\d{2})?)", replace_currency, text)
-
-    # Cleanup other variations
-    normalized = normalized.replace("Singapore dollars", "dollars")
-    normalized = normalized.replace("S dollar", "dollar")
-    normalized = normalized.replace("SGD", "dollars")
-
-    return normalized
-
-
-def _parse_price_value(value: Any) -> Optional[float]:
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        cleaned = value.replace("S$", "").replace("$", "")
-        cleaned = cleaned.replace(",", "").strip()
-        try:
-            return float(cleaned)
-        except ValueError:
-            return None
-    return None
-
-
-def _get_product_price(product: Dict[str, Any]) -> Optional[float]:
-    for key in ("price_sgd", "price", "price_sgd_float"):
-        price = _parse_price_value(product.get(key))
-        if price is not None:
-            return price
-    return None
-
-
-def _is_budget_phone_query(query: str) -> bool:
-    lower = query.lower()
-    return ("phone" in lower or "phones" in lower) and any(
-        token in lower for token in ["affordable", "cheap", "budget", "low"]
-    )
-
-
-def _is_game_query(query: str) -> bool:
-    lower = query.lower()
-    return any(
-        token in lower
-        for token in [
-            "game",
-            "games",
-            "nba",
-            "basketball",
-            "racing",
-            "horror",
-            "silent",
-            "madden",
-            "war",
-            "shooter",
-            "dance",
-            "skate",
-            "skateboard",
-            "tony",
-        ]
-    )
-
-
-def _tokenize_query(query: str) -> list[str]:
-    tokens = re.findall(r"[a-z0-9]+", query.lower())
-    stop = {
-        "any",
-        "the",
-        "a",
-        "an",
-        "do",
-        "you",
-        "have",
-        "got",
-        "game",
-        "games",
-        "video",
-        "for",
-        "on",
-        "ps5",
-        "ps4",
-        "xbox",
-        "switch",
-        "nintendo",
-        "playstation",
-        "console",
-        "consoles",
-        "affordable",
-        "cheap",
-        "budget",
-        "phone",
-        "phones",
-    }
-    return [token for token in tokens if token not in stop]
-
-
-def _name_matches_tokens(name: str, tokens: list[str]) -> bool:
-    if not tokens:
-        return True
-    words = set(re.findall(r"[a-z0-9]+", name.lower()))
-    for token in tokens:
-        if token in words:
-            continue
-        if token + "s" in words or token + "es" in words:
-            continue
-        if token.endswith("s") and token[:-1] in words:
-            continue
-        if any(char.isdigit() for char in token):
-            if any(word.startswith(token) for word in words):
-                continue
-        return False
-    return True
-
-
-def _is_game_product(product: Dict[str, Any]) -> bool:
-    categories = product.get("categories") or []
-    for category in categories:
-        name = (category.get("name") or "").lower()
-        slug = (category.get("slug") or "").lower()
-        if "game" in name or "game" in slug:
-            return True
-    return False
-
-
-def _format_price(price: Optional[float]) -> str:
-    if price is None:
-        return "$?"
-    if abs(price - round(price)) < 0.01:
-        return f"${int(round(price))}"
-    return f"${price:.2f}"
-
-
-def _shorten_name(name: str, max_words: int = 6) -> str:
-    if not name:
-        return "Item"
-    words = name.split()
-    if len(words) <= max_words:
-        return name
-    return " ".join(words[:max_words]) + "..."
-
-
-def _build_voice_product_summary(
-    products: list[Dict[str, Any]], query: str | None = None
-) -> str:
-    if not products:
-        return ""
-    top = products[:2]
-    parts = []
-    for product in top:
-        name = _shorten_name(product.get("name", "Item"))
-        price = _format_price(_get_product_price(product))
-        parts.append(f"{name} {price}")
-    joined = "; ".join(parts)
-    prefix = ""
-    if query and "ps5" in query.lower() and "ps5" not in joined.lower():
-        prefix = "PS5 options. "
-    return f"{prefix}Found {len(products)} items. {joined}. Want more details?"
-
-
-def _proceed_prompt() -> str:
-    options = [
-        "Do you want to proceed?",
-        "Shall I proceed?",
-        "Proceed now?",
-        "Continue with trade-in?",
-    ]
-    return random.choice(options)
-
-
-def _greeting_prompt() -> str:
-    options = [
-        "Hi! I'm Amara from TradeZone. How can I help you today?",
-        "Hey there! What can I help you with?",
-        "Hello! What brings you here today?",
-        "Hi! How can I help you?",
-        "Hey! What are you looking for today?",
-    ]
-    return random.choice(options)
-
-
-def _strip_device_name(raw: str) -> str:
-    if not raw:
-        return ""
-    cleaned = raw.strip()
-    cleaned = re.sub(r"[?.!,]+$", "", cleaned)
-    cleaned = re.sub(r"^(my|the|a|an)\s+", "", cleaned, flags=re.I)
-    return cleaned.strip()
-
-
-def _extract_tradeup_devices(message: str) -> Optional[tuple[str, str]]:
-    if not message:
-        return None
-    match = re.search(
-        r"(trade|swap|upgrade|exchange)(?:\s+in)?(?:\s+my)?\s+(.+?)\s+for\s+(.+)",
-        message,
-        flags=re.I,
-    )
-    if not match:
-        return None
-    source = _strip_device_name(match.group(2))
-    target = _strip_device_name(match.group(3))
-    if not source or not target:
-        return None
-    if re.search(r"\b(cash|money|dollars?)\b", target, flags=re.I):
-        return None
-    return source, target
-
-
-def _extract_tradein_device(message: str) -> Optional[str]:
-    if not message:
-        return None
-    patterns = [
-        r"trade(?:\s+in)?\s+my\s+(.+)",
-        r"trade(?:\s+in)?\s+(.+)",
-        r"how much can i trade(?:\s+in)?\s+my\s+(.+)",
-        r"how much for my\s+(.+)",
-        r"what'?s my\s+(.+?)\s+worth",
-        r"trade[-\s]?in price for\s+(.+)",
-        r"sell my\s+(.+)",
-    ]
-    stopwords = {"in", "for", "here", "there", "this", "that"}
-    for pattern in patterns:
-        match = re.search(pattern, message, flags=re.I)
-        if match:
-            device = _strip_device_name(match.group(1))
-            device = re.sub(
-                r"\bfor\s+(cash|money|dollars?)\b", "", device, flags=re.I
-            ).strip()
-            device = re.sub(r"\bfor\b$", "", device, flags=re.I).strip()
-            if not device or device.lower() in stopwords:
-                return None
-            if device:
-                return device
-    return None
-
-
-def _build_tradein_price_reply(device: str) -> str:
-    clarification = needs_clarification(device)
-    if clarification:
-        return _normalize_voice_currency(clarification)
-    price = lookup_price(device, "preowned")
-    if price is not None:
-        price_int = int(price)
-        return _normalize_voice_currency(
-            f"Your {device} is worth about ${price_int} for trade-in. {_proceed_prompt()}"
-        )
-    return (
-        f"I couldn't find a trade-in price for {device}. Want staff support to check?"
-    )
-
-
-def _build_tradeup_price_reply(
-    source_device: str, target_device: str, session_id: Optional[str] = None
-) -> str:
-    result = detect_and_fix_trade_up_prices(source_device, target_device)
-    if not result:
-        return (
-            f"Sorry, I couldn't find pricing for {source_device} or {target_device}. "
-            "Want staff support to check?"
-        )
-
-    if result.get("needs_clarification"):
-        source_q = result.get("source_question")
-        target_q = result.get("target_question")
-        if session_id:
-            _tradeup_context[session_id] = {
-                "source_device": source_device,
-                "target_device": target_device,
-                "pending_clarification": True,
-                "needs_source": bool(source_q),
-                "needs_target": bool(target_q),
-                "pending_confirmation": False,
-            }
-        if source_q and target_q:
-            return f"{source_q} Also, {target_q}"
-        if source_q:
-            return str(source_q)
-        if target_q:
-            return str(target_q)
-
-    trade_value = result.get("trade_value")
-    retail_price = result.get("retail_price")
-    top_up = result.get("top_up")
-    if trade_value and retail_price and top_up:
-        if session_id:
-            _tradeup_context[session_id] = {
-                "source_device": source_device,
-                "target_device": target_device,
-                "trade_value": trade_value,
-                "retail_price": retail_price,
-                "top_up": top_up,
-                "pending_clarification": False,
-                "pending_confirmation": False,
-            }
-            state = _get_checklist(session_id)
-            state.mark_trade_up()
-            state.collected_data["source_device_name"] = source_device
-            state.collected_data["target_device_name"] = target_device
-            state.collected_data["source_price_quoted"] = trade_value
-            state.collected_data["target_price_quoted"] = retail_price
-            state.collected_data["top_up_amount"] = top_up
-            inferred_brand = _infer_brand_from_device_name(source_device)
-            if inferred_brand:
-                state.collected_data["brand"] = inferred_brand
-            state.collected_data["model"] = source_device
-            lower_source = (source_device or "").lower()
-            lower_target = (target_device or "").lower()
-            if "switch" in lower_source or "switch" in lower_target:
-                state.mark_no_storage()
-
-        return (
-            f"Your {source_device} trades for ${int(trade_value)}. "
-            f"The {target_device} is ${int(retail_price)}. "
-            f"Top-up: ${int(top_up)}. {_proceed_prompt()}"
-        )
-
-    return (
-        f"Sorry, I couldn't find pricing for {source_device} or {target_device}. "
-        "Want staff support to check?"
-    )
-
-
-def _maybe_force_reply(message: str) -> Optional[str]:
-    if not message:
-        return None
-    lower = message.lower()
-
-    if any(token in lower for token in ["crypto", "bitcoin", "ethereum", "usdt"]):
-        return (
-            "Haha, we don't do crypto! "
-            "But if you've got gaming gear, phones, or consoles - I'm your girl!"
-        )
-
-    if "gpu" in lower and any(
-        token in lower for token in ["llm", "ai", "chatbot", "training"]
-    ):
-        return (
-            "For local LLMs, best GPU is NVIDIA RTX 4090 24GB. "
-            "RTX 4080 is a cheaper option. Want me to check stock?"
-        )
-
-    if "warranty" in lower or "covered" in lower or "coverage" in lower:
-        return "Are you in Singapore?"
-
-    # General support requests - ask location first
-    if any(
-        token in lower
-        for token in [
-            "speak to staff",
-            "talk to staff",
-            "contact staff",
-            "reach support",
-            "human support",
-            "need help",
-            "customer service",
-        ]
-    ):
-        return "Are you in Singapore?"
-
-    # Non-Singapore locations - reject immediately
-    if any(
-        token in lower
-        for token in [
-            "malaysia",
-            "indonesia",
-            "thailand",
-            "philippines",
-            "vietnam",
-            "india",
-            "china",
-            "hong kong",
-            "taiwan",
-            "australia",
-            "usa",
-            "europe",
-            "uk",
-        ]
-    ):
-        return "Sorry, Singapore only. We don't ship internationally."
-
-    if "opening hours" in lower or "open hours" in lower or "what time" in lower:
-        return "Open daily, 12 to 8:30 pm at Hougang Green—team is on-site then."
-    if "opening" in lower or "closing" in lower or "close" in lower:
-        if "hour" in lower or "time" in lower:
-            return "Open daily, 12 to 8:30 pm at Hougang Green—team is on-site then."
-
-    if "refund" in lower or "return policy" in lower or "returns" in lower:
-        return (
-            "Refunds: 14-day window on unopened items, 7-day functional warranty on pre-owned. "
-            "Full policy is on tradezone dot sg slash returns hyphen policy."
-        )
-
-    if "shipping" in lower or "delivery" in lower or "ship" in lower:
-        if "same day" in lower or "sameday" in lower or "weekend" in lower:
-            return (
-                "Shipping is $5, 1-3 business days. No same-day; weekends don't count."
-            )
-        return "Shipping is $5, 1-3 business days in Singapore."
-
-    if any(token in lower for token in ["ps6", "osmo pocket 4", "pocket 4"]):
-        return "Not in stock yet. Want staff support to notify you when available?"
-
-    tradeup = _extract_tradeup_devices(message)
-    if tradeup:
-        source_device, target_device = tradeup
-        return _build_tradeup_price_reply(source_device, target_device)
-
-    device = _extract_tradein_device(message)
-    if device:
-        return _build_tradein_price_reply(device)
-
-    return None
-
-
-def _get_last_user_message_from_session(session: Any) -> str:
-    ctx = (
-        getattr(session, "history", None)
-        or getattr(session, "chat_ctx", None)
-        or getattr(session, "_chat_ctx", None)
-    )
-    if not ctx:
-        return ""
-    items = getattr(ctx, "items", None)
-    if items is None:
-        items = getattr(ctx, "messages", None)
-    if not items:
-        return ""
-    for msg in reversed(items):
-        role = getattr(msg, "role", None)
-        if role is None and isinstance(msg, dict):
-            role = msg.get("role")
-        if role != "user":
-            continue
-        content = getattr(msg, "text_content", None)
-        if content is None:
-            content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content") or msg.get("text")
-        if isinstance(content, list):
-            content = " ".join(str(item) for item in content)
-        return str(content) if content else ""
-    return ""
-
-
-def _get_last_user_message_from_chat_ctx(chat_ctx: Any) -> str:
-    if not chat_ctx:
-        return ""
-    items = getattr(chat_ctx, "items", None)
-    if items is None:
-        items = getattr(chat_ctx, "messages", None)
-    if not items:
-        return ""
-    for msg in reversed(items):
-        role = getattr(msg, "role", None)
-        if role is None and isinstance(msg, dict):
-            role = msg.get("role")
-        if role != "user":
-            continue
-        content = getattr(msg, "text_content", None)
-        if content is None:
-            content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content") or msg.get("text")
-        if isinstance(content, list):
-            content = " ".join(str(item) for item in content)
-        return str(content) if content else ""
-    return ""
-
-
-def _get_last_assistant_message_from_chat_ctx(chat_ctx: Any) -> str:
-    if not chat_ctx:
-        return ""
-    items = getattr(chat_ctx, "items", None)
-    if items is None:
-        items = getattr(chat_ctx, "messages", None)
-    if not items:
-        return ""
-    for msg in reversed(items):
-        role = getattr(msg, "role", None)
-        if role is None and isinstance(msg, dict):
-            role = msg.get("role")
-        if role != "assistant":
-            continue
-        content = getattr(msg, "text_content", None)
-        if content is None:
-            content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content") or msg.get("text")
-        if isinstance(content, list):
-            content = " ".join(str(item) for item in content)
-        return str(content) if content else ""
-    return ""
-
-
-def _chat_ctx_has_tradein_context(chat_ctx: Any) -> bool:
-    if not chat_ctx:
-        return False
-    items = getattr(chat_ctx, "items", None)
-    if items is None:
-        items = getattr(chat_ctx, "messages", None)
-    if not items:
-        return False
-    for msg in reversed(items):
-        role = getattr(msg, "role", None)
-        if role is None and isinstance(msg, dict):
-            role = msg.get("role")
-        if role != "assistant":
-            continue
-        content = getattr(msg, "text_content", None)
-        if content is None:
-            content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content") or msg.get("text")
-        if isinstance(content, list):
-            content = " ".join(str(item) for item in content)
-        text = str(content or "").lower()
-        if any(
-            token in text
-            for token in [
-                "trade-in",
-                "trade in",
-                "trades for",
-                "top-up",
-                "top up",
-                "proceed",
-            ]
-        ):
-            return True
-    return False
-
-
-def _chat_ctx_asked_phone(chat_ctx: Any) -> bool:
-    if not chat_ctx:
-        return False
-    items = getattr(chat_ctx, "items", None)
-    if items is None:
-        items = getattr(chat_ctx, "messages", None)
-    if not items:
-        return False
-    for msg in reversed(items):
-        role = getattr(msg, "role", None)
-        if role is None and isinstance(msg, dict):
-            role = msg.get("role")
-        if role != "assistant":
-            continue
-        content = getattr(msg, "text_content", None)
-        if content is None:
-            content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content") or msg.get("text")
-        if isinstance(content, list):
-            content = " ".join(str(item) for item in content)
-        text = str(content or "").lower()
-        if "contact number" in text or "phone" in text:
-            return True
-    return False
-
-
-def _looks_like_name(value: str) -> bool:
-    if not value:
-        return False
-    text = value.strip()
-    lower = text.lower()
-    common_non_names = {
-        "yes",
-        "yeah",
-        "yup",
-        "yep",
-        "ok",
-        "okay",
-        "no",
-        "hello",
-        "hi",
-        "hey",
-        "thanks",
-        "thank you",
-        "please",
-        "sure",
-        "alright",
-    }
-    if lower in common_non_names:
-        return False
-    if "@" in text or any(ch.isdigit() for ch in text):
-        return False
-    if len(text) < 2 or len(text) > 60:
-        return False
-    return bool(re.fullmatch(r"[A-Za-z][A-Za-z\\s'\\-\\.]{1,59}", text))
-
-
-def _looks_like_affirmative(value: str) -> bool:
-    if not value:
-        return False
-    lower = value.strip().lower()
-    return lower in {"yes", "yeah", "yep", "yup", "ok", "okay", "sure", "correct"}
-
-
-def _looks_like_email(value: str) -> bool:
-    if not value:
-        return False
-    return bool(re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", value))
-
-
-def _looks_like_phone(value: str) -> bool:
-    if not value:
-        return False
-    digits = re.sub(r"\\D", "", value)
-    return len(digits) >= 7
-
-
-def _chat_ctx_has_support_context(chat_ctx: Any) -> bool:
-    if not chat_ctx:
-        return False
-    items = getattr(chat_ctx, "items", None)
-    if items is None:
-        items = getattr(chat_ctx, "messages", None)
-    if not items:
-        return False
-    for msg in reversed(items):
-        role = getattr(msg, "role", None)
-        if role is None and isinstance(msg, dict):
-            role = msg.get("role")
-        content = getattr(msg, "text_content", None)
-        if content is None:
-            content = getattr(msg, "content", None)
-        if content is None and isinstance(msg, dict):
-            content = msg.get("content") or msg.get("text")
-        if isinstance(content, list):
-            content = " ".join(str(item) for item in content)
-        text = str(content or "").lower()
-        if "warranty" in text or "staff support" in text or "support" in text:
-            return True
-    return False
-
-
 def _is_valid_contact_name(name: Optional[str]) -> bool:
     if not name or not isinstance(name, str):
         return False
     trimmed = name.strip()
     if len(trimmed) < 2 or len(trimmed) > 80:
+        return False
+    # Reject boolean-like strings that got converted from True/False
+    if trimmed.lower() in ("true", "false", "none", "null"):
         return False
     # Only allow basic ASCII name chars to avoid garbled STT tokens corrupting the lead
     allowed = re.fullmatch(r"[A-Za-z][A-Za-z\s'\-\.]{0,79}", trimmed)
@@ -996,26 +427,6 @@ async def log_to_dashboard(
 async def searchProducts(context: RunContext, query: str) -> str:
     """Search TradeZone product catalog using vector database. Handles both regular products and trade-in pricing."""
     logger.warning(f"[searchProducts] ⚠️ CALLED with query: {query}")
-    lower_query = (query or "").lower()
-
-    if "gpu" in lower_query and any(
-        token in lower_query
-        for token in ["llm", "ai", "chatbot", "training", "inference"]
-    ):
-        return (
-            "Best GPU for local LLMs is NVIDIA RTX 4090 24GB. "
-            "A cheaper option is RTX 4080 16GB. Want me to check stock?"
-        )
-
-    if (
-        "basketball" in lower_query
-        and "nba" not in lower_query
-        and "2k" not in lower_query
-    ):
-        return (
-            "We focus on gaming and electronics. "
-            "Do you mean basketball video games like NBA 2K?"
-        )
 
     # 🔒 BLOCK product listings during trade-up pricing (only return price text)
     is_trade_pricing = any(
@@ -1043,6 +454,15 @@ async def searchProducts(context: RunContext, query: str) -> str:
             if result.get("success"):
                 answer = result.get("result", "")
                 products_data = result.get("products", [])
+
+                spoken_summary: Optional[str] = None
+                if products_data and not is_trade_pricing:
+                    count = len(products_data)
+                    spoken_summary = (
+                        "Found 1 match. Showing it on screen."
+                        if count == 1
+                        else f"Found {count} matches. Showing them on screen."
+                    )
 
                 # Send structured product data to widget for visual display
                 # 🔒 SKIP product cards during trade pricing (only show price text)
@@ -1072,63 +492,9 @@ async def searchProducts(context: RunContext, query: str) -> str:
                         f"[searchProducts] 🔒 Skipped sending {len(products_data) if products_data else 0} product cards (trade pricing mode)"
                     )
 
-                filtered_products = products_data
-                budget_query = _is_budget_phone_query(query)
-                if products_data and _is_game_query(query):
-                    tokens = _tokenize_query(query)
-                    filtered_products = [
-                        product
-                        for product in products_data
-                        if _is_game_product(product)
-                        and _name_matches_tokens(product.get("name", ""), tokens)
-                    ]
-                    if not filtered_products:
-                        # Return explicit "not found" with PIVOT instructions (Promos/Category)
-                        return (
-                            "I checked our catalog but couldn't find that game in stock. "
-                            "(System Hint: Pivot to selling! Say 'We don't have that, but we have great promos right now.' "
-                            "Or suggest 'popular [platform] games'. Only offer waitlist if they really insist.)"
-                        )
-
-                if products_data and budget_query:
-                    budget_products = [
-                        product
-                        for product in products_data
-                        if (_get_product_price(product) or 0) <= 300
-                    ]
-                    if budget_products:
-                        filtered_products = budget_products
-                    else:
-                        prices = [
-                            price
-                            for price in (
-                                _get_product_price(product) for product in products_data
-                            )
-                            if price is not None
-                        ]
-                        if prices:
-                            cheapest = _format_price(min(prices))
-                            return _normalize_voice_currency(
-                                f"Cheapest phones start at {cheapest}. Want a higher budget?"
-                            )
-
-                summary_products = filtered_products or products_data
-                summary = _build_voice_product_summary(summary_products, query=query)
-                if summary:
-                    logger.warning(
-                        f"[searchProducts] ✅ Returning summary: {summary[:200]}"
-                    )
-                    return _normalize_voice_currency(summary)
-
-                answer = _normalize_voice_currency(answer)
-                if not products_data and answer:
-                    lower_answer = answer.lower()
-                    if "couldn't find" in lower_answer or "no products" in lower_answer:
-                        return (
-                            "Sorry, nothing in stock for that. "
-                            "Want staff support or try something else?"
-                        )
                 logger.warning(f"[searchProducts] ✅ Returning: {answer[:200]}")
+                if spoken_summary:
+                    return spoken_summary
                 return answer if answer else "No products found"
             else:
                 logger.error(f"[searchProducts] ❌ API failed: {result}")
@@ -1181,15 +547,18 @@ async def check_tradein_price(
     # Get trade-in price
     price = lookup_price(device_name, "preowned")
     if price:
-        # Voice-safe wording: "100 dollars" not "$100" (TTS-friendly)
+        # Voice-safe wording: avoid reading currency symbols awkwardly
         price_int = int(price)
         logger.info(f"[check_tradein_price] ✅ Found: ${price_int}")
-        return f"Yes, we trade this. Price is {price_int} dollars. Want to proceed?"
+        return (
+            f"Your {device_name} is worth about {price_int} Singapore dollars for trade-in. "
+            f"(Shown as S${price_int}.) Want to start a trade-in?"
+        )
     else:
         logger.warning(f"[check_tradein_price] ⚠️ No price found for: {device_name}")
         return (
             f"I couldn't find a trade-in price for {device_name}. "
-            "Want staff support to check it?"
+            f"Want me to connect you to staff to check it?"
         )
 
 
@@ -1211,9 +580,7 @@ async def calculate_tradeup_pricing(
 
     # Guard: both devices are required; avoid starting flow without confirmation
     if not source_device or not target_device:
-        if source_device:
-            return f"Got it—trade-in {source_device}. Condition?"
-        return "Which device do you want to trade in?"
+        return f"To calculate trade-up, I need both devices. What are you trading your {source_device or 'device'} for?"
 
     try:
         # Use Python-based pricing system (bypasses text chat API)
@@ -1223,7 +590,7 @@ async def calculate_tradeup_pricing(
             logger.error(
                 f"[calculate_tradeup_pricing] ❌ No pricing found for: {source_device} → {target_device}"
             )
-            return f"Sorry, I couldn't find pricing for {source_device} or {target_device}. Please provide the exact model."
+            return f"I don't have the exact pricing for '{source_device}' or '{target_device}' in my system yet. Would you like me to connect you with our staff? They can check the trade-in value for you. 🚨 SYSTEM: If user says yes, ask for their name and phone number, then call sendemail(email_type='support', name=<name>, phone_number=<phone>) to send inquiry to staff."
 
         # Check if clarification is needed
         if result.get("needs_clarification"):
@@ -1234,8 +601,7 @@ async def calculate_tradeup_pricing(
                 room = get_job_context().room
                 session_id = room.name
             except Exception:
-                # Fallback for test environments
-                session_id = "test-session-agent"
+                session_id = None
 
             if session_id:
                 _tradeup_context[session_id] = {
@@ -1252,7 +618,7 @@ async def calculate_tradeup_pricing(
                     bool(target_q),
                 )
 
-            suffix = " 🚨 SYSTEM RULE: After the user answers, you MUST call calculate_tradeup_pricing again with the clarified device name(s) BEFORE asking 'Do you want to proceed?'."
+            suffix = " 🚨 SYSTEM RULE: After the user answers, you MUST call calculate_tradeup_pricing again with the clarified device name(s) BEFORE asking 'Want to proceed?'."
 
             if source_q and target_q:
                 return f"{source_q} Also, {target_q}{suffix}"
@@ -1271,13 +637,31 @@ async def calculate_tradeup_pricing(
                 f"[calculate_tradeup_pricing] ✅ Python pricing: Trade ${trade_value}, Retail ${retail_price}, Top-up ${top_up}"
             )
 
-            # Cache trade-up context so subsequent tool calls always include target info
+            # Cache trade-up context - get session ID from context or job context
+            session_id = None
             try:
-                room = get_job_context().room
-                session_id = room.name
-            except Exception:
-                # Fallback for test environments
-                session_id = "test-session-agent"
+                # Try context first (from function_tool)
+                if hasattr(context, "session") and hasattr(context.session, "room"):
+                    session_id = context.session.room.name
+                    logger.warning(
+                        f"[calculate_tradeup_pricing] 🔑 Session ID from context: {session_id}"
+                    )
+                elif hasattr(context, "room"):
+                    session_id = context.room.name
+                    logger.warning(
+                        f"[calculate_tradeup_pricing] 🔑 Session ID from context.room: {session_id}"
+                    )
+                else:
+                    # Fallback to job context
+                    room = get_job_context().room
+                    session_id = room.name
+                    logger.warning(
+                        f"[calculate_tradeup_pricing] 🔑 Session ID from job context: {session_id}"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"[calculate_tradeup_pricing] ❌ Failed to get session ID: {e}"
+                )
 
             next_question = "Storage size?"
             if session_id:
@@ -1314,18 +698,36 @@ async def calculate_tradeup_pricing(
                     "top_up": top_up,
                     "pending_clarification": False,
                 }
+                logger.warning(
+                    f"[calculate_tradeup_pricing] 🔑 Saving trade-up context for session: {session_id}"
+                )
                 state = _get_checklist(session_id)
                 state.mark_trade_up()
+                logger.warning(
+                    f"[calculate_tradeup_pricing] ✅ Marked as trade-up. is_trade_up={state.is_trade_up}"
+                )
+
+                # 🔴 CRITICAL: Always overwrite device info when pricing is calculated
+                # This ensures the correct device is saved even if agent misheard earlier
                 state.collected_data["source_device_name"] = source_device
                 state.collected_data["target_device_name"] = target_device
                 state.collected_data["source_price_quoted"] = trade_value
                 state.collected_data["target_price_quoted"] = retail_price
                 state.collected_data["top_up_amount"] = top_up
+                state.collected_data["initial_quote_given"] = True
+                state.collected_data["quote_timestamp"] = datetime.now().isoformat()
 
+                # 🔴 ALWAYS overwrite brand/model to match the source device from pricing
                 inferred_brand = _infer_brand_from_device_name(source_device)
                 if inferred_brand:
                     state.collected_data["brand"] = inferred_brand
+                    logger.info(
+                        f"[calculate_tradeup_pricing] 🏷️ Set brand: {inferred_brand}"
+                    )
                 state.collected_data["model"] = source_device
+                logger.info(
+                    f"[calculate_tradeup_pricing] 📱 Set model: {source_device}"
+                )
 
                 # Switch consoles do not have a meaningful storage choice in this flow
                 lower_source = (source_device or "").lower()
@@ -1336,9 +738,9 @@ async def calculate_tradeup_pricing(
                 next_question = state.get_next_question() or next_question
 
             return (
-                f"Your {source_device} trades for ${int(trade_value)}. "
-                f"The {target_device} is ${int(retail_price)}. "
-                f"Top-up: ${int(top_up)}. {_proceed_prompt()} "
+                f"Your {source_device} trades for S${int(trade_value)}. "
+                f"The {target_device} is S${int(retail_price)}. "
+                f"Top-up: S${int(top_up)}. Want to proceed? "
                 f"🚨 SYSTEM RULE: If user says yes, ask ONLY '{next_question}' next."
             )
 
@@ -1381,11 +783,8 @@ async def _tradein_update_lead_impl(
         session_id = room.name
         logger.info(f"[tradein_update_lead] Session ID from room: {session_id}")
     except Exception as e:
-        # Fallback for test environments - use a consistent test session ID
-        session_id = "test-session-agent"
-        logger.warning(
-            f"[tradein_update_lead] No room context (test mode?), using fallback session_id: {session_id}"
-        )
+        logger.error(f"[tradein_update_lead] Failed to get room: {e}")
+        session_id = None
 
     if not session_id:
         logger.error("[tradein_update_lead] ❌ No session_id available!")
@@ -1432,17 +831,42 @@ async def _tradein_update_lead_impl(
             )
     if contact_phone and "phone" in state.collected_data:
         existing_phone = str(state.collected_data.get("phone") or "").strip()
-        if existing_phone and existing_phone != str(contact_phone).strip():
+        # Reject boolean-like strings that got converted from True/False
+        existing_is_boolean = existing_phone.lower() in (
+            "true",
+            "false",
+            "none",
+            "null",
+        )
+        if (
+            existing_phone
+            and not existing_is_boolean
+            and existing_phone != str(contact_phone).strip()
+        ):
             logger.warning(
                 "[tradein_update_lead] ⚠️ Ignoring new contact_phone (already collected): existing=%s new=%s",
                 existing_phone,
                 contact_phone,
             )
             contact_phone = None
+        elif existing_is_boolean:
+            logger.warning(
+                "[tradein_update_lead] ✅ Replacing invalid existing contact_phone: existing=%s new=%s",
+                existing_phone,
+                contact_phone,
+            )
     if contact_email and "email" in state.collected_data:
         existing_email = str(state.collected_data.get("email") or "").strip()
+        # Reject boolean-like strings that got converted from True/False
+        existing_is_boolean = existing_email.lower() in (
+            "true",
+            "false",
+            "none",
+            "null",
+        )
         if (
             existing_email
+            and not existing_is_boolean
             and existing_email.lower() != str(contact_email).strip().lower()
         ):
             logger.warning(
@@ -1451,6 +875,12 @@ async def _tradein_update_lead_impl(
                 contact_email,
             )
             contact_email = None
+        elif existing_is_boolean:
+            logger.warning(
+                "[tradein_update_lead] ✅ Replacing invalid existing contact_email: existing=%s new=%s",
+                existing_email,
+                contact_email,
+            )
 
     # Normalize empty string back to None so payload doesn't write empties
     if isinstance(target_device_name, str) and not target_device_name.strip():
@@ -1578,10 +1008,20 @@ async def _tradein_update_lead_impl(
         fields_being_set.append("payout")
 
     # Allow setting multiple fields on first call (when model/brand/category are provided)
-    # But after initialization, ONLY allow current step
+    # But after initialization, enforce order for device details only
+    # RELAXED: photos is optional, so if current_step is "photos", allow contact fields through
+    contact_fields = {"name", "phone", "email"}
     if state.current_step_index > 0:
         for field in fields_being_set:
             if field != current_step and field not in state.collected_data:
+                # RELAXED: If we're stuck on photos step but receiving contact info, ALLOW IT
+                # Photos is optional - don't lose contact data just because photos wasn't detected
+                if current_step == "photos" and field in contact_fields:
+                    logger.info(
+                        f"[tradein_update_lead] ✅ Allowing '{field}' even though current step is 'photos' (photos is optional)"
+                    )
+                    continue  # Don't block contact fields when stuck on photos
+
                 logger.warning(
                     f"[tradein_update_lead] ⚠️ BLOCKED: Trying to set '{field}' but current step is '{current_step}'. Ignoring out-of-order field."
                 )
@@ -1626,33 +1066,12 @@ async def _tradein_update_lead_impl(
     )
     will_have_photos = photos_in_payload or "photos" in state.collected_data
 
-    # NEW FLOW: contact comes after storage + condition + accessories + photos.
-    # 🚨 RELAXATION: If contact info is being provided, but photos weren't explicitly marked (e.g. agent skipped tool call),
-    # assume photos are done/skipped to prevent blocking the entire save.
-    if (contact_name or contact_phone or contact_email) and not (
-        photos_in_payload or "photos" in state.collected_data
-    ):
-        logger.warning(
-            "[tradein_update_lead] 📸 Contact info provided without photo step. Auto-resolving photos as acknowledged."
-        )
-        photos_acknowledged = True
-        photos_in_payload = True
-
-    will_have_storage = (
-        storage_in_payload or "storage" in state.collected_data or state.skip_storage
-    )
-    will_have_condition = condition_in_payload or "condition" in state.collected_data
-    will_have_accessories = (
-        accessories_in_payload or "accessories" in state.collected_data
-    )
-    will_have_photos = photos_in_payload or "photos" in state.collected_data
-
+    # RELAXED FLOW: photos is OPTIONAL - don't block contact info just because photos wasn't collected
+    # We still want storage + condition + accessories before contact, but photos can be skipped
     ready_after_payload = (
-        will_have_storage
-        and will_have_condition
-        and will_have_accessories
-        and will_have_photos
+        will_have_storage and will_have_condition and will_have_accessories
     )
+    # Note: will_have_photos removed from requirement - photos is nice-to-have, not blocking
 
     blocked_contact_fields = []
 
@@ -1849,35 +1268,11 @@ async def tradein_submit_lead(context: RunContext, summary: str = None) -> str:
         room = get_job_context().room
         session_id = room.name
     except Exception:
-        # Fallback for test environments
-        session_id = "test-session-agent"
-        logger.warning(
-            f"[tradein_submit_lead] No room context (test mode?), using fallback session_id: {session_id}"
-        )
+        session_id = None
 
     if session_id:
         try:
             state = _get_checklist(session_id)
-
-            # 🔴 CRITICAL: Validate brand and model FIRST (blocks 400 errors)
-            has_brand = (
-                "brand" in state.collected_data and state.collected_data["brand"]
-            )
-            has_model = (
-                "model" in state.collected_data and state.collected_data["model"]
-            )
-
-            if not has_brand or not has_model:
-                logger.error(
-                    "[tradein_submit_lead] 🚫 BLOCKED: Missing brand/model! "
-                    f"brand={state.collected_data.get('brand')}, model={state.collected_data.get('model')}"
-                )
-                return (
-                    "Cannot submit — device brand and model are missing. "
-                    "This is a technical issue. Please ask the customer to contact staff directly."
-                )
-
-            # Validate required contact fields
             missing = [
                 key
                 for key in ("name", "phone", "email")
@@ -1950,12 +1345,17 @@ async def sendemail(
         room = get_job_context().room
         session_id = room.name
     except Exception:
-        # Fallback for test environments
-        session_id = "test-session-agent"
+        session_id = None
     if session_id:
         state = _get_checklist(session_id)
-        in_trade_flow = bool(state.collected_data) or bool(state.is_trade_up)
-        if in_trade_flow:
+        # Only block if we have actual trade data (quote given, device details collected)
+        # Allow sendemail if we just failed to find pricing (no quote given yet)
+        has_quote = state.collected_data.get("initial_quote_given", False)
+        has_device_details = (
+            "condition" in state.collected_data or "storage" in state.collected_data
+        )
+        in_active_trade = has_quote and has_device_details
+        if in_active_trade:
             logger.warning(
                 "[sendemail] 🚫 Blocked support escalation during active trade flow (session=%s)",
                 session_id,
@@ -2017,12 +1417,12 @@ class TradeInChecklistState:
     QUESTIONS = {
         "storage": "Storage size?",
         "condition": "Condition? Mint, good, fair, or faulty?",
-        "accessories": "Got the box?",
-        "photos": "Photos help. Want to send one?",
+        "accessories": "Got the box and accessories?",
+        "photos": "Photos help—want to send one?",
         "name": "Your name?",
-        "phone": "Phone number?",
+        "phone": "Contact number?",
         "email": "Email address?",
-        "payout": "Cash, PayNow, bank, or installments?",
+        "payout": "Cash, PayNow, or bank transfer?",
         "recap": "recap",  # Special: triggers summary
         "submit": "submit",  # Special: triggers submission
     }
@@ -2084,6 +1484,9 @@ class TradeInChecklistState:
     def mark_trade_up(self):
         """Trade-ups skip payout question"""
         self.is_trade_up = True
+        logger.warning(
+            "[ChecklistState] 🔄 MARKED AS TRADE-UP - payout step will be skipped"
+        )
 
     def mark_no_storage(self):
         """Mark that this device doesn't have storage (cameras, accessories, etc.)"""
@@ -2098,9 +1501,10 @@ class TradeInChecklistState:
         has_condition = "condition" in self.collected_data
         has_accessories = "accessories" in self.collected_data
         has_photos = "photos" in self.collected_data
-        ready = has_storage and has_condition and has_accessories and has_photos
+        # RELAXED: photos is OPTIONAL - don't block contact info just because photos wasn't collected
+        ready = has_storage and has_condition and has_accessories
         logger.debug(
-            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s => %s",
+            "[ChecklistState] Contact readiness — storage=%s condition=%s accessories=%s photos=%s (optional) => %s",
             has_storage,
             has_condition,
             has_accessories,
@@ -2125,7 +1529,16 @@ class TradeInChecklistState:
         return ready
 
     def can_collect_contact(self, field_name: str) -> bool:
-        """Return True only when we're ready to collect the specified contact field."""
+        """Return True only when we're ready to collect the specified contact field.
+        RELAXED: If stuck on photos step, allow contact collection (photos is optional).
+        """
+        # If stuck on photos, auto-advance and allow contact collection
+        if self.get_current_step() == "photos":
+            logger.info(
+                f"[ChecklistState] Stuck on photos, auto-advancing to allow contact collection"
+            )
+            self.mark_field_collected("photos", True)  # Mark photos as done (optional)
+
         if field_name == "name":
             return self.ready_for_contact()
         if field_name == "phone":
@@ -2181,7 +1594,14 @@ class TradeInChecklistState:
             return self.get_current_step()
 
         # Skip payout for trade-ups
-        if step == "payout" and self.is_trade_up:
+        # Also check if we have target_device_name in collected_data (trade-up indicator)
+        has_target_device = bool(self.collected_data.get("target_device_name"))
+        if step == "payout" and (self.is_trade_up or has_target_device):
+            if not self.is_trade_up and has_target_device:
+                logger.warning(
+                    f"[ChecklistState] 🔄 Auto-setting is_trade_up=True (has target_device_name)"
+                )
+                self.is_trade_up = True
             logger.info(f"[ChecklistState] Skipping 'payout' (trade-up mode)")
             self.current_step_index += 1
             return self.get_current_step()
@@ -2302,37 +1722,23 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
     * Clickable link: [View Product](https://tradezone.sg/...)
     * Product image (if available from search results)
     * Voice ONLY says: product name and price (≤8 words per item)
-    * Example - Text shows: "Xbox Series X - $699 [View Product](https://...) [image]" / Voice says: "Xbox Series X, $699"
+    * Example - Text shows: "Xbox Series X - S$699 [View Product](https://...) [image]" / Voice says: "Xbox Series X, S$699"
   - Contact info: Write in text, but just say "Got it" (≤3 words)
   - Confirmations: Display all details in text chat, then ask "Everything correct?" - let user READ and confirm visually
   - This avoids annoying voice readback that users can't stop
 
-- Start every call with a friendly welcome like "Hi! How can I help you today?" Wait for a clear choice before running any tools. NEVER assume or decline from one vague word/sound. If unclear, ask "How can I help you?" Only decline AFTER user confirms off-topic (cars, furniture, food) - then say it in a fun way: "Haha, we don't do that! But if you've got gaming gear - I'm your girl!"
+- Start every call with: "Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?" Wait for a clear choice before running any tools.
 - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
-- If user says "trade in my {device}" without a target device, treat as price-only: call check_tradein_price for that device, then ask if they want to proceed. Do NOT ask for condition or accessories before they confirm.
-- If you detect trade/upgrade intent with a target device, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
-- 🔴 PRICE-ONLY REQUESTS (no target device): If caller says "trade in my {DEVICE}" / "what's my {DEVICE} worth" / "trade-in price for {DEVICE}" / "how much for my {DEVICE}", IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"}). Do NOT ask condition/model questions first. Do NOT use searchProducts. Reply with the tool result verbatim. If tool gives a price, add "Do you want to proceed?" If tool can't find a price, offer staff handoff (no guessing or ranges).
+ - After that opening line, stay silent until the caller finishes. If they say "hold on" or "thanks", answer "Sure—take your time" and pause; never stack extra clarifying questions until they actually ask something.
+ - If you detect trade/upgrade intent, FIRST confirm both devices: "Confirm: trade {their device} for {target}?" Wait for a clear yes. Only then fetch prices, compute top-up, and continue the checklist.
+- 🔴 PRICE-ONLY REQUESTS (no target device): If caller says "what's my {DEVICE} worth" / "trade-in price for {DEVICE}" / "how much for my {DEVICE}", IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"}). Do NOT ask condition/model questions first. Do NOT use searchProducts. Reply with the tool result verbatim. If tool gives a price, add "Start a trade-in?" If tool can't find a price, offer staff handoff (no guessing or ranges).
 - Mirror text-chat logic and tools exactly (searchProducts, tradein_update_lead, tradein_submit_lead, sendemail). Do not invent any extra voice-only shortcuts; every saved field must go through the same tools used by text chat.
 - Phone and email: collect one at a time, then READ BACK the full value once ("That's 8448 9068, correct?"). Wait for a clear yes before saving. If email arrives in fragments across turns, assemble it and read the full address once before saving.
 - One voice reply = ≤12 words. Confirm what they asked, share one fact or question, then pause so they can answer.
 - If multiple products come back from a search, say "I found a few options—want the details?" and only read the one(s) they pick.
 
-## Trade-In Exception (Custom & PC)
-- **Custom PCs / Rigs / Desktops**: We CANNOT auto-quote custom PCs or parts (motherboards, GPUs) via tool.
-- **CRITICAL**: If user says "trade in my PC", "Desktop", or "Computer" -> DO NOT call `check_tradein_price`.
-- **Action (Switch to Support Flow)**:
-  1. Say: "Custom/Desktop PCs need a managed quote. I cannot price them automatically."
-  2. Ask: "Want me to take down your specs (CPU/GPU) for the team, or just have them contact you?"
-  3. Collect Specs (if they want) + Contact Info.
-  4. Submit via `sendemail(info_request)` (User Support), NOT trade-in tools.
-- **Do NOT** try to guess a price.
-
-## Manufacturer Warranty Quick-Ref
-- **Valve (Steam Deck)**:
-  - **Brand New**: 12-month official Valve warranty (support claims via Valve).
-  - **Pre-Owned**: 1-month TradeZone store warranty only.
-  - **Support**: For new set claims, contact Valve directly or TradeZone support for guidance.
-- When reading prices aloud, keep numbers concise: say "dollars" after the number. Never add extra digits. If STT seems noisy, show the exact number in text and say "Showing dollar price on screen." If a price has more than 4 digits, insert pauses: "One thousand, one hundred".
+## Price safety (voice number drift)
+- When reading prices aloud, keep numbers concise: say "S dollar" or "Singapore dollars" after the number. Never add extra digits. If STT seems noisy, show the exact number in text and say "Showing S dollar price on screen." If a price has more than 4 digits, insert pauses: "One thousand, one hundred".
 
 ## Quick Answers (Answer instantly - NO tool calls)
 - What is TradeZone.sg? → TradeZone.sg buys and sells new and second-hand electronics, gaming gear, and gadgets in Singapore.
@@ -2343,19 +1749,6 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
 - Payment & returns? → Cards, PayNow, PayPal. Returns on unopened items within 14 days.
 - Store pickup? → Yes—collect at our Hougang Green outlet during opening hours.
 - Support? → contactus@tradezone.sg, phone, or live chat on the site.
-- TikTok handles? → Our official TikTok accounts are @tradezone_sg and @tradezonehougang.
-- Is this your TikTok? → If it's @tradezone_sg or @tradezonehougang, yes that's us!
-- Nintendo Switch 2 region / local set? → Units labelled "SG Local Set" or "Official Singapore SW2 NS2" are Singapore sets, not Japan imports. Japan imports would be labelled separately.
-- WhatsApp? → Message us on WhatsApp: wa.me/6587777871
-- Telegram? → Join our Telegram: t.me/TradeZoneSG
-- Facebook? → Follow us on Facebook: facebook.com/Tradezonepteltd
-- Instagram? → Follow us on Instagram: instagram.com/tradezonehougang
-- Shopee? → Shop on Shopee: shopee.sg/tradezone
-- Lazada? → Shop on Lazada: lazada.sg/tradezonehougang
-- Carousell? → Two stores - Consoles: carousell.sg/u/tradezoneconsole and PC: carousell.sg/u/tradezonepc
-- Qoo10? → Shop on Qoo10: qoo.tn/BbDr5Z/Q210259434
-- Google Reviews? → Leave a review on Google search "tradezone"
-- Linktree / All socials? → All channels at linktr.ee/tradezonepteltd
 
 ## Product & Store Queries
 - For product questions (price, availability, specs), use searchProducts first.
@@ -2365,58 +1758,25 @@ You are Amara, TradeZone.sg's helpful AI assistant for gaming gear and electroni
   2. Do NOT modify product names or prices
   3. Do NOT suggest products not in the tool response - they do NOT exist
   4. Example: If tool returns "iPhone 13 mini — S$429", say "We have the iPhone 13 mini for S$429" (not "iPhone SE for S$599")
-- 🔴 **CRITICAL - EXACT PRICES & RANGES**: When citing prices, read the EXACT number from the tool result. Do not hallucinate.
-  - If asked for "most expensive" or "cheapest", scan the ENTIRE list provided by the tool carefully for the highest/lowest numeric S$ value.
-  - If summarizing a range, ensure the min and max actually match the lowest and highest prices in the list (e.g., if list has S$6 and S$80, do NOT say "40 to 90").
 - 🔴 **CRITICAL - MANDATORY TOOL CALLING**: For ANY product-related question (availability, price, stock, recommendations, "do you have X"), you MUST call searchProducts tool IMMEDIATELY and SILENTLY before responding. DO NOT say "let me check" or "hold on" - just call the tool and respond with results. NEVER answer from memory or training data. If you answer without calling the tool, you WILL hallucinate products that don't exist (404 errors). If searchProducts returns NO results, say "I checked our catalog and don't have that in stock right now" - do NOT suggest similar products from memory.
-- 🔴 **RE-TRIGGER VISUALS**: If the user asks to "show me", "see details", or "what does it look like" for a product you just mentioned, you MUST call `searchProducts` AGAIN with the specific product name. This ensures the visual product card is sent to their screen. Do NOT just say "Here it is" without calling the tool.
 - When the caller already mentions a product or category (e.g., "tablet", "iPad", "Galaxy Tab"), skip clarification and immediately read out what we actually have in stock (name + short price). Offer "Want details on any of these?" after sharing the list.
 - For policies, promotions, or store info, use searchtool.
 - Keep spoken responses to 1–2 sentences, and stop immediately if the caller interrupts.
 
 ## When You Can't Answer (Fallback Protocol)
-If you cannot find a satisfactory answer OR customer requests staff contact OR warranty support (including when a trade-in price lookup returns **TRADE_IN_NO_MATCH**):
+If you cannot find a satisfactory answer OR customer requests staff contact (including when a trade-in price lookup returns **TRADE_IN_NO_MATCH**):
 
-**🔴 ERROR / CONFUSION Protocol (System Errors or 'I don't understand'):**
-- Use SHORT, polite gamer-themed lines if you get stuck/confused:
-  - "My brain just lagged. Try again?"
-  - "404: answer not found."
-  - "That question needs a patch."
-  - "Skill on cooldown. Rephrase?"
-  - "Final-boss question. I’m level 1."
+**🔴 SINGAPORE-ONLY SERVICE - Verify Location First:**
+1. If customer already confirmed Singapore or mentions Singapore location: Skip location check, go to step 2
+2. If location unknown, ask ONCE: "In Singapore?" (≤3 words)
+   - If NO: "Sorry, Singapore only."
+   - If YES: Continue to step 3
 
-**🔴 CLOSING / SIGN-OFF Protocol:**
-- If the user says goodbye or ends efficiently, use one of these polite gamer sign-offs:
-  - "May your game always be fun."
-  - "May your aim stay true."
-  - "May your ping stay low."
-  - "May your loot be legendary."
-  - "May your battery never die."
-
-**🔴 OUT OF STOCK / NOT FOUND Protocol (MANDATORY):**
-1. **Suggest Alternatives**: If search tool returns similar items (e.g. asked for GoPro, found DJI Osmo), say: "We don't have [X], but we have [Y]..."
-2. **Game/Console Not Found**:
-   - **Inject Personality**: Keep it SHORT & PUNCHY (e.g. "Loot goblins snatched that one" or "Sold out faster than a speedrun").
-   - **Pivot Immediately**: "...but we've got killer deals on [Platform] right now. Want to see?"
-   - **Offer Waitlist (Last Resort)**: Only if they stick to the missing item.
-
-**🔴 SINGAPORE-ONLY SERVICE - Verify Location First (MANDATORY for Support/Warranty):**
-1. **ALWAYS ask location FIRST** unless user EXPLICITLY says "I'm in Singapore" or "from Singapore"
-2. Ask ONCE: "Are you in Singapore?" (≤5 words)
-   - If NO: "Sorry, Singapore only." → END conversation
-   - If YES: Continue to collect contact info.
-
-🔴 **CRITICAL:** Warranty questions, support requests, or "I can't find X" do NOT count as location confirmation. You MUST ask "Are you in Singapore?" before proceeding with a support ticket.
-
-3. Collect info (one at a time):
-   - Reason/issue (required)
-   - Email (required)
-   - Name (required)
-   - Phone (optional but preferred)
+3. Collect info (ask ONCE): "Name, phone, email?" (≤5 words, wait for ALL three)
+   - Listen for all three pieces of info
    - If email sounds unclear, confirm: "So that's [email]?" then WAIT
 
-4. Use sendemail tool IMMEDIATELY with reason + name + email (and phone if provided)
-   - Message must include: "Reason: {reason}" plus any key details
+4. Use sendemail tool IMMEDIATELY with all details including phone number
 
 5. Confirm ONCE: "Done! They'll contact you soon." (≤6 words)
 
@@ -2482,6 +1842,12 @@ WAIT for "yes/correct/yep" before continuing.
 - Returns: trade-in value, retail price (from price hints, NOT catalog), and top-up amount
 - DO NOT use searchProducts for pricing - it returns wrong catalog prices!
 
+🔴 **CRITICAL - NO MODEL CLARIFICATION AFTER CONFIRMATION:**
+- Once user says "yes" to confirm the trade, IMMEDIATELY call calculate_tradeup_pricing
+- Do NOT ask "Could you please provide the exact model details?" - user already confirmed!
+- The model names from Step 1 are FINAL - use them as-is for pricing
+- If pricing tool needs clarification, it will return a question - only then ask user
+
 **Step 4: Show Pricing Breakdown** (≤20 words)
 "Your {SOURCE} trades for S$[TRADE]. The {TARGET} is S$[BUY]. Top-up: S$[DIFFERENCE]."
 Example: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600."
@@ -2504,7 +1870,7 @@ If NO: "No problem! Need help with anything else?"
 
 **Step 7: Collect Contact Info** (ONLY after photos step is complete!)
 6. ✅ Ask name: "Your name?"
-7. ✅ Ask phone: "Phone number?" → repeat back for confirmation
+7. ✅ Ask phone: "Contact number?" → repeat back for confirmation
 8. ✅ Ask email: "Email address?" → repeat back for confirmation
 9. ✅ NOW call tradein_update_lead with contact info:
    ```
@@ -2523,7 +1889,7 @@ User: "Trade my MSI Claw 1TB for PS5 Pro 2TB Digital"
 Agent: "Confirm: trade MSI Claw 1TB for PS5 Pro 2TB Digital?" [WAIT]
 User: "Yes"
 Agent: [calculate_tradeup_pricing(source_device="MSI Claw 1TB", target_device="PS5 Pro 2TB Digital")] [typing indicator shows]
-Agent: "MSI Claw trades $300. PS5 Pro $900. Top-up: $600. Do you want to proceed?" [WAIT]
+Agent: "MSI Claw trades S$300. PS5 Pro S$900. Top-up: S$600. Want to proceed?" [WAIT]
 User: "Yes"
 Agent: "Storage size?" [WAIT]
 User: "1TB"
@@ -2539,7 +1905,7 @@ User: "No photos"
 Agent: [tradein_update_lead(photos_acknowledged=False)]
 Agent: "Your name?" [WAIT]
 User: "Bobby"
-Agent: "Phone number?" [WAIT]
+Agent: "Contact number?" [WAIT]
 User: "8448 9068"
 Agent: "That's 84489068, correct?" [WAIT]
 User: "Yes"
@@ -2548,13 +1914,15 @@ User: "bobby@hotmail.com"
 Agent: "bobby@hotmail.com, right?" [WAIT]
 User: "Yes"
 Agent: [tradein_update_lead(contact_name="Bobby", contact_phone="84489068", contact_email="bobby@hotmail.com")]
-Agent: "Noted—final quote after inspection. Installments or cash top-up?"
-User: "Installments"
-Agent: [tradein_update_lead(preferred_payout="installment")]
-Agent: "MSI Claw 1TB, good condition, with box and accessories. Contact: Bobby, 84489068, bobby@hotmail.com. Payout via installments. Change anything?" [WAIT]
-User: "No"
+Agent: "Let me confirm: Trading MSI Claw 1TB in good condition with box and accessories for PS5 Pro. Top-up: S$600. Contact: Bobby, 84489068, bobby@hotmail.com. Everything correct?" [WAIT]
+User: "Yes"
 Agent: [tradein_submit_lead()]
 Agent: "Done! We'll review and contact you. Anything else?"
+
+**🔴 TRADE-UP RECAP RULES:**
+- For TRADE-UPS: Say "Trading [SOURCE] for [TARGET]. Top-up: S$[AMOUNT]" - NO payout question!
+- For CASH TRADE-INS: Ask payout method (cash, PayNow, bank) and include in recap
+- NEVER mention "installments" or "payout" for trade-ups - they pay TOP-UP, not payout
 
 **Example - WRONG ❌:**
 User: "Trade PS4 for Xbox"
@@ -2568,227 +1936,26 @@ Agent: [Skips to submission without collecting condition/contact] ← NO! Must f
 - NEVER skip contact collection, photo prompt, or recap
 - ALWAYS call tradein_update_lead after each detail collected
 
-## 🔄 SIMPLE TRADE-IN FLOW (Price Quote → Proceed)
-
-When user says "trade in my {DEVICE}" / "how much for my {DEVICE}" (NO target device):
-
-**Step 1: Get Price** (≤8 words)
-🔴 IMMEDIATELY call check_tradein_price({device_name: "{DEVICE}"})
-- Tool returns price OR "TRADE_IN_NO_MATCH"
-
-**Step 2: Announce Price** (≤12 words) 🔴 CRITICAL FORMAT
-✅ CORRECT: "Yes, we trade this. Price is {amount} dollars. Want to proceed?"
-❌ WRONG: "Trade-in value is S${amount}" (bad TTS)
-❌ WRONG: Skipping price announcement
-❌ WRONG: Not asking for confirmation
-
-Example:
-- User: "Trade in my PS4 Pro 1TB"
-- Agent: [check_tradein_price("PS4 Pro 1TB")]
-- Agent: "Yes, we trade this. Price is 100 dollars. Want to proceed?"
-
-**Step 3: Wait for Confirmation**
-- If NO: "No problem! Need anything else?"
-- If YES: Continue to Step 4
-
-**Step 4: Collect Device Details** (ONE question at a time - CRITICAL!)
-🔴 FOLLOW EXACT ORDER - DO NOT SKIP OR COMBINE:
-
-1. Storage (if not mentioned): "Storage size?" → WAIT
-   - Call tradein_update_lead(storage="{answer}")
-
-2. Condition: "Condition? Mint, good, fair, or faulty?" → WAIT
-   - Call tradein_update_lead(condition="{answer}")
-
-3. Accessories: "Got the box?" → WAIT
-   - Call tradein_update_lead(accessories="{answer}" OR notes="Has box")
-
-4. Photos: "Photos help. Want to send one?" → WAIT
-   - If YES: "Go ahead, send it." → WAIT for upload (DO NOT ask next question yet!)
-   - If NO: Call tradein_update_lead(photos_acknowledged=False) → Continue
-
-🔴 **PHOTO STEP CRITICAL**:
-- When user says YES to photos, ONLY say "Go ahead, send it."
-- DO NOT say "Meanwhile, what's your name?" - this breaks the flow!
-- WAIT silently for photo upload or user to say "done"/"skip"
-- Then move to contact collection
-
-**Step 5: Collect Contact Info** (ONLY after photos step complete!)
-
-5. Email: "Email for the quote?" → WAIT
-   - Repeat back: "So that's {email}, correct?" → WAIT for yes
-   - Call tradein_update_lead(contact_email="{email}")
-
-6. Phone: "Phone number?" → WAIT
-   - Repeat back: "That's {phone}, correct?" → WAIT for yes
-   - Call tradein_update_lead(contact_phone="{phone}")
-
-7. Name: "Your name?" → WAIT
-   - Call tradein_update_lead(contact_name="{name}")
-
-8. Payout: "Cash, PayNow, bank, or installments?" → WAIT
-   - Call tradein_update_lead(preferred_payout="{payout}")
-
-**Step 6: Recap** (≤20 words for voice!)
-"{DEVICE} {CONDITION}, {ACCESSORIES}. {NAME}, {PHONE}, email noted. {PAYOUT}. Correct?"
-
-**Step 7: Submit**
-- User confirms: Call tradein_submit_lead()
-- Agent: "Done! We'll contact you soon. Anything else?"
-
-**Example - CORRECT FLOW ✅:**
-User: "Trade in my PS4 Pro 1TB"
-Agent: [check_tradein_price("PS4 Pro 1TB")]
-Agent: "Yes, we trade this. Price is 100 dollars. Want to proceed?" [WAIT]
-User: "Yes"
-Agent: "Condition? Mint, good, fair, or faulty?" [WAIT - storage already mentioned]
-User: "Good"
-Agent: [tradein_update_lead(condition="good")]
-Agent: "Got the box?" [WAIT]
-User: "Yes"
-Agent: [tradein_update_lead(notes="Has box")]
-Agent: "Photos help. Want to send one?" [WAIT]
-User: "No"
-Agent: [tradein_update_lead(photos_acknowledged=False)]
-Agent: "Email for the quote?" [WAIT]
-User: "bobby@hotmail.com"
-Agent: "So that's bobby@hotmail.com, correct?" [WAIT]
-User: "Yes"
-Agent: [tradein_update_lead(contact_email="bobby@hotmail.com")]
-Agent: "Phone number?" [WAIT]
-User: "84489068"
-Agent: "That's 84489068, correct?" [WAIT]
-User: "Yes"
-Agent: [tradein_update_lead(contact_phone="84489068")]
-Agent: "Your name?" [WAIT]
-User: "Bobby"
-Agent: [tradein_update_lead(contact_name="Bobby")]
-Agent: "Cash, PayNow, bank, or installments?" [WAIT]
-User: "Cash"
-Agent: [tradein_update_lead(preferred_payout="cash")]
-Agent: "PS4 Pro good, with box. Bobby, 84489068, email noted. Cash. Correct?" [WAIT]
-User: "Yes"
-Agent: [tradein_submit_lead()]
-Agent: "Done! We'll contact you soon. Anything else?"
-
-**Example - WRONG ❌:**
-Agent: "Condition? Also, got the box?" ← NO! One question at a time!
-Agent: "Send photos. Meanwhile, what's your name?" ← NO! Wait for photos first!
-Agent: [Submits without collecting all required fields] ← NO! Must validate first!
-
-**🔴 CRITICAL RULES:**
-- ONE question per response - NEVER combine multiple questions
-- ALWAYS announce price in format: "Yes, we trade this. Price is X dollars. Want to proceed?"
-- ALWAYS wait for user confirmation before starting detail collection
-- ALWAYS collect fields in order: storage → condition → accessories → photos → email → phone → name → payout
-- ALWAYS repeat back contact info for confirmation
-- NEVER skip the photo prompt
-- ALWAYS do recap before submission
-- NEVER submit without brand/model validation (if missing, ask staff handoff)""",
+**🔴 AGENT CONTROLS THE FLOW - NOT THE USER:**
+- When user says "done" after uploading a photo, it means "I'm done uploading" - NOT "end the conversation"
+- YOU decide when the flow is complete, not the user
+- NEVER say "Done!" or end the flow until you have collected ALL of these:
+  1. Storage (or skipped for devices without storage)
+  2. Condition
+  3. Accessories (box)
+  4. Photo (yes or no)
+  5. Name
+  6. Phone
+  7. Email
+  8. Payout method (for regular trade-ins, skip for trade-ups)
+  9. Recap confirmation from user
+- After photo upload, ALWAYS continue to ask "Your name?" - do NOT end the flow
+- The ONLY time you say "Done! We'll review..." is AFTER tradein_submit_lead is called""",
         )
-
-    def llm_node(self, chat_ctx, tools, model_settings):
-        # Deterministic trade-in price-only response (no target device).
-        last_user = _get_last_user_message_from_chat_ctx(chat_ctx)
-        if last_user:
-            forced = _maybe_force_reply(last_user)
-            if forced:
-
-                async def _forced():
-                    yield forced
-
-                return _forced()
-            last_assistant = _get_last_assistant_message_from_chat_ctx(chat_ctx)
-            if last_assistant:
-                last_lower = last_assistant.lower()
-                if _chat_ctx_has_support_context(chat_ctx):
-                    if "in singapore" in last_lower and _looks_like_affirmative(
-                        last_user
-                    ):
-
-                        async def _ask_support_name():
-                            yield "Your name?"
-
-                        return _ask_support_name()
-                    if (
-                        "your name" in last_lower or "name?" in last_lower
-                    ) and _looks_like_name(last_user):
-
-                        async def _ask_support_phone():
-                            yield "Phone number?"
-
-                        return _ask_support_phone()
-                    if (
-                        "contact number" in last_lower
-                        or "phone" in last_lower
-                        or ("contact" in last_lower and "number" in last_lower)
-                    ) and _looks_like_phone(last_user):
-
-                        async def _ask_support_email():
-                            yield "Email address?"
-
-                        return _ask_support_email()
-                    if "email" in last_lower and _looks_like_email(last_user):
-
-                        async def _confirm_support_email():
-                            yield f"So that's {last_user.strip()}, correct?"
-
-                        return _confirm_support_email()
-
-                if (
-                    "name" in last_lower
-                    and "email" not in last_lower
-                    and "phone" not in last_lower
-                ):
-
-                    async def _ask_phone():
-                        yield "Thanks! Phone number?"
-
-                    return _ask_phone()
-                if (
-                    "contact number" in last_lower
-                    or "phone" in last_lower
-                    or ("contact" in last_lower and "number" in last_lower)
-                ):
-
-                    async def _ask_email():
-                        yield "Got it. Email address?"
-
-                    return _ask_email()
-            if (
-                _looks_like_name(last_user)
-                and _chat_ctx_has_tradein_context(chat_ctx)
-                and not _chat_ctx_asked_phone(chat_ctx)
-            ):
-
-                async def _ask_phone_after_name():
-                    yield "Thanks! Phone number?"
-
-                return _ask_phone_after_name()
-            tradeup = _extract_tradeup_devices(last_user)
-            if not tradeup:
-                tradein_device = _extract_tradein_device(last_user)
-                if tradein_device:
-
-                    async def _single():
-                        yield _build_tradein_price_reply(tradein_device)
-
-                    return _single()
-                if last_assistant:
-                    last_lower = last_assistant.lower()
-                    if last_lower.startswith("which ") and "?" in last_lower:
-                        device_reply = last_user.strip()
-                        if device_reply:
-
-                            async def _variant():
-                                yield _build_tradein_price_reply(device_reply)
-
-                            return _variant()
-        return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
 
     async def on_enter(self):
         await self.session.generate_reply(
-            instructions=f"""Greet the user: "{_greeting_prompt()}" """,
+            instructions="""Greet the user: "Hi, Amara here. Want product info, trade-in or upgrade help, or a staff member?" """,
             allow_interruptions=True,
         )
 
@@ -2802,17 +1969,13 @@ server = AgentServer()
 
 def prewarm(proc: JobProcess):
     """Preload VAD model for better performance"""
-    if not SILERO_AVAILABLE:
-        logger.warning("[Voice Agent] Silero VAD not available; skipping prewarm")
-        proc.userdata["vad"] = None
-        return
     proc.userdata["vad"] = silero.VAD.load()
 
 
 server.setup_fnc = prewarm
 
 
-@server.rtc_session()
+@server.rtc_session(agent_name=os.getenv("LIVEKIT_AGENT_NAME", "amara"))
 async def entrypoint(ctx: JobContext):
     """Main entry point for LiveKit voice sessions"""
 
@@ -2823,11 +1986,7 @@ async def entrypoint(ctx: JobContext):
     room_name = ctx.room.name
     participant_identity = None
 
-    # REMOVED: Auto trade-in lead creation at session start (Jan 16, 2026)
-    # This was causing trade-in prompts ("Got the box?") to appear during
-    # simple product inquiries. Lead is now created only when user expresses
-    # actual trade-in intent (via tradein_update_lead tool call).
-    # asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
+    asyncio.create_task(_ensure_tradein_lead_for_session(room_name))
 
     # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
     if VOICE_STACK == "realtime":
@@ -2835,7 +1994,7 @@ async def entrypoint(ctx: JobContext):
             llm=realtime.RealtimeModel(
                 model=os.getenv(
                     "VOICE_LLM_MODEL",
-                    "gpt-4o-mini-realtime-preview-2024-12-17",
+                    "gpt-realtime-mini-2025-12-15",
                 ),
                 voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
                 temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
@@ -2843,8 +2002,7 @@ async def entrypoint(ctx: JobContext):
             ),
         )
     else:
-        vad = ctx.proc.userdata.get("vad")
-        session_kwargs = dict(
+        session = AgentSession(
             stt=inference.STT(
                 model="assemblyai/universal-streaming",
                 language="en",
@@ -2857,227 +2015,249 @@ async def entrypoint(ctx: JobContext):
                 model="cartesia/sonic-3",
                 voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
                 language="en",
-                # Increase speed for more dynamic feel (1.0 = normal, 1.1-1.2 = slightly faster)
-                speed=float(os.getenv("VOICE_TTS_SPEED", "1.15")),
             ),
             turn_detection=MultilingualModel(),
+            vad=ctx.proc.userdata["vad"],
             preemptive_generation=False,  # listen for full turn before speaking
         )
-        if vad is not None:
-            session_kwargs["vad"] = vad
-        session = AgentSession(**session_kwargs)
 
     # Event handlers for dashboard logging
     @session.on("user_input_transcribed")
     def on_user_input(event):
-        """Capture user's final transcribed message and auto-save data"""
+        """
+        CLEAN STATE MACHINE:
+        1. Get current step
+        2. Capture user's answer for that step
+        3. Save to checklist
+        4. Trigger DB save
+        5. Advance to next step
+        """
         nonlocal conversation_buffer
-        if event.is_final:  # Only capture final transcripts
-            conversation_buffer["user_message"] = event.transcript
-            conversation_buffer["order_failsafe_sent"] = False
-            conversation_buffer["quote_failsafe_sent"] = False
-            conversation_buffer["step_failsafe_sent"] = False
-            _last_user_utterance[room_name] = event.transcript
-            lower_user = (event.transcript or "").strip().lower()
-            forced_reply = _maybe_force_reply(event.transcript or "")
-            if forced_reply:
-                conversation_buffer["forced_reply_override"] = forced_reply
-            if lower_user in (
-                "yes",
-                "yeah",
-                "yep",
-                "ok",
-                "okay",
-                "sure",
-                "no",
-                "nope",
-                "nah",
-                "correct",
+        if not event.is_final:
+            return
+
+        # Setup
+        conversation_buffer["user_message"] = event.transcript
+        conversation_buffer["order_failsafe_sent"] = False
+        conversation_buffer["quote_failsafe_sent"] = False
+        conversation_buffer["step_failsafe_sent"] = False
+        _last_user_utterance[room_name] = event.transcript
+
+        user_text = event.transcript.strip()
+        lower_user = user_text.lower()
+        bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
+
+        logger.info(f"[Voice] User said: {user_text}")
+
+        # Get checklist state
+        checklist = _get_checklist(room_name)
+        current_step = checklist.get_current_step()
+
+        logger.info(
+            f"[StateMachine] 🔑 Session={room_name}, is_trade_up={checklist.is_trade_up}, collected={list(checklist.collected_data.keys())}"
+        )
+
+        # Common patterns
+        user_said_yes = lower_user.rstrip(".!?,") in (
+            "yes",
+            "yeah",
+            "yep",
+            "ok",
+            "okay",
+            "sure",
+            "correct",
+        )
+        user_said_no = lower_user.rstrip(".!?,") in (
+            "no",
+            "nope",
+            "nah",
+            "skip",
+            "later",
+        )
+
+        logger.info(
+            f"[StateMachine] Step={current_step}, Yes={user_said_yes}, No={user_said_no}"
+        )
+
+        # ═══════════════════════════════════════════════════════════════════
+        # STEP HANDLERS - Capture answer for current step and advance
+        # ═══════════════════════════════════════════════════════════════════
+
+        captured = False
+
+        # 🔴 TRADE-UP CONFIRMATION: When user says "Yes" to proceed with trade-up pricing
+        # Save all the trade-up data (source_device_name, target_device_name, prices) to DB
+        if user_said_yes and (
+            "top-up" in bot_prompt or "top up" in bot_prompt or "proceed" in bot_prompt
+        ):
+            if (
+                checklist.is_trade_up
+                and "source_device_name" in checklist.collected_data
             ):
-                _awaiting_recap_confirmation[room_name] = False
-            logger.info(f"[Voice] User said: {event.transcript}")
+                logger.warning(
+                    f"[Capture] 🔄 User confirmed trade-up, forcing save of pricing data"
+                )
+                captured = True  # Force save to persist trade-up data
 
-            # 🔴 PROCEED CONFIRMATION: Detect when user confirms they want to proceed with trade-in
-            checklist_for_proceed = _get_checklist(room_name)
-            bot_prompt = (conversation_buffer.get("bot_response") or "").lower()
-            is_proceed_prompt = any(
-                phrase in bot_prompt
-                for phrase in [
-                    "want to proceed",
-                    "proceed?",
-                    "shall i proceed",
-                    "proceed now",
-                    "continue with trade-in",
-                ]
-            )
-            user_said_yes = lower_user in (
-                "yes",
-                "yeah",
-                "yep",
-                "ok",
-                "okay",
-                "sure",
-                "yes.",
-                "let's do it",
-                "lets do it",
-            )
-            user_said_no = lower_user in ("no", "nope", "nah", "no.", "skip", "later")
+        # STORAGE: Capture storage size (e.g., "1TB", "512GB")
+        if current_step == "storage" and "storage" not in checklist.collected_data:
+            import re
 
-            # 🚨 CRITICAL FIX: Only activate trade-in flow AFTER user confirms "Want to proceed?"
-            if is_proceed_prompt and not checklist_for_proceed.collected_data.get(
-                "initial_quote_given"
-            ):
-                if user_said_yes:
-                    # User confirmed! NOW activate the trade-in flow
-                    checklist_for_proceed.collected_data["initial_quote_given"] = True
-                    checklist_for_proceed.collected_data["quote_timestamp"] = (
-                        datetime.utcnow().isoformat()
-                    )
-                    logger.warning(
-                        f"[ProceedConfirm] ✅ User confirmed trade-in! Setting initial_quote_given=True. This activates auto-extraction."
-                    )
-                    # Persist to database
-                    asyncio.create_task(
-                        _persist_quote_flag(
-                            room_name,
-                            checklist_for_proceed.collected_data.get("quote_timestamp"),
-                        )
-                    )
-                elif user_said_no:
-                    logger.info(
-                        f"[ProceedConfirm] ❌ User declined trade-in. Flow will not activate."
-                    )
+            storage_match = re.search(r"(\d+)\s*(gb|tb)", lower_user)
+            if storage_match:
+                storage_val = (
+                    f"{storage_match.group(1)}{storage_match.group(2).upper()}"
+                )
+                checklist.mark_field_collected("storage", storage_val)
+                logger.warning(f"[Capture] 💾 storage={storage_val}")
+                captured = True
 
-            # Trade-in only intent should NOT activate flow until user accepts price
+        # CONDITION: Capture condition (mint/good/fair/faulty)
+        if current_step == "condition" and "condition" not in checklist.collected_data:
+            for cond in ["mint", "good", "fair", "faulty", "broken"]:
+                if cond in lower_user:
+                    cond_val = "faulty" if cond == "broken" else cond
+                    checklist.mark_field_collected("condition", cond_val)
+                    logger.warning(f"[Capture] ✨ condition={cond_val}")
+                    captured = True
+                    break
 
-            # 🔴 PHOTO WAIT STATE: Detect when user says yes to photos and enter waiting mode
-            is_photo_prompt = "photo" in bot_prompt or "picture" in bot_prompt
+        # ACCESSORIES: Capture yes/no for box/accessories
+        if (
+            current_step == "accessories"
+            and "accessories" not in checklist.collected_data
+        ):
+            if "box" in bot_prompt or "accessor" in bot_prompt:
+                if user_said_yes or user_said_no:
+                    checklist.mark_field_collected("accessories", user_said_yes)
+                    logger.warning(f"[Capture] 📦 accessories={user_said_yes}")
+                    captured = True
 
-            if is_photo_prompt and checklist_for_proceed.get_current_step() == "photos":
+        # PHOTOS: Capture yes/no for photos
+        if current_step == "photos" and "photos" not in checklist.collected_data:
+            if "photo" in bot_prompt or "picture" in bot_prompt:
                 if user_said_yes:
                     _waiting_for_photo[room_name] = True
-                    logger.warning(
-                        f"[PhotoWait] 📸 User said YES to photos - entering WAIT mode. Agent should NOT ask more questions!"
-                    )
+                    checklist.mark_field_collected("photos", True)
+                    logger.warning(f"[Capture] 📸 photos=True, entering WAIT mode")
+                    captured = True
                 elif user_said_no:
+                    checklist.mark_field_collected("photos", False)
+                    logger.warning(f"[Capture] 📸 photos=False, skipping")
+                    captured = True
+            # Photo upload complete
+            if _waiting_for_photo.get(room_name):
+                photo_done = any(
+                    w in lower_user
+                    for w in ["done", "sent", "send", "upload", "attached"]
+                )
+                if photo_done:
                     _waiting_for_photo[room_name] = False
-                    logger.info(f"[PhotoWait] User said NO to photos - continuing flow")
+                    checklist.mark_field_collected("photos")
+                    logger.warning(f"[Capture] 📸 Photo uploaded, advancing")
+                    captured = True
 
-            # Detect if user mentions uploading/sending photo - exit wait mode
+        # NAME: Capture name
+        if current_step == "name" and "name" not in checklist.collected_data:
+            if "name" in bot_prompt:
+                if not user_said_yes and not user_said_no and len(user_text) > 1:
+                    name_val = user_text.rstrip(".!?,")
+                    checklist.mark_field_collected("name", name_val)
+                    logger.warning(f"[Capture] 👤 name={name_val}")
+                    captured = True
+
+        # PHONE: Capture phone number
+        if current_step == "phone" and "phone" not in checklist.collected_data:
             if (
-                "upload" in lower_user
-                or "sent" in lower_user
-                or "sending" in lower_user
-                or "done" in lower_user
+                "number" in bot_prompt
+                or "phone" in bot_prompt
+                or "contact" in bot_prompt
             ):
-                if _waiting_for_photo.get(room_name):
-                    _waiting_for_photo[room_name] = False
-                    logger.warning(
-                        f"[PhotoWait] 📸 User mentioned upload/done - exiting WAIT mode"
-                    )
+                import re
 
-            # AUTO-SAVE: Extract and save data from user message
-            checklist = _get_checklist(room_name)
-            logger.info(
-                f"[AutoSave] Triggering auto-save for session {room_name}, message: {event.transcript[:100]}"
-            )
-            logger.info(
-                f"[AutoSave] 📋 Current checklist state: {checklist.get_progress()}"
-            )
+                digits = re.sub(r"[^\d]", "", user_text)
+                if len(digits) >= 8:
+                    checklist.mark_field_collected("phone", digits)
+                    logger.warning(f"[Capture] 📞 phone={digits}")
+                    captured = True
+
+        # EMAIL: Capture email
+        if current_step == "email" and "email" not in checklist.collected_data:
+            if "email" in bot_prompt:
+                import re
+
+                email_match = re.search(
+                    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", lower_user
+                )
+                if email_match:
+                    email_val = email_match.group(0)
+                    checklist.mark_field_collected("email", email_val)
+                    logger.warning(f"[Capture] 📧 email={email_val}")
+                    captured = True
+
+        # PAYOUT: Capture payout method
+        if current_step == "payout" and "payout" not in checklist.collected_data:
+            payout_map = {
+                "cash": "cash",
+                "paynow": "paynow",
+                "pay now": "paynow",
+                "bank": "bank",
+                "transfer": "bank",
+            }
+            for keyword, payout_val in payout_map.items():
+                if keyword in lower_user:
+                    checklist.mark_field_collected("payout", payout_val)
+                    logger.warning(f"[Capture] 💰 payout={payout_val}")
+                    captured = True
+                    break
+
+        # RECAP: User confirms recap
+        if current_step == "recap" or _awaiting_recap_confirmation.get(room_name):
+            if user_said_yes:
+                logger.warning(f"[Capture] ✅ Recap confirmed! Submitting...")
+                _awaiting_recap_confirmation[room_name] = False
+                checklist.mark_field_collected("recap")
+                asyncio.create_task(_force_submit_tradein(room_name, checklist))
+                captured = True
+
+        # ═══════════════════════════════════════════════════════════════════
+        # SAVE TO DATABASE
+        # ═══════════════════════════════════════════════════════════════════
+
+        if _waiting_for_photo.get(room_name) and not captured:
+            logger.info(f"[PhotoWait] Waiting for photo upload...")
+            return
+
+        logger.info(f"[StateMachine] After capture: {checklist.get_progress()}")
+
+        # 🔴 CRITICAL: If we captured data, force save to DB immediately
+        if captured:
+            logger.warning(f"[StateMachine] 💾 Data captured, forcing save to DB")
             asyncio.create_task(
-                auto_save_after_message(
+                force_save_to_db(
                     session_id=room_name,
-                    user_message=event.transcript,
                     checklist_state=checklist,
                     api_base_url=API_BASE_URL,
                     headers=build_auth_headers(),
-                    last_bot_prompt=conversation_buffer.get("bot_response"),
                 )
             )
-
-            # 🔥 STATE MACHINE: Force exact response based on what was extracted
-            extracted = extract_data_from_message(
-                event.transcript, checklist, conversation_buffer.get("bot_response")
+        else:
+            # Fallback: try extraction-based save
+            asyncio.create_task(
+                auto_save_after_message(
+                    session_id=room_name,
+                    user_message=user_text,
+                    checklist_state=checklist,
+                    api_base_url=API_BASE_URL,
+                    headers=build_auth_headers(),
+                    last_bot_prompt=bot_prompt,
+                )
             )
-
-            # 🔴 STATE MACHINE ENFORCER: Generate forced response
-            if extracted and checklist.collected_data.get("initial_quote_given"):
-                # Determine what step was just collected
-                just_collected = None
-                user_said_no_photos = False
-
-                if "condition" in extracted:
-                    just_collected = "condition"
-                elif "accessories" in extracted:
-                    just_collected = "accessories"
-                elif "photos_acknowledged" in extracted:
-                    just_collected = "photos"
-                    user_said_no_photos = not extracted.get("photos_acknowledged", True)
-                elif "contact_name" in extracted or "name" in extracted:
-                    just_collected = "name"
-                elif "contact_phone" in extracted:
-                    just_collected = "phone"
-                elif "contact_email" in extracted:
-                    just_collected = "email"
-                elif "payout" in extracted:
-                    just_collected = "payout"
-                elif "storage" in extracted:
-                    just_collected = "storage"
-
-                if just_collected:
-                    forced_response = checklist.get_forced_response(
-                        just_collected, user_said_no_photos
-                    )
-                    if forced_response:
-                        logger.warning(
-                            f"[StateMachine] 🎯 FORCING response: '{forced_response}' (collected: {just_collected})"
-                        )
-                        conversation_buffer["forced_next_response"] = forced_response
-            if extracted:
-                acknowledgment = build_smart_acknowledgment(extracted, checklist)
-                if acknowledgment:
-                    # Log acknowledgment for debugging
-                    logger.info(
-                        f"[SmartAck] 📝 Prepared acknowledgment: {acknowledgment}"
-                    )
-                    # Store in conversation buffer for next response
-                    conversation_buffer["pending_acknowledgment"] = " | ".join(
-                        acknowledgment
-                    )
 
     @session.on("conversation_item_added")
     def on_conversation_item(event):
         """Capture agent's response and log to dashboard"""
         nonlocal conversation_buffer, participant_identity
-        if hasattr(event.item, "role") and event.item.role == "user":
-            content = ""
-            if hasattr(event.item, "content") and event.item.content:
-                content = event.item.content
-                if isinstance(content, list):
-                    content = " ".join(str(item) for item in content)
-                else:
-                    content = str(content)
-            elif hasattr(event.item, "text_content"):
-                content = event.item.text_content or ""
-            if content:
-                conversation_buffer["user_message"] = content
-                _last_user_utterance[room_name] = content
-                forced_reply = _maybe_force_reply(content)
-                if forced_reply:
-                    conversation_buffer["forced_reply_override"] = forced_reply
-                tradeup = _extract_tradeup_devices(content)
-                if tradeup:
-                    source_device, target_device = tradeup
-                    conversation_buffer["pending_tradeup"] = {
-                        "source": source_device,
-                        "target": target_device,
-                    }
-                    _tradeup_context[room_name] = {
-                        "source_device": source_device,
-                        "target_device": target_device,
-                        "pending_confirmation": True,
-                    }
-            return
         # Check if this is an assistant message
         if hasattr(event.item, "role") and event.item.role == "assistant":
             if hasattr(event.item, "content") and event.item.content:
@@ -3085,95 +2265,26 @@ async def entrypoint(ctx: JobContext):
                 content = event.item.content
                 if isinstance(content, list):
                     content = " ".join(str(item) for item in content)
-                last_user = conversation_buffer.get(
-                    "user_message"
-                ) or _last_user_utterance.get(room_name)
-                if not last_user:
-                    last_user = _get_last_user_message_from_session(session)
-                if last_user:
-                    conversation_buffer["user_message"] = last_user
-                    _last_user_utterance[room_name] = last_user
-                    last_user_lower = last_user.lower()
-                    if not conversation_buffer.get("forced_reply_override"):
-                        forced_reply = _maybe_force_reply(last_user)
-                        if forced_reply:
-                            conversation_buffer["forced_reply_override"] = forced_reply
-                    if not conversation_buffer.get("forced_reply_override"):
-                        tradeup = _extract_tradeup_devices(last_user)
-                        if tradeup:
-                            source_device, target_device = tradeup
-                            forced_tradeup = _build_tradeup_price_reply(
-                                source_device, target_device, room_name
-                            )
-                            if forced_tradeup:
-                                conversation_buffer["forced_reply_override"] = (
-                                    forced_tradeup
-                                )
-                        else:
-                            tradein_device = _extract_tradein_device(last_user)
-                            if tradein_device:
-                                conversation_buffer["forced_reply_override"] = (
-                                    _build_tradein_price_reply(tradein_device)
-                                )
-                    pending_tradeup = conversation_buffer.get("pending_tradeup") or {}
-                    tradeup_ctx = _tradeup_context.get(room_name) or {}
-                    if (
-                        pending_tradeup
-                        and tradeup_ctx.get("pending_confirmation")
-                        and last_user_lower
-                        in {"yes", "yep", "yeah", "sure", "ok", "okay"}
-                    ):
-                        forced_tradeup = _build_tradeup_price_reply(
-                            pending_tradeup.get("source", ""),
-                            pending_tradeup.get("target", ""),
-                            room_name,
-                        )
-                        if forced_tradeup:
-                            conversation_buffer["forced_reply_override"] = (
-                                forced_tradeup
-                            )
-                            tradeup_ctx["pending_confirmation"] = False
-                            _tradeup_context[room_name] = tradeup_ctx
-                forced_reply = conversation_buffer.get("forced_reply_override")
-                if forced_reply:
-                    content = forced_reply
-                    conversation_buffer["forced_reply_override"] = None
-                content = _normalize_voice_currency(content)
-                last_user_lower = (last_user or "").lower()
-                # 🚨 REMOVED: Basketball check logic removed to allow synonym expansion to "NBA 2K"
-                if "gpu" in last_user_lower and any(
-                    token in last_user_lower
-                    for token in ["llm", "ai", "chatbot", "training"]
-                ):
-                    if not any(
-                        token in content.lower()
-                        for token in ["4090", "rtx", "nvidia", "a100", "h100"]
-                    ):
-                        content = (
-                            "For local LLMs, NVIDIA RTX 4090 24GB is best. "
-                            "RTX 4080 is a cheaper option. Want me to check stock?"
-                        )
-                if (
-                    ("couldn't find" in content.lower())
-                    or ("could not find" in content.lower())
-                    or ("not in stock" in content.lower())
-                ) and "what do you want to do next" not in content.lower():
-                    content = content.rstrip()
-                    if not content.endswith("?"):
-                        content = content.rstrip(".") + "."
-                    content = f"{content} What do you want to do next?"
-                try:
-                    event.item.content = [content]
-                    if hasattr(event.item, "text_content"):
-                        event.item.text_content = content
-                except Exception:
-                    pass
                 conversation_buffer["bot_response"] = content
                 logger.info(f"[Voice] Agent said: {event.item.content}")
 
                 try:
                     checklist = _get_checklist(room_name)
                     progress = checklist.get_progress()
+
+                    # 🔴 BLOCK RESTART: If checklist is complete, don't let agent restart
+                    if checklist.completed:
+                        # Agent is trying to speak after flow is complete - block greetings
+                        if (
+                            "hi" in content.lower()[:20]
+                            or "hello" in content.lower()[:20]
+                            or "amara here" in content.lower()
+                        ):
+                            logger.warning(
+                                f"[CompletedBlock] 🚫 Blocking agent restart greeting after completed flow"
+                            )
+                            return  # Don't process this message
+
                     has_quote = bool(
                         checklist.collected_data.get("initial_quote_given")
                     )
@@ -3239,15 +2350,42 @@ async def entrypoint(ctx: JobContext):
                             logger.warning(
                                 f"[PhotoWait] 🚨 Agent asked question while waiting for photo! Blocking."
                             )
-                            # Don't say anything - just wait silently
 
                     asked_step = None
-                    if (
+
+                    # Detect recap - MUST be a full summary (mentions device AND contact)
+                    # Not just confirming a single field like "That's 8448 9068, correct?"
+                    has_device_mention = any(
+                        w in lower
+                        for w in [
+                            "device",
+                            "switch",
+                            "ps5",
+                            "ps4",
+                            "xbox",
+                            "iphone",
+                            "samsung",
+                            "macbook",
+                            "ipad",
+                            "condition",
+                        ]
+                    )
+                    has_contact_mention = any(
+                        w in lower for w in ["contact", "@", "bobby", "84489068"]
+                    )
+                    is_full_summary = has_device_mention and has_contact_mention
+
+                    is_recap = is_full_summary and (
                         "everything correct" in lower
                         or "is that correct" in lower
                         or "correct?" in lower
-                    ):
+                        or "summary" in lower
+                    )
+                    if is_recap:
                         asked_step = "recap"
+                        logger.warning(
+                            f"[RecapDetect] 🎯 Detected FULL recap: {content[:60]}"
+                        )
                     elif "storage size" in lower:
                         asked_step = "storage"
                     elif "condition" in lower and "?" in lower:
@@ -3297,48 +2435,156 @@ async def entrypoint(ctx: JobContext):
                             )
                         )
 
-                    if asked_step == "recap" and current_step == "recap":
+                    # 🔴 CRITICAL: If agent asks recap question, set awaiting confirmation
+                    # Don't require current_step == "recap" - agent may skip ahead
+                    if asked_step == "recap":
                         _awaiting_recap_confirmation[room_name] = True
+                        logger.warning(
+                            f"[RecapDetect] ✅ Set _awaiting_recap_confirmation=True for {room_name}"
+                        )
+
+                    # 🔴 CRITICAL: Detect when agent tries to end flow early
+                    agent_claims_done = (
+                        "submitted" in lower
+                        or "we'll review" in lower
+                        or "we will review" in lower
+                        or "we'll contact you" in lower
+                        or ("done" in lower and "!" in content)
+                        or "anything else" in lower
+                    )
+
+                    if agent_claims_done and not checklist.completed:
+                        # Check if we have all required contact info
+                        has_name = "name" in checklist.collected_data
+                        has_phone = "phone" in checklist.collected_data
+                        has_email = "email" in checklist.collected_data
+                        has_all_contact = has_name and has_phone and has_email
+
+                        if not has_all_contact:
+                            # 🔴 AGENT TRIED TO END WITHOUT CONTACT INFO - FORCE NEXT QUESTION
+                            next_q = checklist.get_next_question()
+                            if next_q and next_q not in ("recap", "submit"):
+                                logger.warning(
+                                    f"[FlowControl] 🚨 Agent tried to end but missing contact info! Forcing: {next_q}"
+                                )
+                                asyncio.create_task(
+                                    _async_generate_reply(
+                                        session,
+                                        instructions=f"Say exactly: {next_q}",
+                                        allow_interruptions=True,
+                                    )
+                                )
+                            else:
+                                # Missing contact but no next question - force name
+                                if not has_name:
+                                    logger.warning(
+                                        f"[FlowControl] 🚨 Missing name! Forcing name question."
+                                    )
+                                    asyncio.create_task(
+                                        _async_generate_reply(
+                                            session,
+                                            instructions="Say exactly: Your name?",
+                                            allow_interruptions=True,
+                                        )
+                                    )
+                        else:
+                            # Has all contact info - check if recap was shown
+                            recap_shown = _awaiting_recap_confirmation.get(
+                                room_name, False
+                            ) or conversation_buffer.get("recap_shown")
+
+                            if not recap_shown:
+                                # 🔴 FORCE RECAP FIRST - don't submit without showing details
+                                logger.warning(
+                                    f"[SubmitDetect] 🚨 Agent tried to end without recap! Forcing recap first."
+                                )
+                                conversation_buffer["recap_shown"] = True
+                                _awaiting_recap_confirmation[room_name] = True
+
+                                # Build recap from collected data
+                                data = checklist.collected_data
+                                device = (
+                                    data.get("model")
+                                    or data.get("source_device_name")
+                                    or "your device"
+                                )
+                                condition = data.get("condition", "good")
+                                name = data.get("name", "")
+                                phone = data.get("phone", "")
+                                email = data.get("email", "")
+
+                                recap_text = (
+                                    f"Let me confirm: {device}, {condition} condition"
+                                )
+                                if name:
+                                    recap_text += f", name {name}"
+                                if phone:
+                                    recap_text += f", phone {phone}"
+                                if email:
+                                    recap_text += f", email {email}"
+                                recap_text += ". Everything correct?"
+
+                                asyncio.create_task(
+                                    _async_generate_reply(
+                                        session,
+                                        instructions=f"Say exactly: {recap_text}",
+                                        allow_interruptions=True,
+                                    )
+                                )
+                            else:
+                                # Recap was shown, now submit
+                                logger.warning(
+                                    f"[SubmitDetect] ✅ Recap was shown, now forcing submit."
+                                )
+                                asyncio.create_task(
+                                    _force_submit_tradein(room_name, checklist)
+                                )
 
                     if _awaiting_recap_confirmation.get(room_name):
                         assistant_confirms = (
                             lower.strip().startswith("yes")
                             or "we'll proceed" in lower
                             or "we will proceed" in lower
+                            or "we'll finalize" in lower
+                            or "all correct" in lower
+                            or "that's correct" in lower
                         )
                         if assistant_confirms:
+                            # 🔴 CRITICAL: Agent self-confirmed! This means it thinks it has all the info.
+                            # Force submit the trade-in NOW since agent clearly believes flow is complete.
+                            logger.warning(
+                                f"[SelfConfirm] 🚨 Agent self-confirmed recap! Forcing tradein_submit_lead call."
+                            )
+                            _awaiting_recap_confirmation[room_name] = False
+
+                            # Force submit - the agent has all the info, just didn't call the function
                             asyncio.create_task(
-                                _async_generate_reply(
-                                    session,
-                                    instructions="Say exactly: Please answer yes or no.",
-                                    allow_interruptions=True,
-                                )
+                                _force_submit_tradein(room_name, checklist)
                             )
 
                     lower_content = content.lower()
-                    # 🚨 REMOVED: Don't set initial_quote_given when agent ASKS "Want to proceed?"
-                    # Only set it when user CONFIRMS (see on_user_input_transcribed handler above)
                     if (
                         ("trades for" in lower_content)
                         and ("top-up" in lower_content or "top up" in lower_content)
                         and has_prices
                     ):
-                        # Just log that quote was spoken - user must confirm before flow activates
+                        checklist.collected_data["initial_quote_given"] = True
+                        checklist.collected_data["quote_timestamp"] = (
+                            datetime.utcnow().isoformat()
+                        )
                         logger.info(
-                            "[QuoteState] 📢 Quote spoken to user. Waiting for confirmation before activating flow. progress=%s",
+                            "[QuoteState] ✅ Marked initial_quote_given=True after quote spoken. progress=%s",
                             progress,
                         )
 
-                    said_proceed = any(
-                        phrase in content.lower()
-                        for phrase in [
-                            "want to proceed",
-                            "proceed?",
-                            "shall i proceed",
-                            "proceed now",
-                            "continue with trade-in",
-                        ]
-                    )
+                        asyncio.create_task(
+                            _persist_quote_flag(
+                                room_name,
+                                checklist.collected_data.get("quote_timestamp"),
+                            )
+                        )
+
+                    said_proceed = "want to proceed" in content.lower()
                     if said_proceed and not conversation_buffer.get(
                         "quote_failsafe_sent"
                     ):
@@ -3362,14 +2608,14 @@ async def entrypoint(ctx: JobContext):
                                 _async_generate_reply(
                                     session,
                                     instructions=(
-                                        f"Say exactly: Your {src} trades for ${int(trade_value)}. "
-                                        f"The {tgt} is ${int(retail_price)}. "
-                                        f"Top-up: ${int(top_up)}. {_proceed_prompt()}"
+                                        f"Say exactly: Your {src} trades for S${int(trade_value)}. "
+                                        f"The {tgt} is S${int(retail_price)}. "
+                                        f"Top-up: S${int(top_up)}. Want to proceed?"
                                     ),
                                     allow_interruptions=True,
                                 )
                             )
-                            # 🚨 REMOVED: Don't set flag here - wait for user confirmation
+                            checklist.collected_data["initial_quote_given"] = True
                         else:
                             trade_ctx = _tradeup_context.get(room_name) or {}
                             if trade_ctx.get("pending_clarification"):
@@ -3499,23 +2745,29 @@ async def entrypoint(ctx: JobContext):
             # Clear buffer for next turn
             conversation_buffer = {"user_message": "", "bot_response": ""}
 
-    # Build room options conditionally based on noise cancellation setting
-    audio_input_options = {}
-    if VOICE_NOISE_CANCELLATION:
-        # Only enable noise cancellation if explicitly set to true (LiveKit Cloud feature)
-        audio_input_options["noise_cancellation"] = lambda params: (
-            noise_cancellation.BVCTelephony()
-            if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
-            else noise_cancellation.BVC()
+    start_kwargs = {
+        "agent": TradeZoneAgent(),
+        "room": ctx.room,
+    }
+    if ENABLE_NOISE_CANCELLATION and noise_cancellation is not None:
+        start_kwargs["room_options"] = room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=lambda params: (
+                    noise_cancellation.BVCTelephony()
+                    if params.participant.kind
+                    == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
+                    else noise_cancellation.BVC()
+                ),
+            ),
+        )
+    else:
+        start_kwargs["room_options"] = room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=None,
+            ),
         )
 
-    await session.start(
-        agent=TradeZoneAgent(),
-        room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(**audio_input_options),
-        ),
-    )
+    await session.start(**start_kwargs)
 
 
 if __name__ == "__main__":

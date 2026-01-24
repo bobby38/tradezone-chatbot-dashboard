@@ -39,8 +39,13 @@ async function runTests() {
   console.log("🧪 Testing Agent Fixes (Jan 23, 2026)\n");
   console.log("=".repeat(60) + "\n");
 
-  const API_URL = process.env.API_URL || "http://localhost:3001/api/chatkit/agent";
-  const API_KEY = process.env.CHATKIT_API_KEY || "tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB";
+  const API_URL =
+    process.env.API_URL || "http://localhost:3001/api/chatkit/agent";
+  const API_KEY = process.env.CHATKIT_API_KEY;
+  if (!API_KEY) {
+    console.error("Missing CHATKIT_API_KEY");
+    process.exit(1);
+  }
 
   let passed = 0;
   let failed = 0;
@@ -75,7 +80,9 @@ async function runTests() {
       const data = await response.json();
       const reply = data.reply || data.response || "";
 
-      console.log(`   Reply: ${reply.substring(0, 250)}${reply.length > 250 ? "..." : ""}`);
+      console.log(
+        `   Reply: ${reply.substring(0, 250)}${reply.length > 250 ? "..." : ""}`,
+      );
 
       let testPassed = true;
 
@@ -103,7 +110,8 @@ async function runTests() {
         failed++;
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.log(`   ❌ ERROR: ${errorMessage}`);
       failed++;
     }
@@ -111,11 +119,13 @@ async function runTests() {
     console.log("\n" + "-".repeat(60) + "\n");
 
     // Small delay between tests
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 2000));
   }
 
   console.log("=".repeat(60));
-  console.log(`\n📊 Results: ${passed} passed, ${failed} failed out of ${TEST_CASES.length} tests\n`);
+  console.log(
+    `\n📊 Results: ${passed} passed, ${failed} failed out of ${TEST_CASES.length} tests\n`,
+  );
 
   if (failed === 0) {
     console.log("✅ All tests passed!\n");

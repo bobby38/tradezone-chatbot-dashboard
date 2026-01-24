@@ -1,8 +1,13 @@
 #!/bin/bash
 # Sync price grid cron job with dashboard logging
 
-API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+API_KEY="${CHATKIT_API_KEY:-}"
 START=$(date +%s)
+
+if [ -z "$API_KEY" ]; then
+  echo "Missing CHATKIT_API_KEY"
+  exit 1
+fi
 
 # Run the actual task
 if curl -sS -X POST https://trade.rezult.co/api/sync-price-grid \

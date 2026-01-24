@@ -56,7 +56,7 @@ Add this to the END of each cron job:
 ```bash
 # After your existing curl command, add:
 curl -sS -X POST https://trade.rezult.co/api/scheduled-tasks/ingest \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"task_id":"tradein-auto-submit","task_title":"Trade-in auto submit","status":"success"}'
 ```
@@ -69,15 +69,15 @@ See: `docs/SCHEDULED_TASKS_INTEGRATION.md`
 **Before:**
 ```bash
 */1 * * * * curl -sS -X POST https://tradezone.sg/api/tradein/auto-submit \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY"
 ```
 
 **After:**
 ```bash
 */1 * * * * curl -sS -X POST https://tradezone.sg/api/tradein/auto-submit \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" && \
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY" && \
   curl -sS -X POST https://trade.rezult.co/api/scheduled-tasks/ingest \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"task_id":"tradein-auto-submit","task_title":"Trade-in auto submit","status":"success"}'
 ```
@@ -122,7 +122,7 @@ scripts/test-scheduler-ingest.sh                      ← Test script
 
 **401 Unauthorized when testing**
 - Check API key matches `CHATKIT_API_KEY` env variable
-- Verify header: `X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB`
+- Verify header: `X-API-Key: YOUR_CHATKIT_API_KEY`
 
 **Cron job not logging**
 - Check cron job is executing (look at Coolify logs)

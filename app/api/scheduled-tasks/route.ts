@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -471,7 +472,12 @@ async function loadExternalTasks(): Promise<
   return Array.from(mergedTasks.values());
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = verifyAdminAccess(request);
+  if (!auth.authenticated) {
+    return authErrorResponse(auth.error);
+  }
+
   const external = await loadExternalTasks();
   const tasks = normalizeTasks(external);
   return NextResponse.json(

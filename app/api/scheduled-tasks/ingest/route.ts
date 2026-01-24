@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { verifyServerApiKey } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,12 @@ interface IngestRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate via X-API-Key header
-    const apiKey = request.headers.get("X-API-Key");
-    const validKey = process.env.CHATKIT_API_KEY || process.env.NEXT_PUBLIC_CHATKIT_API_KEY;
-
-    if (!apiKey || apiKey !== validKey) {
-      console.error("[ScheduledTasksIngest] Invalid or missing API key");
+    const auth = verifyServerApiKey(request);
+    if (!auth.authenticated) {
+      console.error("[ScheduledTasksIngest] Invalid or missing server API key");
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { success: false, error: auth.error || "Unauthorized" },
+        { status: 401 },
       );
     }
 
@@ -59,9 +57,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing required fields: task_id, task_title, status"
+          error: "Missing required fields: task_id, task_title, status",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,9 +68,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid status. Must be: success, failed, or running"
+          error: "Invalid status. Must be: success, failed, or running",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -84,12 +82,12 @@ export async function POST(request: NextRequest) {
       console.error("[ScheduledTasksIngest] Supabase credentials missing");
       return NextResponse.json(
         { success: false, error: "Server configuration error" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false }
+      auth: { persistSession: false },
     });
 
     // Calculate duration if not provided
@@ -108,7 +106,9 @@ export async function POST(request: NextRequest) {
         task_title: body.task_title,
         status: body.status,
         started_at: body.started_at || new Date().toISOString(),
-        ended_at: body.ended_at || (body.status !== "running" ? new Date().toISOString() : null),
+        ended_at:
+          body.ended_at ||
+          (body.status !== "running" ? new Date().toISOString() : null),
         duration_ms: durationMs,
         log_url: body.log_url,
         notes: body.notes,
@@ -122,11 +122,13 @@ export async function POST(request: NextRequest) {
       console.error("[ScheduledTasksIngest] Database error:", error);
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    console.log(`[ScheduledTasksIngest] Recorded ${body.status} run for ${body.task_id}`);
+    console.log(
+      `[ScheduledTasksIngest] Recorded ${body.status} run for ${body.task_id}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -136,17 +138,16 @@ export async function POST(request: NextRequest) {
         task_id: data.task_id,
         status: data.status,
         started_at: data.started_at,
-      }
+      },
     });
-
   } catch (error) {
     console.error("[ScheduledTasksIngest] Unexpected error:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Internal server error"
+        error: error instanceof Error ? error.message : "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

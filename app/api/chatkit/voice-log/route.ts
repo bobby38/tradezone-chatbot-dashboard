@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getClientIdentifier } from "@/lib/security/rateLimit";
+import { verifyApiKey } from "@/lib/security/auth";
 
 const ALLOWED_ORIGINS = [
   "https://tradezone.sg",
@@ -11,7 +12,11 @@ const ALLOWED_ORIGINS = [
   "https://sabaisensations.com",
   "https://www.sabaisensations.com",
   ...(process.env.NODE_ENV === "development"
-    ? ["http://localhost:3000", "http://localhost:3001", "http://localhost:3003"]
+    ? [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3003",
+      ]
     : []),
 ];
 
@@ -42,6 +47,14 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   const clientIp = getClientIdentifier(request);
 
+  const authResult = verifyApiKey(request);
+  if (!authResult.authenticated) {
+    return NextResponse.json(
+      { success: false, error: authResult.error || "Unauthorized" },
+      { status: 401, headers: corsHeaders },
+    );
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -61,11 +74,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
-  const userTranscript = typeof body.userTranscript === "string" ? body.userTranscript.trim() : "";
+  const sessionId =
+    typeof body.sessionId === "string" ? body.sessionId.trim() : "";
+  const userTranscript =
+    typeof body.userTranscript === "string" ? body.userTranscript.trim() : "";
   const assistantTranscript =
-    typeof body.assistantTranscript === "string" ? body.assistantTranscript.trim() : "";
-  const linksMarkdown = typeof body.linksMarkdown === "string" ? body.linksMarkdown.trim() : null;
+    typeof body.assistantTranscript === "string"
+      ? body.assistantTranscript.trim()
+      : "";
+  const linksMarkdown =
+    typeof body.linksMarkdown === "string" ? body.linksMarkdown.trim() : null;
   const status = typeof body.status === "string" ? body.status : "partial";
   const userId = typeof body.userId === "string" ? body.userId : sessionId;
 

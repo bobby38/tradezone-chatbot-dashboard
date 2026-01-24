@@ -3,6 +3,7 @@ import {
   getTradeInLeadDetail,
   submitTradeInLead,
 } from "@/lib/trade-in/service";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 /**
  * Resend email notification for an existing trade-in lead
@@ -10,6 +11,11 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { leadId } = await request.json();
 
     if (!leadId) {

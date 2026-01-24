@@ -11,7 +11,7 @@
 set -e
 
 # Configuration
-API_KEY="${CHATKIT_API_KEY:-tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB}"
+API_KEY="${CHATKIT_API_KEY:-}"
 DASHBOARD_URL="${DASHBOARD_URL:-https://trade.rezult.co}"
 
 # Arguments
@@ -21,6 +21,11 @@ COMMAND="$3"
 
 if [ -z "$TASK_ID" ] || [ -z "$TASK_TITLE" ] || [ -z "$COMMAND" ]; then
   echo "Usage: $0 TASK_ID 'Task Title' 'command to run'"
+  exit 1
+fi
+
+if [ -z "$API_KEY" ]; then
+  echo "Missing CHATKIT_API_KEY for scheduled-tasks ingest"
   exit 1
 fi
 

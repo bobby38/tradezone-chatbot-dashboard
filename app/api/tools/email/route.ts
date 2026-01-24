@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { EmailService } from "@/lib/email-service";
+import { verifyApiKey } from "@/lib/security/auth";
 
 // CORS headers for widget on tradezone.sg
 const ALLOWED_ORIGINS = [
@@ -48,6 +49,14 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
 
   try {
+    const authResult = verifyApiKey(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || "Unauthorized" },
+        { status: 401, headers: corsHeaders },
+      );
+    }
+
     const body = await request.json();
 
     // Check if this is a ChatKit tool call (has emailType, name, email, message)

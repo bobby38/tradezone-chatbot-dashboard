@@ -4,8 +4,13 @@
 
 set -e
 
-API_KEY="${CHATKIT_API_KEY:-tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB}"
+API_KEY="${CHATKIT_API_KEY:-}"
 DASHBOARD_URL="${DASHBOARD_URL:-https://trade.rezult.co}"
+
+if [ -z "$API_KEY" ]; then
+  echo "Missing CHATKIT_API_KEY"
+  exit 1
+fi
 
 echo "🧪 Testing Scheduled Tasks Ingest Endpoint"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -225,7 +225,7 @@ SMTP_FROM_EMAIL=contactus@tradezone.sg
 SMTP_FROM_NAME=TradeZone
 
 # === CHATKIT SECURITY ===
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY
 NEXT_PUBLIC_DEFAULT_ORG_ID=your-org-id
 
 # === UPSTASH REDIS ===
@@ -905,7 +905,7 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 
 ### Deployment must-haves (Dec 12, 2025)
 - Environment (runtime) in the voice container **must** include:
-  - `CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB`
+  - `CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY`
   - `NEXT_PUBLIC_API_URL=https://trade.rezult.co`
 - Use the image built from commit `2f7671c` **or newer** (latest `main` includes trade-only pricing fixes and brevity guards). Older images (e.g., `7c96289`) **do not** send the Bearer header and will 401 on `/api/chatkit/agent`.
 - If Coolify shows AUTH_FAILURE after envs are set, force a rebuild/redeploy of the voice service from `feature/livekit-voice-agent` (disable cache/skip-build). The correct image automatically sends `Authorization: Bearer <CHATKIT_API_KEY>` + `X-API-Key`.

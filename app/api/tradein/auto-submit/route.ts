@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthRequired, verifyApiKey } from "@/lib/security/auth";
+import { isAuthRequired, verifyServerApiKey } from "@/lib/security/auth";
 import {
   getSupabaseAdminClient,
   submitTradeInLead,
@@ -71,7 +71,7 @@ function buildSummary(lead: any): string | undefined {
 
 export async function POST(request: Request) {
   if (isAuthRequired()) {
-    const authResult = verifyApiKey(request);
+    const authResult = verifyServerApiKey(request);
     if (!authResult.authenticated) {
       return NextResponse.json(
         { error: authResult.error || "Unauthorized" },

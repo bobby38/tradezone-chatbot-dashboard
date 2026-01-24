@@ -1,120 +1,162 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { EmailService } from '@/lib/email-service'
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { EmailService } from "@/lib/email-service";
+import { verifyServerApiKey } from "@/lib/security/auth";
 
 // Use service role key to bypass RLS for webhook inserts
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Only create client if both values are available (for build-time compatibility)
-const supabaseAdmin = supabaseUrl && supabaseServiceKey 
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : null
+const supabaseAdmin =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
 
 export async function POST(req: NextRequest) {
   try {
+    const webhookSecret = process.env.FLUENT_FORMS_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const provided =
+        req.headers.get("x-webhook-secret") ||
+        req.headers.get("x-fluentforms-secret") ||
+        "";
+      if (!provided || provided !== webhookSecret) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      const auth = verifyServerApiKey(req);
+      if (!auth.authenticated) {
+        if (auth.error === "Server API key not configured") {
+          console.warn(
+            "[Webhook] FLUENT_FORMS_WEBHOOK_SECRET or CHATKIT_API_KEY not configured; allowing request.",
+          );
+        } else {
+          return NextResponse.json(
+            { error: auth.error || "Unauthorized" },
+            { status: 401 },
+          );
+        }
+      }
+    }
+
     // Check if Supabase client is available
     if (!supabaseAdmin) {
-      console.error('Supabase client not available - missing environment variables')
-      return NextResponse.json({ 
-        error: 'Server configuration error',
-        message: 'Database connection not available'
-      }, { status: 500 })
+      console.error(
+        "Supabase client not available - missing environment variables",
+      );
+      return NextResponse.json(
+        {
+          error: "Server configuration error",
+          message: "Database connection not available",
+        },
+        { status: 500 },
+      );
     }
 
     // Get real IP through Cloudflare headers
-    const realIP = req.headers.get('cf-connecting-ip') || 
-                   req.headers.get('x-forwarded-for') || 
-                   req.headers.get('x-real-ip') || 
-                   'unknown'
-    
-    const body = await req.json()
-    
+    const realIP =
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+
+    const body = await req.json();
+
     // Enhanced logging for debugging
-    console.log('=== FLUENT FORMS WEBHOOK DEBUG ===')
-    console.log('Timestamp:', new Date().toISOString())
-    console.log('IP:', realIP)
-    console.log('Headers:', Object.fromEntries(req.headers.entries()))
-    console.log('Full Body:', JSON.stringify(body, null, 2))
-    console.log('Body keys:', Object.keys(body))
-    console.log('=====================================')
-    
+    console.log("=== FLUENT FORMS WEBHOOK DEBUG ===");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("IP:", realIP);
+    console.log("Headers:", Object.fromEntries(req.headers.entries()));
+    console.log("Full Body:", JSON.stringify(body, null, 2));
+    console.log("Body keys:", Object.keys(body));
+    console.log("=====================================");
+
     // Extract form data from Fluent Forms webhook payload
-    const formData = body.data || body
-    
+    const formData = body.data || body;
+
     // Determine if this is contact form or trade-in form based on fields
-    let submissionType = 'contact'
-    if (formData.device_type || formData.console_type || formData.body_condition) {
-      submissionType = 'trade-in'
+    let submissionType = "contact";
+    if (
+      formData.device_type ||
+      formData.console_type ||
+      formData.body_condition
+    ) {
+      submissionType = "trade-in";
     }
-    
-    console.log('Processed data:')
-    console.log('- Form Type:', submissionType)
-    console.log('- Form ID:', body.form_id)
-    console.log('- Form Data Keys:', Object.keys(formData))
-    
+
+    console.log("Processed data:");
+    console.log("- Form Type:", submissionType);
+    console.log("- Form ID:", body.form_id);
+    console.log("- Form Data Keys:", Object.keys(formData));
+
     // Store the entire webhook payload in existing submissions table
     const insertData = {
-      user_id: '7696939b-4bb3-4c76-bf63-0c47db8119e9', // real user ID from profiles
-      org_id: '765e1172-b666-471f-9b42-f80c9b5006de',  // real org ID from organizations  
+      user_id: "7696939b-4bb3-4c76-bf63-0c47db8119e9", // real user ID from profiles
+      org_id: "765e1172-b666-471f-9b42-f80c9b5006de", // real org ID from organizations
       title: `${submissionType} form submission`,
       content_input: JSON.stringify(body, null, 2),
-      content_type: 'Form Submission',
+      content_type: "Form Submission",
       ai_metadata: formData,
-      status: 'ready'
-    }
-    
-    console.log('Inserting to submissions table:', JSON.stringify(insertData, null, 2))
-    
-    console.log('Attempting to insert directly with service role key...')
-    
+      status: "ready",
+    };
+
+    console.log(
+      "Inserting to submissions table:",
+      JSON.stringify(insertData, null, 2),
+    );
+
+    console.log("Attempting to insert directly with service role key...");
+
     const { data, error } = await supabaseAdmin
-      .from('submissions')
+      .from("submissions")
       .insert(insertData)
-      .select()
-    
+      .select();
+
     if (error) {
-      console.error('Database insert error:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      console.error('Error message:', error.message)
-      console.error('Error code:', error.code)
-      return NextResponse.json({ 
-        error: 'Failed to save submission', 
-        details: error.message || 'Unknown database error',
-        code: error.code,
-        hint: error.hint
-      }, { status: 500 })
+      console.error("Database insert error:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      console.error("Error message:", error.message);
+      console.error("Error code:", error.code);
+      return NextResponse.json(
+        {
+          error: "Failed to save submission",
+          details: error.message || "Unknown database error",
+          code: error.code,
+          hint: error.hint,
+        },
+        { status: 500 },
+      );
     }
-    
-    console.log(`New ${submissionType} form submission received:`, data)
-    
+
+    console.log(`New ${submissionType} form submission received:`, data);
+
     // Form submission saved successfully to submissions table
     // Send email notification
     if (data?.[0]?.id && formData) {
-      console.log('Form data saved successfully to submissions table')
-      
+      console.log("Form data saved successfully to submissions table");
+
       // Send email notification (async, don't block response)
       EmailService.sendFormNotification({
-        type: submissionType as 'contact' | 'trade-in',
+        type: submissionType as "contact" | "trade-in",
         submissionId: data[0].id,
         formData: formData,
-        submittedAt: new Date().toISOString()
-      }).catch(error => {
-        console.error('Failed to send email notification:', error)
+        submittedAt: new Date().toISOString(),
+      }).catch((error) => {
+        console.error("Failed to send email notification:", error);
         // Don't fail the webhook if email fails
-      })
-      
-      console.log('Email notification sent for submission:', data[0].id)
+      });
+
+      console.log("Email notification sent for submission:", data[0].id);
     }
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Form submission received and notification sent',
-      id: data?.[0]?.id 
-    })
-    
+
+    return NextResponse.json({
+      success: true,
+      message: "Form submission received and notification sent",
+      id: data?.[0]?.id,
+    });
   } catch (error) {
-    console.error('Webhook error:', error)
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    console.error("Webhook error:", error);
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }

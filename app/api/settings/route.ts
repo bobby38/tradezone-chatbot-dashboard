@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CHATKIT_DEFAULT_PROMPT } from "@/lib/chatkit/defaultPrompt";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,6 +33,11 @@ const DEFAULT_ORG_ID = "765e1172-b666-471f-9b42-f80c9b5006de";
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     if (!supabase) {
       console.warn("Supabase not configured, returning default settings");
       return NextResponse.json({
@@ -96,6 +102,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     if (!supabase) {
       return NextResponse.json(
         { error: "Supabase not configured" },
@@ -174,6 +185,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     if (!supabase) {
       return NextResponse.json(
         { error: "Supabase not configured" },

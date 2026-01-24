@@ -228,7 +228,7 @@ python agents/voice/test_auto_save.py
 
 1. **Ensure environment variables set:**
 ```bash
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY
 NEXT_PUBLIC_API_URL=https://trade.rezult.co
 ```
 

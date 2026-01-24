@@ -1,8 +1,13 @@
 #!/bin/bash
 # Refresh WooCommerce catalog with Perplexity enrichment
 
-API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+API_KEY="${CHATKIT_API_KEY:-}"
 START=$(date +%s)
+
+if [ -z "$API_KEY" ]; then
+  echo "Missing CHATKIT_API_KEY"
+  exit 1
+fi
 
 # Run the actual enrichment script
 if cd /app && node scripts/refresh-product-catalog.mjs > /tmp/catalog-refresh.log 2>&1; then

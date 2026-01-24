@@ -64,7 +64,7 @@ VOICE_LLM_MODEL=google/gemini-flash-2.5
 ```bash
 NEXT_PUBLIC_API_URL=https://trade.rezult.co
 API_BASE_URL=https://trade.rezult.co
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY
 ```
 
 **Impact:** Voice agent now connects to production API correctly

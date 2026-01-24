@@ -31,7 +31,7 @@ Modify each cron job to POST results after execution. Here's the pattern:
 ```bash
 # Coolify cron job
 */1 * * * * curl -sS -X POST https://tradezone.sg/api/tradein/auto-submit \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY"
 ```
 
 #### After (With Logging):
@@ -41,7 +41,7 @@ Modify each cron job to POST results after execution. Here's the pattern:
 
 TASK_ID="tradein-auto-submit"
 TASK_TITLE="Trade-in auto submit"
-API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+API_KEY="YOUR_CHATKIT_API_KEY"
 DASHBOARD_URL="https://trade.rezult.co"
 
 # Record start time
@@ -92,7 +92,7 @@ If the above is too complex, use this simpler approach:
 #!/bin/bash
 # Simple cron job logging
 
-API_KEY="tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB"
+API_KEY="YOUR_CHATKIT_API_KEY"
 START=$(date +%s)
 
 # Run your task
@@ -180,7 +180,7 @@ Records a scheduled task execution.
 ### Manual Test
 ```bash
 curl -X POST https://trade.rezult.co/api/scheduled-tasks/ingest \
-  -H "X-API-Key: tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB" \
+  -H "X-API-Key: YOUR_CHATKIT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "task_id": "test-task",

@@ -3,6 +3,7 @@ import {
   TradeInValidationError,
   submitTradeInLead,
 } from "@/lib/trade-in/service";
+import { verifyApiKey } from "@/lib/security/auth";
 
 const HANDLER_VERSION = "tradein-submit-2025-12-14";
 
@@ -53,6 +54,14 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   try {
+    const authResult = verifyApiKey(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || "Unauthorized" },
+        { status: 401, headers: corsHeaders },
+      );
+    }
+
     const body = await request.json();
     const {
       leadId,

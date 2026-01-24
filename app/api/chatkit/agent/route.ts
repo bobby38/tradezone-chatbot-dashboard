@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import OpenAI from "openai";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { createGeminiChatCompletion } from "@/lib/gemini-client";
 import {
@@ -325,14 +325,14 @@ function deriveTradeUpPricingSummary(params: {
   };
 }
 
-function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
+async function loadTradeGridEntriesFromFile(): Promise<TradeGridEntry[]> {
   const gridPath = path.join(
     process.cwd(),
     "data",
     "tradezone_price_grid.jsonl",
   );
   try {
-    const raw = fs.readFileSync(gridPath, "utf8");
+    const raw = await fs.readFile(gridPath, "utf8");
     return raw
       .split(/\n+/)
       .map((line) => line.trim())
@@ -363,7 +363,7 @@ function loadTradeGridEntriesFromFile(): TradeGridEntry[] {
 async function loadTradeGridEntries(): Promise<TradeGridEntry[]> {
   if (tradeGridEntriesCache) return tradeGridEntriesCache;
 
-  tradeGridEntriesCache = loadTradeGridEntriesFromFile();
+  tradeGridEntriesCache = await loadTradeGridEntriesFromFile();
 
   return tradeGridEntriesCache;
 }

@@ -25,7 +25,7 @@ In Coolify, redeploy the voice agent service from `main` branch:
 Make sure these are set in Coolify for the voice agent service:
 
 ```bash
-CHATKIT_API_KEY=tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB
+CHATKIT_API_KEY=YOUR_CHATKIT_API_KEY
 NEXT_PUBLIC_API_URL=https://trade.rezult.co
 LIVEKIT_URL=wss://tradezone-9kwy60jr.livekit.cloud
 LIVEKIT_API_KEY=APIexoxxNQJkjoW

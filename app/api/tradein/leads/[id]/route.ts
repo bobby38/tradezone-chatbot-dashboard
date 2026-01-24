@@ -4,12 +4,18 @@ import {
   getTradeInLeadDetail,
   updateTradeInLead,
 } from "@/lib/trade-in/service";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const lead = await getTradeInLeadDetail(params.id);
     return NextResponse.json({ lead });
   } catch (error) {
@@ -26,6 +32,11 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const body = await request.json();
     const patch = body?.patch ?? body;
 
@@ -55,6 +66,11 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { deleteTradeInLead } = await import("@/lib/trade-in/service");
     await deleteTradeInLead(params.id);
     return NextResponse.json({ success: true });

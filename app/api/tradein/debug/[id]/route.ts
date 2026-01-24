@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 /**
@@ -14,9 +15,14 @@ const supabase = createClient(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { id } = params;
 
     // Get lead details
@@ -29,7 +35,7 @@ export async function GET(
     if (leadError || !lead) {
       return NextResponse.json(
         { error: "Lead not found", details: leadError },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -70,7 +76,8 @@ export async function GET(
       },
       actions: {
         count: actions?.length || 0,
-        media_uploads: actions?.filter(a => a.action_type === 'media_uploaded') || [],
+        media_uploads:
+          actions?.filter((a) => a.action_type === "media_uploaded") || [],
         all_actions: actions || [],
         error: actionsError,
       },
@@ -83,8 +90,11 @@ export async function GET(
   } catch (error) {
     console.error("[Debug] Error:", error);
     return NextResponse.json(
-      { error: "Debug failed", details: error instanceof Error ? error.message : "Unknown" },
-      { status: 500 }
+      {
+        error: "Debug failed",
+        details: error instanceof Error ? error.message : "Unknown",
+      },
+      { status: 500 },
     );
   }
 }

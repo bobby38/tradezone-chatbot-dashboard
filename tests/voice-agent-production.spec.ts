@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 
 const API_BASE_URL = process.env.API_BASE_URL || "https://trade.rezult.co";
 const API_KEY =
-  process.env.CHATKIT_API_KEY || "tzck_mfuWZAo12CkCi9-AMQOSZAvLW7cDJaUB";
+  process.env.CHATKIT_API_KEY || "YOUR_CHATKIT_API_KEY";
 
 test.describe("Voice Agent - Trade-In Price Lookup", () => {
   test("Should find PS4 Pro 1TB trade-in price", async ({ request }) => {

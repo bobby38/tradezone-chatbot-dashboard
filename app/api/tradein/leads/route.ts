@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listTradeInLeads } from "@/lib/trade-in/service";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = verifyAdminAccess(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || undefined;
     const limitParam = searchParams.get("limit");

@@ -1,30 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { authErrorResponse, verifyAdminAccess } from "@/lib/security/auth";
 
-export const revalidate = 0
-export const dynamic = 'force-dynamic'
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
-)
+);
 
 export async function GET(req: NextRequest) {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('submissions')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (error) {
-      console.error('Error fetching submissions:', error)
-      return NextResponse.json({ error: 'Failed to fetch submissions' }, { status: 500 })
+    const auth = verifyAdminAccess(req);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth.error);
     }
 
-    return NextResponse.json({ submissions: data || [] })
+    const { data, error } = await supabaseAdmin
+      .from("submissions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("Error fetching submissions:", error);
+      return NextResponse.json(
+        { error: "Failed to fetch submissions" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ submissions: data || [] });
   } catch (error) {
-    console.error('Submissions API error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error("Submissions API error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
