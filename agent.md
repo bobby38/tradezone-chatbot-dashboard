@@ -1,6 +1,7 @@
 # TradeZone Chatbot Dashboard — Agent Brief
 
 ## Recent Updates (2026-01-24)
+- **CRITICAL FIX**: Voice realtime mode now uses separate `VOICE_REALTIME_MODEL` env var (defaults to `gpt-4o-realtime-preview-2024-12-17`). Previously, `VOICE_LLM_MODEL=google/gemini-flash-2.5` was incorrectly passed to OpenAI Realtime API, causing "Model not supported in realtime mode" errors and no voice output on mobile.
 - Voice agent now enforces short replies (≤10 words) and confirms intent.
 - Deterministic voice routing mirrors text chat: Product → Trade → Support.
 - Price-only trade-in is gated, clarifies variants, and exits cleanly on “no”.

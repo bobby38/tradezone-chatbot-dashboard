@@ -2730,12 +2730,16 @@ async def entrypoint(ctx: JobContext):
 
     # Choose stack: classic (AssemblyAI + GPT + Cartesia) or OpenAI Realtime
     if VOICE_STACK == "realtime":
+        # IMPORTANT: OpenAI Realtime API only supports OpenAI models (gpt-4o-realtime-preview, etc.)
+        # Use VOICE_REALTIME_MODEL for realtime mode, NOT VOICE_LLM_MODEL (which may be Gemini/other)
+        realtime_model = os.getenv(
+            "VOICE_REALTIME_MODEL",
+            "gpt-4o-realtime-preview-2024-12-17",
+        )
+        logger.info(f"[Voice Agent] Using realtime model: {realtime_model}")
         session = AgentSession(
             llm=realtime.RealtimeModel(
-                model=os.getenv(
-                    "VOICE_LLM_MODEL",
-                    "gpt-realtime-mini-2025-12-15",
-                ),
+                model=realtime_model,
                 voice=os.getenv("VOICE_LLM_VOICE", "alloy"),
                 temperature=float(os.getenv("VOICE_LLM_TEMPERATURE", "0.2")),
                 # ServerVAD settings - using default turn detection
