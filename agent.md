@@ -749,6 +749,17 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 - Added more specific hints: "my warranty", "under warranty", "claim", "status"
 - Added `issueHints` for problem-related keywords
 
+### Support Flow Exit Detection (Jan 24, 2026)
+**Problem**: Support flow kept asking for name/phone/email even after user said "nevermind" or changed topic to ask about products.
+
+**Root Cause**: No exit detection in support flow - once started, it would keep prompting for the next field regardless of user intent.
+
+**Fix Applied**:
+- Added exit keyword detection: `nevermind`, `forget it`, `cancel`, `stop`, `nah`, `nvm`, etc.
+- Added topic change detection: if user asks about products/prices while in support flow
+- Exit keyword → clears flow + friendly "No problem! Is there anything else I can help you with?"
+- Topic change → clears flow silently + processes new query normally
+
 ### Test Results (All Passing ✅)
 ```
 📊 Results: 4 passed, 0 failed out of 4 tests
@@ -757,6 +768,8 @@ ALTER TYPE public.trade_in_status ADD VALUE IF NOT EXISTS 'submitted';
 ✅ Warranty policy question: 7-day warranty (no Singapore question)
 ✅ PS5 console trade-in: S$250-S$700 with model question
 ✅ Product search (switch games): Shows products, no trade-in push
+✅ Support flow exit ('nevermind'): Flow cleared, friendly acknowledgment
+✅ Support flow exit (topic change): Flow cleared, shows products
 ```
 
 ---
