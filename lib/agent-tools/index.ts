@@ -665,6 +665,14 @@ export async function searchWooProducts(
             score += 500; // Heavy bonus for matching the requested brand
           }
         });
+        if (brandTokens.length > 0) {
+          const matchesAnyBrand = brandTokens.some((brand) =>
+            name.includes(brand),
+          );
+          if (!matchesAnyBrand) {
+            score -= 250; // Demote non-requested brands (e.g., iPhone query should not surface Samsung first)
+          }
+        }
       } else if (categoryFilter === "camera") {
         const matchesCategory = familyFilter!.some((keyword) =>
           name.includes(keyword),

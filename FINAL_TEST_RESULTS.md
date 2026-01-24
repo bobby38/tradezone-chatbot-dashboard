@@ -1,5 +1,10 @@
 # TradeZone Chatbot - Final Test Results & Issues
 
+## Jan 24, 2026 — Text Chat Regression Note
+- Resumed critical text-chat suite on local dev server.
+- 38 passed, 1 failed, 1 skipped.
+- Only failure: performance test `Vector search should use optimized model` due to latency 6.5–6.8s (threshold <6s). Functional behavior unchanged.
+
 **Test Execution Date:** January 4, 2026, 6:30 PM  
 **Total Tests Run:** 29 tests across 3 test files  
 **Overall Status:** ⚠️ **26/29 PASSED (90%)** - 3 failures need attention
