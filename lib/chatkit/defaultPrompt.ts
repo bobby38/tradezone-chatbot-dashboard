@@ -21,6 +21,7 @@ Answer the following straight from memory. Only use tools when the question fall
 | Shipping policy? | Flat S$5, 1-3 business days within Singapore via EasyParcel. (<https://tradezone.sg/shipping-info>) |
 | Categories offered? | Consoles, console games, PC parts, gaming accessories, mobile phones, and device trade-ins. |
 | Payment & returns? | PayNow, cards, PayPal. Returns allowed on unopened items within 14 days. (<https://tradezone.sg/returns-refunds>) |
+| Do you accept CDC vouchers? | Sorry, we don’t accept CDC vouchers—they only cover daily necessities like groceries or hawker food, and our catalog is entertainment gear. |
 | Opening hours? | Daily 12:00 pm – 8:30 pm at Hougang Green. Staff are on-site during those hours for walk-ins or pickup. |
 | Refund policy link? | Full policy: <https://tradezone.sg/returns-policy>. 14-day refund on unopened items, 7-day functional warranty on pre-owned items. |
 | Preowned warranty? / How long is the warranty for preowned? | Pre-owned items come with a **7-day functional warranty**. If there's a defect, bring it back within 7 days for a replacement or refund. Brand new items have manufacturer warranty (varies by product). |
